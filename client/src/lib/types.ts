@@ -1,6 +1,6 @@
 // ============================================================
 // Evox Fiscal — Sistema de Análise de Oportunidades Tributárias
-// Types & Data Models
+// Types & Data Models (v2)
 // ============================================================
 
 export type RegimeTributario = 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
@@ -12,7 +12,12 @@ export type PotencialFinanceiro = 'muito_alto' | 'alto' | 'medio' | 'baixo';
 export type PotencialMercadologico = 'muito_alto' | 'alto' | 'medio' | 'baixo';
 export type RecomendacaoEstrategica = 'judicial' | 'administrativa' | 'preventiva' | 'nao_recomendada';
 export type PrioridadeCliente = 'alta' | 'media' | 'baixa';
+export type NivelAcesso = 'administrador' | 'suporte_comercial' | 'analista_fiscal';
+export type StatusApuracao = 'a_fazer' | 'fazendo' | 'concluido' | string;
+export type TipoParceiro = 'pf' | 'pj';
+export type CertificadoDigital = 'evox_fiscal' | 'gercino_neto' | 'outro';
 
+// ---- RED FLAGS ----
 export interface RedFlag {
   id: string;
   tipo: 'abertura_recente' | 'valor_guias_baixo' | 'situacao_irregular' | 'sem_tese_alto_potencial';
@@ -28,6 +33,40 @@ export interface AlertaInformacao {
   justificativa?: string;
 }
 
+// ---- USUARIO ----
+export interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  nivelAcesso: NivelAcesso;
+  ativo: boolean;
+  dataCriacao: string;
+}
+
+// ---- PARCEIRO COMERCIAL ----
+export interface Parceiro {
+  id: string;
+  tipo: TipoParceiro;
+  nomeCompleto: string;
+  cpf?: string;
+  razaoSocial?: string;
+  cnpj?: string;
+  telefone: string;
+  email: string;
+  endereco: string;
+  ativo: boolean;
+  dataCadastro: string;
+}
+
+// ---- PROCURACAO ELETRONICA ----
+export interface ProcuracaoEletronica {
+  habilitada: boolean;
+  certificadoDigital?: CertificadoDigital;
+  certificadoOutroNome?: string;
+  dataValidade?: string;
+}
+
+// ---- CLIENTE ----
 export interface Cliente {
   id: string;
   // Dados básicos
@@ -45,6 +84,8 @@ export interface Cliente {
   // Segmento
   segmentoEconomico: string;
   naturezaJuridica: string;
+  // Endereço
+  endereco?: string;
   // Atividades
   industrializa: boolean;
   comercializa: boolean;
@@ -63,8 +104,17 @@ export interface Cliente {
   // Localização
   estado: string;
   atividadePrincipalDescritivo: string;
+  // Parceiro Comercial
+  parceiroId?: string;
+  // Procuração Eletrônica
+  procuracao: ProcuracaoEletronica;
+  // Exceções e Especificidades
+  excecoesEspecificidades?: string;
   // Metadados
   dataCadastro: string;
+  horaCadastro?: string;
+  usuarioCadastroId?: string;
+  usuarioCadastroNome?: string;
   dataUltimaAnalise?: string;
   // RED FLAGS e Alertas
   redFlags: RedFlag[];
@@ -74,30 +124,61 @@ export interface Cliente {
   observacoes?: string;
 }
 
+// ---- FILA DE APURAÇÃO ----
+export interface HistoricoAlteracao {
+  id: string;
+  data: string;
+  usuarioNome: string;
+  acao: string;
+  detalhes: string;
+}
+
+export interface ItemFilaApuracao {
+  id: string;
+  clienteId: string;
+  clienteNome: string;
+  clienteCnpj: string;
+  parceiroNome?: string;
+  prioridade: PrioridadeCliente;
+  prioridadeManual?: boolean;
+  status: StatusApuracao;
+  ordem: number;
+  // Timestamps
+  dataInsercao: string;
+  dataInicioApuracao?: string;
+  dataConclusao?: string;
+  // Analista
+  analistaId?: string;
+  analistaNome?: string;
+  // Tempo
+  tempoGastoMs?: number; // tempo acumulado em ms
+  // Procuração
+  procuracaoHabilitada: boolean;
+  procuracaoValidade?: string;
+  // Histórico
+  historico: HistoricoAlteracao[];
+}
+
+// ---- TESE ----
 export interface Tese {
   id: string;
   nome: string;
   tributoEnvolvido: string;
   tipo: TipoTese;
   classificacao: ClassificacaoTese;
-  // Potencial
   potencialFinanceiro: PotencialFinanceiro;
   potencialMercadologico: PotencialMercadologico;
-  // Requisitos
   requisitosObjetivos: string[];
   requisitosImpeditivos: string[];
-  // Fundamentação
   fundamentacaoLegal: string;
   jurisprudenciaRelevante: string;
   parecerTecnicoJuridico: string;
-  // Detalhes
   prazoPrescricional: string;
   necessidadeAcaoJudicial: boolean;
   viaAdministrativa: boolean;
   grauRisco: GrauRisco;
   documentosNecessarios: string[];
   formulaEstimativaCredito: string;
-  // Aplicabilidade
   aplicavelComercio: boolean;
   aplicavelIndustria: boolean;
   aplicavelServico: boolean;
@@ -107,19 +188,19 @@ export interface Tese {
   aplicavelLucroPresumido: boolean;
   aplicavelSimplesNacional: boolean;
   aplicavelPos2017: boolean;
-  // Metadados
   dataCriacao: string;
   dataAtualizacao: string;
   versao: number;
   ativa: boolean;
 }
 
+// ---- ANÁLISE ----
 export interface AnaliseTeseCliente {
   teseId: string;
   teseNome: string;
   aplicavel: boolean;
   motivoExclusao?: string;
-  grauAderencia: number; // 0-100
+  grauAderencia: number;
   riscoJuridico: GrauRisco;
   fundamentacaoAplicabilidade: string;
   justificativaTecnica: string;
@@ -127,8 +208,8 @@ export interface AnaliseTeseCliente {
   documentosComplementares: string[];
   recomendacaoEstrategica: RecomendacaoEstrategica;
   complexidadeOperacional: 'baixa' | 'media' | 'alta';
-  potencialFinanceiro: number; // score 0-100
-  segurancaJuridica: number; // score 0-100
+  potencialFinanceiro: number;
+  segurancaJuridica: number;
 }
 
 export interface RelatorioAnalise {
@@ -136,16 +217,11 @@ export interface RelatorioAnalise {
   clienteId: string;
   clienteNome: string;
   dataAnalise: string;
-  // Diagnóstico
   diagnosticoTributario: string;
-  // Teses
   tesesAplicaveis: AnaliseTeseCliente[];
   tesesDescartadas: AnaliseTeseCliente[];
-  // Score
   scoreOportunidade: number;
-  // Recomendação geral
   recomendacaoGeral: string;
-  // Red flags do momento da análise
   redFlags: RedFlag[];
   prioridade: PrioridadeCliente;
 }
@@ -159,4 +235,53 @@ export interface DashboardStats {
   analisesPendentes: number;
   potencialRecuperacaoTotal: number;
   mediaScoreOportunidade: number;
+  totalParceiros: number;
+  filaAFazer: number;
+  filaFazendo: number;
+  filaConcluido: number;
+}
+
+// ---- PERMISSÕES ----
+export interface Permissoes {
+  podeIncluirCliente: boolean;
+  podeEditarCliente: boolean;
+  podeExcluirCliente: boolean;
+  podeIncluirParceiro: boolean;
+  podeEditarParceiro: boolean;
+  podeExcluirParceiro: boolean;
+  podeIncluirTese: boolean;
+  podeEditarTese: boolean;
+  podeExcluirTese: boolean;
+  podeAlterarOrdemFila: boolean;
+  podeAlterarPrioridadeFila: boolean;
+  podeIniciarApuracao: boolean;
+}
+
+export function getPermissoes(nivel: NivelAcesso): Permissoes {
+  switch (nivel) {
+    case 'administrador':
+      return {
+        podeIncluirCliente: true, podeEditarCliente: true, podeExcluirCliente: true,
+        podeIncluirParceiro: true, podeEditarParceiro: true, podeExcluirParceiro: true,
+        podeIncluirTese: true, podeEditarTese: true, podeExcluirTese: true,
+        podeAlterarOrdemFila: true, podeAlterarPrioridadeFila: true,
+        podeIniciarApuracao: true,
+      };
+    case 'suporte_comercial':
+      return {
+        podeIncluirCliente: true, podeEditarCliente: true, podeExcluirCliente: true,
+        podeIncluirParceiro: true, podeEditarParceiro: true, podeExcluirParceiro: true,
+        podeIncluirTese: false, podeEditarTese: false, podeExcluirTese: false,
+        podeAlterarOrdemFila: false, podeAlterarPrioridadeFila: false,
+        podeIniciarApuracao: false,
+      };
+    case 'analista_fiscal':
+      return {
+        podeIncluirCliente: false, podeEditarCliente: false, podeExcluirCliente: false,
+        podeIncluirParceiro: false, podeEditarParceiro: false, podeExcluirParceiro: false,
+        podeIncluirTese: false, podeEditarTese: false, podeExcluirTese: false,
+        podeAlterarOrdemFila: false, podeAlterarPrioridadeFila: false,
+        podeIniciarApuracao: true,
+      };
+  }
 }

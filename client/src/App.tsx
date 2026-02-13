@@ -10,6 +10,9 @@ import Clientes from "./pages/Clientes";
 import Teses from "./pages/Teses";
 import Analise from "./pages/Analise";
 import Relatorios from "./pages/Relatorios";
+import Parceiros from "./pages/Parceiros";
+import FilaApuracao from "./pages/FilaApuracao";
+import Analitica from "./pages/Analitica";
 import Sidebar from "./components/Sidebar";
 
 function Router() {
@@ -20,6 +23,9 @@ function Router() {
       <Route path="/teses" component={Teses} />
       <Route path="/analise" component={Analise} />
       <Route path="/relatorios" component={Relatorios} />
+      <Route path="/parceiros" component={Parceiros} />
+      <Route path="/fila" component={FilaApuracao} />
+      <Route path="/analitica" component={Analitica} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

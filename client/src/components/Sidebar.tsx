@@ -1,18 +1,12 @@
 /*
- * Sidebar — Evox Fiscal
- * Design: Corporate Intelligence — Dark navy sidebar with icon + label navigation
+ * Sidebar — Evox Fiscal (v2)
+ * Dark navy sidebar with icon + label navigation, includes Parceiros and Fila
  */
 
 import { useLocation, Link } from 'wouter';
 import {
-  LayoutDashboard,
-  Users,
-  BookOpen,
-  BarChart3,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
+  LayoutDashboard, Users, BookOpen, BarChart3, ChevronLeft, ChevronRight,
+  FileText, Handshake, ListOrdered, TrendingUp,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -23,9 +17,12 @@ const SYMBOL_URL = 'https://files.manuscdn.com/user_upload_by_module/session_fil
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/clientes', label: 'Clientes', icon: Users },
+  { path: '/parceiros', label: 'Parceiros', icon: Handshake },
   { path: '/teses', label: 'Teses Tributárias', icon: BookOpen },
+  { path: '/fila', label: 'Fila de Apuração', icon: ListOrdered },
   { path: '/analise', label: 'Análise', icon: BarChart3 },
   { path: '/relatorios', label: 'Relatórios', icon: FileText },
+  { path: '/analitica', label: 'Visão Analítica', icon: TrendingUp },
 ];
 
 export default function Sidebar() {
