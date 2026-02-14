@@ -1,0 +1,46 @@
+{
+  "query": "SELECT id, nome FROM setores ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, nome FROM setores ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "nome": "SPC – Suporte Comercial"
+    },
+    {
+      "id": "2",
+      "nome": "RCT – Crédito"
+    },
+    {
+      "id": "3",
+      "nome": "DPT – Transação"
+    },
+    {
+      "id": "4",
+      "nome": "JUR – Jurídico"
+    },
+    {
+      "id": "5",
+      "nome": "RT – Reforma Tributária"
+    },
+    {
+      "id": "6",
+      "nome": "CT – Contratos"
+    },
+    {
+      "id": "7",
+      "nome": "FIN – Financeiro"
+    },
+    {
+      "id": "8",
+      "nome": "MKT – Marketing"
+    },
+    {
+      "id": "9",
+      "nome": "RH – Gente e Gestão"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnome\n1\tSPC – Suporte Comercial\n2\tRCT – Crédito\n3\tDPT – Transação\n4\tJUR – Jurídico\n5\tRT – Reforma Tributária\n6\tCT – Contratos\n7\tFIN – Financeiro\n8\tMKT – Marketing\n9\tRH – Gente e Gestão\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

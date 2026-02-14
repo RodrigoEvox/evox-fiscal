@@ -9,6 +9,7 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import AppSidebar from "./components/AppSidebar";
+import GlobalSearch from "./components/GlobalSearch";
 import Dashboard from "./pages/Dashboard";
 import Clientes from "./pages/Clientes";
 import ClienteDetalhe from "./pages/ClienteDetalhe";
@@ -27,6 +28,9 @@ const Setores = lazy(() => import("./pages/Setores"));
 const Arquivos = lazy(() => import("./pages/Arquivos"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const ApiKeys = lazy(() => import("./pages/ApiKeys"));
+const Perfil = lazy(() => import("./pages/Perfil"));
+const Servicos = lazy(() => import("./pages/Servicos"));
+const SetorPage = lazy(() => import("./pages/SetorPage"));
 
 function LazyFallback() {
   return (
@@ -56,6 +60,10 @@ function Router() {
         <Route path="/usuarios" component={Usuarios} />
         <Route path="/audit-log" component={AuditLog} />
         <Route path="/api-keys" component={ApiKeys} />
+        <Route path="/perfil" component={Perfil} />
+        <Route path="/servicos" component={Servicos} />
+        {/* Setor pages with sub-routes */}
+        <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
@@ -116,9 +124,15 @@ function App() {
           <AuthGate>
             <div className="flex min-h-screen">
               <AppSidebar />
-              <main className="flex-1 p-6 overflow-auto bg-background">
-                <Router />
-              </main>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Top bar with global search */}
+                <header className="h-14 border-b border-gray-100 flex items-center px-6 bg-white shrink-0">
+                  <GlobalSearch />
+                </header>
+                <main className="flex-1 overflow-auto bg-gray-50/50">
+                  <Router />
+                </main>
+              </div>
             </div>
           </AuthGate>
         </TooltipProvider>

@@ -794,6 +794,97 @@ export const appRouter = router({
     }),
   }),
 
+  // ---- SERVIÇOS POR SETOR ----
+  servicos: router({
+    list: protectedProcedure
+      .input(z.object({ setorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listServicos(input?.setorId);
+      }),
+    create: adminProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        setorId: z.number(),
+        percentualHonorariosComercial: z.string().optional(),
+        formaCobrancaHonorarios: z.enum(['percentual_credito', 'valor_fixo', 'mensalidade', 'exito', 'hibrido']).optional(),
+        valorFixo: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createServico(input as any);
+        await logAudit('criar', 'servico', id, input.nome, ctx);
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateServico(input.id, input.data as any);
+        await logAudit('editar', 'servico', input.id, null, ctx, input.data);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteServico(input.id);
+        await logAudit('excluir', 'servico', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- SETOR CONFIG ----
+  setorConfig: router({
+    list: protectedProcedure.query(async () => {
+      return db.listSetorConfigs();
+    }),
+    getBySetorId: protectedProcedure
+      .input(z.object({ setorId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getSetorConfigBySetorId(input.setorId);
+      }),
+    getBySigla: protectedProcedure
+      .input(z.object({ sigla: z.string() }))
+      .query(async ({ input }) => {
+        return db.getSetorConfigBySigla(input.sigla);
+      }),
+  }),
+
+  // ---- BUSCA GLOBAL ----
+  busca: router({
+    global: protectedProcedure
+      .input(z.object({ termo: z.string().min(2) }))
+      .query(async ({ input }) => {
+        return db.buscaGlobal(input.termo);
+      }),
+  }),
+
+  // ---- PERFIL DE USUÁRIO ----
+  perfil: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return ctx.user;
+    }),
+    update: protectedProcedure
+      .input(z.object({
+        cargo: z.string().optional(),
+        telefone: z.string().optional(),
+        avatar: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateUser(ctx.user.id, input as any);
+        await logAudit('editar', 'usuario', ctx.user.id, ctx.user.name, ctx, { campo: 'perfil' });
+        return { success: true };
+      }),
+    uploadAvatar: protectedProcedure
+      .input(z.object({ base64Data: z.string(), mimeType: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.base64Data, 'base64');
+        const suffix = crypto.randomBytes(4).toString('hex');
+        const key = `evox-fiscal/avatars/${ctx.user.id}-${suffix}.jpg`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        await db.updateUser(ctx.user.id, { avatar: url });
+        return { url };
+      }),
+  }),
+
   // ---- SEED ----
   seed: router({
     teses: protectedProcedure.mutation(async () => {
@@ -804,6 +895,10 @@ export const appRouter = router({
         await db.createTese(tese as any);
       }
       return { message: 'Teses criadas com sucesso', count: teseSeedData.length };
+    }),
+    setoresEvox: adminProcedure.mutation(async () => {
+      await db.seedSetoresEvox();
+      return { message: 'Setores da Evox criados/atualizados com sucesso' };
     }),
     testData: adminProcedure.mutation(async ({ ctx }) => {
       // Seed 6 setores
@@ -905,6 +1000,9 @@ export const appRouter = router({
         const codigo = await db.getNextTarefaCodigo();
         await db.createTarefa({ ...t, codigo, criadorId: ctx.user.id, dataInicio: new Date() } as any);
       }
+
+      // Also seed Evox setores
+      await db.seedSetoresEvox();
 
       return {
         message: 'Dados de teste criados com sucesso',

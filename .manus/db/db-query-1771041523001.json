@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO parceiros (nomeCompleto, cpfCnpj, email, telefone) VALUES \n('Dr. Carlos Mendes', '11122233344', 'carlos@mendes.adv.br', '11999001122'),\n('Ana Paula Contabilidade', '55566677788', 'ana@contabilidade.com', '21988776655'),\n('Roberto Advocacia', '99988877766', 'roberto@adv.com.br', '31977665544'),\n('Patrícia Fiscal', '33344455500', 'patricia@fiscal.com', '41966554433'),\n('Fernando Tributário', '77788899911', 'fernando@trib.com.br', '51955443322');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute \nINSERT INTO parceiros (nomeCompleto, cpfCnpj, email, telefone) VALUES \n('Dr. Carlos Mendes', '11122233344', 'carlos@mendes.adv.br', '11999001122'),\n('Ana Paula Contabilidade', '55566677788', 'ana@contabilidade.com', '21988776655'),\n('Roberto Advocacia', '99988877766', 'roberto@adv.com.br', '31977665544'),\n('Patrícia Fiscal', '33344455500', 'patricia@fiscal.com', '41966554433'),\n('Fernando Tributário', '77788899911', 'fernando@trib.com.br', '51955443322');\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 74
+}

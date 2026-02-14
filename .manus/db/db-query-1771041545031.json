@@ -1,0 +1,30 @@
+{
+  "query": "\nSELECT 'setores' as tabela, COUNT(*) as total FROM setores\nUNION ALL SELECT 'setor_config', COUNT(*) FROM setor_config\nUNION ALL SELECT 'clientes', COUNT(*) FROM clientes\nUNION ALL SELECT 'parceiros', COUNT(*) FROM parceiros\nUNION ALL SELECT 'users', COUNT(*) FROM users;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute \nSELECT 'setores' as tabela, COUNT(*) as total FROM setores\nUNION ALL SELECT 'setor_config', COUNT(*) FROM setor_config\nUNION ALL SELECT 'clientes', COUNT(*) FROM clientes\nUNION ALL SELECT 'parceiros', COUNT(*) FROM parceiros\nUNION ALL SELECT 'users', COUNT(*) FROM users;\n",
+  "rows": [
+    {
+      "tabela": "setores",
+      "total": "9"
+    },
+    {
+      "tabela": "users",
+      "total": "6"
+    },
+    {
+      "tabela": "clientes",
+      "total": "5"
+    },
+    {
+      "tabela": "parceiros",
+      "total": "5"
+    },
+    {
+      "tabela": "setor_config",
+      "total": "9"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\ttotal\nsetores\t9\nusers\t6\nclientes\t5\nparceiros\t5\nsetor_config\t9\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

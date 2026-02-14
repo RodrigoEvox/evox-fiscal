@@ -1,0 +1,8 @@
+{
+  "query": "\nINSERT INTO parceiros (nomeCompleto, tipo, email, telefone, percentualComissao) VALUES \n('Dr. Carlos Mendes', 'indicador', 'carlos@mendes.adv.br', '11999001122', '15.00'),\n('Ana Paula Contabilidade', 'contador', 'ana@contabilidade.com', '21988776655', '10.00'),\n('Roberto Advocacia', 'indicador', 'roberto@adv.com.br', '31977665544', '12.00'),\n('Patrícia Fiscal', 'contador', 'patricia@fiscal.com', '41966554433', '8.00'),\n('Fernando Tributário', 'indicador', 'fernando@trib.com.br', '51955443322', '20.00');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute \nINSERT INTO parceiros (nomeCompleto, tipo, email, telefone, percentualComissao) VALUES \n('Dr. Carlos Mendes', 'indicador', 'carlos@mendes.adv.br', '11999001122', '15.00'),\n('Ana Paula Contabilidade', 'contador', 'ana@contabilidade.com', '21988776655', '10.00'),\n('Roberto Advocacia', 'indicador', 'roberto@adv.com.br', '31977665544', '12.00'),\n('Patrícia Fiscal', 'contador', 'patricia@fiscal.com', '41966554433', '8.00'),\n('Fernando Tributário', 'indicador', 'fernando@trib.com.br', '51955443322', '20.00');\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'tipo' in 'field list'"
+  ]
+}

@@ -320,3 +320,36 @@ export const apiKeys = mysqlTable("api_keys", {
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = typeof apiKeys.$inferInsert;
+
+// ---- SERVIÇOS POR SETOR ----
+export const servicos = mysqlTable("servicos", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 500 }).notNull(),
+  descricao: text("descricao"),
+  setorId: int("setorId").notNull(),
+  percentualHonorariosComercial: decimal("percentualHonorariosComercial", { precision: 5, scale: 2 }).default("0"),
+  formaCobrancaHonorarios: mysqlEnum("formaCobrancaHonorarios", [
+    "percentual_credito", "valor_fixo", "mensalidade", "exito", "hibrido"
+  ]).default("percentual_credito").notNull(),
+  valorFixo: decimal("valorFixo", { precision: 15, scale: 2 }),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Servico = typeof servicos.$inferSelect;
+export type InsertServico = typeof servicos.$inferInsert;
+
+// ---- CONFIGURAÇÃO DE SETOR (submenus, workflow, etc.) ----
+export const setorConfig = mysqlTable("setor_config", {
+  id: int("id").autoincrement().primaryKey(),
+  setorId: int("setorId").notNull(),
+  sigla: varchar("sigla", { length: 10 }).notNull(), // SPC, RCT, DPT, JUR, RT, CT, FIN, MKT, RH
+  submenus: json("submenus").$type<{ key: string; label: string; rota: string }[]>(),
+  workflowStatuses: json("workflowStatuses").$type<string[]>(), // status padrão do setor
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SetorConfig = typeof setorConfig.$inferSelect;
+export type InsertSetorConfig = typeof setorConfig.$inferInsert;

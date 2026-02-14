@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO users (openId, name, email, role, nivelAcesso, cargo) VALUES \n('test_user_diretor_001', 'Maria Diretora', 'maria.diretora@evox.com', 'admin', 'diretor', 'Diretora Geral'),\n('test_user_gerente_002', 'João Gerente', 'joao.gerente@evox.com', 'user', 'gerente', 'Gerente Comercial'),\n('test_user_coord_003', 'Ana Coordenadora', 'ana.coord@evox.com', 'user', 'coordenador', 'Coordenadora Fiscal'),\n('test_user_analista_004', 'Pedro Analista', 'pedro.analista@evox.com', 'user', 'analista_fiscal', 'Analista Tributário'),\n('test_user_suporte_005', 'Carla Suporte', 'carla.suporte@evox.com', 'user', 'suporte_comercial', 'Assistente Comercial');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute \nINSERT INTO users (openId, name, email, role, nivelAcesso, cargo) VALUES \n('test_user_diretor_001', 'Maria Diretora', 'maria.diretora@evox.com', 'admin', 'diretor', 'Diretora Geral'),\n('test_user_gerente_002', 'João Gerente', 'joao.gerente@evox.com', 'user', 'gerente', 'Gerente Comercial'),\n('test_user_coord_003', 'Ana Coordenadora', 'ana.coord@evox.com', 'user', 'coordenador', 'Coordenadora Fiscal'),\n('test_user_analista_004', 'Pedro Analista', 'pedro.analista@evox.com', 'user', 'analista_fiscal', 'Analista Tributário'),\n('test_user_suporte_005', 'Carla Suporte', 'carla.suporte@evox.com', 'user', 'suporte_comercial', 'Assistente Comercial');\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 60
+}

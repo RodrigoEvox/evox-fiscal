@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO setores (nome, descricao, cor, icone) VALUES \n('SPC – Suporte Comercial', 'Suporte comercial e gestão de parcerias', '#F59E0B', 'Handshake'),\n('RCT – Crédito', 'Recuperação de créditos tributários', '#10B981', 'BadgeDollarSign'),\n('DPT – Transação', 'Departamento de transação tributária', '#8B5CF6', 'ArrowLeftRight'),\n('JUR – Jurídico', 'Departamento jurídico', '#EF4444', 'Scale'),\n('RT – Reforma Tributária', 'Reforma tributária e consultoria', '#06B6D4', 'Landmark'),\n('CT – Contratos', 'Gestão de contratos', '#F97316', 'FileText'),\n('FIN – Financeiro', 'Departamento financeiro', '#22C55E', 'Wallet'),\n('MKT – Marketing', 'Marketing e comunicação', '#EC4899', 'Megaphone'),\n('RH – Gente e Gestão', 'Recursos humanos e gestão de pessoas', '#6366F1', 'Users');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute \nINSERT INTO setores (nome, descricao, cor, icone) VALUES \n('SPC – Suporte Comercial', 'Suporte comercial e gestão de parcerias', '#F59E0B', 'Handshake'),\n('RCT – Crédito', 'Recuperação de créditos tributários', '#10B981', 'BadgeDollarSign'),\n('DPT – Transação', 'Departamento de transação tributária', '#8B5CF6', 'ArrowLeftRight'),\n('JUR – Jurídico', 'Departamento jurídico', '#EF4444', 'Scale'),\n('RT – Reforma Tributária', 'Reforma tributária e consultoria', '#06B6D4', 'Landmark'),\n('CT – Contratos', 'Gestão de contratos', '#F97316', 'FileText'),\n('FIN – Financeiro', 'Departamento financeiro', '#22C55E', 'Wallet'),\n('MKT – Marketing', 'Marketing e comunicação', '#EC4899', 'Megaphone'),\n('RH – Gente e Gestão', 'Recursos humanos e gestão de pessoas', '#6366F1', 'Users');\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 94
+}

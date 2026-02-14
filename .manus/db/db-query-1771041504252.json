@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO clientes (razaoSocial, cnpj, nomeFantasia, regimeTributario, prioridade) VALUES \n('Tech Solutions Ltda', '12345678000190', 'TechSol', 'lucro_real', 'alta'),\n('Comércio Global SA', '98765432000110', 'ComGlobal', 'lucro_presumido', 'media'),\n('Indústria Forte Ltda', '11223344000155', 'IndForte', 'lucro_real', 'alta'),\n('Farmácia Popular ME', '55667788000199', 'FarmaPop', 'simples_nacional', 'baixa'),\n('Construtora Horizonte SA', '99887766000133', 'ConsHorizonte', 'lucro_real', 'media');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute \nINSERT INTO clientes (razaoSocial, cnpj, nomeFantasia, regimeTributario, prioridade) VALUES \n('Tech Solutions Ltda', '12345678000190', 'TechSol', 'lucro_real', 'alta'),\n('Comércio Global SA', '98765432000110', 'ComGlobal', 'lucro_presumido', 'media'),\n('Indústria Forte Ltda', '11223344000155', 'IndForte', 'lucro_real', 'alta'),\n('Farmácia Popular ME', '55667788000199', 'FarmaPop', 'simples_nacional', 'baixa'),\n('Construtora Horizonte SA', '99887766000133', 'ConsHorizonte', 'lucro_real', 'media');\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 60
+}

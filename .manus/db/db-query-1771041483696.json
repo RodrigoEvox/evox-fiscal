@@ -1,0 +1,322 @@
+{
+  "query": "DESCRIBE clientes;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute DESCRIBE clientes;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "cnpj",
+      "Type": "varchar(20)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "razaoSocial",
+      "Type": "varchar(500)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "nomeFantasia",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "dataAbertura",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "regimeTributario",
+      "Type": "enum('simples_nacional','lucro_presumido','lucro_real')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "situacaoCadastral",
+      "Type": "enum('ativa','baixada','inapta','suspensa','nula')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "ativa",
+      "Extra": ""
+    },
+    {
+      "Field": "cnaePrincipal",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "cnaePrincipalDescricao",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "cnaesSecundarios",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "segmentoEconomico",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "naturezaJuridica",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "endereco",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "estado",
+      "Type": "varchar(2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "industrializa",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "comercializa",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "prestaServicos",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "contribuinteICMS",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "contribuinteIPI",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "regimeMonofasico",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "folhaPagamentoMedia",
+      "Type": "decimal(15,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "faturamentoMedioMensal",
+      "Type": "decimal(15,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "valorMedioGuias",
+      "Type": "decimal(15,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "processosJudiciaisAtivos",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "parcelamentosAtivos",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "atividadePrincipalDescritivo",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "parceiroId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "procuracaoHabilitada",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "procuracaoCertificado",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "procuracaoValidade",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "excecoesEspecificidades",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "prioridade",
+      "Type": "enum('alta','media','baixa')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "media",
+      "Extra": ""
+    },
+    {
+      "Field": "scoreOportunidade",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "redFlags",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "alertasInformacao",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "usuarioCadastroId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "usuarioCadastroNome",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ncnpj\tvarchar(20)\tNO\t\tNULL\t\nrazaoSocial\tvarchar(500)\tNO\t\tNULL\t\nnomeFantasia\tvarchar(500)\tYES\t\tNULL\t\ndataAbertura\tvarchar(20)\tYES\t\tNULL\t\nregimeTributario\tenum('simples_nacional','lucro_presumido','lucro_real')\tNO\t\tNULL\t\nsituacaoCadastral\tenum('ativa','baixada','inapta','suspensa','nula')\tNO\t\tativa\t\ncnaePrincipal\tvarchar(20)\tYES\t\tNULL\t\ncnaePrincipalDescricao\ttext\tYES\t\tNULL\t\ncnaesSecundarios\tjson\tYES\t\tNULL\t\nsegmentoEconomico\tvarchar(255)\tYES\t\tNULL\t\nnaturezaJuridica\tvarchar(255)\tYES\t\tNULL\t\nendereco\ttext\tYES\t\tNULL\t\nestado\tvarchar(2)\tYES\t\tNULL\t\nindustrializa\ttinyint(1)\tNO\t\t0\t\ncomercializa\ttinyint(1)\tNO\t\t0\t\nprestaServicos\ttinyint(1)\tNO\t\t0\t\ncontribuinteICMS\ttinyint(1)\tNO\t\t0\t\ncontribuinteIPI\ttinyint(1)\tNO\t\t0\t\nregimeMonofasico\ttinyint(1)\tNO\t\t0\t\nfolhaPagamentoMedia\tdecimal(15,2)\tYES\t\t0\t\nfaturamentoMedioMensal\tdecimal(15,2)\tYES\t\t0\t\nvalorMedioGuias\tdecimal(15,2)\tYES\t\t0\t\nprocessosJudiciaisAtivos\ttinyint(1)\tNO\t\t0\t\nparcelamentosAtivos\ttinyint(1)\tNO\t\t0\t\natividadePrincipalDescritivo\ttext\tYES\t\tNULL\t\nparceiroId\tint\tYES\t\tNULL\t\nprocuracaoHabilitada\ttinyint(1)\tNO\t\t0\t\nprocuracaoCertificado\tvarchar(100)\tYES\t\tNULL\t\nprocuracaoValidade\tvarchar(20)\tYES\t\tNULL\t\nexcecoesEspecificidades\ttext\tYES\t\tNULL\t\nprioridade\tenum('alta','media','baixa')\tNO\t\tmedia\t\nscoreOportunidade\tint\tYES\t\t0\t\nredFlags\tjson\tYES\t\tNULL\t\nalertasInformacao\tjson\tYES\t\tNULL\t\nusuarioCadastroId\tint\tYES\t\tNULL\t\nusuarioCadastroNome\tvarchar(255)\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

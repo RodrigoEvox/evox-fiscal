@@ -62,7 +62,7 @@
 - [x] Seed de 5 parceiros de teste (via botão admin)
 - [x] Seed de 6 setores de teste (via botão admin)
 - [x] Seed de 5 tarefas de teste (via botão admin)
-- [ ] Seed de 5 usuários de teste em diferentes níveis (requer login OAuth individual)
+- [x] Seed de 5 usuários de teste em diferentes níveis (inseridos via SQL)
 
 ### Segurança e Rastreabilidade
 - [x] Audit log para todas as ações do sistema
@@ -94,3 +94,52 @@
 
 ## Bugs
 - [x] Fix: tRPC retornando HTML ao invés de JSON na página /clientes (erro "Unexpected token '<'") — proteção adicionada no catch-all do Vite
+
+## CRM v5 — Reestruturação Setorial Completa
+
+### Busca Global e Interface
+- [x] Campo de pesquisa macro fixo no centro superior da tela (busca em todo o sistema)
+- [x] Perfil de usuário com foto e dados cadastrais básicos
+
+### Gestão de Usuários (melhorias)
+- [ ] Admin: incluir, excluir, alterar, inativar usuários
+- [ ] Convite de acesso enviado por email ao concluir cadastro de novo usuário
+
+### Reestruturação de Menu/Sidebar por Setores Reais
+- [x] Dashboard (geral)
+- [x] SPC – Suporte Comercial (submenus: Nova Tarefa, Gestão de Parcerias)
+- [x] RCT – Crédito (submenus: Nova Tarefa, Fila de Apuração RCT, Teses Tributárias, Visão Analítica RCT)
+- [x] DPT – Transação (submenus: Nova Tarefa, Fila de Apuração DPT, Visão Analítica DPT)
+- [x] JUR – Jurídico (submenus: Nova Tarefa, Fila de Execução JUR)
+- [x] RT – Reforma Tributária (submenus: Simulador de Impactos, Consultoria)
+- [x] CT – Contratos (submenus: Nova Tarefa)
+- [x] FIN – Financeiro (submenus: Nova Tarefa, Contas a Pagar, Contas a Receber, Contas Bancárias)
+- [x] MKT – Marketing (submenus: Nova Tarefa, Redes Sociais, Imersões, Evox Podcast, Brindes)
+- [x] RH – Gente e Gestão (submenus: Nova Tarefa, Colaboradores, Férias)
+
+### Reorganização do Menu
+- [x] Mover Parceiros para dentro de Administração
+- [x] Remover Tarefas do menu principal (tarefas ficam na visão do usuário e dentro de cada setor)
+- [x] Remover Arquivos e Importação CSV do menu principal
+- [ ] Visão Analítica e Relatórios em todos os setores
+
+### Gestão de Serviços por Setor
+- [x] Tabela de serviços por setor (nome, % honorários comercial, forma de cobrança)
+- [x] Admin: incluir, alterar, excluir, inativar serviços
+- [x] Associação de serviços a setores
+
+### Visão Setorial Restrita
+- [ ] Cada setor vê apenas suas informações
+- [ ] Apenas perfis autorizados podem ver além do próprio setor
+- [ ] Gestor visualiza tarefas dos colaboradores (hierarquia de visualização)
+
+### Nova Tarefa como Acesso Rápido
+- [x] "Nova Tarefa" como menu de acesso rápido para criar demanda para setor/usuário
+- [x] Associação automática ao setor do submenu
+
+### Workflow Padrão por Setor
+- [x] Status padrão: A Fazer → Fazendo → Feito → Concluído
+- [x] Preparar estrutura para automações condicionais futuras (setor a setor, tarefa a tarefa)
+
+### Integração com Email
+- [x] Preparar estrutura para integração com emails dos usuários (futuro)

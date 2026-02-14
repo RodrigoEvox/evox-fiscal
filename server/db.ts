@@ -584,3 +584,212 @@ export async function getDashboardStats() {
     totalSetores: Number(setorStats?.total || 0),
   };
 }
+
+// =============================================
+// ---- SERVIÇOS POR SETOR ----
+// =============================================
+
+import { servicos, InsertServico, setorConfig, InsertSetorConfig } from "../drizzle/schema";
+
+export async function listServicos(setorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (setorId) {
+    return db.select().from(servicos).where(eq(servicos.setorId, setorId)).orderBy(asc(servicos.nome));
+  }
+  return db.select().from(servicos).orderBy(asc(servicos.nome));
+}
+
+export async function createServico(data: InsertServico) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(servicos).values(data);
+  return result[0].insertId;
+}
+
+export async function updateServico(id: number, data: Partial<InsertServico>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(servicos).set(data).where(eq(servicos.id, id));
+}
+
+export async function deleteServico(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(servicos).where(eq(servicos.id, id));
+}
+
+// =============================================
+// ---- SETOR CONFIG ----
+// =============================================
+
+export async function listSetorConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(setorConfig);
+}
+
+export async function getSetorConfigBySetorId(setorId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(setorConfig).where(eq(setorConfig.setorId, setorId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getSetorConfigBySigla(sigla: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(setorConfig).where(eq(setorConfig.sigla, sigla)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function upsertSetorConfig(data: InsertSetorConfig) {
+  const db = await getDb();
+  if (!db) return null;
+  // Check if exists
+  const existing = await getSetorConfigBySetorId(data.setorId);
+  if (existing) {
+    await db.update(setorConfig).set(data).where(eq(setorConfig.id, existing.id));
+    return existing.id;
+  }
+  const result = await db.insert(setorConfig).values(data);
+  return result[0].insertId;
+}
+
+// =============================================
+// ---- BUSCA GLOBAL ----
+// =============================================
+
+export async function buscaGlobal(termo: string) {
+  const db = await getDb();
+  if (!db) return { clientes: [], tarefas: [], parceiros: [], teses: [], usuarios: [] };
+  const like = `%${termo}%`;
+
+  const clientesResult = await db.select({ id: clientes.id, razaoSocial: clientes.razaoSocial, cnpj: clientes.cnpj, nomeFantasia: clientes.nomeFantasia })
+    .from(clientes)
+    .where(or(
+      sql`${clientes.razaoSocial} LIKE ${like}`,
+      sql`${clientes.cnpj} LIKE ${like}`,
+      sql`${clientes.nomeFantasia} LIKE ${like}`,
+    ))
+    .limit(10);
+
+  const tarefasResult = await db.select({ id: tarefas.id, codigo: tarefas.codigo, titulo: tarefas.titulo, status: tarefas.status })
+    .from(tarefas)
+    .where(or(
+      sql`${tarefas.titulo} LIKE ${like}`,
+      sql`${tarefas.codigo} LIKE ${like}`,
+    ))
+    .limit(10);
+
+  const parceirosResult = await db.select({ id: parceiros.id, nomeCompleto: parceiros.nomeCompleto, cpfCnpj: parceiros.cpfCnpj })
+    .from(parceiros)
+    .where(or(
+      sql`${parceiros.nomeCompleto} LIKE ${like}`,
+      sql`${parceiros.cpfCnpj} LIKE ${like}`,
+    ))
+    .limit(10);
+
+  const tesesResult = await db.select({ id: teses.id, nome: teses.nome, tributoEnvolvido: teses.tributoEnvolvido })
+    .from(teses)
+    .where(sql`${teses.nome} LIKE ${like}`)
+    .limit(10);
+
+  const usuariosResult = await db.select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(or(
+      sql`${users.name} LIKE ${like}`,
+      sql`${users.email} LIKE ${like}`,
+    ))
+    .limit(10);
+
+  return { clientes: clientesResult, tarefas: tarefasResult, parceiros: parceirosResult, teses: tesesResult, usuarios: usuariosResult };
+}
+
+// =============================================
+// ---- SEED SETORES REAIS DA EVOX ----
+// =============================================
+
+export async function seedSetoresEvox() {
+  const db = await getDb();
+  if (!db) return;
+
+  const setoresData = [
+    { nome: "SPC – Suporte Comercial", descricao: "Suporte comercial e gestão de parcerias", cor: "#F59E0B", icone: "Handshake", sigla: "SPC",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/spc/nova-tarefa" },
+        { key: "parcerias", label: "Gestão de Parcerias", rota: "/setor/spc/parcerias" },
+      ] },
+    { nome: "RCT – Crédito", descricao: "Recuperação de créditos tributários", cor: "#10B981", icone: "BadgeDollarSign", sigla: "RCT",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/rct/nova-tarefa" },
+        { key: "fila", label: "Fila de Apuração RCT", rota: "/setor/rct/fila" },
+        { key: "teses", label: "Teses Tributárias", rota: "/setor/rct/teses" },
+        { key: "analitica", label: "Visão Analítica RCT", rota: "/setor/rct/analitica" },
+      ] },
+    { nome: "DPT – Transação", descricao: "Departamento de transação tributária", cor: "#8B5CF6", icone: "ArrowLeftRight", sigla: "DPT",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/dpt/nova-tarefa" },
+        { key: "fila", label: "Fila de Apuração DPT", rota: "/setor/dpt/fila" },
+        { key: "analitica", label: "Visão Analítica DPT", rota: "/setor/dpt/analitica" },
+      ] },
+    { nome: "JUR – Jurídico", descricao: "Departamento jurídico", cor: "#EF4444", icone: "Scale", sigla: "JUR",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/jur/nova-tarefa" },
+        { key: "fila", label: "Fila de Execução JUR", rota: "/setor/jur/fila" },
+      ] },
+    { nome: "RT – Reforma Tributária", descricao: "Reforma tributária e consultoria", cor: "#06B6D4", icone: "Landmark", sigla: "RT",
+      submenus: [
+        { key: "simulador", label: "Simulador de Impactos", rota: "/setor/rt/simulador" },
+        { key: "consultoria", label: "Consultoria", rota: "/setor/rt/consultoria" },
+      ] },
+    { nome: "CT – Contratos", descricao: "Gestão de contratos", cor: "#F97316", icone: "FileText", sigla: "CT",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/ct/nova-tarefa" },
+      ] },
+    { nome: "FIN – Financeiro", descricao: "Departamento financeiro", cor: "#22C55E", icone: "Wallet", sigla: "FIN",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/fin/nova-tarefa" },
+        { key: "contas-pagar", label: "Contas a Pagar", rota: "/setor/fin/contas-pagar" },
+        { key: "contas-receber", label: "Contas a Receber", rota: "/setor/fin/contas-receber" },
+        { key: "contas-bancarias", label: "Contas Bancárias", rota: "/setor/fin/contas-bancarias" },
+      ] },
+    { nome: "MKT – Marketing", descricao: "Marketing e comunicação", cor: "#EC4899", icone: "Megaphone", sigla: "MKT",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/mkt/nova-tarefa" },
+        { key: "redes-sociais", label: "Redes Sociais", rota: "/setor/mkt/redes-sociais" },
+        { key: "imersoes", label: "Imersões", rota: "/setor/mkt/imersoes" },
+        { key: "podcast", label: "Evox Podcast", rota: "/setor/mkt/podcast" },
+        { key: "brindes", label: "Brindes", rota: "/setor/mkt/brindes" },
+      ] },
+    { nome: "RH – Gente e Gestão", descricao: "Recursos humanos e gestão de pessoas", cor: "#6366F1", icone: "Users", sigla: "RH",
+      submenus: [
+        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/rh/nova-tarefa" },
+        { key: "colaboradores", label: "Colaboradores", rota: "/setor/rh/colaboradores" },
+        { key: "ferias", label: "Férias", rota: "/setor/rh/ferias" },
+      ] },
+  ];
+
+  const defaultWorkflow = ["a_fazer", "fazendo", "feito", "concluido"];
+
+  for (const s of setoresData) {
+    const { sigla, submenus, ...setorData } = s;
+    // Check if setor already exists
+    const existing = await db.select().from(setores).where(sql`${setores.nome} LIKE ${`${sigla}%`}`).limit(1);
+    let setorId: number;
+    if (existing.length > 0) {
+      setorId = existing[0].id;
+      await db.update(setores).set(setorData).where(eq(setores.id, setorId));
+    } else {
+      const result = await db.insert(setores).values(setorData);
+      setorId = result[0].insertId;
+    }
+    // Upsert config
+    const existingConfig = await db.select().from(setorConfig).where(eq(setorConfig.setorId, setorId)).limit(1);
+    if (existingConfig.length > 0) {
+      await db.update(setorConfig).set({ sigla, submenus: submenus as any, workflowStatuses: defaultWorkflow }).where(eq(setorConfig.id, existingConfig[0].id));
+    } else {
+      await db.insert(setorConfig).values({ setorId, sigla, submenus: submenus as any, workflowStatuses: defaultWorkflow });
+    }
+  }
+}

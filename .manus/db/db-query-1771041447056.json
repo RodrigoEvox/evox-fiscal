@@ -1,0 +1,46 @@
+{
+  "query": "SELECT id, LEFT(nome, 30) as nome_curto FROM setores ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, LEFT(nome, 30) as nome_curto FROM setores ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "nome_curto": "SPC – Suporte Comercial"
+    },
+    {
+      "id": "2",
+      "nome_curto": "RCT – Crédito"
+    },
+    {
+      "id": "3",
+      "nome_curto": "DPT – Transação"
+    },
+    {
+      "id": "4",
+      "nome_curto": "JUR – Jurídico"
+    },
+    {
+      "id": "5",
+      "nome_curto": "RT – Reforma Tributária"
+    },
+    {
+      "id": "6",
+      "nome_curto": "CT – Contratos"
+    },
+    {
+      "id": "7",
+      "nome_curto": "FIN – Financeiro"
+    },
+    {
+      "id": "8",
+      "nome_curto": "MKT – Marketing"
+    },
+    {
+      "id": "9",
+      "nome_curto": "RH – Gente e Gestão"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnome_curto\n1\tSPC – Suporte Comercial\n2\tRCT – Crédito\n3\tDPT – Transação\n4\tJUR – Jurídico\n5\tRT – Reforma Tributária\n6\tCT – Contratos\n7\tFIN – Financeiro\n8\tMKT – Marketing\n9\tRH – Gente e Gestão\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}
