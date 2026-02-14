@@ -24,6 +24,11 @@ export async function setupVite(app: Express, server: Server) {
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
+    // Never serve HTML for API routes — prevents returning HTML during server restarts
+    if (url.startsWith("/api/")) {
+      return res.status(503).json({ error: "Service temporarily unavailable" });
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
@@ -60,8 +65,11 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
+  // fall through to index.html if the file doesn't exist (skip API routes)
   app.use("*", (_req, res) => {
+    if (_req.originalUrl.startsWith("/api/")) {
+      return res.status(503).json({ error: "Service temporarily unavailable" });
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

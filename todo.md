@@ -91,3 +91,6 @@
 - [ ] Notificações push
 - [ ] Relatórios de produtividade por setor/usuário
 - [ ] Automações de workflow (regras de transição de status)
+
+## Bugs
+- [x] Fix: tRPC retornando HTML ao invés de JSON na página /clientes (erro "Unexpected token '<'") — proteção adicionada no catch-all do Vite
