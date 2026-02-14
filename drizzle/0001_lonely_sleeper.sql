@@ -1,0 +1,136 @@
+CREATE TABLE `clientes` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`cnpj` varchar(20) NOT NULL,
+	`razaoSocial` varchar(500) NOT NULL,
+	`nomeFantasia` varchar(500),
+	`dataAbertura` varchar(20),
+	`regimeTributario` enum('simples_nacional','lucro_presumido','lucro_real') NOT NULL,
+	`situacaoCadastral` enum('ativa','baixada','inapta','suspensa','nula') NOT NULL DEFAULT 'ativa',
+	`cnaePrincipal` varchar(20),
+	`cnaePrincipalDescricao` text,
+	`cnaesSecundarios` json,
+	`segmentoEconomico` varchar(255),
+	`naturezaJuridica` varchar(255),
+	`endereco` text,
+	`estado` varchar(2),
+	`industrializa` boolean NOT NULL DEFAULT false,
+	`comercializa` boolean NOT NULL DEFAULT false,
+	`prestaServicos` boolean NOT NULL DEFAULT false,
+	`contribuinteICMS` boolean NOT NULL DEFAULT false,
+	`contribuinteIPI` boolean NOT NULL DEFAULT false,
+	`regimeMonofasico` boolean NOT NULL DEFAULT false,
+	`folhaPagamentoMedia` decimal(15,2) DEFAULT '0',
+	`faturamentoMedioMensal` decimal(15,2) DEFAULT '0',
+	`valorMedioGuias` decimal(15,2) DEFAULT '0',
+	`processosJudiciaisAtivos` boolean NOT NULL DEFAULT false,
+	`parcelamentosAtivos` boolean NOT NULL DEFAULT false,
+	`atividadePrincipalDescritivo` text,
+	`parceiroId` int,
+	`procuracaoHabilitada` boolean NOT NULL DEFAULT false,
+	`procuracaoCertificado` varchar(100),
+	`procuracaoValidade` varchar(20),
+	`excecoesEspecificidades` text,
+	`prioridade` enum('alta','media','baixa') NOT NULL DEFAULT 'media',
+	`scoreOportunidade` int DEFAULT 0,
+	`redFlags` json DEFAULT ('[]'),
+	`alertasInformacao` json DEFAULT ('[]'),
+	`usuarioCadastroId` int,
+	`usuarioCadastroNome` varchar(255),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `clientes_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `fila_apuracao` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`clienteId` int NOT NULL,
+	`status` enum('a_fazer','fazendo','concluido') NOT NULL DEFAULT 'a_fazer',
+	`ordem` int NOT NULL DEFAULT 0,
+	`prioridadeManual` boolean NOT NULL DEFAULT false,
+	`analistaId` int,
+	`analistaNome` varchar(255),
+	`tempoGastoMs` bigint DEFAULT 0,
+	`dataInicioApuracao` timestamp,
+	`dataConclusao` timestamp,
+	`historico` json DEFAULT ('[]'),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `fila_apuracao_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `notificacoes` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`tipo` enum('procuracao_vencendo','procuracao_vencida','analise_concluida','nova_tese','geral') NOT NULL,
+	`titulo` varchar(500) NOT NULL,
+	`mensagem` text NOT NULL,
+	`lida` boolean NOT NULL DEFAULT false,
+	`usuarioId` int,
+	`clienteId` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `notificacoes_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `parceiros` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`nomeCompleto` varchar(255) NOT NULL,
+	`cpfCnpj` varchar(20),
+	`telefone` varchar(20),
+	`email` varchar(320),
+	`endereco` text,
+	`ativo` boolean NOT NULL DEFAULT true,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `parceiros_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `relatorios` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`clienteId` int NOT NULL,
+	`clienteNome` varchar(500) NOT NULL,
+	`diagnosticoTributario` text,
+	`tesesAplicaveis` json DEFAULT ('[]'),
+	`tesesDescartadas` json DEFAULT ('[]'),
+	`scoreOportunidade` int DEFAULT 0,
+	`recomendacaoGeral` text,
+	`redFlags` json DEFAULT ('[]'),
+	`prioridade` enum('alta','media','baixa') NOT NULL DEFAULT 'media',
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `relatorios_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `teses` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`nome` varchar(500) NOT NULL,
+	`tributoEnvolvido` varchar(100) NOT NULL,
+	`tipo` enum('exclusao_base','credito_presumido','recuperacao_indebito','tese_judicial','tese_administrativa') NOT NULL,
+	`classificacao` enum('pacificada','judicial','administrativa','controversa') NOT NULL,
+	`potencialFinanceiro` enum('muito_alto','alto','medio','baixo') NOT NULL,
+	`potencialMercadologico` enum('muito_alto','alto','medio','baixo') NOT NULL,
+	`requisitosObjetivos` json DEFAULT ('[]'),
+	`requisitosImpeditivos` json DEFAULT ('[]'),
+	`fundamentacaoLegal` text,
+	`jurisprudenciaRelevante` text,
+	`parecerTecnicoJuridico` text,
+	`prazoPrescricional` varchar(50),
+	`necessidadeAcaoJudicial` boolean NOT NULL DEFAULT false,
+	`viaAdministrativa` boolean NOT NULL DEFAULT false,
+	`grauRisco` enum('baixo','medio','alto') NOT NULL,
+	`documentosNecessarios` json DEFAULT ('[]'),
+	`formulaEstimativaCredito` text,
+	`aplicavelComercio` boolean NOT NULL DEFAULT false,
+	`aplicavelIndustria` boolean NOT NULL DEFAULT false,
+	`aplicavelServico` boolean NOT NULL DEFAULT false,
+	`aplicavelContribuinteICMS` boolean NOT NULL DEFAULT false,
+	`aplicavelContribuinteIPI` boolean NOT NULL DEFAULT false,
+	`aplicavelLucroReal` boolean NOT NULL DEFAULT false,
+	`aplicavelLucroPresumido` boolean NOT NULL DEFAULT false,
+	`aplicavelSimplesNacional` boolean NOT NULL DEFAULT false,
+	`versao` int NOT NULL DEFAULT 1,
+	`ativa` boolean NOT NULL DEFAULT true,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `teses_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+ALTER TABLE `users` ADD `nivelAcesso` enum('administrador','suporte_comercial','analista_fiscal') DEFAULT 'analista_fiscal' NOT NULL;--> statement-breakpoint
+ALTER TABLE `users` ADD `ativo` boolean DEFAULT true NOT NULL;

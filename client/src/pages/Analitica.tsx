@@ -1,41 +1,20 @@
-/*
- * Visão Analítica — Evox Fiscal
- * Análise por período com métricas de teses, empresas, status, analistas
- */
-
 import { useState, useMemo } from 'react';
-import { useApp } from '@/contexts/AppContext';
+import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, TrendingUp, Users, Scale, Handshake, BarChart3, Calendar, Building2, CheckCircle2, Clock, Target } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Calendar, Users, BookOpen, Target, TrendingUp, Clock, BarChart3,
-  FileSpreadsheet, FileText, Building2, User, CheckCircle2,
-} from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
-} from 'recharts';
 
-const COLORS = ['#0A2540', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6'];
-
-function formatDuration(ms: number): string {
-  const totalHours = Math.floor(ms / (1000 * 60 * 60));
-  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  return `${totalHours}h ${minutes}m`;
-}
+const prioridadeColors: Record<string, string> = {
+  alta: 'bg-red-100 text-red-700', media: 'bg-yellow-100 text-yellow-700', baixa: 'bg-sky-100 text-sky-700',
+};
 
 export default function Analitica() {
-  const { state } = useApp();
-
-  // Period filter
   const now = new Date();
-  const [periodoTipo, setPeriodoTipo] = useState<'mes' | 'trimestre' | 'semestre' | 'ano' | 'custom'>('mes');
+  const [periodoTipo, setPeriodoTipo] = useState<string>('mes');
   const [dataInicio, setDataInicio] = useState(() => {
     const d = new Date(now.getFullYear(), now.getMonth(), 1);
     return d.toISOString().split('T')[0];
@@ -45,177 +24,101 @@ export default function Analitica() {
     return d.toISOString().split('T')[0];
   });
 
+  const { data: clientes = [], isLoading: loadingC } = trpc.clientes.list.useQuery();
+  const { data: relatorios = [], isLoading: loadingR } = trpc.relatorios.list.useQuery();
+  const { data: teses = [] } = trpc.teses.list.useQuery();
+  const { data: parceiros = [] } = trpc.parceiros.list.useQuery();
+  const { data: filaItems = [] } = trpc.fila.list.useQuery();
+
+  const isLoading = loadingC || loadingR;
+
   const handlePeriodoChange = (tipo: string) => {
-    setPeriodoTipo(tipo as any);
+    setPeriodoTipo(tipo);
     const today = new Date();
-    let start: Date;
-    let end: Date;
+    let start: Date, end: Date;
     switch (tipo) {
-      case 'mes':
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
-        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        break;
-      case 'trimestre':
-        const q = Math.floor(today.getMonth() / 3);
-        start = new Date(today.getFullYear(), q * 3, 1);
-        end = new Date(today.getFullYear(), q * 3 + 3, 0);
-        break;
-      case 'semestre':
-        const s = today.getMonth() < 6 ? 0 : 6;
-        start = new Date(today.getFullYear(), s, 1);
-        end = new Date(today.getFullYear(), s + 6, 0);
-        break;
-      case 'ano':
-        start = new Date(today.getFullYear(), 0, 1);
-        end = new Date(today.getFullYear(), 11, 31);
-        break;
-      default:
-        return;
+      case 'mes': start = new Date(today.getFullYear(), today.getMonth(), 1); end = new Date(today.getFullYear(), today.getMonth() + 1, 0); break;
+      case 'trimestre': { const q = Math.floor(today.getMonth() / 3); start = new Date(today.getFullYear(), q * 3, 1); end = new Date(today.getFullYear(), q * 3 + 3, 0); break; }
+      case 'semestre': { const s = today.getMonth() < 6 ? 0 : 6; start = new Date(today.getFullYear(), s, 1); end = new Date(today.getFullYear(), s + 6, 0); break; }
+      case 'ano': start = new Date(today.getFullYear(), 0, 1); end = new Date(today.getFullYear(), 11, 31); break;
+      default: return;
     }
     setDataInicio(start.toISOString().split('T')[0]);
     setDataFim(end.toISOString().split('T')[0]);
   };
 
-  // Filter data by period
   const periodoStart = new Date(dataInicio).getTime();
   const periodoEnd = new Date(dataFim + 'T23:59:59').getTime();
 
+  const filteredRelatorios = useMemo(() =>
+    relatorios.filter((r: any) => { const d = new Date(r.createdAt).getTime(); return d >= periodoStart && d <= periodoEnd; }),
+    [relatorios, periodoStart, periodoEnd]
+  );
+
   const clientesNoPeriodo = useMemo(() =>
-    state.clientes.filter(c => {
-      const d = new Date(c.dataCadastro).getTime();
-      return d >= periodoStart && d <= periodoEnd;
-    }),
-    [state.clientes, periodoStart, periodoEnd]
+    clientes.filter((c: any) => { const d = new Date(c.createdAt).getTime(); return d >= periodoStart && d <= periodoEnd; }),
+    [clientes, periodoStart, periodoEnd]
   );
 
-  const relatoriosNoPeriodo = useMemo(() =>
-    state.relatorios.filter(r => {
-      const d = new Date(r.dataAnalise).getTime();
-      return d >= periodoStart && d <= periodoEnd;
-    }),
-    [state.relatorios, periodoStart, periodoEnd]
-  );
+  const stats = useMemo(() => {
+    const totalClientes = clientes.length;
+    const alta = clientes.filter((c: any) => c.prioridade === 'alta').length;
+    const media = clientes.filter((c: any) => c.prioridade === 'media').length;
+    const baixa = clientes.filter((c: any) => c.prioridade === 'baixa').length;
+    const totalRelatorios = filteredRelatorios.length;
+    const avgScore = totalRelatorios > 0 ? Math.round(filteredRelatorios.reduce((a: number, r: any) => a + (r.scoreOportunidade || 0), 0) / totalRelatorios) : 0;
+    const emAnalise = filaItems.filter((i: any) => i.status === 'em_analise').length;
+    const concluidos = filaItems.filter((i: any) => i.status === 'concluido').length;
+    const aguardando = filaItems.filter((i: any) => i.status === 'aguardando').length;
+    return { totalClientes, alta, media, baixa, totalRelatorios, avgScore, emAnalise, concluidos, aguardando, novasEmpresas: clientesNoPeriodo.length };
+  }, [clientes, filteredRelatorios, filaItems, clientesNoPeriodo]);
 
-  const filaNoPeriodo = useMemo(() =>
-    state.filaApuracao.filter(f => {
-      const d = new Date(f.dataInsercao).getTime();
-      return d >= periodoStart && d <= periodoEnd;
-    }),
-    [state.filaApuracao, periodoStart, periodoEnd]
-  );
-
-  const filaConcluida = useMemo(() =>
-    state.filaApuracao.filter(f => {
-      if (f.status !== 'concluido' || !f.dataConclusao) return false;
-      const d = new Date(f.dataConclusao).getTime();
-      return d >= periodoStart && d <= periodoEnd;
-    }),
-    [state.filaApuracao, periodoStart, periodoEnd]
-  );
-
-  // Stats
-  const totalNovasEmpresas = clientesNoPeriodo.length;
-  const totalAnalises = relatoriosNoPeriodo.length;
-  const totalConcluidas = filaConcluida.length;
-  const totalNaFila = filaNoPeriodo.length;
-
-  // By status
-  const byStatus = useMemo(() => {
-    const map: Record<string, number> = {};
-    state.statusApuracaoList.forEach(s => { map[s] = 0; });
-    state.filaApuracao.forEach(f => {
-      map[f.status] = (map[f.status] || 0) + 1;
+  const byTese = useMemo(() => {
+    const map = new Map<string, { nome: string; count: number }>();
+    filteredRelatorios.forEach((r: any) => {
+      (r.tesesAplicaveis || []).forEach((t: any) => {
+        const nome = typeof t === 'string' ? t : t.nome || 'Desconhecida';
+        const existing = map.get(nome);
+        if (existing) existing.count++; else map.set(nome, { nome, count: 1 });
+      });
     });
-    return Object.entries(map).map(([name, value]) => ({ name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value }));
-  }, [state.filaApuracao, state.statusApuracaoList]);
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [filteredRelatorios]);
 
-  // By analyst
-  const byAnalista = useMemo(() => {
-    const map: Record<string, { nome: string; concluidas: number; emAndamento: number; tempoTotalMs: number }> = {};
-    state.filaApuracao.forEach(f => {
-      if (!f.analistaNome) return;
-      if (!map[f.analistaNome]) map[f.analistaNome] = { nome: f.analistaNome, concluidas: 0, emAndamento: 0, tempoTotalMs: 0 };
-      if (f.status === 'concluido') {
-        map[f.analistaNome].concluidas++;
-        map[f.analistaNome].tempoTotalMs += f.tempoGastoMs || 0;
-      } else if (f.status === 'fazendo') {
-        map[f.analistaNome].emAndamento++;
+  const byParceiro = useMemo(() => {
+    const map = new Map<number, { nome: string; clientes: number; alta: number; media: number; baixa: number }>();
+    clientes.forEach((c: any) => {
+      if (c.parceiroId) {
+        const p = parceiros.find((p: any) => p.id === c.parceiroId);
+        const existing = map.get(c.parceiroId);
+        if (existing) { existing.clientes++; if (c.prioridade === 'alta') existing.alta++; else if (c.prioridade === 'media') existing.media++; else existing.baixa++; }
+        else { map.set(c.parceiroId, { nome: p?.nomeCompleto || `Parceiro #${c.parceiroId}`, clientes: 1, alta: c.prioridade === 'alta' ? 1 : 0, media: c.prioridade === 'media' ? 1 : 0, baixa: c.prioridade === 'baixa' ? 1 : 0 }); }
       }
     });
-    return Object.values(map);
-  }, [state.filaApuracao]);
+    return Array.from(map.values()).sort((a, b) => b.clientes - a.clientes);
+  }, [clientes, parceiros]);
 
-  // By priority
-  const byPrioridade = [
-    { name: 'Alta', value: state.clientes.filter(c => c.prioridade === 'alta').length, color: '#10B981' },
-    { name: 'Média', value: state.clientes.filter(c => c.prioridade === 'media').length, color: '#F59E0B' },
-    { name: 'Baixa', value: state.clientes.filter(c => c.prioridade === 'baixa').length, color: '#EF4444' },
-  ];
-
-  // By regime
-  const byRegime = [
-    { name: 'Lucro Real', value: state.clientes.filter(c => c.regimeTributario === 'lucro_real').length },
-    { name: 'Lucro Presumido', value: state.clientes.filter(c => c.regimeTributario === 'lucro_presumido').length },
-    { name: 'Simples Nacional', value: state.clientes.filter(c => c.regimeTributario === 'simples_nacional').length },
-  ];
-
-  // By tese classification
-  const byTese = [
-    { name: 'Pacificada', value: state.teses.filter(t => t.classificacao === 'pacificada' && t.ativa).length },
-    { name: 'Judicial', value: state.teses.filter(t => t.classificacao === 'judicial' && t.ativa).length },
-    { name: 'Administrativa', value: state.teses.filter(t => t.classificacao === 'administrativa' && t.ativa).length },
-    { name: 'Controversa', value: state.teses.filter(t => t.classificacao === 'controversa' && t.ativa).length },
-  ];
-
-  // By parceiro
-  const byParceiro = useMemo(() => {
-    const map: Record<string, { nome: string; clientes: number }> = {};
-    state.clientes.forEach(c => {
-      const nome = c.parceiroId ? (state.parceiros.find(p => p.id === c.parceiroId)?.nomeCompleto || 'Desconhecido') : 'Sem parceiro';
-      if (!map[nome]) map[nome] = { nome, clientes: 0 };
-      map[nome].clientes++;
+  const byAnalista = useMemo(() => {
+    const map = new Map<string, { nome: string; emAnalise: number; concluidos: number }>();
+    filaItems.forEach((i: any) => {
+      if (i.analistaId) {
+        const nome = i.analistaNome || `Analista #${i.analistaId}`;
+        const existing = map.get(nome);
+        if (existing) { if (i.status === 'em_analise') existing.emAnalise++; if (i.status === 'concluido') existing.concluidos++; }
+        else { map.set(nome, { nome, emAnalise: i.status === 'em_analise' ? 1 : 0, concluidos: i.status === 'concluido' ? 1 : 0 }); }
+      }
     });
-    return Object.values(map).sort((a, b) => b.clientes - a.clientes);
-  }, [state.clientes, state.parceiros]);
+    return Array.from(map.values()).sort((a, b) => b.concluidos - a.concluidos);
+  }, [filaItems]);
 
-  // Monthly trend (last 6 months)
-  const monthlyTrend = useMemo(() => {
-    const months: { month: string; empresas: number; analises: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-      const monthStr = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      const empresas = state.clientes.filter(c => {
-        const cd = new Date(c.dataCadastro);
-        return cd >= d && cd <= monthEnd;
-      }).length;
-      const analises = state.relatorios.filter(r => {
-        const rd = new Date(r.dataAnalise);
-        return rd >= d && rd <= monthEnd;
-      }).length;
-      months.push({ month: monthStr, empresas, analises });
-    }
-    return months;
-  }, [state.clientes, state.relatorios, now]);
-
-  // Tese potential ranking
-  const teseRanking = useMemo(() => {
-    const potOrder: Record<string, number> = { muito_alto: 4, alto: 3, medio: 2, baixo: 1 };
-    return [...state.teses]
-      .filter(t => t.ativa)
-      .sort((a, b) => (potOrder[b.potencialFinanceiro] || 0) - (potOrder[a.potencialFinanceiro] || 0))
-      .slice(0, 8);
-  }, [state.teses]);
-
-  const tooltipStyle = { background: '#0A2540', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12 };
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Visão Analítica</h1>
-          <p className="text-sm text-muted-foreground mt-1">Análise por período com métricas detalhadas</p>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><BarChart3 className="w-6 h-6" /> Visão Analítica</h1>
+          <p className="text-sm text-muted-foreground mt-1">Análise consolidada por período</p>
         </div>
       </div>
 
@@ -257,338 +160,147 @@ export default function Analitica() {
         <Card className="border-l-4 border-l-[#0A2540]">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#0A2540]/10 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-[#0A2540]" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Novas Empresas</p>
-                <p className="text-2xl font-bold font-data">{totalNovasEmpresas}</p>
-              </div>
+              <div className="w-9 h-9 rounded-lg bg-[#0A2540]/10 flex items-center justify-center"><Building2 className="w-4 h-4 text-[#0A2540]" /></div>
+              <div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Novas Empresas</p><p className="text-2xl font-bold">{stats.novasEmpresas}</p></div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-emerald-500">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Análises Realizadas</p>
-                <p className="text-2xl font-bold font-data">{totalAnalises}</p>
-              </div>
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center"><BarChart3 className="w-4 h-4 text-emerald-500" /></div>
+              <div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Análises Realizadas</p><p className="text-2xl font-bold">{stats.totalRelatorios}</p></div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Apurações Concluídas</p>
-                <p className="text-2xl font-bold font-data">{totalConcluidas}</p>
-              </div>
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-blue-500" /></div>
+              <div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Apurações Concluídas</p><p className="text-2xl font-bold">{stats.concluidos}</p></div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-amber-500">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Clock className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Na Fila (Período)</p>
-                <p className="text-2xl font-bold font-data">{totalNaFila}</p>
-              </div>
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center"><Clock className="w-4 h-4 text-amber-500" /></div>
+              <div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Na Fila</p><p className="text-2xl font-bold">{stats.aguardando}</p></div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs for different views */}
-      <Tabs defaultValue="geral" className="space-y-4">
+      <Tabs defaultValue="geral">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="geral">Visão Geral</TabsTrigger>
+          <TabsTrigger value="geral">Geral</TabsTrigger>
           <TabsTrigger value="analistas">Por Analista</TabsTrigger>
           <TabsTrigger value="teses">Por Tese</TabsTrigger>
           <TabsTrigger value="parceiros">Por Parceiro</TabsTrigger>
         </TabsList>
 
-        {/* Visão Geral */}
-        <TabsContent value="geral" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Monthly Trend */}
+        <TabsContent value="geral" className="space-y-4 mt-4">
+          <div className="grid grid-cols-3 gap-4">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" /> Tendência Mensal (Últimos 6 meses)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6B7280' }} />
-                    <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} allowDecimals={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="empresas" name="Empresas" stroke="#0A2540" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="analises" name="Análises" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Status Distribution */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Target className="w-4 h-4" /> Distribuição por Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={byStatus} barSize={40}>
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="value" name="Quantidade" fill="#0A2540" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Priority Distribution */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Clientes por Prioridade
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-6">
-                  <ResponsiveContainer width="50%" height={200}>
-                    <PieChart>
-                      <Pie data={byPrioridade} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={4} dataKey="value">
-                        {byPrioridade.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="space-y-3">
-                    {byPrioridade.map(item => (
-                      <div key={item.name} className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="text-sm text-muted-foreground">{item.name}</span>
-                        <span className="text-sm font-bold font-data">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Regime Distribution */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" /> Clientes por Regime Tributário
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={byRegime} barSize={50} layout="vertical">
-                    <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#6B7280' }} width={120} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="value" name="Quantidade" fill="#0A2540" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Por Analista */}
-        <TabsContent value="analistas" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <User className="w-4 h-4" /> Desempenho por Analista
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {byAnalista.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum analista com apurações atribuídas.</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={byAnalista} barSize={30}>
-                      <XAxis dataKey="nome" tick={{ fontSize: 10, fill: '#6B7280' }} />
-                      <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} allowDecimals={false} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="concluidas" name="Concluídas" fill="#10B981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="emAndamento" name="Em Andamento" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> Tempo Médio por Analista
-                </CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1"><Users className="w-4 h-4" /> Distribuição por Prioridade</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {byAnalista.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">Sem dados de tempo disponíveis.</p>
-                  ) : (
-                    byAnalista.map(a => {
-                      const tempoMedio = a.concluidas > 0 ? a.tempoTotalMs / a.concluidas : 0;
-                      return (
-                        <div key={a.nome} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#0A2540]/10 flex items-center justify-center">
-                              <User className="w-4 h-4 text-[#0A2540]" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold">{a.nome}</p>
-                              <p className="text-[11px] text-muted-foreground">{a.concluidas} concluída(s) • {a.emAndamento} em andamento</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Tempo médio</p>
-                            <p className="text-sm font-bold font-data">{tempoMedio > 0 ? formatDuration(tempoMedio) : '—'}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                  {[{ label: 'Alta (Vermelho)', value: stats.alta, color: 'bg-red-500', total: stats.totalClientes },
+                    { label: 'Média (Amarelo)', value: stats.media, color: 'bg-yellow-500', total: stats.totalClientes },
+                    { label: 'Baixa (Azul)', value: stats.baixa, color: 'bg-sky-500', total: stats.totalClientes }].map(item => (
+                    <div key={item.label}>
+                      <div className="flex justify-between text-sm mb-1"><span>{item.label}</span><span className="font-mono">{item.value} ({item.total > 0 ? Math.round(item.value / item.total * 100) : 0}%)</span></div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden"><div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.total > 0 ? (item.value / item.total * 100) : 0}%` }} /></div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
-
-        {/* Por Tese */}
-        <TabsContent value="teses" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" /> Classificação das Teses
-                </CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Score Médio</CardTitle></CardHeader>
               <CardContent>
-                <div className="flex items-center gap-6">
-                  <ResponsiveContainer width="50%" height={200}>
-                    <PieChart>
-                      <Pie data={byTese} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={4} dataKey="value">
-                        {byTese.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="space-y-2">
-                    {byTese.map((item, i) => (
-                      <div key={item.name} className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                        <span className="text-sm text-muted-foreground">{item.name}</span>
-                        <span className="text-sm font-bold font-data">{item.value}</span>
-                      </div>
-                    ))}
+                <div className="text-center py-4">
+                  <p className="text-4xl font-bold">{stats.avgScore}<span className="text-lg text-muted-foreground">/100</span></p>
+                  <p className="text-sm text-muted-foreground mt-1">score médio de oportunidade</p>
+                  <div className="flex justify-center gap-4 mt-4 text-sm">
+                    <div><p className="font-bold text-blue-600">{stats.emAnalise}</p><p className="text-xs text-muted-foreground">em andamento</p></div>
+                    <div><p className="font-bold text-green-600">{stats.concluidos}</p><p className="text-xs text-muted-foreground">concluídas</p></div>
                   </div>
                 </div>
               </CardContent>
             </Card>
-
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" /> Ranking de Potencial Financeiro
-                </CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1"><Scale className="w-4 h-4" /> Teses Ativas</CardTitle></CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {teseRanking.map((tese, idx) => (
-                    <div key={tese.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-data text-muted-foreground w-5 text-center">#{idx + 1}</span>
-                        <div>
-                          <p className="text-xs font-semibold">{tese.nome}</p>
-                          <p className="text-[10px] text-muted-foreground">{tese.tributoEnvolvido}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={
-                          tese.potencialFinanceiro === 'muito_alto' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-200' :
-                          tese.potencialFinanceiro === 'alto' ? 'bg-blue-500/10 text-blue-700 border-blue-200' :
-                          tese.potencialFinanceiro === 'medio' ? 'bg-amber-500/10 text-amber-700 border-amber-200' :
-                          'bg-red-500/10 text-red-700 border-red-200'
-                        }>
-                          {tese.potencialFinanceiro.replace('_', ' ')}
-                        </Badge>
-                        <Badge variant="outline" className="text-[9px]">{tese.classificacao}</Badge>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-4">
+                  <p className="text-4xl font-bold">{teses.filter((t: any) => t.ativo).length}</p>
+                  <p className="text-sm text-muted-foreground mt-1">teses no repositório</p>
+                  <div className="flex justify-center gap-4 mt-4 text-sm">
+                    <div><p className="font-bold">{teses.filter((t: any) => t.classificacao === 'pacificada').length}</p><p className="text-xs text-muted-foreground">pacificadas</p></div>
+                    <div><p className="font-bold">{teses.filter((t: any) => t.classificacao === 'judicial').length}</p><p className="text-xs text-muted-foreground">judiciais</p></div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Por Parceiro */}
-        <TabsContent value="parceiros" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Clientes por Parceiro
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={byParceiro} barSize={30} layout="vertical">
-                    <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} allowDecimals={false} />
-                    <YAxis type="category" dataKey="nome" tick={{ fontSize: 10, fill: '#6B7280' }} width={160} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="clientes" name="Clientes" fill="#0A2540" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Target className="w-4 h-4" /> Detalhamento por Parceiro
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {byParceiro.map((p, idx) => (
-                    <div key={p.nome} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${COLORS[idx % COLORS.length]}15` }}>
-                          <Users className="w-4 h-4" style={{ color: COLORS[idx % COLORS.length] }} />
-                        </div>
-                        <span className="text-sm font-medium">{p.nome}</span>
-                      </div>
-                      <Badge variant="outline" className="font-data">{p.clientes} cliente{p.clientes !== 1 ? 's' : ''}</Badge>
-                    </div>
-                  ))}
+        <TabsContent value="analistas" className="space-y-3 mt-4">
+          <h3 className="text-sm font-semibold">Desempenho por Analista</h3>
+          {byAnalista.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhum analista com atividade no período.</CardContent></Card>
+          ) : byAnalista.map((a, i) => (
+            <Card key={i}>
+              <CardContent className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">{a.nome.charAt(0)}</div>
+                  <div><p className="text-sm font-medium">{a.nome}</p><p className="text-xs text-muted-foreground">{a.concluidos} concluído(s) · {a.emAnalise} em análise</p></div>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="outline" className="text-green-600">{a.concluidos} concluídos</Badge>
+                  {a.emAnalise > 0 && <Badge variant="outline" className="text-blue-600">{a.emAnalise} em análise</Badge>}
                 </div>
               </CardContent>
             </Card>
-          </div>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="teses" className="space-y-3 mt-4">
+          <h3 className="text-sm font-semibold">Teses mais aplicadas no período</h3>
+          {byTese.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma tese aplicada no período.</CardContent></Card>
+          ) : byTese.map((t, i) => (
+            <Card key={i}>
+              <CardContent className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">{i + 1}</div>
+                  <div><p className="text-sm font-medium">{t.nome}</p><p className="text-xs text-muted-foreground">{t.count} aplicação(ões)</p></div>
+                </div>
+                <div className="h-2 w-32 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: `${byTese[0]?.count ? (t.count / byTese[0].count * 100) : 0}%` }} /></div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="parceiros" className="space-y-3 mt-4">
+          <h3 className="text-sm font-semibold">Clientes por Parceiro</h3>
+          {byParceiro.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhum parceiro com clientes.</CardContent></Card>
+          ) : byParceiro.map((p, i) => (
+            <Card key={i}>
+              <CardContent className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Handshake className="w-5 h-5 text-muted-foreground" />
+                  <div><p className="text-sm font-medium">{p.nome}</p><p className="text-xs text-muted-foreground">{p.clientes} cliente(s)</p></div>
+                </div>
+                <div className="flex gap-1">
+                  {p.alta > 0 && <Badge className={prioridadeColors.alta}>{p.alta} alta</Badge>}
+                  {p.media > 0 && <Badge className={prioridadeColors.media}>{p.media} média</Badge>}
+                  {p.baixa > 0 && <Badge className={prioridadeColors.baixa}>{p.baixa} baixa</Badge>}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </TabsContent>
       </Tabs>
     </div>

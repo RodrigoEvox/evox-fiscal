@@ -1,5 +1,8 @@
-import { Redirect } from 'wouter';
+import { useEffect } from 'react';
+import { useLocation } from 'wouter';
 
 export default function Home() {
-  return <Redirect to="/" />;
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation('/dashboard'); }, [setLocation]);
+  return null;
 }
