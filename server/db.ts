@@ -72,6 +72,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
+export async function createUser(data: InsertUser): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(users).values(data);
+  return result[0].insertId;
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;

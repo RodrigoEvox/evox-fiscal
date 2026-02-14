@@ -129,7 +129,7 @@ function App() {
                 <header className="h-14 border-b border-gray-100 flex items-center px-6 bg-white shrink-0">
                   <GlobalSearch />
                 </header>
-                <main className="flex-1 overflow-auto bg-gray-50/50">
+                <main className="flex-1 overflow-auto bg-gray-50/50 p-6">
                   <Router />
                 </main>
               </div>

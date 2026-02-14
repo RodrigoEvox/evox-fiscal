@@ -47,6 +47,42 @@ export const appRouter = router({
     list: protectedProcedure.query(async () => {
       return db.listUsers();
     }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const allUsers = await db.listUsers();
+        return allUsers.find((u: any) => u.id === input.id) || null;
+      }),
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1, 'Nome completo é obrigatório'),
+        apelido: z.string().min(1, 'Apelido é obrigatório'),
+        email: z.string().email('Email inválido'),
+        cpf: z.string().optional(),
+        telefone: z.string().optional(),
+        cargo: z.string().optional(),
+        role: z.enum(['user', 'admin']).default('user'),
+        nivelAcesso: z.enum(['diretor', 'gerente', 'coordenador', 'analista_fiscal', 'suporte_comercial']).default('analista_fiscal'),
+        setorPrincipalId: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const openId = `manual_${crypto.randomBytes(12).toString('hex')}`;
+        const id = await db.createUser({
+          openId,
+          name: input.name,
+          apelido: input.apelido,
+          email: input.email,
+          cpf: input.cpf || null,
+          telefone: input.telefone || null,
+          cargo: input.cargo || null,
+          role: input.role,
+          nivelAcesso: input.nivelAcesso,
+          setorPrincipalId: input.setorPrincipalId || null,
+          loginMethod: 'manual',
+        } as any);
+        await logAudit('criar', 'usuario', id, input.name, ctx, { email: input.email, apelido: input.apelido });
+        return { id };
+      }),
     updateRole: adminProcedure
       .input(z.object({ id: z.number(), role: z.string(), nivelAcesso: z.string() }))
       .mutation(async ({ input, ctx }) => {
@@ -57,8 +93,14 @@ export const appRouter = router({
     update: adminProcedure
       .input(z.object({
         id: z.number(),
+        name: z.string().optional(),
+        apelido: z.string().optional(),
+        email: z.string().optional(),
+        cpf: z.string().optional(),
         cargo: z.string().optional(),
         telefone: z.string().optional(),
+        role: z.string().optional(),
+        nivelAcesso: z.string().optional(),
         setorPrincipalId: z.number().nullable().optional(),
         supervisorId: z.number().nullable().optional(),
       }))
@@ -66,6 +108,14 @@ export const appRouter = router({
         const { id, ...data } = input;
         await db.updateUser(id, data as any);
         await logAudit('editar', 'usuario', id, null, ctx, data);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        // Soft delete — just deactivate
+        await db.toggleUserActive(input.id, false);
+        await logAudit('excluir', 'usuario', input.id, null, ctx);
         return { success: true };
       }),
     toggleActive: adminProcedure
@@ -864,6 +914,9 @@ export const appRouter = router({
     }),
     update: protectedProcedure
       .input(z.object({
+        name: z.string().optional(),
+        apelido: z.string().optional(),
+        cpf: z.string().optional(),
         cargo: z.string().optional(),
         telefone: z.string().optional(),
         avatar: z.string().optional(),

@@ -102,7 +102,7 @@
 - [x] Perfil de usuário com foto e dados cadastrais básicos
 
 ### Gestão de Usuários (melhorias)
-- [ ] Admin: incluir, excluir, alterar, inativar usuários
+- [x] Admin: incluir, excluir, alterar, inativar usuários
 - [ ] Convite de acesso enviado por email ao concluir cadastro de novo usuário
 
 ### Reestruturação de Menu/Sidebar por Setores Reais
@@ -143,3 +143,19 @@
 
 ### Integração com Email
 - [x] Preparar estrutura para integração com emails dos usuários (futuro)
+
+## CRM v6 — Melhorias de Usuários e Layout
+
+### Layout / Sidebar
+- [x] Corrigir espaçamento da sidebar para não sobrepor o conteúdo principal
+
+### Gestão de Usuários (CRUD completo)
+- [x] Incluir novo usuário com: nome completo, CPF, email, telefone, apelido
+- [x] Editar usuário existente (todos os campos)
+- [x] Excluir/inativar usuário
+- [x] Campo "apelido" = como o nome aparece dentro do sistema (sidebar, comentários etc.)
+- [x] Aplicar apelido no próprio usuário logado
+
+### Perfil do Usuário
+- [x] Upload de foto/imagem para o perfil do usuário
+- [x] Exibir foto do perfil na sidebar e nos cards de usuário
