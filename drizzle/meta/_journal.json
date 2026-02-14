@@ -1,1 +1,20 @@
-{"version":"7","dialect":"mysql","entries":[{"idx":0,"version":"0000","when":1707868800000,"tag":"0000_woozy_magik","breakpoints":true}]}
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "0000",
+      "when": 1707868800000,
+      "tag": "0000_woozy_magik",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1771037356158,
+      "tag": "0001_rainy_peter_parker",
+      "breakpoints": true
+    }
+  ]
+}

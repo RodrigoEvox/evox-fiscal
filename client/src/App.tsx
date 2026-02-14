@@ -19,23 +19,47 @@ import FilaApuracao from "./pages/FilaApuracao";
 import Analitica from "./pages/Analitica";
 import Usuarios from "./pages/Usuarios";
 import Importacao from "./pages/Importacao";
+import { lazy, Suspense } from "react";
+
+const Tarefas = lazy(() => import("./pages/Tarefas"));
+const TarefaDetalhe = lazy(() => import("./pages/TarefaDetalhe"));
+const Setores = lazy(() => import("./pages/Setores"));
+const Arquivos = lazy(() => import("./pages/Arquivos"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const ApiKeys = lazy(() => import("./pages/ApiKeys"));
+
+function LazyFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/clientes" component={Clientes} />
-      <Route path="/clientes/:id" component={ClienteDetalhe} />
-      <Route path="/teses" component={Teses} />
-      <Route path="/relatorios" component={Relatorios} />
-      <Route path="/parceiros" component={Parceiros} />
-      <Route path="/fila" component={FilaApuracao} />
-      <Route path="/analitica" component={Analitica} />
-      <Route path="/usuarios" component={Usuarios} />
-      <Route path="/importacao" component={Importacao} />
-      <Route path="/404" component={NotFound} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<LazyFallback />}>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/tarefas" component={Tarefas} />
+        <Route path="/tarefas/:id" component={TarefaDetalhe} />
+        <Route path="/clientes" component={Clientes} />
+        <Route path="/clientes/:id" component={ClienteDetalhe} />
+        <Route path="/teses" component={Teses} />
+        <Route path="/relatorios" component={Relatorios} />
+        <Route path="/parceiros" component={Parceiros} />
+        <Route path="/fila" component={FilaApuracao} />
+        <Route path="/analitica" component={Analitica} />
+        <Route path="/arquivos" component={Arquivos} />
+        <Route path="/importacao" component={Importacao} />
+        <Route path="/setores" component={Setores} />
+        <Route path="/usuarios" component={Usuarios} />
+        <Route path="/audit-log" component={AuditLog} />
+        <Route path="/api-keys" component={ApiKeys} />
+        <Route path="/404" component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

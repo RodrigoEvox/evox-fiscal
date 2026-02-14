@@ -3,6 +3,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import {
   LayoutDashboard, Users, BookOpen, BarChart3, ChevronLeft, ChevronRight,
   FileText, Handshake, ListOrdered, TrendingUp, UserCog, Upload, LogOut, Bell,
+  CheckSquare, Building2, FolderOpen, Shield, Key, History,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -14,17 +15,22 @@ const SYMBOL_URL = 'https://files.manuscdn.com/user_upload_by_module/session_fil
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/tarefas', label: 'Tarefas', icon: CheckSquare },
   { path: '/clientes', label: 'Clientes', icon: Users },
   { path: '/parceiros', label: 'Parceiros', icon: Handshake },
   { path: '/teses', label: 'Teses Tributárias', icon: BookOpen },
   { path: '/fila', label: 'Fila de Apuração', icon: ListOrdered },
   { path: '/relatorios', label: 'Relatórios', icon: FileText },
   { path: '/analitica', label: 'Visão Analítica', icon: TrendingUp },
+  { path: '/arquivos', label: 'Arquivos', icon: FolderOpen },
   { path: '/importacao', label: 'Importação CSV', icon: Upload },
 ];
 
 const adminItems = [
+  { path: '/setores', label: 'Setores', icon: Building2 },
   { path: '/usuarios', label: 'Gestão de Usuários', icon: UserCog },
+  { path: '/audit-log', label: 'Audit Log', icon: History },
+  { path: '/api-keys', label: 'API & Integrações', icon: Key },
 ];
 
 export default function AppSidebar() {
@@ -37,6 +43,17 @@ export default function AppSidebar() {
     refetchInterval: 30000,
   });
   const unreadCount = notificacoes.data?.filter((n: any) => !n.lida).length || 0;
+
+  const nivelLabel = (nivel: string | undefined) => {
+    const map: Record<string, string> = {
+      diretor: 'Diretor',
+      gerente: 'Gerente',
+      coordenador: 'Coordenador',
+      analista_fiscal: 'Analista Fiscal',
+      suporte_comercial: 'Suporte Comercial',
+    };
+    return map[nivel || ''] || (user?.role === 'admin' ? 'Administrador' : 'Analista');
+  };
 
   return (
     <aside
@@ -91,8 +108,9 @@ export default function AppSidebar() {
                 </span>
               </div>
             )}
+            {collapsed && <div className="pt-2 border-t border-white/5 mt-2" />}
             {adminItems.map(item => {
-              const isActive = location === item.path;
+              const isActive = location === item.path || (item.path !== '/' && location.startsWith(item.path));
               return (
                 <Link key={item.path} href={item.path}>
                   <div
@@ -138,7 +156,7 @@ export default function AppSidebar() {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-white/80 truncate">{user?.name || 'Usuário'}</p>
-              <p className="text-[10px] text-white/40 truncate">{user?.role === 'admin' ? 'Administrador' : 'Analista'}</p>
+              <p className="text-[10px] text-white/40 truncate">{nivelLabel((user as any)?.nivelAcesso)}</p>
             </div>
           )}
         </div>

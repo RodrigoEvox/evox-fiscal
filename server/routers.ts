@@ -4,6 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { storagePut } from "./storage";
+import crypto from "crypto";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== 'admin') {
@@ -11,6 +13,22 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+// Helper to log audit entries
+async function logAudit(acao: string, entidadeTipo: string, entidadeId: number | null, entidadeNome: string | null, ctx: any, detalhes?: any) {
+  try {
+    await db.createAuditEntry({
+      acao: acao as any,
+      entidadeTipo,
+      entidadeId,
+      entidadeNome,
+      detalhes,
+      usuarioId: ctx.user?.id,
+      usuarioNome: ctx.user?.name || 'Sistema',
+      ip: ctx.req?.ip || ctx.req?.headers?.['x-forwarded-for'] || null,
+    });
+  } catch (e) { /* silent */ }
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -31,15 +49,85 @@ export const appRouter = router({
     }),
     updateRole: adminProcedure
       .input(z.object({ id: z.number(), role: z.string(), nivelAcesso: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.updateUserRole(input.id, input.role, input.nivelAcesso);
+        await logAudit('editar', 'usuario', input.id, null, ctx, { role: input.role, nivelAcesso: input.nivelAcesso });
+        return { success: true };
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        cargo: z.string().optional(),
+        telefone: z.string().optional(),
+        setorPrincipalId: z.number().nullable().optional(),
+        supervisorId: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        await db.updateUser(id, data as any);
+        await logAudit('editar', 'usuario', id, null, ctx, data);
         return { success: true };
       }),
     toggleActive: adminProcedure
       .input(z.object({ id: z.number(), ativo: z.boolean() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.toggleUserActive(input.id, input.ativo);
+        await logAudit('editar', 'usuario', input.id, null, ctx, { ativo: input.ativo });
         return { success: true };
+      }),
+  }),
+
+  // ---- SETORES ----
+  setores: router({
+    list: protectedProcedure.query(async () => {
+      return db.listSetores();
+    }),
+    create: adminProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        cor: z.string().optional(),
+        icone: z.string().optional(),
+        setorPaiId: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createSetor(input as any);
+        await logAudit('criar', 'setor', id, input.nome, ctx);
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateSetor(input.id, input.data as any);
+        await logAudit('editar', 'setor', input.id, null, ctx, input.data);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteSetor(input.id);
+        await logAudit('excluir', 'setor', input.id, null, ctx);
+        return { success: true };
+      }),
+    addMembro: adminProcedure
+      .input(z.object({ userId: z.number(), setorId: z.number(), papelNoSetor: z.enum(["responsavel", "membro", "observador"]).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.addUsuarioSetor({ userId: input.userId, setorId: input.setorId, papelNoSetor: input.papelNoSetor || 'membro' } as any);
+        await logAudit('atribuir', 'setor', input.setorId, null, ctx, { userId: input.userId });
+        return { id };
+      }),
+    removeMembro: adminProcedure
+      .input(z.object({ userId: z.number(), setorId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.removeUsuarioSetor(input.userId, input.setorId);
+        return { success: true };
+      }),
+    membros: protectedProcedure
+      .input(z.object({ setorId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const all = await db.listUsuarioSetores();
+        if (input.setorId) return all.filter(us => us.setorId === input.setorId);
+        return all;
       }),
   }),
 
@@ -56,8 +144,9 @@ export const appRouter = router({
         email: z.string().optional(),
         endereco: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const id = await db.createParceiro(input as any);
+        await logAudit('criar', 'parceiro', id, input.nomeCompleto, ctx);
         return { id };
       }),
     update: protectedProcedure
@@ -70,15 +159,17 @@ export const appRouter = router({
         endereco: z.string().optional(),
         ativo: z.boolean().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
         await db.updateParceiro(id, data as any);
+        await logAudit('editar', 'parceiro', id, null, ctx, data);
         return { success: true };
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.deleteParceiro(input.id);
+        await logAudit('excluir', 'parceiro', input.id, null, ctx);
         return { success: true };
       }),
   }),
@@ -132,34 +223,36 @@ export const appRouter = router({
         usuarioCadastroId: z.number().optional(),
         usuarioCadastroNome: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const id = await db.createCliente(input as any);
         if (id) {
           await db.createFilaItem({ clienteId: id, status: 'a_fazer' } as any);
         }
+        await logAudit('criar', 'cliente', id, input.razaoSocial, ctx);
         return { id };
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.updateCliente(input.id, input.data as any);
+        await logAudit('editar', 'cliente', input.id, null, ctx, input.data);
         return { success: true };
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.deleteCliente(input.id);
+        await logAudit('excluir', 'cliente', input.id, null, ctx);
         return { success: true };
       }),
     runAnalise: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const cliente = await db.getClienteById(input.id);
         if (!cliente) throw new Error('Cliente não encontrado');
         const allTeses = await db.listTeses();
         const activeTeses = allTeses.filter(t => t.ativa);
 
-        // Generate RED FLAGS
         const redFlags: any[] = [];
         if (cliente.dataAbertura) {
           const parts = cliente.dataAbertura.split('/');
@@ -180,7 +273,6 @@ export const appRouter = router({
           redFlags.push({ tipo: 'Parcelamentos ativos', descricao: 'Empresa possui parcelamentos tributários ativos', impacto: 'atencao' });
         }
 
-        // Check missing info alerts
         const alertas: any[] = [];
         const camposObrigatorios = [
           { campo: 'dataAbertura', label: 'Data de Abertura' },
@@ -196,31 +288,25 @@ export const appRouter = router({
           }
         }
 
-        // Match teses
         const tesesAplicaveis: any[] = [];
         const tesesDescartadas: any[] = [];
         for (const tese of activeTeses) {
           let aplicavel = true;
           const motivos: string[] = [];
-          // Regime check
           if (cliente.regimeTributario === 'lucro_real' && !tese.aplicavelLucroReal) { aplicavel = false; motivos.push('Não aplicável a Lucro Real'); }
           if (cliente.regimeTributario === 'lucro_presumido' && !tese.aplicavelLucroPresumido) { aplicavel = false; motivos.push('Não aplicável a Lucro Presumido'); }
           if (cliente.regimeTributario === 'simples_nacional' && !tese.aplicavelSimplesNacional) { aplicavel = false; motivos.push('Não aplicável a Simples Nacional'); }
-          // Activity check
           if (tese.aplicavelComercio && !tese.aplicavelIndustria && !tese.aplicavelServico && !cliente.comercializa) { aplicavel = false; motivos.push('Empresa não comercializa'); }
           if (!tese.aplicavelComercio && tese.aplicavelIndustria && !tese.aplicavelServico && !cliente.industrializa) { aplicavel = false; motivos.push('Empresa não industrializa'); }
           if (!tese.aplicavelComercio && !tese.aplicavelIndustria && tese.aplicavelServico && !cliente.prestaServicos) { aplicavel = false; motivos.push('Empresa não presta serviços'); }
-          // ICMS/IPI check
           if (tese.aplicavelContribuinteICMS && !cliente.contribuinteICMS && tese.tributoEnvolvido.includes('ICMS')) { aplicavel = false; motivos.push('Não é contribuinte de ICMS'); }
           if (tese.aplicavelContribuinteIPI && !cliente.contribuinteIPI && tese.tributoEnvolvido.includes('IPI')) { aplicavel = false; motivos.push('Não é contribuinte de IPI'); }
-          // Impeditivos
           const impeditivos = Array.isArray(tese.requisitosImpeditivos) ? tese.requisitosImpeditivos : [];
           for (const imp of impeditivos) {
             const impLower = imp.toLowerCase();
             if (impLower.includes('simples') && cliente.regimeTributario === 'simples_nacional') { aplicavel = false; motivos.push(imp); }
             if (impLower.includes('isent') && !cliente.contribuinteICMS) { aplicavel = false; motivos.push(imp); }
           }
-          // Estimate value
           const base = Number(cliente.valorMedioGuias || 0);
           const mult = tese.potencialFinanceiro === 'muito_alto' ? 0.15 : tese.potencialFinanceiro === 'alto' ? 0.10 : tese.potencialFinanceiro === 'medio' ? 0.05 : 0.02;
           const valorEstimado = Math.round(base * mult * 100) / 100;
@@ -231,7 +317,6 @@ export const appRouter = router({
           }
         }
 
-        // Determine priority
         const hasHighPotentialTeses = tesesAplicaveis.some((t: any) => ['muito_alto', 'alto'].includes(t.potencialFinanceiro));
         const hasNonPriorityFlags = redFlags.some((r: any) => r.impacto === 'nao_prioritario');
         let prioridade: 'alta' | 'media' | 'baixa' = 'media';
@@ -241,10 +326,8 @@ export const appRouter = router({
         const totalValor = tesesAplicaveis.reduce((s: number, t: any) => s + (t.valorEstimado || 0), 0);
         const score = Math.min(100, Math.round((tesesAplicaveis.length / Math.max(activeTeses.length, 1)) * 50 + (totalValor > 50000 ? 50 : (totalValor / 50000) * 50)));
 
-        // Update client
         await db.updateCliente(input.id, { redFlags, alertasInformacao: alertas, prioridade, scoreOportunidade: score });
 
-        // Create report
         const reportId = await db.createRelatorio({
           clienteId: input.id,
           clienteNome: cliente.razaoSocial,
@@ -257,6 +340,7 @@ export const appRouter = router({
           prioridade,
         } as any);
 
+        await logAudit('criar', 'relatorio', reportId, `Análise ${cliente.razaoSocial}`, ctx);
         return { reportId, prioridade, score, tesesAplicaveis: tesesAplicaveis.length, tesesDescartadas: tesesDescartadas.length, totalValor, redFlags: redFlags.length };
       }),
     importCsv: protectedProcedure
@@ -287,6 +371,7 @@ export const appRouter = router({
             } else { results.errors++; }
           } catch { results.errors++; }
         }
+        await logAudit('criar', 'importacao', null, `CSV Import: ${results.success} ok, ${results.errors} erros`, ctx);
         return results;
       }),
   }),
@@ -329,20 +414,23 @@ export const appRouter = router({
         aplicavelLucroPresumido: z.boolean().optional(),
         aplicavelSimplesNacional: z.boolean().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const id = await db.createTese(input as any);
+        await logAudit('criar', 'tese', id, input.nome, ctx);
         return { id };
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.updateTese(input.id, input.data as any);
+        await logAudit('editar', 'tese', input.id, null, ctx, input.data);
         return { success: true };
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.deleteTese(input.id);
+        await logAudit('excluir', 'tese', input.id, null, ctx);
         return { success: true };
       }),
     checkCarteira: protectedProcedure
@@ -389,7 +477,7 @@ export const appRouter = router({
         analistaId: z.number().optional(),
         analistaNome: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const updateData: any = { status: input.status };
         if (input.status === 'fazendo') {
           updateData.analistaId = input.analistaId;
@@ -400,6 +488,7 @@ export const appRouter = router({
           updateData.dataConclusao = new Date();
         }
         await db.updateFilaItem(input.id, updateData);
+        await logAudit('editar', 'fila', input.id, null, ctx, { status: input.status });
         return { success: true };
       }),
     updateTime: protectedProcedure
@@ -432,8 +521,9 @@ export const appRouter = router({
         redFlags: z.any().optional(),
         prioridade: z.enum(["alta", "media", "baixa"]).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const id = await db.createRelatorio(input as any);
+        await logAudit('criar', 'relatorio', id, input.clienteNome, ctx);
         return { id };
       }),
   }),
@@ -445,11 +535,12 @@ export const appRouter = router({
     }),
     create: protectedProcedure
       .input(z.object({
-        tipo: z.enum(["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "geral"]),
+        tipo: z.enum(["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "tarefa_atribuida", "tarefa_sla_vencendo", "tarefa_comentario", "geral"]),
         titulo: z.string(),
         mensagem: z.string(),
         usuarioId: z.number().optional(),
         clienteId: z.number().optional(),
+        tarefaId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const id = await db.createNotificacao(input as any);
@@ -464,6 +555,234 @@ export const appRouter = router({
     markAllRead: protectedProcedure
       .mutation(async ({ ctx }) => {
         await db.markAllNotificacoesLidas(ctx.user.id);
+        return { success: true };
+      }),
+  }),
+
+  // ---- TAREFAS ----
+  tarefas: router({
+    list: protectedProcedure
+      .input(z.object({
+        setorId: z.number().optional(),
+        responsavelId: z.number().optional(),
+        status: z.string().optional(),
+        clienteId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.listTarefas(input || {});
+      }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const tarefa = await db.getTarefaById(input.id);
+        if (!tarefa) return null;
+        const subtarefas = await db.getSubtarefas(input.id);
+        const comentarios = await db.listComentarios(input.id);
+        const files = await db.listArquivos('tarefa', input.id);
+        return { ...tarefa, subtarefas, comentarios, arquivos: files };
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        titulo: z.string().min(1),
+        descricao: z.string().optional(),
+        tipo: z.enum(["tarefa", "bug", "melhoria", "reuniao", "documento", "outro"]).optional(),
+        status: z.enum(["backlog", "a_fazer", "em_andamento", "revisao", "concluido", "cancelado"]).optional(),
+        prioridade: z.enum(["urgente", "alta", "media", "baixa"]).optional(),
+        setorId: z.number().nullable().optional(),
+        responsavelId: z.number().nullable().optional(),
+        clienteId: z.number().nullable().optional(),
+        tarefaPaiId: z.number().nullable().optional(),
+        dataVencimento: z.string().nullable().optional(),
+        slaHoras: z.number().nullable().optional(),
+        tags: z.array(z.string()).optional(),
+        setoresEnvolvidos: z.array(z.number()).optional(),
+        estimativaHoras: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const codigo = await db.getNextTarefaCodigo();
+        const data: any = {
+          ...input,
+          codigo,
+          criadorId: ctx.user.id,
+          dataInicio: new Date(),
+          dataVencimento: input.dataVencimento ? new Date(input.dataVencimento) : null,
+        };
+        const id = await db.createTarefa(data);
+        await logAudit('criar', 'tarefa', id, input.titulo, ctx);
+
+        // Notify responsible user
+        if (input.responsavelId && input.responsavelId !== ctx.user.id) {
+          await db.createNotificacao({
+            tipo: 'tarefa_atribuida',
+            titulo: `Nova tarefa atribuída: ${input.titulo}`,
+            mensagem: `A tarefa ${codigo} - "${input.titulo}" foi atribuída a você por ${ctx.user.name}.`,
+            usuarioId: input.responsavelId,
+            tarefaId: id,
+          } as any);
+        }
+        return { id, codigo };
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        if (input.data.dataVencimento && typeof input.data.dataVencimento === 'string') {
+          input.data.dataVencimento = new Date(input.data.dataVencimento);
+        }
+        if (input.data.status === 'concluido') {
+          input.data.dataConclusao = new Date();
+          input.data.progresso = 100;
+        }
+        await db.updateTarefa(input.id, input.data as any);
+        await logAudit('editar', 'tarefa', input.id, null, ctx, input.data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteTarefa(input.id);
+        await logAudit('excluir', 'tarefa', input.id, null, ctx);
+        return { success: true };
+      }),
+    addComment: protectedProcedure
+      .input(z.object({
+        tarefaId: z.number(),
+        conteudo: z.string().min(1),
+        mencoes: z.array(z.number()).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createComentario({
+          tarefaId: input.tarefaId,
+          autorId: ctx.user.id,
+          autorNome: ctx.user.name || 'Usuário',
+          conteudo: input.conteudo,
+          mencoes: input.mencoes || [],
+        } as any);
+        await logAudit('comentar', 'tarefa', input.tarefaId, null, ctx);
+
+        // Notify mentioned users
+        if (input.mencoes && input.mencoes.length > 0) {
+          for (const userId of input.mencoes) {
+            if (userId !== ctx.user.id) {
+              await db.createNotificacao({
+                tipo: 'tarefa_comentario',
+                titulo: `Você foi mencionado em um comentário`,
+                mensagem: `${ctx.user.name} mencionou você em um comentário na tarefa.`,
+                usuarioId: userId,
+                tarefaId: input.tarefaId,
+              } as any);
+            }
+          }
+        }
+        return { id };
+      }),
+  }),
+
+  // ---- ARQUIVOS ----
+  arquivos: router({
+    list: protectedProcedure
+      .input(z.object({
+        entidadeTipo: z.string().optional(),
+        entidadeId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.listArquivos(input?.entidadeTipo, input?.entidadeId);
+      }),
+    upload: protectedProcedure
+      .input(z.object({
+        nome: z.string(),
+        nomeOriginal: z.string(),
+        mimeType: z.string(),
+        tamanhoBytes: z.number(),
+        base64Data: z.string(),
+        entidadeTipo: z.enum(["cliente", "tarefa", "tese", "parceiro", "relatorio", "geral"]),
+        entidadeId: z.number().nullable().optional(),
+        descricao: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.base64Data, 'base64');
+        const suffix = crypto.randomBytes(4).toString('hex');
+        const key = `evox-fiscal/files/${input.entidadeTipo}/${input.entidadeId || 'geral'}/${suffix}-${input.nome}`;
+
+        const { url } = await storagePut(key, buffer, input.mimeType);
+
+        const id = await db.createArquivo({
+          nome: input.nome,
+          nomeOriginal: input.nomeOriginal,
+          mimeType: input.mimeType,
+          tamanhoBytes: input.tamanhoBytes,
+          storageKey: key,
+          storageUrl: url,
+          entidadeTipo: input.entidadeTipo,
+          entidadeId: input.entidadeId,
+          descricao: input.descricao,
+          tags: input.tags,
+          uploadPorId: ctx.user.id,
+          uploadPorNome: ctx.user.name || 'Usuário',
+        } as any);
+
+        await logAudit('upload', input.entidadeTipo, input.entidadeId ?? null, input.nomeOriginal, ctx);
+        return { id, url, key };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteArquivo(input.id);
+        await logAudit('excluir', 'arquivo', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- AUDIT LOG ----
+  audit: router({
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().optional(),
+        entidadeTipo: z.string().optional(),
+        entidadeId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.listAuditLog(input?.limit || 100, input?.entidadeTipo, input?.entidadeId);
+      }),
+  }),
+
+  // ---- API KEYS ----
+  apiKeys: router({
+    list: adminProcedure.query(async () => {
+      return db.listApiKeys();
+    }),
+    create: adminProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        permissoes: z.array(z.string()).optional(),
+        expiresAt: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const chave = `evx_${crypto.randomBytes(24).toString('hex')}`;
+        const id = await db.createApiKey({
+          nome: input.nome,
+          chave,
+          descricao: input.descricao,
+          permissoes: input.permissoes || ['clientes:read', 'tarefas:read'],
+          criadoPorId: ctx.user.id,
+          criadoPorNome: ctx.user.name || 'Admin',
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        } as any);
+        await logAudit('criar', 'api_key', id, input.nome, ctx);
+        return { id, chave };
+      }),
+    toggleActive: adminProcedure
+      .input(z.object({ id: z.number(), ativo: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await db.updateApiKey(input.id, { ativo: input.ativo });
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteApiKey(input.id);
+        await logAudit('excluir', 'api_key', input.id, null, ctx);
         return { success: true };
       }),
   }),
@@ -485,6 +804,115 @@ export const appRouter = router({
         await db.createTese(tese as any);
       }
       return { message: 'Teses criadas com sucesso', count: teseSeedData.length };
+    }),
+    testData: adminProcedure.mutation(async ({ ctx }) => {
+      // Seed 6 setores
+      const setorData = [
+        { nome: 'Diretoria', descricao: 'Diretoria Executiva', cor: '#0A2540', icone: 'Crown' },
+        { nome: 'Fiscal/Tributário', descricao: 'Análise e consultoria tributária', cor: '#3B82F6', icone: 'Scale' },
+        { nome: 'Comercial', descricao: 'Vendas e parcerias', cor: '#10B981', icone: 'Handshake' },
+        { nome: 'Jurídico', descricao: 'Departamento jurídico', cor: '#8B5CF6', icone: 'Gavel' },
+        { nome: 'Suporte', descricao: 'Suporte ao cliente', cor: '#F59E0B', icone: 'HeadphonesIcon' },
+        { nome: 'Tecnologia', descricao: 'TI e desenvolvimento', cor: '#EC4899', icone: 'Code' },
+      ];
+      const setorIds: number[] = [];
+      for (const s of setorData) {
+        const id = await db.createSetor(s as any);
+        if (id) setorIds.push(id);
+      }
+
+      // Seed 5 parceiros
+      const parceiroData = [
+        { nomeCompleto: 'Carlos Alberto Mendes', cpfCnpj: '123.456.789-00', telefone: '(11) 99876-5432', email: 'carlos.mendes@parceiro.com.br' },
+        { nomeCompleto: 'Escritório Contábil Progresso LTDA', cpfCnpj: '12.345.678/0001-90', telefone: '(21) 3456-7890', email: 'contato@progresso.com.br' },
+        { nomeCompleto: 'Ana Paula Ferreira', cpfCnpj: '987.654.321-00', telefone: '(31) 98765-4321', email: 'ana.ferreira@parceiro.com.br' },
+        { nomeCompleto: 'Consultoria Tributária Nacional S/A', cpfCnpj: '98.765.432/0001-10', telefone: '(41) 3210-9876', email: 'contato@ctn.com.br' },
+        { nomeCompleto: 'Roberto Silva Advogados', cpfCnpj: '45.678.901/0001-23', telefone: '(51) 3333-4444', email: 'roberto@silvaadvogados.com.br' },
+      ];
+      const parceiroIds: number[] = [];
+      for (const p of parceiroData) {
+        const id = await db.createParceiro(p as any);
+        if (id) parceiroIds.push(id);
+      }
+
+      // Seed 5 clientes
+      const clienteData = [
+        {
+          cnpj: '12.345.678/0001-95', razaoSocial: 'Indústria Metalúrgica São Paulo LTDA', nomeFantasia: 'MetalSP',
+          regimeTributario: 'lucro_real' as const, situacaoCadastral: 'ativa' as const, estado: 'SP', cnaePrincipal: '2599-3/99',
+          cnaePrincipalDescricao: 'Fabricação de produtos de metal', dataAbertura: '2015-03-15',
+          industrializa: true, comercializa: true, contribuinteICMS: true, contribuinteIPI: true,
+          faturamentoMedioMensal: '850000', valorMedioGuias: '120000', folhaPagamentoMedia: '280000',
+          parceiroId: parceiroIds[0] || null, procuracaoHabilitada: true, procuracaoCertificado: 'e-CNPJ A3',
+          procuracaoValidade: '2027-06-30', usuarioCadastroId: ctx.user.id, usuarioCadastroNome: ctx.user.name || 'Admin',
+        },
+        {
+          cnpj: '23.456.789/0001-01', razaoSocial: 'Comércio Varejista Digital LTDA', nomeFantasia: 'DigiStore',
+          regimeTributario: 'lucro_presumido' as const, situacaoCadastral: 'ativa' as const, estado: 'RJ', cnaePrincipal: '4751-2/01',
+          cnaePrincipalDescricao: 'Comércio varejista de equipamentos de informática', dataAbertura: '2019-08-20',
+          comercializa: true, contribuinteICMS: true, prestaServicos: true,
+          faturamentoMedioMensal: '420000', valorMedioGuias: '55000', folhaPagamentoMedia: '95000',
+          parceiroId: parceiroIds[1] || null, procuracaoHabilitada: true, procuracaoCertificado: 'e-CNPJ A1',
+          procuracaoValidade: '2026-12-31', usuarioCadastroId: ctx.user.id, usuarioCadastroNome: ctx.user.name || 'Admin',
+        },
+        {
+          cnpj: '34.567.890/0001-12', razaoSocial: 'Tech Solutions Consultoria em TI S/A', nomeFantasia: 'TechSol',
+          regimeTributario: 'lucro_real' as const, situacaoCadastral: 'ativa' as const, estado: 'MG', cnaePrincipal: '6201-5/01',
+          cnaePrincipalDescricao: 'Desenvolvimento de programas de computador sob encomenda', dataAbertura: '2012-01-10',
+          prestaServicos: true, contribuinteICMS: false,
+          faturamentoMedioMensal: '1200000', valorMedioGuias: '180000', folhaPagamentoMedia: '520000',
+          parceiroId: parceiroIds[2] || null, procuracaoHabilitada: true, procuracaoCertificado: 'e-CNPJ A3',
+          procuracaoValidade: '2027-03-15', usuarioCadastroId: ctx.user.id, usuarioCadastroNome: ctx.user.name || 'Admin',
+        },
+        {
+          cnpj: '45.678.901/0001-23', razaoSocial: 'Farmácia Popular Saúde LTDA', nomeFantasia: 'FarmaPopular',
+          regimeTributario: 'simples_nacional' as const, situacaoCadastral: 'ativa' as const, estado: 'BA', cnaePrincipal: '4771-7/01',
+          cnaePrincipalDescricao: 'Comércio varejista de produtos farmacêuticos', dataAbertura: '2020-06-01',
+          comercializa: true, regimeMonofasico: true,
+          faturamentoMedioMensal: '180000', valorMedioGuias: '15000', folhaPagamentoMedia: '45000',
+          parceiroId: parceiroIds[3] || null, procuracaoHabilitada: false,
+          usuarioCadastroId: ctx.user.id, usuarioCadastroNome: ctx.user.name || 'Admin',
+        },
+        {
+          cnpj: '56.789.012/0001-34', razaoSocial: 'Transportadora Rápida Express LTDA', nomeFantasia: 'RápidaExpress',
+          regimeTributario: 'lucro_presumido' as const, situacaoCadastral: 'ativa' as const, estado: 'PR', cnaePrincipal: '4930-2/02',
+          cnaePrincipalDescricao: 'Transporte rodoviário de carga', dataAbertura: '2018-11-05',
+          prestaServicos: true, contribuinteICMS: true,
+          faturamentoMedioMensal: '650000', valorMedioGuias: '85000', folhaPagamentoMedia: '210000',
+          processosJudiciaisAtivos: true,
+          parceiroId: parceiroIds[4] || null, procuracaoHabilitada: true, procuracaoCertificado: 'e-CNPJ A1',
+          procuracaoValidade: '2025-09-30', usuarioCadastroId: ctx.user.id, usuarioCadastroNome: ctx.user.name || 'Admin',
+        },
+      ];
+      const clienteIds: number[] = [];
+      for (const c of clienteData) {
+        const id = await db.createCliente(c as any);
+        if (id) {
+          clienteIds.push(id);
+          await db.createFilaItem({ clienteId: id, status: 'a_fazer' } as any);
+        }
+      }
+
+      // Seed some tarefas
+      const tarefaData = [
+        { titulo: 'Análise tributária completa - MetalSP', descricao: 'Realizar análise completa de oportunidades tributárias para Indústria Metalúrgica São Paulo', tipo: 'tarefa' as const, prioridade: 'alta' as const, setorId: setorIds[1] || null, clienteId: clienteIds[0] || null, slaHoras: 48, tags: ['análise', 'urgente'] },
+        { titulo: 'Revisão de procuração - RápidaExpress', descricao: 'Procuração vencida. Solicitar renovação ao cliente.', tipo: 'tarefa' as const, prioridade: 'urgente' as const, setorId: setorIds[1] || null, clienteId: clienteIds[4] || null, slaHoras: 24, tags: ['procuração', 'vencida'] },
+        { titulo: 'Proposta comercial - TechSol', descricao: 'Elaborar proposta comercial para consultoria tributária', tipo: 'documento' as const, prioridade: 'media' as const, setorId: setorIds[2] || null, clienteId: clienteIds[2] || null, slaHoras: 72, tags: ['comercial', 'proposta'] },
+        { titulo: 'Reunião de alinhamento semanal', descricao: 'Reunião semanal da equipe fiscal para alinhamento de demandas', tipo: 'reuniao' as const, prioridade: 'media' as const, setorId: setorIds[1] || null, slaHoras: 168, tags: ['reunião', 'semanal'] },
+        { titulo: 'Implementar dashboard de métricas', descricao: 'Criar dashboard com KPIs de performance da equipe', tipo: 'melhoria' as const, prioridade: 'baixa' as const, setorId: setorIds[5] || null, slaHoras: 120, tags: ['tech', 'dashboard'] },
+      ];
+      for (const t of tarefaData) {
+        const codigo = await db.getNextTarefaCodigo();
+        await db.createTarefa({ ...t, codigo, criadorId: ctx.user.id, dataInicio: new Date() } as any);
+      }
+
+      return {
+        message: 'Dados de teste criados com sucesso',
+        setores: setorIds.length,
+        parceiros: parceiroIds.length,
+        clientes: clienteIds.length,
+        tarefas: tarefaData.length,
+      };
     }),
   }),
 });
