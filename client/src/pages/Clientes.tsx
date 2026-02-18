@@ -57,7 +57,7 @@ const EMPTY_FORM = {
   tipoPessoa: 'juridica' as 'juridica' | 'fisica',
   cnpj: '', cpf: '', razaoSocial: '', nomeFantasia: '', dataAbertura: '',
   regimeTributario: '' as string, situacaoCadastral: 'ativa' as string,
-  classificacaoCliente: 'novo' as 'novo' | 'base',
+  classificacaoCliente: '' as '' | 'novo' | 'base',
   cnaePrincipal: '', cnaePrincipalDescricao: '', segmentoEconomico: '',
   naturezaJuridica: '', endereco: '', complemento: '', cidade: '', estado: 'SP',
   cnaesSecundarios: [] as CnaeSecundario[],
@@ -79,6 +79,7 @@ function isFormDirty(form: typeof EMPTY_FORM): boolean {
   if (form.cnaePrincipal || form.segmentoEconomico || form.naturezaJuridica) return true;
   if (form.faturamentoMedioMensal !== '0' || form.valorMedioGuias !== '0' || form.folhaPagamentoMedia !== '0') return true;
   if (form.excecoesEspecificidades || form.procuracaoValidade || form.procuracaoCertificado) return true;
+  if (form.classificacaoCliente) return true;
   if (form.parceiroId !== undefined) return true;
   if (form.procuracaoHabilitada) return true;
   if (form.industrializa || form.comercializa || form.prestaServicos) return true;
@@ -131,6 +132,7 @@ export default function Clientes() {
     setJustificativas({});
     setParceiroTouched(false);
     setProcuracaoTouched(false);
+    setCnpjFonte(null);
   }
 
   // Attempt to close the form — show confirmation if dirty
@@ -161,56 +163,148 @@ export default function Clientes() {
     return missing;
   }, [form]);
 
+  const [cnpjFonte, setCnpjFonte] = useState<{ api: string; atualizacao: string } | null>(null);
+
   const consultarCNPJ = async () => {
     const cnpjLimpo = form.cnpj.replace(/\D/g, '');
     if (cnpjLimpo.length !== 14) { toast.error('CNPJ inválido. Deve conter 14 dígitos.'); return; }
     setConsultandoCnpj(true);
-    try {
-      const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
-      if (!resp.ok) throw new Error('CNPJ não encontrado');
-      const data = await resp.json();
+    setCnpjFonte(null);
 
-      const cnaesSecundarios: CnaeSecundario[] = (data.cnaes_secundarios || []).map((c: any) => ({
-        codigo: c.codigo?.toString() || '',
-        descricao: c.descricao || '',
-      }));
+    // Consulta cruzada entre múltiplas APIs para obter dados mais recentes
+    const apis = [
+      {
+        name: 'BrasilAPI',
+        url: `https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`,
+        parse: (data: any) => ({
+          razaoSocial: data.razao_social || '',
+          nomeFantasia: data.nome_fantasia || '',
+          dataAbertura: data.data_inicio_atividade || '',
+          cnaePrincipal: data.cnae_fiscal?.toString() || '',
+          cnaePrincipalDescricao: data.cnae_fiscal_descricao || '',
+          naturezaJuridica: data.natureza_juridica || '',
+          logradouro: data.logradouro || '',
+          numero: data.numero || 'S/N',
+          bairro: data.bairro || '',
+          complemento: data.complemento || '',
+          cidade: data.municipio || '',
+          estado: data.uf || '',
+          situacaoCadastral: data.situacao_cadastral === 2 ? 'ativa' :
+            data.situacao_cadastral === 3 ? 'suspensa' :
+            data.situacao_cadastral === 4 ? 'inapta' :
+            data.situacao_cadastral === 8 ? 'baixada' : '',
+          motivoSituacao: data.motivo_situacao_cadastral || '',
+          dataSituacao: data.data_situacao_cadastral || '',
+          cnaesSecundarios: (data.cnaes_secundarios || []).map((c: any) => ({
+            codigo: c.codigo?.toString() || '', descricao: c.descricao || '',
+          })),
+          quadroSocietario: (data.qsa || []).map((s: any) => ({
+            nome: s.nome_socio || '', qualificacao: s.qualificacao_socio || '', faixaEtaria: s.faixa_etaria || '',
+          })),
+          atualizacao: data.data_situacao_cadastral || '',
+        }),
+      },
+      {
+        name: 'CNPJ.ws',
+        url: `https://publica.cnpj.ws/cnpj/${cnpjLimpo}`,
+        parse: (data: any) => ({
+          razaoSocial: data.razao_social || '',
+          nomeFantasia: data.estabelecimento?.nome_fantasia || '',
+          dataAbertura: data.estabelecimento?.data_inicio_atividade || '',
+          cnaePrincipal: data.estabelecimento?.atividade_principal?.id?.toString() || '',
+          cnaePrincipalDescricao: data.estabelecimento?.atividade_principal?.descricao || '',
+          naturezaJuridica: data.natureza_juridica?.descricao || '',
+          logradouro: data.estabelecimento?.logradouro || '',
+          numero: data.estabelecimento?.numero || 'S/N',
+          bairro: data.estabelecimento?.bairro || '',
+          complemento: data.estabelecimento?.complemento || '',
+          cidade: data.estabelecimento?.cidade?.nome || '',
+          estado: data.estabelecimento?.estado?.sigla || '',
+          situacaoCadastral: data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'ativa' ? 'ativa' :
+            data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'baixada' ? 'baixada' :
+            data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'inapta' ? 'inapta' :
+            data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'suspensa' ? 'suspensa' : '',
+          motivoSituacao: '',
+          dataSituacao: data.estabelecimento?.data_situacao_cadastral || '',
+          cnaesSecundarios: (data.estabelecimento?.atividades_secundarias || []).map((c: any) => ({
+            codigo: c.id?.toString() || '', descricao: c.descricao || '',
+          })),
+          quadroSocietario: (data.socios || []).map((s: any) => ({
+            nome: s.nome || '', qualificacao: s.qualificacao?.descricao || '', faixaEtaria: s.faixa_etaria || '',
+          })),
+          atualizacao: data.atualizado_em || data.estabelecimento?.data_situacao_cadastral || '',
+        }),
+      },
+    ];
 
-      const quadroSocietario: QuadroSocio[] = (data.qsa || []).map((s: any) => ({
-        nome: s.nome_socio || '',
-        qualificacao: s.qualificacao_socio || '',
-        faixaEtaria: s.faixa_etaria || '',
-      }));
+    let bestResult: any = null;
+    let bestApi = '';
+    let bestDate = '';
 
-      const cnaePrincipal = data.cnae_fiscal?.toString() || '';
-      const segmentoAuto = inferSegmento(cnaePrincipal);
-      const complemento = data.complemento || '';
-
-      setForm(p => ({
-        ...p,
-        razaoSocial: data.razao_social || p.razaoSocial,
-        nomeFantasia: data.nome_fantasia || p.nomeFantasia,
-        dataAbertura: data.data_inicio_atividade || p.dataAbertura,
-        cnaePrincipal,
-        cnaePrincipalDescricao: data.cnae_fiscal_descricao || p.cnaePrincipalDescricao,
-        naturezaJuridica: data.natureza_juridica || p.naturezaJuridica,
-        endereco: data.logradouro ? `${data.logradouro}, ${data.numero || 'S/N'} - ${data.bairro || ''}` : p.endereco,
-        complemento: complemento || p.complemento,
-        cidade: data.municipio || p.cidade,
-        estado: data.uf || p.estado,
-        segmentoEconomico: segmentoAuto || p.segmentoEconomico,
-        cnaesSecundarios,
-        quadroSocietario,
-        situacaoCadastral: data.situacao_cadastral === 2 ? 'ativa' :
-          data.situacao_cadastral === 3 ? 'suspensa' :
-          data.situacao_cadastral === 4 ? 'inapta' :
-          data.situacao_cadastral === 8 ? 'baixada' : p.situacaoCadastral,
-      }));
-      toast.success('Dados do CNPJ preenchidos automaticamente!');
-    } catch {
-      toast.error('Não foi possível consultar o CNPJ. Preencha manualmente.');
-    } finally {
-      setConsultandoCnpj(false);
+    for (const api of apis) {
+      try {
+        const resp = await fetch(api.url);
+        if (!resp.ok) continue;
+        const raw = await resp.json();
+        const parsed = api.parse(raw);
+        const dateStr = parsed.atualizacao || parsed.dataSituacao || '';
+        // Use the result with the most recent data, or the first successful one
+        if (!bestResult || (dateStr && dateStr > bestDate)) {
+          bestResult = parsed;
+          bestApi = api.name;
+          bestDate = dateStr;
+        }
+      } catch {
+        // Continue to next API
+      }
     }
+
+    if (!bestResult) {
+      toast.error('Não foi possível consultar o CNPJ em nenhuma fonte. Preencha manualmente.');
+      setConsultandoCnpj(false);
+      return;
+    }
+
+    const cnaePrincipal = bestResult.cnaePrincipal;
+    const segmentoAuto = inferSegmento(cnaePrincipal);
+
+    setForm(p => ({
+      ...p,
+      razaoSocial: bestResult.razaoSocial || p.razaoSocial,
+      nomeFantasia: bestResult.nomeFantasia || p.nomeFantasia,
+      dataAbertura: bestResult.dataAbertura || p.dataAbertura,
+      cnaePrincipal: cnaePrincipal || p.cnaePrincipal,
+      cnaePrincipalDescricao: bestResult.cnaePrincipalDescricao || p.cnaePrincipalDescricao,
+      naturezaJuridica: bestResult.naturezaJuridica || p.naturezaJuridica,
+      endereco: bestResult.logradouro ? `${bestResult.logradouro}, ${bestResult.numero} - ${bestResult.bairro}` : p.endereco,
+      complemento: bestResult.complemento || p.complemento,
+      cidade: bestResult.cidade || p.cidade,
+      estado: bestResult.estado || p.estado,
+      segmentoEconomico: segmentoAuto || p.segmentoEconomico,
+      cnaesSecundarios: bestResult.cnaesSecundarios.length > 0 ? bestResult.cnaesSecundarios : p.cnaesSecundarios,
+      quadroSocietario: bestResult.quadroSocietario.length > 0 ? bestResult.quadroSocietario : p.quadroSocietario,
+      situacaoCadastral: bestResult.situacaoCadastral || p.situacaoCadastral,
+    }));
+
+    // Calcular se dados podem estar desatualizados
+    const dataAtualizacao = bestDate ? new Date(bestDate) : null;
+    const diasDesdeAtualizacao = dataAtualizacao ? Math.ceil((Date.now() - dataAtualizacao.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+    setCnpjFonte({
+      api: bestApi,
+      atualizacao: bestDate ? new Date(bestDate).toLocaleDateString('pt-BR') : 'Não informada',
+    });
+
+    if (diasDesdeAtualizacao && diasDesdeAtualizacao > 30) {
+      toast.warning(
+        `Dados obtidos via ${bestApi}. Base atualizada em ${new Date(bestDate).toLocaleDateString('pt-BR')} (${diasDesdeAtualizacao} dias atrás). A situação cadastral pode estar desatualizada.`,
+        { duration: 8000 }
+      );
+    } else {
+      toast.success(`Dados preenchidos via ${bestApi}!`);
+    }
+
+    setConsultandoCnpj(false);
   };
 
   function handleSave() {
@@ -223,9 +317,12 @@ export default function Clientes() {
     if (!form.regimeTributario) {
       toast.error('Regime Tributário é obrigatório.'); return;
     }
-    // Parceiro é obrigatório (deve ter sido tocado)
-    if (!parceiroTouched && !editingId) {
-      toast.error('Selecione o Parceiro Comercial (mesmo que "Nenhum").'); return;
+    if (!form.classificacaoCliente) {
+      toast.error('Selecione a Classificação do Cliente (Novo ou Base).'); return;
+    }
+    // Parceiro é obrigatório
+    if (form.parceiroId === undefined) {
+      toast.error('Selecione o Parceiro Comercial.'); return;
     }
     // Procuração é obrigatória (deve ter sido tocada)
     if (!procuracaoTouched && !editingId) {
@@ -276,7 +373,7 @@ export default function Clientes() {
       dataAbertura: cliente.dataAbertura || '',
       regimeTributario: cliente.regimeTributario || '',
       situacaoCadastral: cliente.situacaoCadastral || 'ativa',
-      classificacaoCliente: cliente.classificacaoCliente || 'novo',
+      classificacaoCliente: cliente.classificacaoCliente || '',
       cnaePrincipal: cliente.cnaePrincipal || '',
       cnaePrincipalDescricao: cliente.cnaePrincipalDescricao || '',
       segmentoEconomico: cliente.segmentoEconomico || '',
@@ -299,7 +396,7 @@ export default function Clientes() {
       processosJudiciaisAtivos: !!cliente.processosJudiciaisAtivos,
       parcelamentosAtivos: !!cliente.parcelamentosAtivos,
       atividadePrincipalDescritivo: cliente.atividadePrincipalDescritivo || '',
-      parceiroId: cliente.parceiroId || undefined,
+      parceiroId: cliente.parceiroId ?? undefined,
       procuracaoHabilitada: !!cliente.procuracaoHabilitada,
       procuracaoCertificado: cliente.procuracaoCertificado || '',
       procuracaoValidade: cliente.procuracaoValidade || '',
@@ -525,15 +622,22 @@ export default function Clientes() {
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Classificação do Cliente</Label>
+                <Label className="text-xs font-semibold">Classificação do Cliente *</Label>
+                {!form.classificacaoCliente && (
+                  <div className="p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 flex items-center gap-2 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    Campo obrigatório — selecione se é Cliente Novo ou Cliente Base.
+                  </div>
+                )}
                 <div className="flex gap-3 mt-2">
                   <Button type="button" variant={form.classificacaoCliente === 'novo' ? 'default' : 'outline'} size="sm"
                     onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'novo' }))}
-                    className={`gap-2 ${form.classificacaoCliente === 'novo' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}>
+                    className={`gap-2 ${form.classificacaoCliente === 'novo' ? 'bg-blue-600 hover:bg-blue-700' : ''} ${!form.classificacaoCliente ? 'border-amber-400' : ''}`}>
                     Cliente Novo
                   </Button>
                   <Button type="button" variant={form.classificacaoCliente === 'base' ? 'default' : 'outline'} size="sm"
-                    onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'base' }))}>
+                    onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'base' }))}
+                    className={!form.classificacaoCliente ? 'border-amber-400' : ''}>
                     Cliente Base
                   </Button>
                 </div>
@@ -554,7 +658,7 @@ export default function Clientes() {
                   <div>
                     <Label className="text-xs">CNPJ *</Label>
                     <div className="flex gap-2">
-                      <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm" />
+                      <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm min-w-[200px]" />
                       <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 gap-1 text-xs" onClick={consultarCNPJ} disabled={consultandoCnpj}>
                         {consultandoCnpj ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                         Consultar
@@ -601,6 +705,25 @@ export default function Clientes() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {cnpjFonte && (
+                    <div className="col-span-2">
+                      <div className={`p-2.5 rounded-md text-xs flex items-start gap-2 ${
+                        (() => {
+                          const d = cnpjFonte.atualizacao !== 'Não informada' ? new Date(cnpjFonte.atualizacao.split('/').reverse().join('-')) : null;
+                          const dias = d ? Math.ceil((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                          return dias && dias > 30 ? 'bg-amber-50 border border-amber-200 text-amber-700' : 'bg-blue-50 border border-blue-200 text-blue-700';
+                        })()
+                      }`}>
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold">Fonte: {cnpjFonte.api} — Atualização: {cnpjFonte.atualizacao}</p>
+                          <p className="mt-0.5 opacity-80">
+                            APIs públicas utilizam dumps periódicos da Receita Federal. A situação cadastral pode não refletir alterações recentes. Confirme diretamente no site da Receita Federal se necessário.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -675,24 +798,23 @@ export default function Clientes() {
             {/* ===== SEÇÃO 4: PARCEIRO COMERCIAL (OBRIGATÓRIO) ===== */}
             <div className="space-y-3">
               <SectionHeader title="Parceiro Comercial *" />
-              {!parceiroTouched && !editingId && (
+              {form.parceiroId === undefined && !editingId && (
                 <div className="p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 flex items-center gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  Campo obrigatório — selecione o parceiro comercial ou "Nenhum".
+                  Campo obrigatório — selecione o parceiro comercial responsável.
                 </div>
               )}
               <Select
-                value={form.parceiroId?.toString() || 'none'}
+                value={form.parceiroId?.toString() || ''}
                 onValueChange={v => {
-                  setForm({ ...form, parceiroId: v === 'none' ? undefined : Number(v) });
+                  setForm({ ...form, parceiroId: Number(v) });
                   setParceiroTouched(true);
                 }}
               >
-                <SelectTrigger className={`h-9 text-sm ${!parceiroTouched && !editingId ? 'border-amber-400 ring-1 ring-amber-200' : ''}`}>
-                  <SelectValue placeholder="Selecione..." />
+                <SelectTrigger className={`h-9 text-sm ${form.parceiroId === undefined && !editingId ? 'border-amber-400 ring-1 ring-amber-200' : ''}`}>
+                  <SelectValue placeholder="Selecione o parceiro..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
                   {parceiros.filter((p: any) => p.ativo).map((p: any) => <SelectItem key={p.id} value={p.id.toString()}>{p.nomeCompleto}</SelectItem>)}
                 </SelectContent>
               </Select>

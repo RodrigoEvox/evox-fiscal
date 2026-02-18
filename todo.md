@@ -384,3 +384,24 @@
 - [x] Alerta de confirmação ao clicar em Cancelar
 - [x] Alerta de confirmação ao clicar fora do formulário (fechar dialog)
 - [x] Não perder dados preenchidos ao clicar acidentalmente
+
+## CRM v12.1 — Ajustes no Formulário de Cliente
+
+### Campo CNPJ
+- [x] Aumentar largura do campo CNPJ para visualizar número completo
+
+### Classificação do Cliente
+- [x] Deixar classificação em branco por padrão (sem seleção)
+- [x] Tornar classificação obrigatória (validação no submit)
+
+### Parceiro Comercial
+- [x] Remover opção "Nenhum" do dropdown de parceiro
+- [x] Parceiro obrigatório sem fallback
+
+### Consulta CNPJ Cruzada
+- [x] Consultar múltiplas APIs (BrasilAPI + CNPJ.ws)
+- [x] Priorizar fonte com dados mais recentes
+- [x] Exibir data de atualização da base de dados
+- [x] Aviso visual quando dados podem estar desatualizados (base > 30 dias)
+- [x] Motivo da situação cadastral quando disponível
+- [x] Nota explicativa sobre dumps periódicos da Receita Federal
