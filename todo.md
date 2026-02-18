@@ -417,3 +417,11 @@
 
 ### Remoção de Seção
 - [x] Excluir seção "Atividades e Tributos" do formulário de cliente
+
+## CRM v12.3 — Ajustes Formulário Cliente
+
+### Dados Financeiros
+- [x] Incluir Folha Pagamento Média na lista de campos faltantes que pedem justificativa
+
+### CNPJ
+- [x] Máscara automática de CNPJ (XX.XXX.XXX/XXXX-XX) ao digitar somente números

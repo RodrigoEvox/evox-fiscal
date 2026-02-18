@@ -159,6 +159,7 @@ export default function Clientes() {
     }
     if (!form.faturamentoMedioMensal || form.faturamentoMedioMensal === '0') missing.push('faturamentoMedioMensal');
     if (!form.valorMedioGuias || form.valorMedioGuias === '0') missing.push('valorMedioGuias');
+    if (!form.folhaPagamentoMedia || form.folhaPagamentoMedia === '0') missing.push('folhaPagamentoMedia');
     if (!form.segmentoEconomico) missing.push('segmentoEconomico');
     return missing;
   }, [form]);
@@ -658,7 +659,14 @@ export default function Clientes() {
                   <div>
                     <Label className="text-xs">CNPJ *</Label>
                     <div className="flex gap-2">
-                      <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm max-w-[220px]" />
+                      <Input value={form.cnpj} onChange={e => {
+                        let v = e.target.value.replace(/\D/g, '').slice(0, 14);
+                        if (v.length > 12) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+                        else if (v.length > 8) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+                        else if (v.length > 5) v = v.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                        else if (v.length > 2) v = v.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+                        setForm({ ...form, cnpj: v });
+                      }} placeholder="00.000.000/0001-00" className="h-9 text-sm max-w-[220px]" maxLength={18} />
                       <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 gap-1 text-xs" onClick={consultarCNPJ} disabled={consultandoCnpj}>
                         {consultandoCnpj ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                         Consultar
@@ -731,7 +739,13 @@ export default function Clientes() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">CPF *</Label>
-                    <Input value={form.cpf} onChange={e => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" className="h-9 text-sm" />
+                    <Input value={form.cpf} onChange={e => {
+                      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+                      if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+                      else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                      else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+                      setForm({ ...form, cpf: v });
+                    }} placeholder="000.000.000-00" className="h-9 text-sm" maxLength={14} />
                   </div>
                   <div>
                     <Label className="text-xs">Nome Completo *</Label>
@@ -1107,6 +1121,7 @@ function fieldLabel(field: string) {
     cnaePrincipal: 'CNAE Principal',
     faturamentoMedioMensal: 'Faturamento Médio',
     valorMedioGuias: 'Valor Médio Guias',
+    folhaPagamentoMedia: 'Folha Pagamento',
     segmentoEconomico: 'Segmento',
   };
   return labels[field] || field;
