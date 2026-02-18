@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE clientes ADD COLUMN classificacaoCliente ENUM('novo','base') NOT NULL DEFAULT 'novo' AFTER situacaoCadastral;\nALTER TABLE clientes ADD COLUMN dataConversaoBase TIMESTAMP NULL AFTER classificacaoCliente;\nALTER TABLE clientes ADD COLUMN complemento VARCHAR(500) NULL AFTER endereco;\nALTER TABLE clientes ADD COLUMN quadroSocietario JSON NULL AFTER naturezaJuridica;\nALTER TABLE clientes ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT true AFTER cidade;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE clientes ADD COLUMN classificacaoCliente ENUM('novo','base') NOT NULL DEFAULT 'novo' AFTER situacaoCadastral;\nALTER TABLE clientes ADD COLUMN dataConversaoBase TIMESTAMP NULL AFTER classificacaoCliente;\nALTER TABLE clientes ADD COLUMN complemento VARCHAR(500) NULL AFTER endereco;\nALTER TABLE clientes ADD COLUMN quadroSocietario JSON NULL AFTER naturezaJuridica;\nALTER TABLE clientes ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT true AFTER cidade;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1005
+}

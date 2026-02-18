@@ -43,6 +43,13 @@
       "when": 1771437842553,
       "tag": "0005_vengeful_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1771446517007,
+      "tag": "0006_tricky_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

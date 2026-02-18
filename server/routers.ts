@@ -257,18 +257,24 @@ export const appRouter = router({
     create: protectedProcedure
       .input(z.object({
         cnpj: z.string().min(1),
+        tipoPessoa: z.enum(["juridica", "fisica"]).optional(),
+        cpf: z.string().optional(),
         razaoSocial: z.string().min(1),
         nomeFantasia: z.string().optional(),
         dataAbertura: z.string().optional(),
         regimeTributario: z.enum(["simples_nacional", "lucro_presumido", "lucro_real"]),
         situacaoCadastral: z.enum(["ativa", "baixada", "inapta", "suspensa", "nula"]).optional(),
+        classificacaoCliente: z.enum(["novo", "base"]).optional(),
         cnaePrincipal: z.string().optional(),
         cnaePrincipalDescricao: z.string().optional(),
-        cnaesSecundarios: z.array(z.string()).optional(),
+        cnaesSecundarios: z.array(z.object({ codigo: z.string(), descricao: z.string() })).optional(),
         segmentoEconomico: z.string().optional(),
         naturezaJuridica: z.string().optional(),
+        quadroSocietario: z.array(z.object({ nome: z.string(), qualificacao: z.string(), faixaEtaria: z.string().optional() })).optional(),
         endereco: z.string().optional(),
+        complemento: z.string().optional(),
         estado: z.string().optional(),
+        cidade: z.string().optional(),
         industrializa: z.boolean().optional(),
         comercializa: z.boolean().optional(),
         prestaServicos: z.boolean().optional(),
@@ -308,19 +314,39 @@ export const appRouter = router({
         await logAudit('editar', 'cliente', input.id, null, ctx, input.data);
         return { success: true };
       }),
-    delete: protectedProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         await db.deleteCliente(input.id);
         await logAudit('excluir', 'cliente', input.id, null, ctx);
         return { success: true };
       }),
-    toggleActive: protectedProcedure
+    toggleActive: adminProcedure
       .input(z.object({ id: z.number(), ativo: z.boolean() }))
       .mutation(async ({ input, ctx }) => {
-        await db.updateCliente(input.id, { situacaoCadastral: input.ativo ? 'ativa' : 'suspensa' } as any);
+        await db.updateCliente(input.id, { ativo: input.ativo } as any);
         await logAudit(input.ativo ? 'ativar' : 'inativar', 'cliente', input.id, null, ctx);
         return { success: true };
+      }),
+    // Conversão automática: clientes "novo" com mais de 90 dias viram "base"
+    convertNovosToBase: adminProcedure
+      .mutation(async ({ ctx }) => {
+        const result = await db.convertClientesNovosToBase();
+        return result;
+      }),
+    // Buscar CNPJ via API pública
+    consultaCNPJ: protectedProcedure
+      .input(z.object({ cnpj: z.string() }))
+      .query(async ({ input }) => {
+        const cnpjLimpo = input.cnpj.replace(/[^\d]/g, '');
+        try {
+          const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+          if (!resp.ok) throw new Error('CNPJ não encontrado');
+          const data = await resp.json();
+          return data;
+        } catch (e: any) {
+          throw new Error(e.message || 'Erro ao consultar CNPJ');
+        }
       }),
     runAnalise: protectedProcedure
       .input(z.object({ id: z.number() }))

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, Building2, Flag, AlertTriangle, CheckCircle2, XCircle,
   FileText, BarChart3, Clock, User, Shield, Loader2, RefreshCw,
+  ShieldAlert, ShieldCheck, CalendarClock,
 } from 'lucide-react';
 
 export default function ClienteDetalhe() {
@@ -55,6 +56,18 @@ export default function ClienteDetalhe() {
   const oportunidadesDescartadas = latestReport ? (Array.isArray(latestReport.tesesDescartadas) ? latestReport.tesesDescartadas : []) : [];
   const parceiro = parceiros.find((p: any) => p.id === cliente.parceiroId);
 
+  // Procuração status
+  const procStatus = (() => {
+    if (!cliente.procuracaoHabilitada) return 'desabilitada';
+    if (!cliente.procuracaoValidade) return 'habilitada';
+    const validade = new Date(cliente.procuracaoValidade);
+    const hoje = new Date();
+    const diffDias = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDias < 0) return 'vencida';
+    if (diffDias <= 7) return 'vencendo';
+    return 'habilitada';
+  })();
+
   const prioridadeColor = cliente.prioridade === 'alta' ? 'bg-red-500' : cliente.prioridade === 'media' ? 'bg-amber-500' : 'bg-sky-400';
   const prioridadeText = cliente.prioridade === 'alta' ? 'Alta' : cliente.prioridade === 'media' ? 'Média' : 'Baixa';
   const prioridadeBg = cliente.prioridade === 'alta' ? 'bg-red-100 text-red-700' : cliente.prioridade === 'media' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700';
@@ -82,6 +95,9 @@ export default function ClienteDetalhe() {
               <span className="font-mono">{cliente.cnpj}</span>
               {cliente.nomeFantasia && <span>• {cliente.nomeFantasia}</span>}
               {parceiro && <Badge variant="outline" className="text-[10px]">{parceiro.nomeCompleto}</Badge>}
+              <Badge className={`text-[10px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                {cliente.classificacaoCliente === 'novo' ? 'Cliente Novo' : 'Cliente Base'}
+              </Badge>
             </div>
           </div>
         </div>
@@ -90,6 +106,35 @@ export default function ClienteDetalhe() {
           Executar Nova Análise
         </Button>
       </div>
+
+      {/* Alerta de Procuração */}
+      {procStatus === 'vencida' && (
+        <div className="p-4 rounded-lg bg-red-100 border border-red-200 flex items-center gap-3">
+          <ShieldAlert className="w-6 h-6 text-red-600 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-700">Procuração Eletrônica Vencida</p>
+            <p className="text-xs text-red-600">A procuração deste cliente está vencida. Providencie a renovação imediatamente.</p>
+          </div>
+        </div>
+      )}
+      {procStatus === 'vencendo' && (
+        <div className="p-4 rounded-lg bg-amber-100 border border-amber-200 flex items-center gap-3">
+          <CalendarClock className="w-6 h-6 text-amber-600 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700">Procuração Próxima ao Vencimento</p>
+            <p className="text-xs text-amber-600">A procuração deste cliente vence em menos de 7 dias. Providencie a renovação.</p>
+          </div>
+        </div>
+      )}
+      {procStatus === 'desabilitada' && (
+        <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-center gap-3">
+          <ShieldAlert className="w-6 h-6 text-red-400 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-600">Procuração Não Habilitada</p>
+            <p className="text-xs text-red-500">Este cliente não possui procuração eletrônica habilitada.</p>
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="panorama">
         <TabsList>
@@ -134,16 +179,23 @@ export default function ClienteDetalhe() {
             </Card>
 
             {/* Procuração e Rastreamento */}
-            <Card>
+            <Card className={procStatus === 'vencida' ? 'border-red-200' : procStatus === 'vencendo' ? 'border-amber-200' : ''}>
               <CardHeader className="pb-3"><CardTitle className="text-sm">Procuração e Rastreamento</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-xs">
-                <InfoRow label="Procuração" value={cliente.procuracaoHabilitada ? 'Habilitada' : 'Não habilitada'} />
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground w-24">Status</span>
+                  {procStatus === 'vencida' && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">Vencida</Badge>}
+                  {procStatus === 'vencendo' && <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">Vencendo</Badge>}
+                  {procStatus === 'habilitada' && <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]">Válida</Badge>}
+                  {procStatus === 'desabilitada' && <Badge className="bg-red-50 text-red-500 border-red-100 text-[10px]">Desabilitada</Badge>}
+                </div>
                 {cliente.procuracaoHabilitada && (
                   <>
                     <InfoRow label="Certificado" value={cliente.procuracaoCertificado || '-'} />
-                    <InfoRow label="Validade" value={cliente.procuracaoValidade || '-'} />
+                    <InfoRow label="Validade" value={cliente.procuracaoValidade ? new Date(cliente.procuracaoValidade).toLocaleDateString('pt-BR') : '-'} />
                   </>
                 )}
+                <InfoRow label="Classificação" value={cliente.classificacaoCliente === 'novo' ? 'Cliente Novo' : 'Cliente Base'} />
                 <Separator className="my-2" />
                 <InfoRow label="Cadastrado por" value={cliente.usuarioCadastroNome || '-'} />
                 <InfoRow label="Data Cadastro" value={cliente.createdAt ? new Date(cliente.createdAt).toLocaleDateString('pt-BR') : '-'} />

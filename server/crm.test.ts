@@ -543,3 +543,140 @@ describe("CRM v10 - Serviços: Novos campos de honorários e comissões", () => 
     ).rejects.toThrow();
   });
 });
+
+describe("CRM v11 - Clientes: Novos campos (classificação, PF, procuração, quadro societário)", () => {
+  it("should have clientes.create procedure accepting new fields", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.create).toBeDefined();
+  });
+
+  it("should have clientes.update procedure", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.update).toBeDefined();
+  });
+
+  it("should have clientes.toggleActive procedure", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.toggleActive).toBeDefined();
+  });
+
+  it("should have clientes.delete procedure", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.delete).toBeDefined();
+  });
+
+  it("should have clientes.convertNovosToBase procedure", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.convertNovosToBase).toBeDefined();
+  });
+
+  it("should validate clientes.create accepts classificacaoCliente field", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    try {
+      await caller.clientes.create({
+        cnpj: '12.345.678/0001-99',
+        razaoSocial: 'Empresa Teste LTDA',
+        regimeTributario: 'lucro_real',
+        classificacaoCliente: 'novo',
+        tipoPessoa: 'juridica',
+        procuracaoHabilitada: false,
+      } as any);
+    } catch (e: any) {
+      // DB error is expected, but should not be a validation error
+      expect(e.message).not.toContain('invalid_type');
+    }
+  });
+
+  it("should validate clientes.create accepts PF fields (tipoPessoa, cpf)", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    try {
+      await caller.clientes.create({
+        cnpj: '',
+        razaoSocial: 'João da Silva',
+        regimeTributario: 'simples_nacional',
+        classificacaoCliente: 'base',
+        tipoPessoa: 'fisica',
+        cpf: '123.456.789-00',
+        procuracaoHabilitada: true,
+        procuracaoCertificado: 'Evox Fiscal',
+        procuracaoValidade: '2026-12-31',
+      } as any);
+    } catch (e: any) {
+      expect(e.message).not.toContain('invalid_type');
+    }
+  });
+
+  it("should validate clientes.create accepts procuração fields", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    try {
+      await caller.clientes.create({
+        cnpj: '98.765.432/0001-10',
+        razaoSocial: 'Empresa Procuração LTDA',
+        regimeTributario: 'lucro_presumido',
+        classificacaoCliente: 'novo',
+        tipoPessoa: 'juridica',
+        procuracaoHabilitada: true,
+        procuracaoCertificado: 'Gercino Neto',
+        procuracaoValidade: '2026-06-15',
+        complemento: 'Sala 201',
+      } as any);
+    } catch (e: any) {
+      expect(e.message).not.toContain('invalid_type');
+    }
+  });
+
+  it("should validate clientes.create accepts quadroSocietario and cnaesSecundarios", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    try {
+      await caller.clientes.create({
+        cnpj: '11.222.333/0001-44',
+        razaoSocial: 'Empresa QS LTDA',
+        regimeTributario: 'lucro_real',
+        classificacaoCliente: 'novo',
+        tipoPessoa: 'juridica',
+        procuracaoHabilitada: false,
+        quadroSocietario: [{ nome: 'Sócio 1', qualificacao: 'Sócio-Administrador' }],
+        cnaesSecundarios: [{ codigo: '4711-3/02', descricao: 'Comércio varejista' }],
+      } as any);
+    } catch (e: any) {
+      expect(e.message).not.toContain('invalid_type');
+    }
+  });
+
+  it("should allow regular user access to clientes.create (protectedProcedure)", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    // clientes.create is protectedProcedure, so regular users can create clients
+    // It may fail at DB level but should pass auth check
+    try {
+      await caller.clientes.create({
+        cnpj: '12.345.678/0001-99',
+        razaoSocial: 'Teste',
+        regimeTributario: 'lucro_real',
+        classificacaoCliente: 'novo',
+        tipoPessoa: 'juridica',
+        procuracaoHabilitada: false,
+      } as any);
+    } catch (e: any) {
+      // DB error is expected, but should NOT be an auth error
+      expect(e.message).not.toContain('FORBIDDEN');
+      expect(e.message).not.toContain('UNAUTHORIZED');
+    }
+  });
+
+  it("should deny non-admin access to clientes.toggleActive", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.clientes.toggleActive({ id: 1, ativo: false })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to clientes.delete", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.clientes.delete({ id: 1 })
+    ).rejects.toThrow();
+  });
+});

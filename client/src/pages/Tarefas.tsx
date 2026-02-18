@@ -115,7 +115,7 @@ export default function Tarefas() {
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Tarefa</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Nova Tarefa</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div>

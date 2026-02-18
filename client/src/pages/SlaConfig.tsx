@@ -178,7 +178,7 @@ export default function SlaConfig() {
 
       {/* Dialog Criar/Editar SLA */}
       <Dialog open={showNew || !!editingId} onOpenChange={() => { setShowNew(false); setEditingId(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar' : 'Nova'} Configuração de SLA</DialogTitle>
           </DialogHeader>

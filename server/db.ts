@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql, or, isNull } from "drizzle-orm";
+import { eq, desc, asc, and, sql, or, isNull, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -243,6 +243,22 @@ export async function deleteCliente(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(clientes).where(eq(clientes.id, id));
+}
+
+// Converte clientes "novo" com mais de 90 dias para "base"
+export async function convertClientesNovosToBase() {
+  const db = await getDb();
+  if (!db) return { converted: 0 };
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const result = await db.update(clientes)
+    .set({ classificacaoCliente: 'base', dataConversaoBase: new Date() } as any)
+    .where(
+      and(
+        eq(clientes.classificacaoCliente, 'novo'),
+        lt(clientes.createdAt, ninetyDaysAgo)
+      )
+    );
+  return { converted: (result as any)[0]?.affectedRows || 0 };
 }
 
 // =============================================

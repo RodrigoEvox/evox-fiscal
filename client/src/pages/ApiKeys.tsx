@@ -74,7 +74,7 @@ export default function ApiKeys() {
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova API Key</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{newKey ? 'API Key Criada' : 'Nova API Key'}</DialogTitle></DialogHeader>
             {newKey ? (
               <div className="space-y-4">

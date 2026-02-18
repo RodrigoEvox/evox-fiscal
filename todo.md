@@ -335,3 +335,36 @@
 - [x] Valor fixo com possibilidade de parcelamento e quantidade de parcelas
 - [x] Atualizar backend para suportar novos campos de serviço
 - [x] Atualizar schema do banco de dados para novos campos
+
+## CRM v11 — Melhorias no Cadastro de Clientes
+
+### Rolagem Responsiva
+- [x] Corrigir rolagem de tela em todas as telas/dialogs para dispositivos variados
+- [x] Formulário de novo cliente com scroll adequado (campos não ficam invisíveis)
+
+### Indicador Novo/Base
+- [x] Campo indicador no cadastro: Cliente Novo ou Cliente Base
+- [x] Conversão automática: após 90 dias do cadastro, Cliente Novo vira Cliente Base
+- [x] Informação visível na listagem e visão detalhada do cliente
+
+### Endereço
+- [x] Adicionar campo Complemento no endereço
+- [x] Auto-preencher complemento via consulta CNPJ quando disponível
+
+### Busca CNPJ Expandida
+- [x] Buscar quadro societário via CNPJ
+- [x] Buscar CNAEs secundários via CNPJ
+- [x] Buscar data de abertura via CNPJ
+- [x] Preencher segmento econômico automaticamente baseado nos CNAEs
+
+### Pessoa Física
+- [x] Opção de cadastrar cliente pessoa física (CPF)
+- [x] Formulário adaptado para PF (sem CNPJ, razão social, etc.)
+
+### Procuração Eletrônica (melhorias)
+- [x] Toggle habilitada/desabilitada com indicador visual (vermelho quando desabilitada)
+- [x] Campo certificado vinculado (Gercino Neto ou Evox Fiscal) quando habilitada
+- [x] Campo data de validade da procuração quando habilitada
+- [x] Alerta de próximo ao vencimento (7 dias antes)
+- [x] Alerta de procuração vencida
+- [x] Informação da procuração acompanha o cliente em todas as visões

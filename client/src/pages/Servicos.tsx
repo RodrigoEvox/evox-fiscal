@@ -266,7 +266,7 @@ export default function Servicos() {
 
       {/* View Dialog */}
       <Dialog open={!!viewServico} onOpenChange={() => setViewServico(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
           {viewServico && (
             <>
               <DialogHeader>
@@ -351,7 +351,7 @@ export default function Servicos() {
 
       {/* Create/Edit Dialog — Reformulado */}
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) closeForm(); else setDialogOpen(true); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
             <DialogDescription>{editingId ? 'Altere os dados do serviço.' : 'Preencha os dados para cadastrar um novo serviço.'}</DialogDescription>

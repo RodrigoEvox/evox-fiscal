@@ -237,7 +237,7 @@ export default function Parceiros() {
 
       {/* View Dialog */}
       <Dialog open={!!viewParceiro} onOpenChange={() => setViewParceiro(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           {viewParceiro && (
             <>
               <DialogHeader>
@@ -288,7 +288,7 @@ export default function Parceiros() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showForm} onOpenChange={(o) => { if (!o) closeForm(); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Parceiro' : 'Novo Parceiro'}</DialogTitle>
             <DialogDescription>{editingId ? 'Altere os dados do parceiro.' : 'Preencha os dados para cadastrar um novo parceiro.'}</DialogDescription>
