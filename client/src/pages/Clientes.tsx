@@ -14,9 +14,10 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   Plus, Search, Flag, AlertTriangle, Eye, Pencil, Trash2, Loader2,
-  Building2, ArrowLeft,
+  Building2, ArrowLeft, MoreVertical, Power, PowerOff, Filter,
 } from 'lucide-react';
 
 const estadosBR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -64,6 +65,12 @@ export default function Clientes() {
   const deleteCliente = trpc.clientes.delete.useMutation({
     onSuccess: () => { utils.clientes.list.invalidate(); utils.dashboard.stats.invalidate(); toast.success('Cliente removido!'); },
   });
+  const toggleCliente = trpc.clientes.toggleActive.useMutation({
+    onSuccess: (_, vars) => { utils.clientes.list.invalidate(); toast.success(vars.ativo ? 'Cliente ativado!' : 'Cliente inativado!'); },
+    onError: (err) => toast.error(err.message),
+  });
+  const [filterStatus, setFilterStatus] = useState<'todos' | 'ativos' | 'inativos'>('todos');
+  const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -185,6 +192,8 @@ export default function Clientes() {
     let list = clientes;
     if (filterPrioridade) list = list.filter((c: any) => c.prioridade === filterPrioridade);
     if (filterRedFlags) list = list.filter((c: any) => Array.isArray(c.redFlags) && c.redFlags.length > 0);
+    if (filterStatus === 'ativos') list = list.filter((c: any) => c.situacaoCadastral === 'ativa');
+    if (filterStatus === 'inativos') list = list.filter((c: any) => c.situacaoCadastral !== 'ativa');
     if (search) {
       const s = search.toLowerCase();
       list = list.filter((c: any) =>
@@ -194,7 +203,7 @@ export default function Clientes() {
       );
     }
     return list;
-  }, [clientes, filterPrioridade, filterRedFlags, search]);
+  }, [clientes, filterPrioridade, filterRedFlags, filterStatus, search]);
 
   const prioridadeBadge = (p: string) => {
     if (p === 'alta') return <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">Alta</Badge>;
@@ -227,9 +236,22 @@ export default function Clientes() {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Buscar por razão social, CNPJ ou nome fantasia..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar por razão social, CNPJ ou nome fantasia..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        </div>
+        <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+          <SelectTrigger className="w-[160px]">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="ativos">Ativos</SelectItem>
+            <SelectItem value="inativos">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -272,14 +294,32 @@ export default function Clientes() {
                         </Badge>
                       )}
                       {prioridadeBadge(cliente.prioridade)}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(cliente)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => {
-                        if (confirm('Deseja remover este cliente?')) deleteCliente.mutate({ id: cliente.id });
-                      }}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <Badge variant={cliente.situacaoCadastral === 'ativa' ? 'default' : 'secondary'} className={`text-[10px] ${cliente.situacaoCadastral === 'ativa' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500'}`}>
+                        {cliente.situacaoCadastral === 'ativa' ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setLocation(`/clientes/${cliente.id}`)}>
+                            <Eye className="w-4 h-4 mr-2" /> Visualizar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => startEdit(cliente)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => toggleCliente.mutate({ id: cliente.id, ativo: cliente.situacaoCadastral !== 'ativa' })}>
+                            {cliente.situacaoCadastral === 'ativa' ? <><PowerOff className="w-4 h-4 mr-2" /> Inativar</> : <><Power className="w-4 h-4 mr-2" /> Ativar</>}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600" onClick={() => setConfirmDelete(cliente)}>
+                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
@@ -511,6 +551,25 @@ export default function Clientes() {
             <Button onClick={handleSave} disabled={createCliente.isPending || updateCliente.isPending}>
               {(createCliente.isPending || updateCliente.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {editingId ? 'Salvar Alterações' : 'Cadastrar Cliente'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja excluir o cliente <strong>{confirmDelete?.razaoSocial}</strong>? Esta ação não pode ser desfeita. Considere inativar o cliente ao invés de excluir.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => { deleteCliente.mutate({ id: confirmDelete.id }); setConfirmDelete(null); }} disabled={deleteCliente.isPending}>
+              {deleteCliente.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Excluir Cliente
             </Button>
           </DialogFooter>
         </DialogContent>

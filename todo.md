@@ -281,3 +281,46 @@
 - [x] Associar setor(es) responsável(is) pela execução de cada serviço
 - [x] Associar pessoa(s) responsável(is) pela execução
 - [x] Percentual padrão de comissão por tipo de parceria (Diamante/Ouro/Prata)
+
+## CRM v8 — Integrações Google
+
+### Gmail
+- [ ] Página de Email integrada ao CRM (inbox, busca, leitura de threads)
+- [ ] Envio de emails diretamente do CRM (com confirmação)
+- [ ] Vincular emails a clientes/tarefas/parceiros
+- [ ] Busca de emails por remetente, assunto, data
+
+### Google Calendar (Agenda)
+- [ ] Página de Agenda integrada ao CRM
+- [ ] Visualização de eventos do Google Calendar
+- [ ] Criar eventos diretamente do CRM (reuniões, prazos)
+- [ ] Vincular eventos a clientes/tarefas
+- [ ] Atualizar e excluir eventos
+
+### Google Drive
+- [ ] Página de Drive integrada ao CRM
+- [ ] Navegação por pastas e arquivos do Google Drive
+- [ ] Upload de arquivos para o Drive via CRM
+- [ ] Vincular arquivos do Drive a clientes/tarefas
+
+### Google Docs
+- [ ] Visualização de documentos Google Docs no CRM
+- [ ] Criar documentos a partir de templates
+- [ ] Vincular documentos a clientes/tarefas
+
+## CRM v9 — Correções e Premissas Básicas
+
+### Bugs
+- [x] Fix: erro ao cadastrar novo serviço
+
+### Premissas Básicas (reforço em todo o sistema)
+- [x] Rastreabilidade: todas as ações de CRUD geram entrada no audit log imutável
+- [ ] Segurança: acessos delimitados por perfil de usuário (RBAC) em todas as entidades
+- [ ] Hierarquia: respeitar níveis de acesso em todas as operações
+- [ ] SLA: gestão de prazos integrada em tarefas e subtarefas
+- [ ] Integração setorial: tarefas e subtarefas vinculadas a setores
+- [ ] Relatórios gerenciais: disponíveis em todas as entidades principais
+- [ ] Histórico imutável individualizado por cliente (quem fez, quando, o que fez)
+- [ ] Histórico imutável individualizado por setor
+- [x] CRUD completo em todas as entidades: incluir, editar, excluir, ativar, inativar
+- [x] UX fluida estilo Apple: priorizar usabilidade e fluidez do trabalho

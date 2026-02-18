@@ -122,7 +122,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number(), ativo: z.boolean() }))
       .mutation(async ({ input, ctx }) => {
         await db.toggleUserActive(input.id, input.ativo);
-        await logAudit('editar', 'usuario', input.id, null, ctx, { ativo: input.ativo });
+        await logAudit(input.ativo ? 'ativar' : 'inativar', 'usuario', input.id, null, ctx);
         return { success: true };
       }),
   }),
@@ -190,9 +190,16 @@ export const appRouter = router({
       .input(z.object({
         nomeCompleto: z.string().min(1),
         cpfCnpj: z.string().optional(),
+        tipo: z.string().optional(),
         telefone: z.string().optional(),
         email: z.string().optional(),
         endereco: z.string().optional(),
+        cidade: z.string().optional(),
+        estado: z.string().optional(),
+        comissaoPercentual: z.number().optional(),
+        modeloParceriaId: z.number().nullable().optional(),
+        observacoes: z.string().optional(),
+        ativo: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await db.createParceiro(input as any);
@@ -204,9 +211,15 @@ export const appRouter = router({
         id: z.number(),
         nomeCompleto: z.string().optional(),
         cpfCnpj: z.string().optional(),
+        tipo: z.string().optional(),
         telefone: z.string().optional(),
         email: z.string().optional(),
         endereco: z.string().optional(),
+        cidade: z.string().optional(),
+        estado: z.string().optional(),
+        comissaoPercentual: z.number().optional(),
+        modeloParceriaId: z.number().nullable().optional(),
+        observacoes: z.string().optional(),
         ativo: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -220,6 +233,13 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await db.deleteParceiro(input.id);
         await logAudit('excluir', 'parceiro', input.id, null, ctx);
+        return { success: true };
+      }),
+    toggleActive: adminProcedure
+      .input(z.object({ id: z.number(), ativo: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateParceiro(input.id, { ativo: input.ativo } as any);
+        await logAudit(input.ativo ? 'ativar' : 'inativar', 'parceiro', input.id, null, ctx);
         return { success: true };
       }),
   }),
@@ -293,6 +313,13 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await db.deleteCliente(input.id);
         await logAudit('excluir', 'cliente', input.id, null, ctx);
+        return { success: true };
+      }),
+    toggleActive: protectedProcedure
+      .input(z.object({ id: z.number(), ativo: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateCliente(input.id, { situacaoCadastral: input.ativo ? 'ativa' : 'suspensa' } as any);
+        await logAudit(input.ativo ? 'ativar' : 'inativar', 'cliente', input.id, null, ctx);
         return { success: true };
       }),
     runAnalise: protectedProcedure
@@ -824,8 +851,9 @@ export const appRouter = router({
       }),
     toggleActive: adminProcedure
       .input(z.object({ id: z.number(), ativo: z.boolean() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         await db.updateApiKey(input.id, { ativo: input.ativo });
+        await logAudit(input.ativo ? 'ativar' : 'inativar', 'api_key', input.id, null, ctx);
         return { success: true };
       }),
     delete: adminProcedure
@@ -861,7 +889,12 @@ export const appRouter = router({
         valorFixo: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const id = await db.createServico(input as any);
+        const cleanInput = {
+          ...input,
+          valorFixo: input.valorFixo && input.valorFixo.trim() !== '' ? input.valorFixo : null,
+          percentualHonorariosComercial: input.percentualHonorariosComercial && input.percentualHonorariosComercial.trim() !== '' ? input.percentualHonorariosComercial : '0',
+        };
+        const id = await db.createServico(cleanInput as any);
         await logAudit('criar', 'servico', id, input.nome, ctx);
         return { id };
       }),
@@ -877,6 +910,13 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await db.deleteServico(input.id);
         await logAudit('excluir', 'servico', input.id, null, ctx);
+        return { success: true };
+      }),
+    toggleActive: adminProcedure
+      .input(z.object({ id: z.number(), ativo: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateServico(input.id, { ativo: input.ativo } as any);
+        await logAudit(input.ativo ? 'ativar' : 'inativar', 'servico', input.id, null, ctx);
         return { success: true };
       }),
   }),

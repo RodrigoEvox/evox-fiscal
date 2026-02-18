@@ -321,3 +321,126 @@ describe("Dashboard Stats", () => {
     }
   });
 });
+
+describe("CRUD Completeness - toggleActive", () => {
+  it("should have toggleActive for parceiros", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.parceiros.toggleActive).toBeDefined();
+  });
+
+  it("should have toggleActive for clientes", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.toggleActive).toBeDefined();
+  });
+
+  it("should have toggleActive for servicos", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.servicos.toggleActive).toBeDefined();
+  });
+
+  it("should have toggleActive for users", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.users.toggleActive).toBeDefined();
+  });
+
+  it("should have toggleActive for apiKeys", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.apiKeys.toggleActive).toBeDefined();
+  });
+});
+
+describe("CRUD Completeness - All Entities", () => {
+  it("should have full CRUD for clientes (list, create, update, delete, toggleActive)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clientes.list).toBeDefined();
+    expect(caller.clientes.create).toBeDefined();
+    expect(caller.clientes.update).toBeDefined();
+    expect(caller.clientes.delete).toBeDefined();
+    expect(caller.clientes.toggleActive).toBeDefined();
+  });
+
+  it("should have full CRUD for parceiros (list, create, update, delete, toggleActive)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.parceiros.list).toBeDefined();
+    expect(caller.parceiros.create).toBeDefined();
+    expect(caller.parceiros.update).toBeDefined();
+    expect(caller.parceiros.delete).toBeDefined();
+    expect(caller.parceiros.toggleActive).toBeDefined();
+  });
+
+  it("should have full CRUD for servicos (list, create, update, delete, toggleActive)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.servicos.list).toBeDefined();
+    expect(caller.servicos.create).toBeDefined();
+    expect(caller.servicos.update).toBeDefined();
+    expect(caller.servicos.delete).toBeDefined();
+    expect(caller.servicos.toggleActive).toBeDefined();
+  });
+
+  it("should have full CRUD for users (list, create, update, delete, toggleActive)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.users.list).toBeDefined();
+    expect(caller.users.create).toBeDefined();
+    expect(caller.users.update).toBeDefined();
+    expect(caller.users.delete).toBeDefined();
+    expect(caller.users.toggleActive).toBeDefined();
+  });
+
+  it("should have full CRUD for setores (list, create, update, delete)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.setores.list).toBeDefined();
+    expect(caller.setores.create).toBeDefined();
+    expect(caller.setores.update).toBeDefined();
+    expect(caller.setores.delete).toBeDefined();
+  });
+
+  it("should have full CRUD for tarefas (list, create, update, delete)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.tarefas.list).toBeDefined();
+    expect(caller.tarefas.create).toBeDefined();
+    expect(caller.tarefas.update).toBeDefined();
+    expect(caller.tarefas.delete).toBeDefined();
+  });
+
+  it("should have full CRUD for teses (list, create, update, delete)", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.teses.list).toBeDefined();
+    expect(caller.teses.create).toBeDefined();
+    expect(caller.teses.update).toBeDefined();
+    expect(caller.teses.delete).toBeDefined();
+  });
+});
+
+describe("Access Control - toggleActive", () => {
+  it("should deny non-admin access to parceiros.toggleActive", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.parceiros.toggleActive({ id: 1, ativo: false })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to users.toggleActive", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.users.toggleActive({ id: 1, ativo: false })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to servicos.toggleActive", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.servicos.toggleActive({ id: 1, ativo: false })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to apiKeys.toggleActive", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.apiKeys.toggleActive({ id: 1, ativo: false })
+    ).rejects.toThrow();
+  });
+});
