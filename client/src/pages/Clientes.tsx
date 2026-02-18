@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useLocation, useSearch } from 'wouter';
@@ -16,10 +16,14 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { SEGMENTOS_ECONOMICOS } from '@/data/segmentosEconomicos';
 import {
   Plus, Search, Flag, AlertTriangle, Eye, Pencil, Trash2, Loader2,
   Building2, ArrowLeft, MoreVertical, Power, PowerOff, Filter,
   User, FileCheck, ShieldAlert, ShieldCheck, CalendarClock,
+  ChevronsUpDown, Check,
 } from 'lucide-react';
 
 const estadosBR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -106,6 +110,7 @@ export default function Clientes() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [parceiroTouched, setParceiroTouched] = useState(false);
   const [procuracaoTouched, setProcuracaoTouched] = useState(false);
+  const [segmentoOpen, setSegmentoOpen] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: clientes = [], isLoading } = trpc.clientes.list.useQuery();
@@ -132,6 +137,7 @@ export default function Clientes() {
     setJustificativas({});
     setParceiroTouched(false);
     setProcuracaoTouched(false);
+    setSegmentoOpen(false);
     setCnpjFonte(null);
   }
 
@@ -267,7 +273,6 @@ export default function Clientes() {
     }
 
     const cnaePrincipal = bestResult.cnaePrincipal;
-    const segmentoAuto = inferSegmento(cnaePrincipal);
 
     setForm(p => ({
       ...p,
@@ -281,7 +286,7 @@ export default function Clientes() {
       complemento: bestResult.complemento || p.complemento,
       cidade: bestResult.cidade || p.cidade,
       estado: bestResult.estado || p.estado,
-      segmentoEconomico: segmentoAuto || p.segmentoEconomico,
+      // segmentoEconomico: mantém manual
       cnaesSecundarios: bestResult.cnaesSecundarios.length > 0 ? bestResult.cnaesSecundarios : p.cnaesSecundarios,
       quadroSocietario: bestResult.quadroSocietario.length > 0 ? bestResult.quadroSocietario : p.quadroSocietario,
       situacaoCadastral: bestResult.situacaoCadastral || p.situacaoCadastral,
@@ -320,6 +325,10 @@ export default function Clientes() {
     }
     if (!form.classificacaoCliente) {
       toast.error('Selecione a Classificação do Cliente (Novo ou Base).'); return;
+    }
+    // Segmento econômico é obrigatório
+    if (!form.segmentoEconomico?.trim()) {
+      toast.error('Preencha o Segmento Econômico.'); return;
     }
     // Parceiro é obrigatório
     if (form.parceiroId === undefined) {
@@ -846,19 +855,58 @@ export default function Clientes() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs">CNAE Principal</Label>
-                      <Input value={form.cnaePrincipal} onChange={e => {
-                        const val = e.target.value;
-                        const seg = inferSegmento(val);
-                        setForm({ ...form, cnaePrincipal: val, segmentoEconomico: seg || form.segmentoEconomico });
-                      }} className="h-9 text-sm" placeholder="Ex: 4711302" />
+                      <Input value={form.cnaePrincipal} onChange={e => setForm({ ...form, cnaePrincipal: e.target.value })} className="h-9 text-sm" placeholder="Ex: 4711302" />
                     </div>
                     <div>
                       <Label className="text-xs">Descrição CNAE</Label>
                       <Input value={form.cnaePrincipalDescricao} onChange={e => setForm({ ...form, cnaePrincipalDescricao: e.target.value })} className="h-9 text-sm" />
                     </div>
                     <div>
-                      <Label className="text-xs">Segmento Econômico</Label>
-                      <Input value={form.segmentoEconomico} onChange={e => setForm({ ...form, segmentoEconomico: e.target.value })} className="h-9 text-sm" placeholder="Preenchido automaticamente pelo CNAE" />
+                      <Label className="text-xs">Segmento Econômico *</Label>
+                      <Popover open={segmentoOpen} onOpenChange={setSegmentoOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={segmentoOpen}
+                            className="w-full h-9 justify-between text-sm font-normal"
+                          >
+                            <span className={form.segmentoEconomico ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
+                              {form.segmentoEconomico || 'Selecione o segmento...'}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command filter={(value, search) => {
+                            if (!search) return 1;
+                            const normalizedValue = value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                            const normalizedSearch = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                            const words = normalizedSearch.split(/\s+/);
+                            return words.every(w => normalizedValue.includes(w)) ? 1 : 0;
+                          }}>
+                            <CommandInput placeholder="Digite para buscar..." />
+                            <CommandList className="max-h-[250px]">
+                              <CommandEmpty>Nenhum segmento encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {SEGMENTOS_ECONOMICOS.map((seg) => (
+                                  <CommandItem
+                                    key={seg}
+                                    value={seg}
+                                    onSelect={(val) => {
+                                      setForm(f => ({ ...f, segmentoEconomico: val === form.segmentoEconomico ? '' : val }));
+                                      setSegmentoOpen(false);
+                                    }}
+                                  >
+                                    <Check className={`mr-2 h-4 w-4 ${form.segmentoEconomico === seg ? 'opacity-100' : 'opacity-0'}`} />
+                                    <span className="text-xs">{seg}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
 

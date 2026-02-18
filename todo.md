@@ -425,3 +425,15 @@
 
 ### CNPJ
 - [x] Máscara automática de CNPJ (XX.XXX.XXX/XXXX-XX) ao digitar somente números
+
+## CRM v12.4 — Ajustes Detalhe do Cliente
+
+### Página de Detalhe do Cliente
+- [ ] Remover campos Atividades/Tributos (Industrializa, Comercializa, etc.) da página de detalhe
+- [ ] Incluir Folha Pagamento Média nos Dados Financeiros da página de detalhe
+- [ ] Incluir Folha Pagamento nos Alertas de Informação quando valor for zero
+
+### Segmento Econômico
+- [x] Remover preenchimento automático do segmento via CNPJ
+- [x] Deixar segmento econômico manual, em branco, com preenchimento obrigatório
+- [x] Campo Segmento Econômico como combobox com autocomplete (atividades do salario.com.br/empresas, ordem alfabética, filtro dinâmico ao digitar)

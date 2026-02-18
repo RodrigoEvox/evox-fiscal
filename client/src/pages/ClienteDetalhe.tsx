@@ -169,12 +169,6 @@ export default function ClienteDetalhe() {
                 <InfoRow label="Faturamento Médio" value={fmt(cliente.faturamentoMedioMensal)} />
                 <InfoRow label="Valor Médio Guias" value={fmt(cliente.valorMedioGuias)} />
                 <InfoRow label="Folha Pagamento" value={fmt(cliente.folhaPagamentoMedia)} />
-                <Separator className="my-2" />
-                <InfoRow label="Industrializa" value={cliente.industrializa ? 'Sim' : 'Não'} />
-                <InfoRow label="Comercializa" value={cliente.comercializa ? 'Sim' : 'Não'} />
-                <InfoRow label="Presta Serviços" value={cliente.prestaServicos ? 'Sim' : 'Não'} />
-                <InfoRow label="Contribuinte ICMS" value={cliente.contribuinteICMS ? 'Sim' : 'Não'} />
-                <InfoRow label="Contribuinte IPI" value={cliente.contribuinteIPI ? 'Sim' : 'Não'} />
               </CardContent>
             </Card>
 
