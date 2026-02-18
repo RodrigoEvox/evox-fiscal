@@ -368,3 +368,19 @@
 - [x] Alerta de próximo ao vencimento (7 dias antes)
 - [x] Alerta de procuração vencida
 - [x] Informação da procuração acompanha o cliente em todas as visões
+
+## CRM v12 — Reformulação do Formulário de Cliente
+
+### Layout do Formulário
+- [x] Remover abas/tabs do formulário de novo/editar cliente
+- [x] Tela única com rolagem contínua (todos os campos visíveis em sequência)
+- [x] Botão "Cadastrar Cliente" somente ao final do formulário
+
+### Campos Obrigatórios
+- [x] Parceiro Comercial como campo obrigatório (incluindo opção "Nenhum")
+- [x] Procuração Eletrônica como campo obrigatório (mesmo que desabilitada)
+
+### Proteção contra Perda de Dados
+- [x] Alerta de confirmação ao clicar em Cancelar
+- [x] Alerta de confirmação ao clicar fora do formulário (fechar dialog)
+- [x] Não perder dados preenchidos ao clicar acidentalmente

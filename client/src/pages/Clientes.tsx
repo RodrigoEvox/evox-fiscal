@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useLocation, useSearch } from 'wouter';
@@ -9,11 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -25,7 +24,6 @@ import {
 
 const estadosBR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
-// Mapeamento de CNAEs para segmentos econômicos
 const CNAE_SEGMENTOS: Record<string, string> = {
   '49': 'Transportadora', '50': 'Transportadora', '51': 'Transportadora',
   '47': 'Comércio Varejista', '46': 'Comércio Atacadista',
@@ -74,6 +72,20 @@ const EMPTY_FORM = {
   excecoesEspecificidades: '',
 };
 
+// Check if form has been modified from defaults
+function isFormDirty(form: typeof EMPTY_FORM): boolean {
+  if (form.cnpj || form.cpf || form.razaoSocial || form.nomeFantasia) return true;
+  if (form.regimeTributario || form.endereco || form.complemento || form.cidade) return true;
+  if (form.cnaePrincipal || form.segmentoEconomico || form.naturezaJuridica) return true;
+  if (form.faturamentoMedioMensal !== '0' || form.valorMedioGuias !== '0' || form.folhaPagamentoMedia !== '0') return true;
+  if (form.excecoesEspecificidades || form.procuracaoValidade || form.procuracaoCertificado) return true;
+  if (form.parceiroId !== undefined) return true;
+  if (form.procuracaoHabilitada) return true;
+  if (form.industrializa || form.comercializa || form.prestaServicos) return true;
+  if (form.contribuinteICMS || form.contribuinteIPI || form.regimeMonofasico) return true;
+  return false;
+}
+
 export default function Clientes() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -90,6 +102,9 @@ export default function Clientes() {
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'todos' | 'ativos' | 'inativos'>('todos');
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [parceiroTouched, setParceiroTouched] = useState(false);
+  const [procuracaoTouched, setProcuracaoTouched] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: clientes = [], isLoading } = trpc.clientes.list.useQuery();
@@ -114,6 +129,24 @@ export default function Clientes() {
     setForm(EMPTY_FORM);
     setEditingId(null);
     setJustificativas({});
+    setParceiroTouched(false);
+    setProcuracaoTouched(false);
+  }
+
+  // Attempt to close the form — show confirmation if dirty
+  function tryCloseForm() {
+    if (isFormDirty(form) || editingId) {
+      setShowCancelConfirm(true);
+    } else {
+      setShowForm(false);
+      resetForm();
+    }
+  }
+
+  function confirmCloseForm() {
+    setShowCancelConfirm(false);
+    setShowForm(false);
+    resetForm();
   }
 
   const missingFields = useMemo(() => {
@@ -137,24 +170,19 @@ export default function Clientes() {
       if (!resp.ok) throw new Error('CNPJ não encontrado');
       const data = await resp.json();
 
-      // CNAEs secundários
       const cnaesSecundarios: CnaeSecundario[] = (data.cnaes_secundarios || []).map((c: any) => ({
         codigo: c.codigo?.toString() || '',
         descricao: c.descricao || '',
       }));
 
-      // Quadro societário
       const quadroSocietario: QuadroSocio[] = (data.qsa || []).map((s: any) => ({
         nome: s.nome_socio || '',
         qualificacao: s.qualificacao_socio || '',
         faixaEtaria: s.faixa_etaria || '',
       }));
 
-      // Segmento econômico baseado no CNAE
       const cnaePrincipal = data.cnae_fiscal?.toString() || '';
       const segmentoAuto = inferSegmento(cnaePrincipal);
-
-      // Complemento do endereço
       const complemento = data.complemento || '';
 
       setForm(p => ({
@@ -195,6 +223,24 @@ export default function Clientes() {
     if (!form.regimeTributario) {
       toast.error('Regime Tributário é obrigatório.'); return;
     }
+    // Parceiro é obrigatório (deve ter sido tocado)
+    if (!parceiroTouched && !editingId) {
+      toast.error('Selecione o Parceiro Comercial (mesmo que "Nenhum").'); return;
+    }
+    // Procuração é obrigatória (deve ter sido tocada)
+    if (!procuracaoTouched && !editingId) {
+      toast.error('Defina o status da Procuração Eletrônica.'); return;
+    }
+    // Se procuração habilitada, certificado e validade são obrigatórios
+    if (form.procuracaoHabilitada) {
+      if (!form.procuracaoCertificado) {
+        toast.error('Selecione o Certificado Vinculado à procuração.'); return;
+      }
+      if (!form.procuracaoValidade) {
+        toast.error('Informe a Data de Validade da procuração.'); return;
+      }
+    }
+
     const unjustified = missingFields.filter(f => !justificativas[f]?.trim());
     if (unjustified.length > 0 && !editingId) {
       toast.warning('Preencha os campos faltantes ou forneça justificativa para cada um.'); return;
@@ -260,10 +306,11 @@ export default function Clientes() {
       excecoesEspecificidades: cliente.excecoesEspecificidades || '',
     });
     setEditingId(cliente.id);
+    setParceiroTouched(true);
+    setProcuracaoTouched(true);
     setShowForm(true);
   }
 
-  // Verificar status da procuração
   function procuracaoStatus(cliente: any) {
     if (!cliente.procuracaoHabilitada) return 'desabilitada';
     if (!cliente.procuracaoValidade) return 'habilitada';
@@ -300,6 +347,14 @@ export default function Clientes() {
   };
 
   const activeFilter = filterPrioridade || filterRedFlags;
+
+  // Section header component for visual separation
+  const SectionHeader = ({ title, icon }: { title: string; icon?: React.ReactNode }) => (
+    <div className="flex items-center gap-2 pt-2 pb-1">
+      {icon}
+      <h3 className="text-sm font-bold text-foreground tracking-wide uppercase">{title}</h3>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -379,11 +434,9 @@ export default function Clientes() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
-                      {/* Classificação Novo/Base */}
                       <Badge className={`text-[10px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                         {cliente.classificacaoCliente === 'novo' ? 'Novo' : 'Base'}
                       </Badge>
-                      {/* Procuração */}
                       {procStatus === 'vencida' && (
                         <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] gap-1">
                           <ShieldAlert className="w-3 h-3" /> Proc. Vencida
@@ -445,444 +498,461 @@ export default function Clientes() {
         </div>
       )}
 
-      {/* Form Dialog */}
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); resetForm(); } }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>{editingId ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+      {/* ==================== FORMULÁRIO ÚNICO COM ROLAGEM ==================== */}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) tryCloseForm(); }}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex flex-col" onPointerDownOutside={(e) => { e.preventDefault(); tryCloseForm(); }} onEscapeKeyDown={(e) => { e.preventDefault(); tryCloseForm(); }}>
+          <DialogHeader className="shrink-0 pb-2 border-b">
+            <DialogTitle className="text-lg">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+            <p className="text-xs text-muted-foreground">Preencha todos os dados abaixo. Campos com * são obrigatórios.</p>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto pr-2" style={{ minHeight: 0 }}>
-            <Tabs defaultValue="dados" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-4 sticky top-0 z-10 bg-background">
-                <TabsTrigger value="dados" className="text-xs">Dados Básicos</TabsTrigger>
-                <TabsTrigger value="cnae" className="text-xs">CNAE e Segmento</TabsTrigger>
-                <TabsTrigger value="atividades" className="text-xs">Atividades</TabsTrigger>
-                <TabsTrigger value="financeiro" className="text-xs">Financeiro</TabsTrigger>
-                <TabsTrigger value="procuracao" className="text-xs">Procuração</TabsTrigger>
-              </TabsList>
 
-              {/* ===== ABA 1: DADOS BÁSICOS ===== */}
-              <TabsContent value="dados" className="space-y-5">
-                {/* Tipo de Pessoa */}
-                <div>
-                  <Label className="text-xs font-semibold">Tipo de Pessoa</Label>
-                  <div className="flex gap-3 mt-2">
-                    <Button
-                      type="button"
-                      variant={form.tipoPessoa === 'juridica' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setForm(f => ({ ...f, tipoPessoa: 'juridica' }))}
-                      className="gap-2"
-                    >
-                      <Building2 className="w-4 h-4" /> Pessoa Jurídica
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={form.tipoPessoa === 'fisica' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setForm(f => ({ ...f, tipoPessoa: 'fisica' }))}
-                      className="gap-2"
-                    >
-                      <User className="w-4 h-4" /> Pessoa Física
-                    </Button>
+          <div className="flex-1 overflow-y-auto pr-2 space-y-6 py-4" style={{ minHeight: 0 }}>
+
+            {/* ===== SEÇÃO 1: TIPO E CLASSIFICAÇÃO ===== */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs font-semibold">Tipo de Pessoa</Label>
+                <div className="flex gap-3 mt-2">
+                  <Button type="button" variant={form.tipoPessoa === 'juridica' ? 'default' : 'outline'} size="sm"
+                    onClick={() => setForm(f => ({ ...f, tipoPessoa: 'juridica' }))} className="gap-2">
+                    <Building2 className="w-4 h-4" /> Pessoa Jurídica
+                  </Button>
+                  <Button type="button" variant={form.tipoPessoa === 'fisica' ? 'default' : 'outline'} size="sm"
+                    onClick={() => setForm(f => ({ ...f, tipoPessoa: 'fisica' }))} className="gap-2">
+                    <User className="w-4 h-4" /> Pessoa Física
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Classificação do Cliente</Label>
+                <div className="flex gap-3 mt-2">
+                  <Button type="button" variant={form.classificacaoCliente === 'novo' ? 'default' : 'outline'} size="sm"
+                    onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'novo' }))}
+                    className={`gap-2 ${form.classificacaoCliente === 'novo' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}>
+                    Cliente Novo
+                  </Button>
+                  <Button type="button" variant={form.classificacaoCliente === 'base' ? 'default' : 'outline'} size="sm"
+                    onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'base' }))}>
+                    Cliente Base
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Clientes novos são convertidos automaticamente para "Base" após 90 dias.
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ===== SEÇÃO 2: DADOS DA EMPRESA / PESSOA ===== */}
+            <div className="space-y-4">
+              <SectionHeader title={form.tipoPessoa === 'juridica' ? 'Dados da Empresa' : 'Dados Pessoais'} icon={form.tipoPessoa === 'juridica' ? <Building2 className="w-4 h-4 text-muted-foreground" /> : <User className="w-4 h-4 text-muted-foreground" />} />
+
+              {form.tipoPessoa === 'juridica' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">CNPJ *</Label>
+                    <div className="flex gap-2">
+                      <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm" />
+                      <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 gap-1 text-xs" onClick={consultarCNPJ} disabled={consultandoCnpj}>
+                        {consultandoCnpj ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                        Consultar
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Razão Social *</Label>
+                    <Input value={form.razaoSocial} onChange={e => setForm({ ...form, razaoSocial: e.target.value })} className="h-9 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Nome Fantasia</Label>
+                    <Input value={form.nomeFantasia} onChange={e => setForm({ ...form, nomeFantasia: e.target.value })} className="h-9 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Data de Abertura</Label>
+                    <Input type="date" value={form.dataAbertura} onChange={e => setForm({ ...form, dataAbertura: e.target.value })} className="h-9 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Natureza Jurídica</Label>
+                    <Input value={form.naturezaJuridica} onChange={e => setForm({ ...form, naturezaJuridica: e.target.value })} className="h-9 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Regime Tributário *</Label>
+                    <Select value={form.regimeTributario} onValueChange={v => setForm({ ...form, regimeTributario: v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
+                        <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
+                        <SelectItem value="lucro_real">Lucro Real</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Situação Cadastral</Label>
+                    <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativa">Ativa</SelectItem>
+                        <SelectItem value="baixada">Baixada</SelectItem>
+                        <SelectItem value="inapta">Inapta</SelectItem>
+                        <SelectItem value="suspensa">Suspensa</SelectItem>
+                        <SelectItem value="nula">Nula</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-
-                {/* Classificação Novo/Base */}
-                <div>
-                  <Label className="text-xs font-semibold">Classificação do Cliente</Label>
-                  <div className="flex gap-3 mt-2">
-                    <Button
-                      type="button"
-                      variant={form.classificacaoCliente === 'novo' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'novo' }))}
-                      className={`gap-2 ${form.classificacaoCliente === 'novo' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                    >
-                      Cliente Novo
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={form.classificacaoCliente === 'base' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setForm(f => ({ ...f, classificacaoCliente: 'base' }))}
-                    >
-                      Cliente Base
-                    </Button>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">CPF *</Label>
+                    <Input value={form.cpf} onChange={e => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" className="h-9 text-sm" />
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Clientes novos são convertidos automaticamente para "Base" após 90 dias.
-                  </p>
-                </div>
-
-                <Separator />
-
-                {form.tipoPessoa === 'juridica' ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">CNPJ *</Label>
-                      <div className="flex gap-2">
-                        <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm" />
-                        <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 gap-1 text-xs" onClick={consultarCNPJ} disabled={consultandoCnpj}>
-                          {consultandoCnpj ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                          Consultar
-                        </Button>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Razão Social *</Label>
-                      <Input value={form.razaoSocial} onChange={e => setForm({ ...form, razaoSocial: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Nome Fantasia</Label>
-                      <Input value={form.nomeFantasia} onChange={e => setForm({ ...form, nomeFantasia: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Data de Abertura</Label>
-                      <Input type="date" value={form.dataAbertura} onChange={e => setForm({ ...form, dataAbertura: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Natureza Jurídica</Label>
-                      <Input value={form.naturezaJuridica} onChange={e => setForm({ ...form, naturezaJuridica: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Regime Tributário *</Label>
-                      <Select value={form.regimeTributario} onValueChange={v => setForm({ ...form, regimeTributario: v })}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
-                          <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
-                          <SelectItem value="lucro_real">Lucro Real</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Situação Cadastral</Label>
-                      <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ativa">Ativa</SelectItem>
-                          <SelectItem value="baixada">Baixada</SelectItem>
-                          <SelectItem value="inapta">Inapta</SelectItem>
-                          <SelectItem value="suspensa">Suspensa</SelectItem>
-                          <SelectItem value="nula">Nula</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label className="text-xs">Nome Completo *</Label>
+                    <Input value={form.razaoSocial} onChange={e => setForm({ ...form, razaoSocial: e.target.value })} className="h-9 text-sm" placeholder="Nome completo" />
                   </div>
-                ) : (
-                  /* Pessoa Física */
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">CPF *</Label>
-                      <Input value={form.cpf} onChange={e => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Nome Completo *</Label>
-                      <Input value={form.razaoSocial} onChange={e => setForm({ ...form, razaoSocial: e.target.value })} className="h-9 text-sm" placeholder="Nome completo" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Regime Tributário *</Label>
-                      <Select value={form.regimeTributario} onValueChange={v => setForm({ ...form, regimeTributario: v })}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
-                          <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
-                          <SelectItem value="lucro_real">Lucro Real</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Situação Cadastral</Label>
-                      <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ativa">Ativa</SelectItem>
-                          <SelectItem value="baixada">Baixada</SelectItem>
-                          <SelectItem value="inapta">Inapta</SelectItem>
-                          <SelectItem value="suspensa">Suspensa</SelectItem>
-                          <SelectItem value="nula">Nula</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label className="text-xs">Regime Tributário *</Label>
+                    <Select value={form.regimeTributario} onValueChange={v => setForm({ ...form, regimeTributario: v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
+                        <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
+                        <SelectItem value="lucro_real">Lucro Real</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-
-                <Separator />
-
-                {/* Endereço */}
-                <div>
-                  <h3 className="text-sm font-semibold mb-3">Endereço</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <Label className="text-xs">Logradouro, Número, Bairro</Label>
-                      <Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} className="h-9 text-sm" placeholder="Rua, número, bairro" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Complemento</Label>
-                      <Input value={form.complemento} onChange={e => setForm({ ...form, complemento: e.target.value })} className="h-9 text-sm" placeholder="Sala, andar, bloco..." />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Cidade</Label>
-                      <Input value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Estado (UF)</Label>
-                      <Select value={form.estado} onValueChange={v => setForm({ ...form, estado: v })}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {estadosBR.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label className="text-xs">Situação Cadastral</Label>
+                    <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativa">Ativa</SelectItem>
+                        <SelectItem value="baixada">Baixada</SelectItem>
+                        <SelectItem value="inapta">Inapta</SelectItem>
+                        <SelectItem value="suspensa">Suspensa</SelectItem>
+                        <SelectItem value="nula">Nula</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <Separator />
+            <Separator />
 
-                {/* Parceiro Comercial */}
+            {/* ===== SEÇÃO 3: ENDEREÇO ===== */}
+            <div className="space-y-3">
+              <SectionHeader title="Endereço" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Label className="text-xs">Logradouro, Número, Bairro</Label>
+                  <Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} className="h-9 text-sm" placeholder="Rua, número, bairro" />
+                </div>
                 <div>
-                  <h3 className="text-sm font-semibold mb-3">Parceiro Comercial</h3>
-                  <Select value={form.parceiroId?.toString() || 'none'} onValueChange={v => setForm({ ...form, parceiroId: v === 'none' ? undefined : Number(v) })}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <Label className="text-xs">Complemento</Label>
+                  <Input value={form.complemento} onChange={e => setForm({ ...form, complemento: e.target.value })} className="h-9 text-sm" placeholder="Sala, andar, bloco..." />
+                </div>
+                <div>
+                  <Label className="text-xs">Cidade</Label>
+                  <Input value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">Estado (UF)</Label>
+                  <Select value={form.estado} onValueChange={v => setForm({ ...form, estado: v })}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {parceiros.filter((p: any) => p.ativo).map((p: any) => <SelectItem key={p.id} value={p.id.toString()}>{p.nomeCompleto}</SelectItem>)}
+                      {estadosBR.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            </div>
 
-                {/* Exceções */}
+            <Separator />
+
+            {/* ===== SEÇÃO 4: PARCEIRO COMERCIAL (OBRIGATÓRIO) ===== */}
+            <div className="space-y-3">
+              <SectionHeader title="Parceiro Comercial *" />
+              {!parceiroTouched && !editingId && (
+                <div className="p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Campo obrigatório — selecione o parceiro comercial ou "Nenhum".
+                </div>
+              )}
+              <Select
+                value={form.parceiroId?.toString() || 'none'}
+                onValueChange={v => {
+                  setForm({ ...form, parceiroId: v === 'none' ? undefined : Number(v) });
+                  setParceiroTouched(true);
+                }}
+              >
+                <SelectTrigger className={`h-9 text-sm ${!parceiroTouched && !editingId ? 'border-amber-400 ring-1 ring-amber-200' : ''}`}>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {parceiros.filter((p: any) => p.ativo).map((p: any) => <SelectItem key={p.id} value={p.id.toString()}>{p.nomeCompleto}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* ===== SEÇÃO 5: CNAE E SEGMENTO ===== */}
+            {form.tipoPessoa === 'juridica' && (
+              <>
+                <div className="space-y-3">
+                  <SectionHeader title="CNAE e Segmento" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">CNAE Principal</Label>
+                      <Input value={form.cnaePrincipal} onChange={e => {
+                        const val = e.target.value;
+                        const seg = inferSegmento(val);
+                        setForm({ ...form, cnaePrincipal: val, segmentoEconomico: seg || form.segmentoEconomico });
+                      }} className="h-9 text-sm" placeholder="Ex: 4711302" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Descrição CNAE</Label>
+                      <Input value={form.cnaePrincipalDescricao} onChange={e => setForm({ ...form, cnaePrincipalDescricao: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Segmento Econômico</Label>
+                      <Input value={form.segmentoEconomico} onChange={e => setForm({ ...form, segmentoEconomico: e.target.value })} className="h-9 text-sm" placeholder="Preenchido automaticamente pelo CNAE" />
+                    </div>
+                  </div>
+
+                  {/* CNAEs Secundários */}
+                  {form.cnaesSecundarios.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold mb-2">CNAEs Secundários ({form.cnaesSecundarios.length})</h4>
+                      <div className="max-h-36 overflow-y-auto border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow><TableHead className="text-xs">Código</TableHead><TableHead className="text-xs">Descrição</TableHead></TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {form.cnaesSecundarios.map((c, i) => (
+                              <TableRow key={i}>
+                                <TableCell className="text-xs py-1 font-mono">{c.codigo}</TableCell>
+                                <TableCell className="text-xs py-1">{c.descricao}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quadro Societário */}
+                  {form.quadroSocietario.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold mb-2">Quadro Societário ({form.quadroSocietario.length})</h4>
+                      <div className="max-h-36 overflow-y-auto border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Nome</TableHead>
+                              <TableHead className="text-xs">Qualificação</TableHead>
+                              <TableHead className="text-xs w-[100px]">Faixa Etária</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {form.quadroSocietario.map((socio, i) => (
+                              <TableRow key={i}>
+                                <TableCell className="text-xs py-1">{socio.nome}</TableCell>
+                                <TableCell className="text-xs py-1">{socio.qualificacao}</TableCell>
+                                <TableCell className="text-xs py-1">{socio.faixaEtaria || '—'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Separator />
+              </>
+            )}
+
+            {/* ===== SEÇÃO 6: ATIVIDADES E TRIBUTOS ===== */}
+            <div className="space-y-3">
+              <SectionHeader title="Atividades e Tributos" />
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { key: 'industrializa', label: 'Industrializa' },
+                  { key: 'comercializa', label: 'Comercializa' },
+                  { key: 'prestaServicos', label: 'Presta Serviços' },
+                  { key: 'contribuinteICMS', label: 'Contribuinte ICMS' },
+                  { key: 'contribuinteIPI', label: 'Contribuinte IPI' },
+                  { key: 'regimeMonofasico', label: 'Regime Monofásico' },
+                  { key: 'processosJudiciaisAtivos', label: 'Processos Judiciais' },
+                  { key: 'parcelamentosAtivos', label: 'Parcelamentos Ativos' },
+                ].map(sw => (
+                  <div key={sw.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                    <Label className="text-xs">{sw.label}</Label>
+                    <Switch checked={(form as any)[sw.key]} onCheckedChange={v => setForm({ ...form, [sw.key]: v })} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ===== SEÇÃO 7: DADOS FINANCEIROS ===== */}
+            <div className="space-y-3">
+              <SectionHeader title="Dados Financeiros" />
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Exceções / Especificidades</Label>
-                  <Textarea value={form.excecoesEspecificidades} onChange={e => setForm({ ...form, excecoesEspecificidades: e.target.value })} rows={3} className="text-sm" placeholder="Descreva exceções ou especificidades do cliente..." />
+                  <Label className="text-xs">Faturamento Médio (R$)</Label>
+                  <Input type="number" value={form.faturamentoMedioMensal} onChange={e => setForm({ ...form, faturamentoMedioMensal: e.target.value })} className="h-9 text-sm" />
                 </div>
-              </TabsContent>
+                <div>
+                  <Label className="text-xs">Valor Médio Guias (R$)</Label>
+                  <Input type="number" value={form.valorMedioGuias} onChange={e => setForm({ ...form, valorMedioGuias: e.target.value })} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">Folha Pagamento Média (R$)</Label>
+                  <Input type="number" value={form.folhaPagamentoMedia} onChange={e => setForm({ ...form, folhaPagamentoMedia: e.target.value })} className="h-9 text-sm" />
+                </div>
+              </div>
 
-              {/* ===== ABA 2: CNAE E SEGMENTO ===== */}
-              <TabsContent value="cnae" className="space-y-5">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">CNAE Principal</Label>
-                    <Input value={form.cnaePrincipal} onChange={e => {
-                      const val = e.target.value;
-                      const seg = inferSegmento(val);
-                      setForm(f => ({ ...f, cnaePrincipal: val, segmentoEconomico: seg || f.segmentoEconomico }));
-                    }} className="h-9 text-sm" />
+              {/* Missing fields alerts */}
+              {missingFields.length > 0 && !editingId && (
+                <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-800">Campos com informações faltantes</span>
                   </div>
-                  <div>
-                    <Label className="text-xs">Descrição CNAE</Label>
-                    <Input value={form.cnaePrincipalDescricao} onChange={e => setForm({ ...form, cnaePrincipalDescricao: e.target.value })} className="h-9 text-sm" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Segmento Econômico</Label>
-                    <Input value={form.segmentoEconomico} onChange={e => setForm({ ...form, segmentoEconomico: e.target.value })} className="h-9 text-sm" />
+                  <p className="text-xs text-amber-700 mb-3">
+                    Forneça uma justificativa para cada campo faltante para prosseguir com o cadastro.
+                  </p>
+                  <div className="space-y-2">
+                    {missingFields.map(field => (
+                      <div key={field} className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] shrink-0 w-32 justify-center">{fieldLabel(field)}</Badge>
+                        <Input
+                          placeholder="Justificativa..."
+                          value={justificativas[field] || ''}
+                          onChange={e => setJustificativas({ ...justificativas, [field]: e.target.value })}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* CNAEs Secundários */}
-                {form.cnaesSecundarios.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-2">CNAEs Secundários ({form.cnaesSecundarios.length})</h3>
-                    <div className="max-h-48 overflow-y-auto border rounded-md">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs w-[120px]">Código</TableHead>
-                            <TableHead className="text-xs">Descrição</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {form.cnaesSecundarios.map((cnae, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="text-xs font-mono py-1">{cnae.codigo}</TableCell>
-                              <TableCell className="text-xs py-1">{cnae.descricao}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
+            <Separator />
+
+            {/* ===== SEÇÃO 8: PROCURAÇÃO ELETRÔNICA (OBRIGATÓRIA) ===== */}
+            <div className="space-y-3">
+              <SectionHeader title="Procuração Eletrônica *" icon={<FileCheck className="w-4 h-4 text-muted-foreground" />} />
+
+              {!procuracaoTouched && !editingId && (
+                <div className="p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Campo obrigatório — defina o status da procuração eletrônica.
+                </div>
+              )}
+
+              <div className={`flex items-center gap-3 p-4 rounded-lg border ${!procuracaoTouched && !editingId ? 'border-amber-400 ring-1 ring-amber-200' : ''}`}>
+                <Switch
+                  checked={form.procuracaoHabilitada}
+                  onCheckedChange={v => {
+                    setForm({ ...form, procuracaoHabilitada: v });
+                    setProcuracaoTouched(true);
+                  }}
+                />
+                <div>
+                  <Label className="text-sm font-medium">
+                    {form.procuracaoHabilitada ? (
+                      <span className="text-green-600 flex items-center gap-1"><ShieldCheck className="w-4 h-4" /> Habilitada</span>
+                    ) : (
+                      <span className="text-red-500 flex items-center gap-1"><ShieldAlert className="w-4 h-4" /> Desabilitada</span>
+                    )}
+                  </Label>
+                  <p className="text-[10px] text-muted-foreground">
+                    {form.procuracaoHabilitada ? 'Procuração eletrônica está ativa para este cliente.' : 'Procuração eletrônica não está habilitada. Ative para configurar.'}
+                  </p>
+                </div>
+                {!procuracaoTouched && !editingId && (
+                  <Button type="button" variant="outline" size="sm" className="ml-auto text-xs h-7"
+                    onClick={() => setProcuracaoTouched(true)}>
+                    Confirmar Desabilitada
+                  </Button>
                 )}
+              </div>
 
-                {/* Quadro Societário */}
-                {form.quadroSocietario.length > 0 && (
+              {form.procuracaoHabilitada && (
+                <div className="grid grid-cols-2 gap-3 p-4 rounded-lg bg-green-50/50 border border-green-100">
                   <div>
-                    <h3 className="text-sm font-semibold mb-2">Quadro Societário ({form.quadroSocietario.length})</h3>
-                    <div className="max-h-48 overflow-y-auto border rounded-md">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs">Nome</TableHead>
-                            <TableHead className="text-xs">Qualificação</TableHead>
-                            <TableHead className="text-xs w-[100px]">Faixa Etária</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {form.quadroSocietario.map((socio, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="text-xs py-1">{socio.nome}</TableCell>
-                              <TableCell className="text-xs py-1">{socio.qualificacao}</TableCell>
-                              <TableCell className="text-xs py-1">{socio.faixaEtaria || '—'}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-
-                {form.cnaesSecundarios.length === 0 && form.quadroSocietario.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    <FileCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    Consulte o CNPJ na aba "Dados Básicos" para preencher automaticamente os CNAEs secundários e o quadro societário.
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* ===== ABA 3: ATIVIDADES ===== */}
-              <TabsContent value="atividades" className="space-y-5">
-                <h3 className="text-sm font-semibold mb-3">Atividades e Tributos</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { key: 'industrializa', label: 'Industrializa' },
-                    { key: 'comercializa', label: 'Comercializa' },
-                    { key: 'prestaServicos', label: 'Presta Serviços' },
-                    { key: 'contribuinteICMS', label: 'Contribuinte ICMS' },
-                    { key: 'contribuinteIPI', label: 'Contribuinte IPI' },
-                    { key: 'regimeMonofasico', label: 'Regime Monofásico' },
-                    { key: 'processosJudiciaisAtivos', label: 'Processos Judiciais' },
-                    { key: 'parcelamentosAtivos', label: 'Parcelamentos Ativos' },
-                  ].map(sw => (
-                    <div key={sw.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                      <Label className="text-xs">{sw.label}</Label>
-                      <Switch checked={(form as any)[sw.key]} onCheckedChange={v => setForm({ ...form, [sw.key]: v })} />
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* ===== ABA 4: FINANCEIRO ===== */}
-              <TabsContent value="financeiro" className="space-y-5">
-                <h3 className="text-sm font-semibold mb-3">Dados Financeiros</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">Faturamento Médio (R$)</Label>
-                    <Input type="number" value={form.faturamentoMedioMensal} onChange={e => setForm({ ...form, faturamentoMedioMensal: e.target.value })} className="h-9 text-sm" />
+                    <Label className="text-xs">Certificado Vinculado *</Label>
+                    <Select value={form.procuracaoCertificado || 'none'} onValueChange={v => setForm({ ...form, procuracaoCertificado: v === 'none' ? '' : v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Selecione...</SelectItem>
+                        <SelectItem value="Gercino Neto">Gercino Neto</SelectItem>
+                        <SelectItem value="Evox Fiscal">Evox Fiscal</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Valor Médio Guias (R$)</Label>
-                    <Input type="number" value={form.valorMedioGuias} onChange={e => setForm({ ...form, valorMedioGuias: e.target.value })} className="h-9 text-sm" />
+                    <Label className="text-xs">Data de Validade *</Label>
+                    <Input type="date" value={form.procuracaoValidade} onChange={e => setForm({ ...form, procuracaoValidade: e.target.value })} className="h-9 text-sm" />
                   </div>
-                  <div>
-                    <Label className="text-xs">Folha Pagamento Média (R$)</Label>
-                    <Input type="number" value={form.folhaPagamentoMedia} onChange={e => setForm({ ...form, folhaPagamentoMedia: e.target.value })} className="h-9 text-sm" />
-                  </div>
-                </div>
-
-                {/* Missing fields alerts */}
-                {missingFields.length > 0 && !editingId && (
-                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600" />
-                      <span className="text-sm font-semibold text-amber-800">Campos com informações faltantes</span>
-                    </div>
-                    <p className="text-xs text-amber-700 mb-3">
-                      Forneça uma justificativa para cada campo faltante para prosseguir com o cadastro.
-                    </p>
-                    <div className="space-y-2">
-                      {missingFields.map(field => (
-                        <div key={field} className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] shrink-0 w-32 justify-center">{fieldLabel(field)}</Badge>
-                          <Input
-                            placeholder="Justificativa..."
-                            value={justificativas[field] || ''}
-                            onChange={e => setJustificativas({ ...justificativas, [field]: e.target.value })}
-                            className="h-7 text-xs"
-                          />
+                  {form.procuracaoValidade && (() => {
+                    const validade = new Date(form.procuracaoValidade);
+                    const hoje = new Date();
+                    const diffDias = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDias < 0) return (
+                      <div className="col-span-2 p-3 rounded-lg bg-red-100 border border-red-200 flex items-center gap-2">
+                        <ShieldAlert className="w-5 h-5 text-red-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-red-700">Procuração Vencida</p>
+                          <p className="text-xs text-red-600">Venceu há {Math.abs(diffDias)} dias. Renove imediatamente.</p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* ===== ABA 5: PROCURAÇÃO ===== */}
-              <TabsContent value="procuracao" className="space-y-5">
-                <h3 className="text-sm font-semibold mb-3">Procuração Eletrônica</h3>
-
-                <div className="flex items-center gap-3 p-4 rounded-lg border">
-                  <Switch checked={form.procuracaoHabilitada} onCheckedChange={v => setForm({ ...form, procuracaoHabilitada: v })} />
-                  <div>
-                    <Label className="text-sm font-medium">
-                      {form.procuracaoHabilitada ? (
-                        <span className="text-green-600 flex items-center gap-1"><ShieldCheck className="w-4 h-4" /> Habilitada</span>
-                      ) : (
-                        <span className="text-red-500 flex items-center gap-1"><ShieldAlert className="w-4 h-4" /> Desabilitada</span>
-                      )}
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground">
-                      {form.procuracaoHabilitada ? 'Procuração eletrônica está ativa para este cliente.' : 'Procuração eletrônica não está habilitada. Ative para configurar.'}
-                    </p>
-                  </div>
+                      </div>
+                    );
+                    if (diffDias <= 7) return (
+                      <div className="col-span-2 p-3 rounded-lg bg-amber-100 border border-amber-200 flex items-center gap-2">
+                        <CalendarClock className="w-5 h-5 text-amber-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-700">Próximo ao Vencimento</p>
+                          <p className="text-xs text-amber-600">Vence em {diffDias} dia{diffDias !== 1 ? 's' : ''}. Providencie a renovação.</p>
+                        </div>
+                      </div>
+                    );
+                    return (
+                      <div className="col-span-2 p-3 rounded-lg bg-green-100 border border-green-200 flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-green-700">Procuração Válida</p>
+                          <p className="text-xs text-green-600">Vence em {diffDias} dias ({validade.toLocaleDateString('pt-BR')}).</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
+              )}
+            </div>
 
-                {form.procuracaoHabilitada && (
-                  <div className="grid grid-cols-2 gap-3 p-4 rounded-lg bg-green-50/50 border border-green-100">
-                    <div>
-                      <Label className="text-xs">Certificado Vinculado *</Label>
-                      <Select value={form.procuracaoCertificado || 'none'} onValueChange={v => setForm({ ...form, procuracaoCertificado: v === 'none' ? '' : v })}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Selecione...</SelectItem>
-                          <SelectItem value="Gercino Neto">Gercino Neto</SelectItem>
-                          <SelectItem value="Evox Fiscal">Evox Fiscal</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Data de Validade *</Label>
-                      <Input type="date" value={form.procuracaoValidade} onChange={e => setForm({ ...form, procuracaoValidade: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    {form.procuracaoValidade && (() => {
-                      const validade = new Date(form.procuracaoValidade);
-                      const hoje = new Date();
-                      const diffDias = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-                      if (diffDias < 0) return (
-                        <div className="col-span-2 p-3 rounded-lg bg-red-100 border border-red-200 flex items-center gap-2">
-                          <ShieldAlert className="w-5 h-5 text-red-600" />
-                          <div>
-                            <p className="text-sm font-semibold text-red-700">Procuração Vencida</p>
-                            <p className="text-xs text-red-600">Venceu há {Math.abs(diffDias)} dias. Renove imediatamente.</p>
-                          </div>
-                        </div>
-                      );
-                      if (diffDias <= 7) return (
-                        <div className="col-span-2 p-3 rounded-lg bg-amber-100 border border-amber-200 flex items-center gap-2">
-                          <CalendarClock className="w-5 h-5 text-amber-600" />
-                          <div>
-                            <p className="text-sm font-semibold text-amber-700">Próximo ao Vencimento</p>
-                            <p className="text-xs text-amber-600">Vence em {diffDias} dia{diffDias !== 1 ? 's' : ''}. Providencie a renovação.</p>
-                          </div>
-                        </div>
-                      );
-                      return (
-                        <div className="col-span-2 p-3 rounded-lg bg-green-100 border border-green-200 flex items-center gap-2">
-                          <ShieldCheck className="w-5 h-5 text-green-600" />
-                          <div>
-                            <p className="text-sm font-semibold text-green-700">Procuração Válida</p>
-                            <p className="text-xs text-green-600">Vence em {diffDias} dias ({validade.toLocaleDateString('pt-BR')}).</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+            <Separator />
+
+            {/* ===== SEÇÃO 9: EXCEÇÕES ===== */}
+            <div className="space-y-3">
+              <SectionHeader title="Exceções / Especificidades" />
+              <Textarea value={form.excecoesEspecificidades} onChange={e => setForm({ ...form, excecoesEspecificidades: e.target.value })} rows={3} className="text-sm" placeholder="Descreva exceções ou especificidades do cliente..." />
+            </div>
+
           </div>
+
+          {/* FOOTER FIXO */}
           <DialogFooter className="pt-4 border-t shrink-0">
-            <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>Cancelar</Button>
+            <Button variant="outline" onClick={tryCloseForm}>Cancelar</Button>
             <Button onClick={handleSave} disabled={createCliente.isPending || updateCliente.isPending}>
               {(createCliente.isPending || updateCliente.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {editingId ? 'Salvar Alterações' : 'Cadastrar Cliente'}
@@ -891,7 +961,25 @@ export default function Clientes() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm Delete Dialog */}
+      {/* ==================== ALERTA DE CONFIRMAÇÃO DE CANCELAMENTO ==================== */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem dados preenchidos no formulário. Se sair agora, todas as informações serão perdidas. Deseja realmente cancelar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCloseForm} className="bg-red-600 hover:bg-red-700">
+              Descartar e Sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ==================== CONFIRM DELETE ==================== */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
