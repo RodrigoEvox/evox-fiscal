@@ -296,7 +296,8 @@ export const auditLog = mysqlTable("audit_log", {
   id: int("id").autoincrement().primaryKey(),
   acao: mysqlEnum("acao", [
     "criar", "editar", "excluir", "visualizar", "login", "logout",
-    "atribuir", "concluir", "comentar", "upload", "download", "exportar"
+    "atribuir", "concluir", "comentar", "upload", "download", "exportar",
+    "ativar", "inativar"
   ]).notNull(),
   entidadeTipo: varchar("entidadeTipo", { length: 50 }).notNull(), // 'cliente', 'tarefa', 'tese', etc.
   entidadeId: int("entidadeId"),
@@ -338,11 +339,20 @@ export const servicos = mysqlTable("servicos", {
   setoresIds: json("setoresIds").$type<number[]>(), // setores envolvidos na execução
   responsaveisIds: json("responsaveisIds").$type<number[]>(), // pessoas responsáveis
   percentualHonorariosComercial: decimal("percentualHonorariosComercial", { precision: 5, scale: 2 }).default("0"),
+  // Honorários ao cliente
+  percentualHonorariosCliente: decimal("percentualHonorariosCliente", { precision: 5, scale: 2 }).default("0"),
   formaCobrancaHonorarios: mysqlEnum("formaCobrancaHonorarios", [
-    "percentual_credito", "valor_fixo", "mensalidade", "exito", "hibrido"
+    "percentual_credito", "valor_fixo", "mensalidade", "exito", "hibrido",
+    "entrada_exito", "valor_fixo_parcelado"
   ]).default("percentual_credito").notNull(),
   valorFixo: decimal("valorFixo", { precision: 15, scale: 2 }),
-  // Comissão padrão por modelo de parceria (preenchido via tabela comissoes_servico)
+  // Entrada + Êxito
+  valorEntrada: decimal("valorEntrada", { precision: 15, scale: 2 }),
+  percentualExito: decimal("percentualExito", { precision: 5, scale: 2 }),
+  // Valor fixo parcelado
+  quantidadeParcelas: int("quantidadeParcelas"),
+  valorParcela: decimal("valorParcela", { precision: 15, scale: 2 }),
+  // Comissão padrão por modelo de parceria
   comissaoPadraoDiamante: decimal("comissaoPadraoDiamante", { precision: 5, scale: 2 }),
   comissaoPadraoOuro: decimal("comissaoPadraoOuro", { precision: 5, scale: 2 }),
   comissaoPadraoPrata: decimal("comissaoPadraoPrata", { precision: 5, scale: 2 }),

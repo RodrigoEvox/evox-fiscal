@@ -324,3 +324,14 @@
 - [ ] Histórico imutável individualizado por setor
 - [x] CRUD completo em todas as entidades: incluir, editar, excluir, ativar, inativar
 - [x] UX fluida estilo Apple: priorizar usabilidade e fluidez do trabalho
+
+## CRM v10 — Reformulação do Cadastro de Serviços
+
+### Formulário de Novo Serviço (melhorias)
+- [x] Comissão padrão por modelo de parceria (Diamante/Ouro/Prata) no cadastro do serviço
+- [x] Vincular comissões do serviço automaticamente aos modelos de parceria na Gestão de Parcerias
+- [x] Percentual padrão de honorários cobrado do cliente
+- [x] Novas formas de cobrança: Entrada + Êxito, Percentual sobre Êxito
+- [x] Valor fixo com possibilidade de parcelamento e quantidade de parcelas
+- [x] Atualizar backend para suportar novos campos de serviço
+- [x] Atualizar schema do banco de dados para novos campos

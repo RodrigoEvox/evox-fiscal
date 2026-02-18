@@ -885,16 +885,50 @@ export const appRouter = router({
         descricao: z.string().optional(),
         setorId: z.number(),
         percentualHonorariosComercial: z.string().optional(),
-        formaCobrancaHonorarios: z.enum(['percentual_credito', 'valor_fixo', 'mensalidade', 'exito', 'hibrido']).optional(),
+        percentualHonorariosCliente: z.string().optional(),
+        formaCobrancaHonorarios: z.enum([
+          'percentual_credito', 'valor_fixo', 'mensalidade', 'exito', 'hibrido',
+          'entrada_exito', 'valor_fixo_parcelado'
+        ]).optional(),
         valorFixo: z.string().optional(),
+        valorEntrada: z.string().optional(),
+        percentualExito: z.string().optional(),
+        quantidadeParcelas: z.number().optional(),
+        valorParcela: z.string().optional(),
+        comissaoPadraoDiamante: z.string().optional(),
+        comissaoPadraoOuro: z.string().optional(),
+        comissaoPadraoPrata: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const cleanStr = (v?: string) => v && v.trim() !== '' ? v : null;
         const cleanInput = {
           ...input,
-          valorFixo: input.valorFixo && input.valorFixo.trim() !== '' ? input.valorFixo : null,
-          percentualHonorariosComercial: input.percentualHonorariosComercial && input.percentualHonorariosComercial.trim() !== '' ? input.percentualHonorariosComercial : '0',
+          valorFixo: cleanStr(input.valorFixo),
+          valorEntrada: cleanStr(input.valorEntrada),
+          percentualExito: cleanStr(input.percentualExito),
+          valorParcela: cleanStr(input.valorParcela),
+          percentualHonorariosComercial: cleanStr(input.percentualHonorariosComercial) || '0',
+          percentualHonorariosCliente: cleanStr(input.percentualHonorariosCliente) || '0',
+          comissaoPadraoDiamante: cleanStr(input.comissaoPadraoDiamante),
+          comissaoPadraoOuro: cleanStr(input.comissaoPadraoOuro),
+          comissaoPadraoPrata: cleanStr(input.comissaoPadraoPrata),
         };
-        const id = await db.createServico(cleanInput as any);
+        const id = await db.createServico(cleanInput as any) as number;
+        if (!id) throw new Error('Erro ao criar serviço');
+        // Sincronizar comissões com tabela comissoes_servico
+        const modelos = await db.listModelosParceria();
+        for (const modelo of modelos) {
+          const modeloId = modelo.id as number;
+          if (!modeloId) continue;
+          const nomeNorm = modelo.nome?.toLowerCase();
+          let pct = '0';
+          if (nomeNorm?.includes('diamante') && cleanInput.comissaoPadraoDiamante) pct = cleanInput.comissaoPadraoDiamante;
+          else if (nomeNorm?.includes('ouro') && cleanInput.comissaoPadraoOuro) pct = cleanInput.comissaoPadraoOuro;
+          else if (nomeNorm?.includes('prata') && cleanInput.comissaoPadraoPrata) pct = cleanInput.comissaoPadraoPrata;
+          if (pct !== '0') {
+            await db.upsertComissaoServico(id, modeloId, pct);
+          }
+        }
         await logAudit('criar', 'servico', id, input.nome, ctx);
         return { id };
       }),
@@ -902,6 +936,23 @@ export const appRouter = router({
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
       .mutation(async ({ input, ctx }) => {
         await db.updateServico(input.id, input.data as any);
+        // Sincronizar comissões se campos de comissão foram alterados
+        const d = input.data;
+        if (d.comissaoPadraoDiamante !== undefined || d.comissaoPadraoOuro !== undefined || d.comissaoPadraoPrata !== undefined) {
+          const modelos = await db.listModelosParceria();
+          for (const modelo of modelos) {
+            const modeloId = modelo.id as number;
+            if (!modeloId) continue;
+            const nomeNorm = modelo.nome?.toLowerCase();
+            let pct: string | null = null;
+            if (nomeNorm?.includes('diamante') && d.comissaoPadraoDiamante) pct = d.comissaoPadraoDiamante;
+            else if (nomeNorm?.includes('ouro') && d.comissaoPadraoOuro) pct = d.comissaoPadraoOuro;
+            else if (nomeNorm?.includes('prata') && d.comissaoPadraoPrata) pct = d.comissaoPadraoPrata;
+            if (pct) {
+              await db.upsertComissaoServico(input.id, modeloId, pct);
+            }
+          }
+        }
         await logAudit('editar', 'servico', input.id, null, ctx, input.data);
         return { success: true };
       }),

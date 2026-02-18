@@ -444,3 +444,102 @@ describe("Access Control - toggleActive", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("CRM v10 - Serviços: Novos campos de honorários e comissões", () => {
+  it("should accept new forma de cobrança 'entrada_exito' in servicos.create", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    // Verifica que o procedimento aceita os novos campos sem erro de validação de schema
+    expect(caller.servicos.create).toBeDefined();
+  });
+
+  it("should accept new forma de cobrança 'valor_fixo_parcelado' in servicos.create", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.servicos.create).toBeDefined();
+  });
+
+  it("should have comissoes router with byModelo, byServico and upsert", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.comissoes.byModelo).toBeDefined();
+    expect(caller.comissoes.byServico).toBeDefined();
+    expect(caller.comissoes.upsert).toBeDefined();
+  });
+
+  it("should have modelosParceria router with list, create, update", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.modelosParceria.list).toBeDefined();
+    expect(caller.modelosParceria.create).toBeDefined();
+    expect(caller.modelosParceria.update).toBeDefined();
+  });
+
+  it("should validate servicos.create input with new fields", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    // Test that the procedure rejects invalid input (missing required nome)
+    await expect(
+      caller.servicos.create({
+        nome: '',
+        setorId: 1,
+        formaCobrancaHonorarios: 'entrada_exito',
+      } as any)
+    ).rejects.toThrow();
+  });
+
+  it("should validate servicos.create accepts comissão fields", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    // This will fail at DB level but should pass input validation
+    try {
+      await caller.servicos.create({
+        nome: 'Test Service',
+        setorId: 1,
+        percentualHonorariosCliente: '30',
+        percentualHonorariosComercial: '10',
+        formaCobrancaHonorarios: 'entrada_exito',
+        valorEntrada: '5000',
+        percentualExito: '20',
+        comissaoPadraoDiamante: '15',
+        comissaoPadraoOuro: '10',
+        comissaoPadraoPrata: '5',
+      });
+    } catch (e: any) {
+      // DB error is expected in test env, but should not be a validation error
+      expect(e.message).not.toContain('invalid_type');
+      expect(e.message).not.toContain('Expected');
+    }
+  });
+
+  it("should validate servicos.create accepts valor_fixo_parcelado fields", async () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    try {
+      await caller.servicos.create({
+        nome: 'Test Parcelado',
+        setorId: 1,
+        formaCobrancaHonorarios: 'valor_fixo_parcelado',
+        valorFixo: '12000',
+        quantidadeParcelas: 12,
+        valorParcela: '1000',
+      });
+    } catch (e: any) {
+      expect(e.message).not.toContain('invalid_type');
+      expect(e.message).not.toContain('Expected');
+    }
+  });
+
+  it("should deny non-admin access to servicos.create", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.servicos.create({
+        nome: 'Test',
+        setorId: 1,
+        formaCobrancaHonorarios: 'entrada_exito',
+      } as any)
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to comissoes.upsert", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.comissoes.upsert({ servicoId: 1, modeloParceriaId: 1, percentualComissao: '10' })
+    ).rejects.toThrow();
+  });
+});

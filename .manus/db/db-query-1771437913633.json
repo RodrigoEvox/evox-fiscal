@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `audit_log` MODIFY COLUMN `acao` enum('criar','editar','excluir','visualizar','login','logout','atribuir','concluir','comentar','upload','download','exportar','ativar','inativar') NOT NULL;\nALTER TABLE `servicos` MODIFY COLUMN `formaCobrancaHonorarios` enum('percentual_credito','valor_fixo','mensalidade','exito','hibrido','entrada_exito','valor_fixo_parcelado') NOT NULL DEFAULT 'percentual_credito';\nALTER TABLE `servicos` ADD COLUMN `percentualHonorariosCliente` decimal(5,2) DEFAULT '0';\nALTER TABLE `servicos` ADD COLUMN `valorEntrada` decimal(15,2);\nALTER TABLE `servicos` ADD COLUMN `percentualExito` decimal(5,2);\nALTER TABLE `servicos` ADD COLUMN `quantidadeParcelas` int;\nALTER TABLE `servicos` ADD COLUMN `valorParcela` decimal(15,2);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE `audit_log` MODIFY COLUMN `acao` enum('criar','editar','excluir','visualizar','login','logout','atribuir','concluir','comentar','upload','download','exportar','ativar','inativar') NOT NULL;\nALTER TABLE `servicos` MODIFY COLUMN `formaCobrancaHonorarios` enum('percentual_credito','valor_fixo','mensalidade','exito','hibrido','entrada_exito','valor_fixo_parcelado') NOT NULL DEFAULT 'percentual_credito';\nALTER TABLE `servicos` ADD COLUMN `percentualHonorariosCliente` decimal(5,2) DEFAULT '0';\nALTER TABLE `servicos` ADD COLUMN `valorEntrada` decimal(15,2);\nALTER TABLE `servicos` ADD COLUMN `percentualExito` decimal(5,2);\nALTER TABLE `servicos` ADD COLUMN `quantidadeParcelas` int;\nALTER TABLE `servicos` ADD COLUMN `valorParcela` decimal(15,2);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1119
+}

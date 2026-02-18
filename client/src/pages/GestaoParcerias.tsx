@@ -155,7 +155,8 @@ export default function GestaoParcerias() {
                   <TableRow>
                     <TableHead>Serviço</TableHead>
                     <TableHead>Setor</TableHead>
-                    <TableHead className="w-[150px]">% Comissão</TableHead>
+                    <TableHead className="w-[150px]">% Comissão Padrão (Serviço)</TableHead>
+                    <TableHead className="w-[150px]">% Comissão Customizada</TableHead>
                     <TableHead className="w-[80px]">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -168,6 +169,7 @@ export default function GestaoParcerias() {
                         servico={servico}
                         comissao={comissao}
                         modeloParceriaId={selectedModelo}
+                        modeloNome={(modelos.data as ModeloParceria[] | undefined)?.find(m => m.id === selectedModelo)?.nome || ''}
                         onSave={(perc) => {
                           upsertComissao.mutate({
                             servicoId: servico.id,
@@ -278,19 +280,30 @@ export default function GestaoParcerias() {
   );
 }
 
-function ComissaoRow({ servico, comissao, modeloParceriaId, onSave }: {
+function ComissaoRow({ servico, comissao, modeloParceriaId, modeloNome, onSave }: {
   servico: any;
   comissao: ComissaoServico | null | undefined;
   modeloParceriaId: number;
+  modeloNome: string;
   onSave: (perc: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(comissao?.percentualComissao || '');
 
+  // Pegar comissão padrão do serviço baseado no modelo
+  const nomeNorm = modeloNome?.toLowerCase() || '';
+  let comissaoPadraoServico = '—';
+  if (nomeNorm.includes('diamante') && servico.comissaoPadraoDiamante) comissaoPadraoServico = `${servico.comissaoPadraoDiamante}%`;
+  else if (nomeNorm.includes('ouro') && servico.comissaoPadraoOuro) comissaoPadraoServico = `${servico.comissaoPadraoOuro}%`;
+  else if (nomeNorm.includes('prata') && servico.comissaoPadraoPrata) comissaoPadraoServico = `${servico.comissaoPadraoPrata}%`;
+
   return (
     <TableRow>
       <TableCell className="font-medium">{servico.nome}</TableCell>
       <TableCell className="text-sm text-gray-500">{servico.setorNome || '—'}</TableCell>
+      <TableCell>
+        <span className="text-sm text-muted-foreground">{comissaoPadraoServico}</span>
+      </TableCell>
       <TableCell>
         {editing ? (
           <div className="flex items-center gap-1">
