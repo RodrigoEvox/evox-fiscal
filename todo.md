@@ -405,3 +405,15 @@
 - [x] Aviso visual quando dados podem estar desatualizados (base > 30 dias)
 - [x] Motivo da situação cadastral quando disponível
 - [x] Nota explicativa sobre dumps periódicos da Receita Federal
+
+## CRM v12.2 — Ajustes no Formulário de Cliente
+
+### Layout
+- [x] Corrigir sobreposição do campo Razão Social sobre o botão Consultar
+- [x] CNPJ e Consultar em uma linha, Razão Social em linha separada ou layout adequado
+
+### Natureza Jurídica
+- [x] Preencher natureza jurídica automaticamente via consulta CNPJ
+
+### Remoção de Seção
+- [x] Excluir seção "Atividades e Tributos" do formulário de cliente

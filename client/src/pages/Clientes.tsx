@@ -654,17 +654,18 @@ export default function Clientes() {
               <SectionHeader title={form.tipoPessoa === 'juridica' ? 'Dados da Empresa' : 'Dados Pessoais'} icon={form.tipoPessoa === 'juridica' ? <Building2 className="w-4 h-4 text-muted-foreground" /> : <User className="w-4 h-4 text-muted-foreground" />} />
 
               {form.tipoPessoa === 'juridica' ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <Label className="text-xs">CNPJ *</Label>
                     <div className="flex gap-2">
-                      <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm min-w-[200px]" />
+                      <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0001-00" className="h-9 text-sm max-w-[220px]" />
                       <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 gap-1 text-xs" onClick={consultarCNPJ} disabled={consultandoCnpj}>
                         {consultandoCnpj ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                         Consultar
                       </Button>
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Razão Social *</Label>
                     <Input value={form.razaoSocial} onChange={e => setForm({ ...form, razaoSocial: e.target.value })} className="h-9 text-sm" />
@@ -724,6 +725,7 @@ export default function Clientes() {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -899,31 +901,7 @@ export default function Clientes() {
               </>
             )}
 
-            {/* ===== SEÇÃO 6: ATIVIDADES E TRIBUTOS ===== */}
-            <div className="space-y-3">
-              <SectionHeader title="Atividades e Tributos" />
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { key: 'industrializa', label: 'Industrializa' },
-                  { key: 'comercializa', label: 'Comercializa' },
-                  { key: 'prestaServicos', label: 'Presta Serviços' },
-                  { key: 'contribuinteICMS', label: 'Contribuinte ICMS' },
-                  { key: 'contribuinteIPI', label: 'Contribuinte IPI' },
-                  { key: 'regimeMonofasico', label: 'Regime Monofásico' },
-                  { key: 'processosJudiciaisAtivos', label: 'Processos Judiciais' },
-                  { key: 'parcelamentosAtivos', label: 'Parcelamentos Ativos' },
-                ].map(sw => (
-                  <div key={sw.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                    <Label className="text-xs">{sw.label}</Label>
-                    <Switch checked={(form as any)[sw.key]} onCheckedChange={v => setForm({ ...form, [sw.key]: v })} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* ===== SEÇÃO 7: DADOS FINANCEIROS ===== */}
+            {/* ===== SEÇÃO 6: DADOS FINANCEIROS ===== */}
             <div className="space-y-3">
               <SectionHeader title="Dados Financeiros" />
               <div className="grid grid-cols-3 gap-3">
