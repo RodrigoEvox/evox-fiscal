@@ -31,6 +31,9 @@ const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const Perfil = lazy(() => import("./pages/Perfil"));
 const Servicos = lazy(() => import("./pages/Servicos"));
 const SetorPage = lazy(() => import("./pages/SetorPage"));
+const GestaoParcerias = lazy(() => import("./pages/GestaoParcerias"));
+const SlaConfig = lazy(() => import("./pages/SlaConfig"));
+const MinhasTarefas = lazy(() => import("./pages/MinhasTarefas"));
 
 function LazyFallback() {
   return (
@@ -45,6 +48,7 @@ function Router() {
     <Suspense fallback={<LazyFallback />}>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/minhas-tarefas" component={MinhasTarefas} />
         <Route path="/tarefas" component={Tarefas} />
         <Route path="/tarefas/:id" component={TarefaDetalhe} />
         <Route path="/clientes" component={Clientes} />
@@ -62,6 +66,8 @@ function Router() {
         <Route path="/api-keys" component={ApiKeys} />
         <Route path="/perfil" component={Perfil} />
         <Route path="/servicos" component={Servicos} />
+        <Route path="/gestao-parcerias" component={GestaoParcerias} />
+        <Route path="/sla-config" component={SlaConfig} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />
@@ -124,7 +130,7 @@ function App() {
           <AuthGate>
             <div className="flex min-h-screen">
               <AppSidebar />
-              <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top bar with global search */}
                 <header className="h-14 border-b border-gray-100 flex items-center px-6 bg-white shrink-0">
                   <GlobalSearch />

@@ -938,6 +938,214 @@ export const appRouter = router({
       }),
   }),
 
+  // ---- MODELOS DE PARCERIA ----
+  modelosParceria: router({
+    list: protectedProcedure.query(async () => {
+      return db.listModelosParceria();
+    }),
+    create: adminProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        cor: z.string().optional(),
+        percentualComissaoPadrao: z.string().optional(),
+        beneficios: z.any().optional(),
+        ordem: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createModeloParceria(input as any);
+        await logAudit('criar', 'modelo_parceria', id, input.nome, ctx);
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateModeloParceria(input.id, input.data as any);
+        await logAudit('editar', 'modelo_parceria', input.id, null, ctx, input.data);
+        return { success: true };
+      }),
+  }),
+
+  // ---- COMISSÕES POR SERVIÇO ----
+  comissoes: router({
+    byServico: protectedProcedure
+      .input(z.object({ servicoId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listComissoesByServico(input.servicoId);
+      }),
+    byModelo: protectedProcedure
+      .input(z.object({ modeloParceriaId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listComissoesByModelo(input.modeloParceriaId);
+      }),
+    upsert: adminProcedure
+      .input(z.object({
+        servicoId: z.number(),
+        modeloParceriaId: z.number(),
+        percentualComissao: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await db.upsertComissaoServico(input.servicoId, input.modeloParceriaId, input.percentualComissao);
+        await logAudit('editar', 'comissao', null, null, ctx, input);
+        return { success: true };
+      }),
+  }),
+
+  // ---- PARCEIRO-SERVIÇO ----
+  parceiroServicos: router({
+    list: protectedProcedure
+      .input(z.object({ parceiroId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listParceiroServicos(input.parceiroId);
+      }),
+    add: protectedProcedure
+      .input(z.object({
+        parceiroId: z.number(),
+        servicoId: z.number(),
+        clienteId: z.number().nullable().optional(),
+        valorContrato: z.string().optional(),
+        percentualComissao: z.string().optional(),
+        status: z.enum(['ativo', 'concluido', 'cancelado']).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.addParceiroServico(input as any);
+        await logAudit('criar', 'parceiro_servico', id, null, ctx);
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateParceiroServico(input.id, input.data as any);
+        await logAudit('editar', 'parceiro_servico', input.id, null, ctx);
+        return { success: true };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.removeParceiroServico(input.id);
+        await logAudit('excluir', 'parceiro_servico', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- SLA CONFIGURAÇÕES ----
+  slaConfig: router({
+    list: protectedProcedure
+      .input(z.object({ setorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listSlaConfiguracoes(input?.setorId);
+      }),
+    create: adminProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        setorId: z.number().nullable().optional(),
+        servicoId: z.number().nullable().optional(),
+        prioridadePadrao: z.enum(['baixa', 'media', 'alta', 'urgente']).optional(),
+        slaHorasPadrao: z.number(),
+        slaHorasAlerta: z.number().optional(),
+        autoAtribuir: z.boolean().optional(),
+        responsavelPadraoId: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createSlaConfiguracao(input as any);
+        await logAudit('criar', 'sla_config', id, input.nome, ctx);
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateSlaConfiguracao(input.id, input.data as any);
+        await logAudit('editar', 'sla_config', input.id, null, ctx);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteSlaConfiguracao(input.id);
+        await logAudit('excluir', 'sla_config', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- ETAPAS DE SERVIÇO ----
+  servicoEtapas: router({
+    list: protectedProcedure
+      .input(z.object({ servicoId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listServicoEtapas(input.servicoId);
+      }),
+    create: adminProcedure
+      .input(z.object({
+        servicoId: z.number(),
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        ordem: z.number(),
+        setorResponsavelId: z.number().nullable().optional(),
+        slaHoras: z.number().nullable().optional(),
+        obrigatoria: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createServicoEtapa(input as any);
+        await logAudit('criar', 'servico_etapa', id, input.nome, ctx);
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateServicoEtapa(input.id, input.data as any);
+        await logAudit('editar', 'servico_etapa', input.id, null, ctx);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteServicoEtapa(input.id);
+        await logAudit('excluir', 'servico_etapa', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- CLIENTE-SERVIÇO ----
+  clienteServicos: router({
+    list: protectedProcedure
+      .input(z.object({ clienteId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listClienteServicos(input.clienteId);
+      }),
+    add: protectedProcedure
+      .input(z.object({
+        clienteId: z.number(),
+        servicoId: z.number(),
+        parceiroId: z.number().nullable().optional(),
+        valorContrato: z.string().optional(),
+        percentualHonorarios: z.string().optional(),
+        formaCobranca: z.string().optional(),
+        dataInicio: z.string().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.addClienteServico(input as any);
+        await logAudit('criar', 'cliente_servico', id, null, ctx);
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateClienteServico(input.id, input.data as any);
+        await logAudit('editar', 'cliente_servico', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- SUBPARCEIROS ----
+  subparceiros: router({
+    list: protectedProcedure
+      .input(z.object({ parceiroPaiId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listSubparceiros(input.parceiroPaiId);
+      }),
+  }),
+
   // ---- SEED ----
   seed: router({
     teses: protectedProcedure.mutation(async () => {

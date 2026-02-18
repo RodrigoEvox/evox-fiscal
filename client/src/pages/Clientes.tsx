@@ -25,8 +25,7 @@ const EMPTY_FORM = {
   cnpj: '', razaoSocial: '', nomeFantasia: '', dataAbertura: '',
   regimeTributario: 'lucro_real' as string, situacaoCadastral: 'ativa' as string,
   cnaePrincipal: '', cnaePrincipalDescricao: '', segmentoEconomico: '',
-  naturezaJuridica: '', endereco: '', estado: 'SP',
-  industrializa: false, comercializa: false, prestaServicos: false,
+  naturezaJuridica: '',  endereco: '', cidade: '', estado: 'SP',  industrializa: false, comercializa: false, prestaServicos: false,
   contribuinteICMS: false, contribuinteIPI: false, regimeMonofasico: false,
   folhaPagamentoMedia: '0', faturamentoMedioMensal: '0', valorMedioGuias: '0',
   processosJudiciaisAtivos: false, parcelamentosAtivos: false,
@@ -98,6 +97,8 @@ export default function Clientes() {
         cnaePrincipal: data.cnae_fiscal?.toString() || p.cnaePrincipal,
         cnaePrincipalDescricao: data.cnae_fiscal_descricao || p.cnaePrincipalDescricao,
         naturezaJuridica: data.natureza_juridica || p.naturezaJuridica,
+        endereco: data.logradouro ? `${data.logradouro}, ${data.numero || 'S/N'} - ${data.bairro || ''}` : p.endereco,
+        cidade: data.municipio || p.cidade,
         estado: data.uf || p.estado,
         situacaoCadastral: data.situacao_cadastral === 2 ? 'ativa' :
           data.situacao_cadastral === 3 ? 'suspensa' :
@@ -155,8 +156,9 @@ export default function Clientes() {
       cnaePrincipalDescricao: cliente.cnaePrincipalDescricao || '',
       segmentoEconomico: cliente.segmentoEconomico || '',
       naturezaJuridica: cliente.naturezaJuridica || '',
-      endereco: cliente.endereco || '',
-      estado: cliente.estado || 'SP',
+        endereco: cliente.endereco || '',
+        cidade: cliente.cidade || '',
+        estado: cliente.estado || 'SP',
       industrializa: !!cliente.industrializa,
       comercializa: !!cliente.comercializa,
       prestaServicos: !!cliente.prestaServicos,
@@ -316,9 +318,12 @@ export default function Clientes() {
                   <div>
                     <Label className="text-xs">Nome Fantasia</Label>
                     <Input value={form.nomeFantasia} onChange={e => setForm({ ...form, nomeFantasia: e.target.value })} className="h-9 text-sm" />
+                  </div>                  <div>
+                    <Label className="text-xs">Endereço</Label>
+                    <Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} className="h-9 text-sm" placeholder="Rua, número, bairro" />
                   </div>
                   <div>
-                    <Label className="text-xs">Data de Abertura</Label>
+                    <Label className="text-xs">Natureza Jurídica</Label>
                     <Input type="date" value={form.dataAbertura} onChange={e => setForm({ ...form, dataAbertura: e.target.value })} className="h-9 text-sm" />
                   </div>
                   <div>
@@ -404,6 +409,10 @@ export default function Clientes() {
                   <div>
                     <Label className="text-xs">Segmento Econômico</Label>
                     <Input value={form.segmentoEconomico} onChange={e => setForm({ ...form, segmentoEconomico: e.target.value })} className="h-9 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Cidade</Label>
+                    <Input value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} className="h-9 text-sm" placeholder="Cidade" />
                   </div>
                   <div>
                     <Label className="text-xs">Estado (UF)</Label>

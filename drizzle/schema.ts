@@ -64,6 +64,9 @@ export const parceiros = mysqlTable("parceiros", {
   telefone: varchar("telefone", { length: 20 }),
   email: varchar("email", { length: 320 }),
   endereco: text("endereco"),
+  modeloParceriaId: int("modeloParceriaId"), // Diamante, Ouro, Prata
+  parceiroPaiId: int("parceiroPaiId"), // para subparceiros
+  percentualRepasseSubparceiro: decimal("percentualRepasseSubparceiro", { precision: 5, scale: 2 }), // % que o parceiro pai repassa
   ativo: boolean("ativo").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -76,6 +79,8 @@ export type InsertParceiro = typeof parceiros.$inferInsert;
 export const clientes = mysqlTable("clientes", {
   id: int("id").autoincrement().primaryKey(),
   cnpj: varchar("cnpj", { length: 20 }).notNull(),
+  tipoPessoa: mysqlEnum("tipoPessoa", ["juridica", "fisica"]).default("juridica").notNull(),
+  cpf: varchar("cpf", { length: 14 }),
   razaoSocial: varchar("razaoSocial", { length: 500 }).notNull(),
   nomeFantasia: varchar("nomeFantasia", { length: 500 }),
   dataAbertura: varchar("dataAbertura", { length: 20 }),
@@ -88,6 +93,7 @@ export const clientes = mysqlTable("clientes", {
   naturezaJuridica: varchar("naturezaJuridica", { length: 255 }),
   endereco: text("endereco"),
   estado: varchar("estado", { length: 2 }),
+  cidade: varchar("cidade", { length: 255 }),
   industrializa: boolean("industrializa").default(false).notNull(),
   comercializa: boolean("comercializa").default(false).notNull(),
   prestaServicos: boolean("prestaServicos").default(false).notNull(),
@@ -328,12 +334,18 @@ export const servicos = mysqlTable("servicos", {
   id: int("id").autoincrement().primaryKey(),
   nome: varchar("nome", { length: 500 }).notNull(),
   descricao: text("descricao"),
-  setorId: int("setorId").notNull(),
+  setorId: int("setorId"), // setor principal (pode ser null se multisetorial)
+  setoresIds: json("setoresIds").$type<number[]>(), // setores envolvidos na execução
+  responsaveisIds: json("responsaveisIds").$type<number[]>(), // pessoas responsáveis
   percentualHonorariosComercial: decimal("percentualHonorariosComercial", { precision: 5, scale: 2 }).default("0"),
   formaCobrancaHonorarios: mysqlEnum("formaCobrancaHonorarios", [
     "percentual_credito", "valor_fixo", "mensalidade", "exito", "hibrido"
   ]).default("percentual_credito").notNull(),
   valorFixo: decimal("valorFixo", { precision: 15, scale: 2 }),
+  // Comissão padrão por modelo de parceria (preenchido via tabela comissoes_servico)
+  comissaoPadraoDiamante: decimal("comissaoPadraoDiamante", { precision: 5, scale: 2 }),
+  comissaoPadraoOuro: decimal("comissaoPadraoOuro", { precision: 5, scale: 2 }),
+  comissaoPadraoPrata: decimal("comissaoPadraoPrata", { precision: 5, scale: 2 }),
   ativo: boolean("ativo").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -355,3 +367,101 @@ export const setorConfig = mysqlTable("setor_config", {
 
 export type SetorConfig = typeof setorConfig.$inferSelect;
 export type InsertSetorConfig = typeof setorConfig.$inferInsert;
+
+// ---- MODELOS DE PARCERIA (Diamante, Ouro, Prata) ----
+export const modelosParceria = mysqlTable("modelos_parceria", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 100 }).notNull(), // Diamante, Ouro, Prata
+  descricao: text("descricao"),
+  ordem: int("ordem").default(0).notNull(), // para ordenação
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ModeloParceria = typeof modelosParceria.$inferSelect;
+export type InsertModeloParceria = typeof modelosParceria.$inferInsert;
+
+// ---- COMISSÕES POR SERVIÇO E MODELO DE PARCERIA ----
+export const comissoesServico = mysqlTable("comissoes_servico", {
+  id: int("id").autoincrement().primaryKey(),
+  servicoId: int("servicoId").notNull(),
+  modeloParceriaId: int("modeloParceriaId").notNull(),
+  percentualComissao: decimal("percentualComissao", { precision: 5, scale: 2 }).notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ComissaoServico = typeof comissoesServico.$inferSelect;
+export type InsertComissaoServico = typeof comissoesServico.$inferInsert;
+
+// ---- PARCEIRO-SERVIÇO (serviços que o parceiro trabalha + comissão customizada) ----
+export const parceiroServicos = mysqlTable("parceiro_servicos", {
+  id: int("id").autoincrement().primaryKey(),
+  parceiroId: int("parceiroId").notNull(),
+  servicoId: int("servicoId").notNull(),
+  percentualCustomizado: decimal("percentualCustomizado", { precision: 5, scale: 2 }), // null = usa padrão
+  aprovadoPorId: int("aprovadoPorId"), // se precisou aprovação do diretor
+  aprovadoEm: timestamp("aprovadoEm"),
+  statusAprovacao: mysqlEnum("statusAprovacao", ["aprovado", "pendente", "rejeitado"]).default("aprovado"),
+  observacao: text("observacao"),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ParceiroServico = typeof parceiroServicos.$inferSelect;
+export type InsertParceiroServico = typeof parceiroServicos.$inferInsert;
+
+// ---- SLA CONFIGURÁVEL (Admin define SLA padrão por tipo de tarefa) ----
+export const slaConfiguracoes = mysqlTable("sla_configuracoes", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(), // ex: "Análise de Crédito", "Revisão Jurídica"
+  descricao: text("descricao"),
+  setorId: int("setorId"),
+  slaHoras: int("slaHoras").notNull(), // SLA padrão em horas
+  prioridade: mysqlEnum("prioridade", ["urgente", "alta", "media", "baixa"]).default("media").notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  criadoPorId: int("criadoPorId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SlaConfiguracao = typeof slaConfiguracoes.$inferSelect;
+export type InsertSlaConfiguracao = typeof slaConfiguracoes.$inferInsert;
+
+// ---- ETAPAS DE SERVIÇO (tarefas padrão que são geradas ao atribuir serviço a cliente) ----
+export const servicoEtapas = mysqlTable("servico_etapas", {
+  id: int("id").autoincrement().primaryKey(),
+  servicoId: int("servicoId").notNull(),
+  titulo: varchar("titulo", { length: 500 }).notNull(),
+  descricao: text("descricao"),
+  setorResponsavelId: int("setorResponsavelId"), // setor que executa esta etapa
+  ordem: int("ordem").default(0).notNull(),
+  slaHoras: int("slaHoras"), // SLA específico desta etapa
+  obrigatoria: boolean("obrigatoria").default(true).notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ServicoEtapa = typeof servicoEtapas.$inferSelect;
+export type InsertServicoEtapa = typeof servicoEtapas.$inferInsert;
+
+// ---- CLIENTE-SERVIÇO (serviços atribuídos a clientes com automação de tarefas) ----
+export const clienteServicos = mysqlTable("cliente_servicos", {
+  id: int("id").autoincrement().primaryKey(),
+  clienteId: int("clienteId").notNull(),
+  servicoId: int("servicoId").notNull(),
+  status: mysqlEnum("status", ["ativo", "em_execucao", "concluido", "cancelado"]).default("ativo").notNull(),
+  atribuidoPorId: int("atribuidoPorId"),
+  dataInicio: timestamp("dataInicio"),
+  dataConclusao: timestamp("dataConclusao"),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClienteServico = typeof clienteServicos.$inferSelect;
+export type InsertClienteServico = typeof clienteServicos.$inferInsert;

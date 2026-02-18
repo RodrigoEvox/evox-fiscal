@@ -7,28 +7,53 @@ import {
   FileText, Wallet, Megaphone, Users, Plus,
   ListOrdered, BookOpen, TrendingUp, BarChart3,
   Headphones, Podcast, Gift, Calendar, Building2,
-  CreditCard, PiggyBank, Building,
+  CreditCard, PiggyBank, Building, Shield, ShoppingCart,
+  Banknote, GraduationCap, MonitorCheck, Gavel,
+  ClipboardList, FileBarChart, Gem, Search,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { trpc } from '@/lib/trpc';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const LOGO_URL = 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663316243305/wqhIjJZIWkVOoine.png';
 const SYMBOL_URL = 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663316243305/orpBqLHGdGJhclPz.png';
 
 const ICON_MAP: Record<string, any> = {
   Handshake, BadgeDollarSign, ArrowLeftRight, Scale, Landmark,
-  FileText, Wallet, Megaphone, Users, Building2,
+  FileText, Wallet, Megaphone, Users, Building2, Shield,
+  ShoppingCart, Banknote, GraduationCap, MonitorCheck, Gavel,
+};
+
+// Mapeamento de siglas para nomes de exibição (sem siglas)
+const SIGLA_TO_NOME: Record<string, string> = {
+  'COM': 'Comercial',
+  'CONT': 'Contencioso',
+  'CT': 'Contratos',
+  'RCT': 'Crédito',
+  'MONITOR': 'Evox Monitor',
+  'FIN': 'Financeiro',
+  'RH': 'Gente e Gestão',
+  'JUR': 'Jurídico',
+  'MKT': 'Marketing',
+  'RT': 'Reforma',
+  'SF': 'Soluções Financeiras',
+  'SPC': 'Suporte',
+  'DPT': 'Transação',
+  'UEVOX': 'Universidade Evox',
 };
 
 // Ícones para submenus
 const SUBMENU_ICONS: Record<string, any> = {
   'nova-tarefa': Plus,
-  'parcerias': Handshake,
+  'parcerias': Gem,
+  'clientes': Users,
+  'parceiros': Handshake,
   'fila': ListOrdered,
   'teses': BookOpen,
   'analitica': TrendingUp,
+  'media-guias': BarChart3,
   'simulador': BarChart3,
   'consultoria': Headphones,
   'contas-pagar': CreditCard,
@@ -40,6 +65,11 @@ const SUBMENU_ICONS: Record<string, any> = {
   'brindes': Gift,
   'colaboradores': Users,
   'ferias': Calendar,
+  'fila-execucao': ClipboardList,
+  'relatorio': FileBarChart,
+  'treinamentos': GraduationCap,
+  'monitoramento': MonitorCheck,
+  'busca': Search,
 };
 
 interface SetorConfigItem {
@@ -72,7 +102,7 @@ export default function AppSidebar() {
   const setorConfigs = trpc.setorConfig.list.useQuery();
   const setoresData = trpc.setores.list.useQuery();
 
-  // Build setor nav from config
+  // Build setor nav from config, sorted alphabetically by display name
   const setorNav = useMemo(() => {
     if (!setorConfigs.data || !setoresData.data) return [];
     const configs = setorConfigs.data as SetorConfigItem[];
@@ -82,16 +112,18 @@ export default function AppSidebar() {
       .map(cfg => {
         const setor = setoresList.find(s => s.id === cfg.setorId);
         if (!setor || !setor.ativo) return null;
+        const displayName = SIGLA_TO_NOME[cfg.sigla] || setor.nome.replace(/^[A-Z]+\s*[–-]\s*/, '');
         return {
           sigla: cfg.sigla,
-          nome: setor.nome,
+          nome: displayName,
           cor: setor.cor || '#3B82F6',
           icone: setor.icone || 'Building2',
           setorId: setor.id,
           submenus: (cfg.submenus || []) as { key: string; label: string; rota: string }[],
         };
       })
-      .filter(Boolean) as NonNullable<ReturnType<typeof Array.prototype.map>[number]>[];
+      .filter(Boolean)
+      .sort((a: any, b: any) => (a as any).nome.localeCompare((b as any).nome, 'pt-BR')) as any[];
   }, [setorConfigs.data, setoresData.data]);
 
   const toggleSection = (sigla: string) => {
@@ -106,17 +138,47 @@ export default function AppSidebar() {
     return map[nivel || ''] || (user?.role === 'admin' ? 'Administrador' : 'Analista');
   };
 
-  const NavLink = ({ path, icon: Icon, label, color }: { path: string; icon: any; label: string; color?: string }) => {
+  const displayName = (user as any)?.apelido || user?.name || 'Usuário';
+
+  const NavLink = ({ path, icon: Icon, label, color, badge }: { path: string; icon: any; label: string; color?: string; badge?: number }) => {
     const isActive = location === path || (path !== '/' && location.startsWith(path));
+
+    if (collapsed) {
+      return (
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href={path}>
+                <div className={cn(
+                  'flex items-center justify-center px-2 py-2 rounded-lg transition-all duration-150 relative',
+                  isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+                )}>
+                  <Icon className="w-[18px] h-[18px] shrink-0" style={color ? { color } : undefined} />
+                  {badge && badge > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center">{badge}</span>
+                  )}
+                </div>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#0A1929] border-white/10 text-white text-xs">
+              {label}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
     return (
       <Link href={path}>
         <div className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
           isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
-          collapsed && 'justify-center px-2'
         )}>
           <Icon className="w-[18px] h-[18px] shrink-0" style={color ? { color } : undefined} />
-          {!collapsed && <span className="truncate">{label}</span>}
+          <span className="truncate flex-1">{label}</span>
+          {badge && badge > 0 && (
+            <span className="w-5 h-5 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center shrink-0">{badge}</span>
+          )}
         </div>
       </Link>
     );
@@ -130,7 +192,7 @@ export default function AppSidebar() {
     )}>
       {/* Logo */}
       <div className={cn(
-        'flex items-center h-14 px-4 border-b border-white/5',
+        'flex items-center h-14 px-4 border-b border-white/5 shrink-0',
         collapsed ? 'justify-center' : 'gap-3'
       )}>
         {collapsed ? (
@@ -141,11 +203,14 @@ export default function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto scrollbar-thin">
+      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto scrollbar-thin min-h-0">
         {/* Dashboard */}
         <NavLink path="/" icon={LayoutDashboard} label="Dashboard" />
 
-        {/* Setores */}
+        {/* Minhas Tarefas */}
+        <NavLink path="/minhas-tarefas" icon={ClipboardList} label="Minhas Tarefas" />
+
+        {/* Setores - Ordem Alfabética */}
         {!collapsed && (
           <div className="pt-3 pb-1 px-3">
             <span className="text-[10px] uppercase tracking-wider text-white/25 font-semibold">Setores</span>
@@ -160,14 +225,23 @@ export default function AppSidebar() {
 
           if (collapsed) {
             return (
-              <Link key={setor.sigla} href={`/setor/${setor.sigla.toLowerCase()}`}>
-                <div className={cn(
-                  'flex items-center justify-center px-2 py-2 rounded-lg transition-all duration-150',
-                  isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
-                )} title={setor.nome}>
-                  <IconComp className="w-[18px] h-[18px]" style={{ color: setor.cor }} />
-                </div>
-              </Link>
+              <TooltipProvider key={setor.sigla} delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href={`/setor/${setor.sigla.toLowerCase()}`}>
+                      <div className={cn(
+                        'flex items-center justify-center px-2 py-2 rounded-lg transition-all duration-150',
+                        isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+                      )}>
+                        <IconComp className="w-[18px] h-[18px]" style={{ color: setor.cor }} />
+                      </div>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-[#0A1929] border-white/10 text-white text-xs">
+                    {setor.nome}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             );
           }
 
@@ -181,7 +255,7 @@ export default function AppSidebar() {
                 )}
               >
                 <IconComp className="w-[18px] h-[18px] shrink-0" style={{ color: setor.cor }} />
-                <span className="truncate flex-1 text-left">{setor.sigla}</span>
+                <span className="truncate flex-1 text-left">{setor.nome}</span>
                 <ChevronDown className={cn(
                   'w-3.5 h-3.5 transition-transform duration-200 shrink-0',
                   isOpen && 'rotate-180'
@@ -205,15 +279,15 @@ export default function AppSidebar() {
                       </Link>
                     );
                   })}
-                  {/* Visão Analítica e Relatórios - disponível em todos os setores */}
-                  <Link href={`/setor/${setor.sigla.toLowerCase()}/analitica`}>
+                  {/* Relatórios - disponível em todos os setores */}
+                  <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
                     <div className={cn(
                       'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
-                      location === `/setor/${setor.sigla.toLowerCase()}/analitica`
+                      location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
                         ? 'bg-white/10 text-white'
                         : 'text-white/40 hover:text-white/70 hover:bg-white/5',
                     )}>
-                      <BarChart3 className="w-4 h-4 shrink-0" />
+                      <FileBarChart className="w-4 h-4 shrink-0" />
                       <span className="truncate">Relatórios</span>
                     </div>
                   </Link>
@@ -232,10 +306,10 @@ export default function AppSidebar() {
               </div>
             )}
             {collapsed && <div className="pt-2 border-t border-white/5 mt-2" />}
-            <NavLink path="/clientes" icon={Users} label="Clientes" />
-            <NavLink path="/parceiros" icon={Handshake} label="Parceiros" />
             <NavLink path="/teses" icon={BookOpen} label="Teses Tributárias" />
             <NavLink path="/servicos" icon={Settings} label="Serviços" />
+            <NavLink path="/gestao-parcerias" icon={Gem} label="Gestão de Parcerias" />
+            <NavLink path="/sla-config" icon={ClipboardList} label="Configuração SLA" />
             <NavLink path="/usuarios" icon={UserCog} label="Gestão de Usuários" />
             <NavLink path="/audit-log" icon={History} label="Audit Log" />
             <NavLink path="/api-keys" icon={Key} label="API & Integrações" />
@@ -244,12 +318,9 @@ export default function AppSidebar() {
       </nav>
 
       {/* User profile + notifications */}
-      <div className="p-2 border-t border-white/5 space-y-1">
-        {unreadCount > 0 && !collapsed && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs">
-            <Bell className="w-4 h-4" />
-            <span>{unreadCount} notificação(ões)</span>
-          </div>
+      <div className="p-2 border-t border-white/5 space-y-1 shrink-0">
+        {unreadCount > 0 && (
+          <NavLink path="/notificacoes" icon={Bell} label={`${unreadCount} notificação(ões)`} badge={unreadCount} />
         )}
 
         {/* Profile link */}
@@ -262,12 +333,12 @@ export default function AppSidebar() {
             <Avatar className="h-8 w-8 shrink-0 border border-white/10">
               {(user as any)?.avatar && <AvatarImage src={(user as any).avatar} />}
               <AvatarFallback className="text-xs font-medium bg-white/10 text-white">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                {displayName.charAt(0)?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-white/80 truncate">{user?.name || 'Usuário'}</p>
+                <p className="text-xs font-medium text-white/80 truncate">{displayName}</p>
                 <p className="text-[10px] text-white/40 truncate">{nivelLabel((user as any)?.nivelAcesso)}</p>
               </div>
             )}

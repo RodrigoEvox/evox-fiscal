@@ -15,6 +15,14 @@ import {
   arquivos, InsertArquivo,
   auditLog, InsertAuditLog,
   apiKeys, InsertApiKey,
+  servicos, InsertServico,
+  setorConfig, InsertSetorConfig,
+  modelosParceria, InsertModeloParceria,
+  comissoesServico, InsertComissaoServico,
+  parceiroServicos, InsertParceiroServico,
+  slaConfiguracoes, InsertSlaConfiguracao,
+  servicoEtapas, InsertServicoEtapa,
+  clienteServicos, InsertClienteServico,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -596,7 +604,7 @@ export async function getDashboardStats() {
 // ---- SERVIÇOS POR SETOR ----
 // =============================================
 
-import { servicos, InsertServico, setorConfig, InsertSetorConfig } from "../drizzle/schema";
+// servicos, setorConfig etc. already imported above
 
 export async function listServicos(setorId?: number) {
   const db = await getDb();
@@ -799,4 +807,187 @@ export async function seedSetoresEvox() {
       await db.insert(setorConfig).values({ setorId, sigla, submenus: submenus as any, workflowStatuses: defaultWorkflow });
     }
   }
+}
+
+
+// =============================================
+// ---- MODELOS DE PARCERIA ----
+// =============================================
+
+export async function listModelosParceria() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(modelosParceria).where(eq(modelosParceria.ativo, true)).orderBy(asc(modelosParceria.ordem));
+}
+
+export async function createModeloParceria(data: InsertModeloParceria) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(modelosParceria).values(data);
+  return result[0].insertId;
+}
+
+export async function updateModeloParceria(id: number, data: Partial<InsertModeloParceria>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(modelosParceria).set(data).where(eq(modelosParceria.id, id));
+}
+
+// =============================================
+// ---- COMISSÕES POR SERVIÇO ----
+// =============================================
+
+export async function listComissoesByServico(servicoId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(comissoesServico).where(eq(comissoesServico.servicoId, servicoId));
+}
+
+export async function listComissoesByModelo(modeloParceriaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(comissoesServico).where(eq(comissoesServico.modeloParceriaId, modeloParceriaId));
+}
+
+export async function upsertComissaoServico(servicoId: number, modeloParceriaId: number, percentualComissao: string) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(comissoesServico)
+    .where(and(eq(comissoesServico.servicoId, servicoId), eq(comissoesServico.modeloParceriaId, modeloParceriaId)))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(comissoesServico).set({ percentualComissao }).where(eq(comissoesServico.id, existing[0].id));
+  } else {
+    await db.insert(comissoesServico).values({ servicoId, modeloParceriaId, percentualComissao });
+  }
+}
+
+// =============================================
+// ---- PARCEIRO-SERVIÇO ----
+// =============================================
+
+export async function listParceiroServicos(parceiroId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(parceiroServicos).where(eq(parceiroServicos.parceiroId, parceiroId));
+}
+
+export async function addParceiroServico(data: InsertParceiroServico) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(parceiroServicos).values(data);
+  return result[0].insertId;
+}
+
+export async function updateParceiroServico(id: number, data: Partial<InsertParceiroServico>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(parceiroServicos).set(data).where(eq(parceiroServicos.id, id));
+}
+
+export async function removeParceiroServico(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(parceiroServicos).where(eq(parceiroServicos.id, id));
+}
+
+// =============================================
+// ---- SLA CONFIGURAÇÕES ----
+// =============================================
+
+export async function listSlaConfiguracoes(setorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (setorId) {
+    return db.select().from(slaConfiguracoes).where(eq(slaConfiguracoes.setorId, setorId)).orderBy(asc(slaConfiguracoes.nome));
+  }
+  return db.select().from(slaConfiguracoes).orderBy(asc(slaConfiguracoes.nome));
+}
+
+export async function createSlaConfiguracao(data: InsertSlaConfiguracao) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(slaConfiguracoes).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSlaConfiguracao(id: number, data: Partial<InsertSlaConfiguracao>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(slaConfiguracoes).set(data).where(eq(slaConfiguracoes.id, id));
+}
+
+export async function deleteSlaConfiguracao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(slaConfiguracoes).where(eq(slaConfiguracoes.id, id));
+}
+
+// =============================================
+// ---- ETAPAS DE SERVIÇO ----
+// =============================================
+
+export async function listServicoEtapas(servicoId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(servicoEtapas).where(eq(servicoEtapas.servicoId, servicoId)).orderBy(asc(servicoEtapas.ordem));
+}
+
+export async function createServicoEtapa(data: InsertServicoEtapa) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(servicoEtapas).values(data);
+  return result[0].insertId;
+}
+
+export async function updateServicoEtapa(id: number, data: Partial<InsertServicoEtapa>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(servicoEtapas).set(data).where(eq(servicoEtapas.id, id));
+}
+
+export async function deleteServicoEtapa(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(servicoEtapas).where(eq(servicoEtapas.id, id));
+}
+
+// =============================================
+// ---- CLIENTE-SERVIÇO ----
+// =============================================
+
+export async function listClienteServicos(clienteId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clienteServicos).where(eq(clienteServicos.clienteId, clienteId));
+}
+
+export async function addClienteServico(data: InsertClienteServico) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(clienteServicos).values(data);
+  return result[0].insertId;
+}
+
+export async function updateClienteServico(id: number, data: Partial<InsertClienteServico>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(clienteServicos).set(data).where(eq(clienteServicos.id, id));
+}
+
+// =============================================
+// ---- SUBPARCEIROS ----
+// =============================================
+
+export async function listSubparceiros(parceiroPaiId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(parceiros).where(eq(parceiros.parceiroPaiId, parceiroPaiId)).orderBy(asc(parceiros.nomeCompleto));
+}
+
+export async function getParceiroById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(parceiros).where(eq(parceiros.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
 }

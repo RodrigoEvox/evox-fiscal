@@ -193,6 +193,111 @@ describe("Auth Router", () => {
   });
 });
 
+describe("CRM v7 Router Structure", () => {
+  it("should have modelos de parceria procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.modelosParceria).toBeDefined();
+    expect(caller.modelosParceria.list).toBeDefined();
+    expect(caller.modelosParceria.create).toBeDefined();
+    expect(caller.modelosParceria.update).toBeDefined();
+    expect(caller.modelosParceria.delete).toBeDefined();
+  });
+
+  it("should have comissoes procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.comissoes).toBeDefined();
+    expect(caller.comissoes.listByModelo).toBeDefined();
+    expect(caller.comissoes.upsert).toBeDefined();
+  });
+
+  it("should have slaConfig procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.slaConfig).toBeDefined();
+    expect(caller.slaConfig.list).toBeDefined();
+    expect(caller.slaConfig.upsert).toBeDefined();
+    expect(caller.slaConfig.delete).toBeDefined();
+  });
+
+  it("should have servicoEtapas procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.servicoEtapas).toBeDefined();
+    expect(caller.servicoEtapas.listByServico).toBeDefined();
+    expect(caller.servicoEtapas.create).toBeDefined();
+    expect(caller.servicoEtapas.update).toBeDefined();
+    expect(caller.servicoEtapas.delete).toBeDefined();
+  });
+
+  it("should have perfil procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.perfil).toBeDefined();
+    expect(caller.perfil.get).toBeDefined();
+    expect(caller.perfil.update).toBeDefined();
+    expect(caller.perfil.uploadAvatar).toBeDefined();
+  });
+
+  it("should have subparceiros procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.subparceiros).toBeDefined();
+    expect(caller.subparceiros.listByParceiro).toBeDefined();
+    expect(caller.subparceiros.create).toBeDefined();
+    expect(caller.subparceiros.delete).toBeDefined();
+  });
+
+  it("should have clienteServico procedures", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.clienteServico).toBeDefined();
+    expect(caller.clienteServico.listByCliente).toBeDefined();
+    expect(caller.clienteServico.assign).toBeDefined();
+  });
+
+  it("should have users.create procedure for admin", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.users.create).toBeDefined();
+    expect(caller.users.update).toBeDefined();
+    expect(caller.users.delete).toBeDefined();
+  });
+
+  it("should have buscaGlobal procedure", () => {
+    const caller = appRouter.createCaller(createAdminContext().ctx);
+    expect(caller.buscaGlobal).toBeDefined();
+    expect(caller.buscaGlobal.search).toBeDefined();
+  });
+});
+
+describe("CRM v7 Access Control", () => {
+  it("should deny non-admin access to modelosParceria.create", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.modelosParceria.create({ nome: "Test", classificacao: "prata" })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to slaConfig.upsert", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.slaConfig.upsert({ setorId: 1, tipoTarefa: "test", prazoHoras: 24 })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to users.create", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.users.create({ name: "Test", email: "test@test.com" })
+    ).rejects.toThrow();
+  });
+
+  it("should deny non-admin access to users.delete", async () => {
+    const { ctx } = createUserContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.users.delete({ id: 999 })
+    ).rejects.toThrow();
+  });
+});
+
 describe("Dashboard Stats", () => {
   it("should return dashboard stats structure", async () => {
     const { ctx } = createAdminContext();

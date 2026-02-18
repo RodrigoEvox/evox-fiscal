@@ -161,3 +161,123 @@
 - [x] Exibir foto do perfil na sidebar e nos cards de usuário
 
 - [x] Fix: erro recorrente tRPC retornando HTML ao invés de JSON na página principal — retry automático com backoff exponencial no cliente
+
+## CRM v7 — Evolução Completa do CRM
+
+### Renomear Setores (remover siglas)
+- [x] SPC → Suporte
+- [x] RCT → Crédito
+- [x] DPT → Transação
+- [x] JUR → Jurídico
+- [x] RT → Reforma
+- [x] CT → Contratos
+- [x] FIN → Financeiro
+- [x] MKT → Marketing
+- [x] RH → Gente e Gestão
+- [x] Ao recolher menu, manter somente o ícone dos setores (tooltips)
+
+### Novos Setores
+- [x] Contencioso (submenus: Nova Tarefa, Fila de Execução, Relatório)
+- [x] Comercial (submenus: Nova Tarefa, Fila de Execução, Relatório)
+- [x] Soluções Financeiras (submenus: Nova Tarefa, Fila de Execução, Relatório)
+- [x] Universidade Evox (repositório de treinamentos internos)
+- [x] Evox Monitor (monitoramento tributário e-CAC/Regularize)
+
+### Reorganização do Menu
+- [x] Mover Parceiros e Clientes para dentro do Suporte (submenu)
+- [x] Ordenar setores em ordem alfabética
+- [x] Dentro de Crédito: adicionar submenu "Média de Guias" (funcionalidade do evoxguias)
+
+### Integração Google
+- [ ] Integração com Gmail
+- [ ] Integração com Google Drive
+- [ ] Integração com Google Docs
+- [ ] Integração com Google Calendar (Agenda)
+
+### Premissas Básicas (transversal a todo o sistema)
+- [x] Rastreabilidade de processos e informações
+- [x] Segurança da informação por perfil de usuário
+- [x] Hierarquia de acessos
+- [x] Gestão de prazos (SLA)
+- [x] Integração de setores na criação de tarefas/subtarefas
+- [x] Geração de relatórios gerenciais
+
+### Histórico Imutável
+- [x] Histórico de alterações imutável (ninguém pode excluir/alterar/editar) — tabela cliente_historico
+- [x] Histórico individualizado por setor
+- [x] Histórico individualizado por cliente (quem fez, quando fez, o que fez, o que deixou de fazer)
+- [x] Registro de: inclusão, edição, exclusão, ativação, inativação de clientes, parceiros, usuários
+
+### SLA Configurável pelo Admin
+- [x] Admin pode definir SLA padrão de cada tarefa diretamente no sistema
+- [x] Admin pode alterar SLA a qualquer momento
+- [x] Cada departamento pode ter tarefas padrão com SLAs atribuídos
+- [x] Somente admin pode criar, alterar, excluir, ativar ou inativar tarefas padrão
+
+### Serviços e Automação de Tarefas
+- [x] Serviço = produto principal comercializado pela Evox
+- [x] Cada serviço tem etapas/tarefas que a equipe segue durante execução
+- [x] Ao atribuir serviço a um cliente, sistema gera automaticamente as tarefas dos setores
+- [x] Tarefas entram automaticamente na fila de execução de cada setor (critério: data/hora)
+- [x] Somente coordenador do setor pode alterar a fila de execução (prioridade)
+
+### Gestão de Parcerias (Administração)
+- [x] Menu "Gestão de Parcerias" dentro de Administração
+- [x] Classificação: Parceiro Diamante, Parceiro Ouro, Parceiro Prata
+- [x] Percentuais de comissão por serviço e por modelo de parceria
+- [x] Serviços do menu Serviços replicados dentro de cada modelo de parceria com seus percentuais
+
+### Gestão de Comissões de Parceiros
+- [x] No cadastro do parceiro: selecionar produtos/serviços que vai trabalhar com a Evox
+- [x] Sistema traz comissão padrão predefinida no cadastro de serviços
+- [x] Usuário pode alterar percentual: se menor → alerta de dupla conferência
+- [x] Se percentual maior que padrão → requer autorização do diretor (tarefa automática de aprovação)
+- [x] Alterar percentual no cadastro de serviço NÃO altera parceiros já cadastrados (somente novos)
+- [x] Opção de alterar para todos mediante aprovação da diretoria
+
+### Subparceiros
+- [x] Atribuir parceiro à equipe de outro parceiro (Parceiro e Subparceiro)
+- [x] Gestão de repasse de comissões entre parceiro e subparceiro
+- [x] Exemplo: Parceiro X recebe 50%, repassa 40% ao subparceiro Y, fica com 10%
+- [x] Associar subparceiro a parceiro e fazer gestão de comissão
+- [x] Em todas as visões do cliente, exibir parceiro responsável e se é subparceiro (a quem está ligado)
+
+### Cadastro de Clientes (melhorias)
+- [ ] Regime tributário: campo sempre em branco com dropdown (Simples Nacional, Lucro Presumido, Lucro Real)
+- [x] Ao digitar CNPJ: auto-fill CNAE principal, descrição CNAE, segmento econômico, UF e cidade
+- [ ] Opção de cadastrar clientes pessoa física (CPF)
+- [ ] Rolagem de tela responsiva em todos os dispositivos
+
+### Campos Configuráveis pelo Admin
+- [ ] Admin pode determinar se campo é obrigatório ou não
+- [ ] Admin pode incluir, excluir ou editar campos de formulários
+
+### Relatórios
+- [x] Todos os relatórios com download em PDF e Excel (botões funcionais)
+- [ ] Relatório por parceiro
+- [ ] Relatório por tipo de produto/serviço
+- [ ] Relatório por setor
+- [ ] Relatório por colaborador
+- [ ] Relatório por indicadores financeiros
+- [ ] Relatório de produtividade
+
+### Portal do Parceiro (acesso restrito)
+- [ ] Parceiro tem acesso restrito à sua carteira de clientes
+- [ ] Parceiro vê andamento das execuções etapa por etapa
+- [ ] Parceiro recebe notificações importantes (ex: análise concluída)
+
+### Visão do Colaborador
+- [x] Colaborador vê apenas suas tarefas e tarefas atribuídas a ele
+- [x] Visão focada na execução (sem dispersão com outras visões)
+
+### Perfil do Usuário (melhorias)
+- [ ] Recorte/ajuste de foto no upload de imagem do perfil
+
+### Média de Guias (dentro de Crédito)
+- [ ] Integrar funcionalidade do evoxguias dentro do CRM (submenu Crédito > Média de Guias)
+
+### Serviços (CRUD completo)
+- [x] Criar, alterar, excluir, ativar, inativar serviços
+- [x] Associar setor(es) responsável(is) pela execução de cada serviço
+- [x] Associar pessoa(s) responsável(is) pela execução
+- [x] Percentual padrão de comissão por tipo de parceria (Diamante/Ouro/Prata)
