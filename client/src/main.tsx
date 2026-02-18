@@ -8,7 +8,63 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+/**
+ * Custom fetch wrapper that detects HTML responses (from proxy/nginx during
+ * server restarts or sandbox wake-up) and retries with exponential backoff.
+ */
+async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  retries = 3,
+  delay = 1000
+): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await globalThis.fetch(input, {
+      ...(init ?? {}),
+      credentials: "include",
+    });
+
+    // Check if we got an HTML response instead of JSON (proxy returning fallback page)
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("text/html") && attempt < retries) {
+      console.warn(
+        `[tRPC] Received HTML response (attempt ${attempt + 1}/${retries + 1}), retrying in ${delay}ms...`
+      );
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2; // exponential backoff
+      continue;
+    }
+
+    return response;
+  }
+
+  // Should not reach here, but return last attempt as fallback
+  return globalThis.fetch(input, {
+    ...(init ?? {}),
+    credentials: "include",
+  });
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Retry up to 3 times on failure (handles transient errors during sandbox wake-up)
+      retry: (failureCount, error) => {
+        // Don't retry auth errors
+        if (error instanceof TRPCClientError && error.message === UNAUTHED_ERR_MSG) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+      // Stale time to reduce unnecessary refetches
+      staleTime: 5000,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -25,7 +81,10 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    // Only log non-HTML errors to avoid noise during retries
+    if (!(error instanceof TRPCClientError && error.message.includes("<!doctype"))) {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -42,12 +101,7 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
-      },
+      fetch: fetchWithRetry,
     }),
   ],
 });

@@ -159,3 +159,5 @@
 ### Perfil do Usuário
 - [x] Upload de foto/imagem para o perfil do usuário
 - [x] Exibir foto do perfil na sidebar e nos cards de usuário
+
+- [x] Fix: erro recorrente tRPC retornando HTML ao invés de JSON na página principal — retry automático com backoff exponencial no cliente
