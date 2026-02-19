@@ -137,9 +137,14 @@ export default function Relatorios() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold">{cliente?.razaoSocial || `Cliente #${r.clienteId}`}</h3>
                         <Badge className={prioridadeColors[r.prioridade]}>{r.prioridade === 'alta' ? 'Alta' : r.prioridade === 'media' ? 'Média' : 'Baixa'}</Badge>
+                        <Badge className={`text-[9px] ${cliente?.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                          {cliente?.classificacaoCliente === 'novo' ? 'Novo' : 'Base'}
+                        </Badge>
+                        {cliente?.segmentoEconomico && <Badge variant="outline" className="text-[9px] bg-purple-50 text-purple-700 border-purple-200">{cliente.segmentoEconomico}</Badge>}
+                        {cliente?.regimeTributario && <Badge variant="outline" className="text-[9px] bg-teal-50 text-teal-700 border-teal-200">{cliente.regimeTributario}</Badge>}
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(r.createdAt).toLocaleDateString('pt-BR')}</span>

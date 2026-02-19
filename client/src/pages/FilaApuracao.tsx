@@ -298,6 +298,11 @@ export default function FilaApuracao() {
                         <div><Label className="text-xs text-muted-foreground">Prioridade</Label>
                           <Badge className={prioridadeColors[cliente.prioridade || 'baixa']}>{cliente.prioridade === 'alta' ? 'Alta' : cliente.prioridade === 'media' ? 'Média' : 'Baixa'}</Badge>
                         </div>
+                        <div><Label className="text-xs text-muted-foreground">Segmento</Label><p>{cliente.segmentoEconomico || 'N/A'}</p></div>
+                        <div><Label className="text-xs text-muted-foreground">Classificação</Label>
+                          <Badge className={`text-[10px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{cliente.classificacaoCliente === 'novo' ? 'Novo' : 'Base'}</Badge>
+                        </div>
+                        <div><Label className="text-xs text-muted-foreground">Folha Pagamento Média</Label><p>R$ {Number(cliente.folhaPagamentoMedia || 0).toLocaleString('pt-BR')}</p></div>
                       </div>
                     ) : <p className="text-muted-foreground">Dados não encontrados.</p>}
                   </TabsContent>

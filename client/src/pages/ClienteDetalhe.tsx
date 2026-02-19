@@ -104,6 +104,19 @@ export default function ClienteDetalhe() {
               <Badge className={`text-[10px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                 {cliente.classificacaoCliente === 'novo' ? 'Cliente Novo' : 'Cliente Base'}
               </Badge>
+              {cliente.segmentoEconomico && (
+                <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">{cliente.segmentoEconomico}</Badge>
+              )}
+              {cliente.regimeTributario && (
+                <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-700 border-teal-200">{cliente.regimeTributario}</Badge>
+              )}
+              {procStatus === 'habilitada' && <Badge className="text-[10px] bg-green-50 text-green-600 border-green-100 gap-1"><ShieldCheck className="w-3 h-3" /> Proc. OK</Badge>}
+              {procStatus === 'vencida' && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 gap-1"><ShieldAlert className="w-3 h-3" /> Proc. Vencida</Badge>}
+              {procStatus === 'vencendo' && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 gap-1"><CalendarClock className="w-3 h-3" /> Proc. Vencendo</Badge>}
+              {procStatus === 'desabilitada' && <Badge className="text-[10px] bg-red-50 text-red-500 border-red-100 gap-1"><ShieldAlert className="w-3 h-3" /> S/ Proc.</Badge>}
+              <Badge className={`text-[10px] ${(cliente.ativo !== false && cliente.situacaoCadastral === 'ativa') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500'}`}>
+                {(cliente.ativo !== false && cliente.situacaoCadastral === 'ativa') ? 'Ativo' : 'Inativo'}
+              </Badge>
             </div>
           </div>
         </div>

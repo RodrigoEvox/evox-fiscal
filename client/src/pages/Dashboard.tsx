@@ -155,19 +155,25 @@ export default function Dashboard() {
                         <p className="text-xs text-muted-foreground font-data">{cliente.cnpj}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <Badge className={`text-[9px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                        {cliente.classificacaoCliente === 'novo' ? 'Novo' : 'Base'}
+                      </Badge>
                       {redFlagCount > 0 && (
-                        <Badge variant="destructive" className="text-[10px] gap-1">
+                        <Badge variant="destructive" className="text-[9px] gap-1">
                           <Flag className="w-3 h-3" /> {redFlagCount}
                         </Badge>
                       )}
-                      <Badge className={
+                      <Badge className={`text-[9px] ${
                         cliente.prioridade === 'alta' ? 'bg-red-100 text-red-700 border-red-200' :
                         cliente.prioridade === 'media' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                         'bg-sky-100 text-sky-700 border-sky-200'
-                      }>
+                      }`}>
                         {cliente.prioridade === 'alta' ? 'Alta' : cliente.prioridade === 'media' ? 'Média' : 'Baixa'}
                       </Badge>
+                      {cliente.regimeTributario && (
+                        <Badge variant="outline" className="text-[8px] h-4 bg-teal-50 text-teal-700 border-teal-200">{cliente.regimeTributario}</Badge>
+                      )}
                     </div>
                   </div>
                 );

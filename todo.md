@@ -519,3 +519,24 @@
 - [x] Corrigir consulta automática de CNPJ (não está buscando dados e dá erro de CNPJ inválido)
 - [x] Adicionar busca automática de endereço por CEP (ViaCEP)
 - [x] Tornar todos os campos obrigatórios no cadastro de parceiros
+
+## CRM v16 — Filtros Avançados e Cards de Empresa
+
+### Filtros na Lista de Clientes
+- [x] Filtro por parceiro ou subparceiro
+- [x] Filtro por tipo: cliente novo ou base
+- [x] Filtro por procuração: habilitada, vencida ou próximo do vencimento
+- [x] Filtro por prioridade
+- [x] Filtro por status: ativo ou inativo
+- [x] Filtro por segmento econômico
+- [x] Filtro por regime tributário
+
+### Cards de Empresa (todas as visões)
+- [x] Exibir parceiro/subparceiro no card
+- [x] Exibir indicador novo/base no card
+- [x] Exibir status da procuração no card
+- [x] Exibir prioridade no card
+- [x] Exibir status ativo/inativo no card
+- [x] Exibir segmento econômico no card
+- [x] Exibir regime tributário no card
+- [x] Propagar cards atualizados em todas as visões do sistema (lista, detalhe, fila, relatórios)

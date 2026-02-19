@@ -399,3 +399,133 @@ describe("Painel de aprovações - lógica de status", () => {
     });
   });
 });
+
+// ===== FILTROS AVANÇADOS DE CLIENTES =====
+
+describe("Filtros avançados de clientes", () => {
+  // Simula a lógica de filtro do frontend
+  function procuracaoStatus(cliente: any) {
+    if (!cliente.procuracaoHabilitada) return 'desabilitada';
+    if (!cliente.procuracaoValidade) return 'habilitada';
+    const validade = new Date(cliente.procuracaoValidade);
+    const hoje = new Date();
+    const diffDias = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDias < 0) return 'vencida';
+    if (diffDias <= 7) return 'vencendo';
+    return 'habilitada';
+  }
+
+  const mockClientes = [
+    { id: 1, razaoSocial: 'Empresa A', classificacaoCliente: 'novo', prioridade: 'alta', segmentoEconomico: 'Tecnologia', regimeTributario: 'lucro_real', ativo: true, situacaoCadastral: 'ativa', procuracaoHabilitada: true, procuracaoValidade: null, parceiroId: 1 },
+    { id: 2, razaoSocial: 'Empresa B', classificacaoCliente: 'base', prioridade: 'baixa', segmentoEconomico: 'Comércio', regimeTributario: 'simples_nacional', ativo: false, situacaoCadastral: 'baixada', procuracaoHabilitada: false, procuracaoValidade: null, parceiroId: 2 },
+    { id: 3, razaoSocial: 'Empresa C', classificacaoCliente: 'novo', prioridade: 'media', segmentoEconomico: 'Tecnologia', regimeTributario: 'lucro_presumido', ativo: true, situacaoCadastral: 'ativa', procuracaoHabilitada: true, procuracaoValidade: new Date(Date.now() - 86400000).toISOString(), parceiroId: null },
+    { id: 4, razaoSocial: 'Empresa D', classificacaoCliente: 'base', prioridade: 'alta', segmentoEconomico: 'Indústria', regimeTributario: 'lucro_real', ativo: true, situacaoCadastral: 'ativa', procuracaoHabilitada: true, procuracaoValidade: new Date(Date.now() + 3 * 86400000).toISOString(), parceiroId: 1 },
+  ];
+
+  it("filtra por tipo de cliente (novo/base)", () => {
+    const novos = mockClientes.filter(c => c.classificacaoCliente === 'novo');
+    expect(novos).toHaveLength(2);
+    expect(novos.every(c => c.classificacaoCliente === 'novo')).toBe(true);
+
+    const base = mockClientes.filter(c => c.classificacaoCliente === 'base');
+    expect(base).toHaveLength(2);
+  });
+
+  it("filtra por status ativo/inativo", () => {
+    const ativos = mockClientes.filter(c => c.ativo !== false && c.situacaoCadastral === 'ativa');
+    expect(ativos).toHaveLength(3);
+
+    const inativos = mockClientes.filter(c => c.ativo === false || c.situacaoCadastral !== 'ativa');
+    expect(inativos).toHaveLength(1);
+    expect(inativos[0].razaoSocial).toBe('Empresa B');
+  });
+
+  it("filtra por prioridade", () => {
+    const alta = mockClientes.filter(c => c.prioridade === 'alta');
+    expect(alta).toHaveLength(2);
+
+    const media = mockClientes.filter(c => c.prioridade === 'media');
+    expect(media).toHaveLength(1);
+
+    const baixa = mockClientes.filter(c => c.prioridade === 'baixa');
+    expect(baixa).toHaveLength(1);
+  });
+
+  it("filtra por segmento econômico", () => {
+    const tech = mockClientes.filter(c => c.segmentoEconomico === 'Tecnologia');
+    expect(tech).toHaveLength(2);
+
+    const comercio = mockClientes.filter(c => c.segmentoEconomico === 'Comércio');
+    expect(comercio).toHaveLength(1);
+  });
+
+  it("filtra por regime tributário", () => {
+    const lucroReal = mockClientes.filter(c => c.regimeTributario === 'lucro_real');
+    expect(lucroReal).toHaveLength(2);
+
+    const simples = mockClientes.filter(c => c.regimeTributario === 'simples_nacional');
+    expect(simples).toHaveLength(1);
+  });
+
+  it("filtra por status de procuração", () => {
+    const habilitada = mockClientes.filter(c => procuracaoStatus(c) === 'habilitada');
+    expect(habilitada).toHaveLength(1);
+    expect(habilitada[0].razaoSocial).toBe('Empresa A');
+
+    const desabilitada = mockClientes.filter(c => procuracaoStatus(c) === 'desabilitada');
+    expect(desabilitada).toHaveLength(1);
+    expect(desabilitada[0].razaoSocial).toBe('Empresa B');
+
+    const vencida = mockClientes.filter(c => procuracaoStatus(c) === 'vencida');
+    expect(vencida).toHaveLength(1);
+    expect(vencida[0].razaoSocial).toBe('Empresa C');
+
+    const vencendo = mockClientes.filter(c => procuracaoStatus(c) === 'vencendo');
+    expect(vencendo).toHaveLength(1);
+    expect(vencendo[0].razaoSocial).toBe('Empresa D');
+  });
+
+  it("filtra por parceiro", () => {
+    const comParceiro1 = mockClientes.filter(c => c.parceiroId === 1);
+    expect(comParceiro1).toHaveLength(2);
+
+    const semParceiro = mockClientes.filter(c => !c.parceiroId);
+    expect(semParceiro).toHaveLength(1);
+  });
+
+  it("combina múltiplos filtros", () => {
+    // Novo + Alta prioridade
+    const novoAlta = mockClientes.filter(c => c.classificacaoCliente === 'novo' && c.prioridade === 'alta');
+    expect(novoAlta).toHaveLength(1);
+    expect(novoAlta[0].razaoSocial).toBe('Empresa A');
+
+    // Ativo + Lucro Real
+    const ativoLucroReal = mockClientes.filter(c => c.ativo !== false && c.situacaoCadastral === 'ativa' && c.regimeTributario === 'lucro_real');
+    expect(ativoLucroReal).toHaveLength(2);
+
+    // Tecnologia + Novo
+    const techNovo = mockClientes.filter(c => c.segmentoEconomico === 'Tecnologia' && c.classificacaoCliente === 'novo');
+    expect(techNovo).toHaveLength(2);
+  });
+
+  it("calcula contagem de filtros ativos corretamente", () => {
+    const filters = {
+      filterStatus: 'ativos' as string,
+      filterParceiro: 'todos' as string,
+      filterTipoCliente: 'novo' as string,
+      filterProcuracao: 'todos' as string,
+      filterPrioridadeLocal: 'todos' as string,
+      filterSegmento: 'todos' as string,
+      filterRegime: 'todos' as string,
+    };
+    let count = 0;
+    if (filters.filterStatus !== 'todos') count++;
+    if (filters.filterParceiro !== 'todos') count++;
+    if (filters.filterTipoCliente !== 'todos') count++;
+    if (filters.filterProcuracao !== 'todos') count++;
+    if (filters.filterPrioridadeLocal !== 'todos') count++;
+    if (filters.filterSegmento !== 'todos') count++;
+    if (filters.filterRegime !== 'todos') count++;
+    expect(count).toBe(2); // ativos + novo
+  });
+});

@@ -103,6 +103,12 @@ export default function Clientes() {
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'todos' | 'ativos' | 'inativos'>('todos');
   const [filterParceiro, setFilterParceiro] = useState<string>('todos');
+  const [filterTipoCliente, setFilterTipoCliente] = useState<'todos' | 'novo' | 'base'>('todos');
+  const [filterProcuracao, setFilterProcuracao] = useState<'todos' | 'habilitada' | 'vencida' | 'vencendo' | 'desabilitada'>('todos');
+  const [filterPrioridadeLocal, setFilterPrioridadeLocal] = useState<'todos' | 'alta' | 'media' | 'baixa'>('todos');
+  const [filterSegmento, setFilterSegmento] = useState<string>('todos');
+  const [filterRegime, setFilterRegime] = useState<string>('todos');
+  const [showFilters, setShowFilters] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [parceiroTouched, setParceiroTouched] = useState(false);
@@ -421,6 +427,41 @@ export default function Clientes() {
     return 'habilitada';
   }
 
+  // Compute unique segments and regimes for filter dropdowns
+  const uniqueSegmentos = useMemo(() => {
+    const segs = new Set<string>();
+    clientes.forEach((c: any) => { if (c.segmentoEconomico) segs.add(c.segmentoEconomico); });
+    return Array.from(segs).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [clientes]);
+
+  const uniqueRegimes = useMemo(() => {
+    const regs = new Set<string>();
+    clientes.forEach((c: any) => { if (c.regimeTributario) regs.add(c.regimeTributario); });
+    return Array.from(regs).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [clientes]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterStatus !== 'todos') count++;
+    if (filterParceiro !== 'todos') count++;
+    if (filterTipoCliente !== 'todos') count++;
+    if (filterProcuracao !== 'todos') count++;
+    if (filterPrioridadeLocal !== 'todos') count++;
+    if (filterSegmento !== 'todos') count++;
+    if (filterRegime !== 'todos') count++;
+    return count;
+  }, [filterStatus, filterParceiro, filterTipoCliente, filterProcuracao, filterPrioridadeLocal, filterSegmento, filterRegime]);
+
+  const clearAllFilters = () => {
+    setFilterStatus('todos');
+    setFilterParceiro('todos');
+    setFilterTipoCliente('todos');
+    setFilterProcuracao('todos');
+    setFilterPrioridadeLocal('todos');
+    setFilterSegmento('todos');
+    setFilterRegime('todos');
+  };
+
   const filtered = useMemo(() => {
     let list = clientes;
     if (filterPrioridade) list = list.filter((c: any) => c.prioridade === filterPrioridade);
@@ -432,10 +473,24 @@ export default function Clientes() {
         list = list.filter((c: any) => !c.parceiroId);
       } else {
         const pid = Number(filterParceiro);
-        // Include clients of this partner AND clients of subpartners under this partner
         const subIds = parceiros.filter((p: any) => p.ehSubparceiro && p.parceiroPaiId === pid).map((p: any) => p.id);
         list = list.filter((c: any) => c.parceiroId === pid || subIds.includes(c.parceiroId));
       }
+    }
+    if (filterTipoCliente !== 'todos') {
+      list = list.filter((c: any) => c.classificacaoCliente === filterTipoCliente);
+    }
+    if (filterProcuracao !== 'todos') {
+      list = list.filter((c: any) => procuracaoStatus(c) === filterProcuracao);
+    }
+    if (filterPrioridadeLocal !== 'todos') {
+      list = list.filter((c: any) => c.prioridade === filterPrioridadeLocal);
+    }
+    if (filterSegmento !== 'todos') {
+      list = list.filter((c: any) => c.segmentoEconomico === filterSegmento);
+    }
+    if (filterRegime !== 'todos') {
+      list = list.filter((c: any) => c.regimeTributario === filterRegime);
     }
     if (search) {
       const s = search.toLowerCase();
@@ -447,7 +502,7 @@ export default function Clientes() {
       );
     }
     return list;
-  }, [clientes, filterPrioridade, filterRedFlags, filterStatus, filterParceiro, search, parceiros]);
+  }, [clientes, filterPrioridade, filterRedFlags, filterStatus, filterParceiro, filterTipoCliente, filterProcuracao, filterPrioridadeLocal, filterSegmento, filterRegime, search, parceiros]);
 
   const prioridadeBadge = (p: string) => {
     if (p === 'alta') return <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">Alta</Badge>;
@@ -479,7 +534,7 @@ export default function Clientes() {
             <p className="text-sm text-muted-foreground mt-1">
               {activeFilter ? (
                 filterPrioridade ? `Filtrando: Prioridade ${filterPrioridade}` : 'Filtrando: Com Red Flags'
-              ) : filterParceiro !== 'todos' ? `${filtered.length} de ${clientes.length} clientes (filtrado por parceiro)` : `${clientes.length} clientes cadastrados`}
+              ) : activeFilterCount > 0 ? `${filtered.length} de ${clientes.length} clientes (${activeFilterCount} filtro${activeFilterCount > 1 ? 's' : ''})` : `${clientes.length} clientes cadastrados`}
             </p>
           </div>
         </div>
@@ -488,38 +543,157 @@ export default function Clientes() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar por razão social, CNPJ, CPF ou nome fantasia..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+      <div className="space-y-3">
+        {/* Barra de busca + botão de filtros */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Buscar por razão social, CNPJ, CPF ou nome fantasia..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          </div>
+          <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={() => setShowFilters(!showFilters)} className="gap-2 shrink-0">
+            <Filter className="w-4 h-4" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <Badge className="bg-white text-primary h-5 w-5 p-0 flex items-center justify-center text-[10px] rounded-full">{activeFilterCount}</Badge>
+            )}
+          </Button>
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs text-muted-foreground shrink-0">
+              Limpar filtros
+            </Button>
+          )}
         </div>
-        <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
-          <SelectTrigger className="w-[160px]">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="ativos">Ativos</SelectItem>
-            <SelectItem value="inativos">Inativos</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterParceiro} onValueChange={(v: any) => setFilterParceiro(v)}>
-          <SelectTrigger className="w-[200px]">
-            <Users className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Parceiro" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os Parceiros</SelectItem>
-            <SelectItem value="sem_parceiro">Sem Parceiro</SelectItem>
-            {parceiros.filter((p: any) => !p.ehSubparceiro).map((p: any) => (
-              <SelectItem key={p.id} value={String(p.id)}>{p.apelido || p.nomeCompleto}</SelectItem>
-            ))}
-            {parceiros.filter((p: any) => p.ehSubparceiro).map((p: any) => (
-              <SelectItem key={p.id} value={String(p.id)}>↳ {p.apelido || p.nomeCompleto}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        {/* Painel de filtros avançados */}
+        {showFilters && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                {/* Status Ativo/Inativo */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Status</Label>
+                  <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="ativos">Ativos</SelectItem>
+                      <SelectItem value="inativos">Inativos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Parceiro */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Parceiro</Label>
+                  <Select value={filterParceiro} onValueChange={(v: any) => setFilterParceiro(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="sem_parceiro">Sem Parceiro</SelectItem>
+                      {parceiros.filter((p: any) => !p.ehSubparceiro).map((p: any) => (
+                        <SelectItem key={p.id} value={String(p.id)}>{p.apelido || p.nomeCompleto}</SelectItem>
+                      ))}
+                      {parceiros.filter((p: any) => p.ehSubparceiro).map((p: any) => (
+                        <SelectItem key={p.id} value={String(p.id)}>↳ {p.apelido || p.nomeCompleto}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Tipo Cliente */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Tipo</Label>
+                  <Select value={filterTipoCliente} onValueChange={(v: any) => setFilterTipoCliente(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="novo">Novo</SelectItem>
+                      <SelectItem value="base">Base</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Procuração */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Procuração</Label>
+                  <Select value={filterProcuracao} onValueChange={(v: any) => setFilterProcuracao(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas</SelectItem>
+                      <SelectItem value="habilitada">Habilitada</SelectItem>
+                      <SelectItem value="vencida">Vencida</SelectItem>
+                      <SelectItem value="vencendo">Próx. Vencimento</SelectItem>
+                      <SelectItem value="desabilitada">Desabilitada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Prioridade */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Prioridade</Label>
+                  <Select value={filterPrioridadeLocal} onValueChange={(v: any) => setFilterPrioridadeLocal(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                      <SelectItem value="media">Média</SelectItem>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Segmento */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Segmento</Label>
+                  <Select value={filterSegmento} onValueChange={(v: any) => setFilterSegmento(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="todos">Todos</SelectItem>
+                      {uniqueSegmentos.map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Regime Tributário */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Regime</Label>
+                  <Select value={filterRegime} onValueChange={(v: any) => setFilterRegime(v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      {uniqueRegimes.map(r => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Resumo dos filtros ativos */}
+        {activeFilterCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {filtered.length} de {clientes.length} clientes ({activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''} ativo{activeFilterCount > 1 ? 's' : ''})
+          </p>
+        )}
       </div>
 
       {isLoading ? (
@@ -596,6 +770,16 @@ export default function Clientes() {
                       <Badge variant={isAtivo ? 'default' : 'secondary'} className={`text-[10px] ${isAtivo ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500'}`}>
                         {isAtivo ? 'Ativo' : 'Inativo'}
                       </Badge>
+                      {cliente.segmentoEconomico && (
+                        <Badge variant="outline" className="text-[9px] h-4 bg-purple-50 text-purple-700 border-purple-200 max-w-[120px] truncate" title={cliente.segmentoEconomico}>
+                          {cliente.segmentoEconomico}
+                        </Badge>
+                      )}
+                      {cliente.regimeTributario && (
+                        <Badge variant="outline" className="text-[9px] h-4 bg-teal-50 text-teal-700 border-teal-200">
+                          {cliente.regimeTributario}
+                        </Badge>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
