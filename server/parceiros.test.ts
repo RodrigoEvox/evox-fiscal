@@ -242,3 +242,160 @@ describe("Máscaras de formatação", () => {
     expect(result.replace(/\D/g, '').length).toBeLessThanOrEqual(14);
   });
 });
+
+describe("Relatório de comissões - lógica de consolidação", () => {
+  const parceiros = [
+    { id: 1, apelido: "João", nomeCompleto: "João Silva", ehSubparceiro: false, parceiroPaiId: null, modeloParceriaId: 1, executivoComercialId: 5, ativo: true },
+    { id: 2, apelido: "Pedro", nomeCompleto: "Pedro Santos", ehSubparceiro: true, parceiroPaiId: 1, modeloParceriaId: 1, executivoComercialId: 5, ativo: true },
+    { id: 3, apelido: "Maria", nomeCompleto: "Maria Oliveira", ehSubparceiro: false, parceiroPaiId: null, modeloParceriaId: 2, executivoComercialId: 7, ativo: true },
+    { id: 4, apelido: null, nomeCompleto: "Carlos Inativo", ehSubparceiro: false, parceiroPaiId: null, modeloParceriaId: 1, executivoComercialId: 5, ativo: false },
+  ];
+
+  const clientes = [
+    { id: 1, parceiroId: 1, faturamentoMedioMensal: "100000" },
+    { id: 2, parceiroId: 1, faturamentoMedioMensal: "200000" },
+    { id: 3, parceiroId: 2, faturamentoMedioMensal: "50000" },
+    { id: 4, parceiroId: 3, faturamentoMedioMensal: "150000" },
+  ];
+
+  const modelos = [
+    { id: 1, nome: "Diamante" },
+    { id: 2, nome: "Ouro" },
+  ];
+
+  function buildRelatorio(filterModelo: string, filterExecutivo: string, filterTipo: string) {
+    let list = parceiros.filter(p => p.ativo !== false);
+
+    if (filterModelo !== 'todos') {
+      list = list.filter(p => String(p.modeloParceriaId) === filterModelo);
+    }
+    if (filterExecutivo !== 'todos') {
+      list = list.filter(p => String(p.executivoComercialId) === filterExecutivo);
+    }
+    if (filterTipo === 'parceiro') {
+      list = list.filter(p => !p.ehSubparceiro);
+    } else if (filterTipo === 'subparceiro') {
+      list = list.filter(p => p.ehSubparceiro);
+    }
+
+    return list.map(parceiro => {
+      const modelo = modelos.find(m => m.id === parceiro.modeloParceriaId);
+      const clientesVinculados = clientes.filter(c => c.parceiroId === parceiro.id);
+      const subparceiros = parceiros.filter(p => p.ehSubparceiro && p.parceiroPaiId === parceiro.id && p.ativo);
+      const clientesSubparceiros = clientes.filter(c =>
+        subparceiros.some(sp => sp.id === c.parceiroId)
+      );
+      const totalFaturamento = clientesVinculados.reduce((sum, c) => sum + Number(c.faturamentoMedioMensal || 0), 0);
+      const totalFaturamentoComSub = totalFaturamento + clientesSubparceiros.reduce((sum, c) => sum + Number(c.faturamentoMedioMensal || 0), 0);
+
+      return {
+        ...parceiro,
+        modeloNome: modelo?.nome || '-',
+        clientesVinculados,
+        subparceiros,
+        totalFaturamento,
+        totalFaturamentoComSub,
+        totalClientes: clientesVinculados.length,
+      };
+    });
+  }
+
+  it("filtra apenas parceiros ativos", () => {
+    const rel = buildRelatorio('todos', 'todos', 'todos');
+    expect(rel.length).toBe(3); // Carlos Inativo excluído
+    expect(rel.find(r => r.id === 4)).toBeUndefined();
+  });
+
+  it("filtra por modelo de parceria", () => {
+    const rel = buildRelatorio('1', 'todos', 'todos');
+    expect(rel.length).toBe(2); // João e Pedro (Diamante)
+    expect(rel.every(r => r.modeloParceriaId === 1)).toBe(true);
+  });
+
+  it("filtra por executivo comercial", () => {
+    const rel = buildRelatorio('todos', '7', 'todos');
+    expect(rel.length).toBe(1);
+    expect(rel[0].apelido).toBe("Maria");
+  });
+
+  it("filtra apenas parceiros principais", () => {
+    const rel = buildRelatorio('todos', 'todos', 'parceiro');
+    expect(rel.length).toBe(2); // João e Maria
+    expect(rel.every(r => !r.ehSubparceiro)).toBe(true);
+  });
+
+  it("filtra apenas subparceiros", () => {
+    const rel = buildRelatorio('todos', 'todos', 'subparceiro');
+    expect(rel.length).toBe(1);
+    expect(rel[0].apelido).toBe("Pedro");
+  });
+
+  it("calcula faturamento direto corretamente", () => {
+    const rel = buildRelatorio('todos', 'todos', 'todos');
+    const joao = rel.find(r => r.id === 1)!;
+    expect(joao.totalFaturamento).toBe(300000); // 100k + 200k
+    expect(joao.totalClientes).toBe(2);
+  });
+
+  it("calcula faturamento com subparceiros", () => {
+    const rel = buildRelatorio('todos', 'todos', 'todos');
+    const joao = rel.find(r => r.id === 1)!;
+    expect(joao.totalFaturamentoComSub).toBe(350000); // 300k + 50k do Pedro
+    expect(joao.subparceiros.length).toBe(1);
+  });
+
+  it("identifica modelo correto", () => {
+    const rel = buildRelatorio('todos', 'todos', 'todos');
+    const joao = rel.find(r => r.id === 1)!;
+    expect(joao.modeloNome).toBe("Diamante");
+    const maria = rel.find(r => r.id === 3)!;
+    expect(maria.modeloNome).toBe("Ouro");
+  });
+});
+
+describe("Painel de aprovações - lógica de status", () => {
+  const aprovacoes = [
+    { id: 1, parceiroId: 1, servicoId: 1, percentualSolicitado: "55.00", percentualPadrao: "50.00", status: "pendente" },
+    { id: 2, parceiroId: 2, servicoId: 2, percentualSolicitado: "45.00", percentualPadrao: "40.00", status: "aprovado" },
+    { id: 3, parceiroId: 3, servicoId: 1, percentualSolicitado: "60.00", percentualPadrao: "50.00", status: "rejeitado" },
+  ];
+
+  function filterByStatus(status: string) {
+    if (status === 'todos') return aprovacoes;
+    return aprovacoes.filter(a => a.status === status);
+  }
+
+  function getDiferenca(solicitado: string, padrao: string): number {
+    return Number(solicitado) - Number(padrao);
+  }
+
+  it("filtra aprovações pendentes", () => {
+    const pendentes = filterByStatus('pendente');
+    expect(pendentes.length).toBe(1);
+    expect(pendentes[0].id).toBe(1);
+  });
+
+  it("filtra aprovações aprovadas", () => {
+    expect(filterByStatus('aprovado').length).toBe(1);
+  });
+
+  it("filtra aprovações rejeitadas", () => {
+    expect(filterByStatus('rejeitado').length).toBe(1);
+  });
+
+  it("retorna todas quando filtro é 'todos'", () => {
+    expect(filterByStatus('todos').length).toBe(3);
+  });
+
+  it("calcula diferença percentual corretamente", () => {
+    expect(getDiferenca("55.00", "50.00")).toBe(5);
+    expect(getDiferenca("45.00", "40.00")).toBe(5);
+    expect(getDiferenca("60.00", "50.00")).toBe(10);
+  });
+
+  it("identifica que todas as solicitações são acima do padrão", () => {
+    aprovacoes.forEach(a => {
+      expect(Number(a.percentualSolicitado)).toBeGreaterThan(Number(a.percentualPadrao));
+    });
+  });
+});

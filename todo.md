@@ -490,3 +490,27 @@
 - [x] Formulário em aba única com rolagem (remover tabs)
 - [x] Proteção contra perda de dados (alerta ao cancelar ou clicar fora)
 - [x] Admin pode incluir, excluir, ativar, inativar e editar todos os parceiros
+
+## CRM v14 — Detalhes do Cliente, Filtros, Aprovações e Relatórios
+
+### Correção da Tela de Detalhes do Cliente
+- [x] Remover campos obsoletos (Industrializa, Comercializa, Presta Serviços, Contribuinte ICMS, Contribuinte IPI)
+- [x] Adicionar valor médio da folha de pagamento nos Dados Financeiros (já existia)
+- [x] Incluir Folha Pagamento nos Alertas de Informação quando valor for zero (já existia)
+
+### Filtro por Parceiro na Lista de Clientes
+- [x] Adicionar dropdown de filtro por parceiro na lista de clientes
+- [x] Permitir filtrar por parceiro ou subparceiro específico
+- [x] Exibir contagem de clientes filtrados
+
+### Painel de Aprovações de Comiss- [x] Criar página de aprovações de comissão para o Diretor
+- [x] Listar solicitações pendentes com detalhes (parceiro, serviço, % solicitado vs padrão)
+- [x] Botões de aprovar/rejeitar com campo de observação
+- [x] Histórico de aprovações/rejeições
+- [x] Cards de resumo (pendentes, aprovadas, rejeitadas)
+- [x] Adicionar link no menu Administração- [x] Criar página de relatório de comissões
+- [x] Visão consolidada das empresas vinculadas a cada parceiro/subparceiro
+- [x] Cálculo de comissões baseado nos serviços contratados
+- [x] Filtros por modelo de parceria, executivo comercial e tipo (parceiro/subparceiro)
+- [x] Exibir hierarquia parceiro/subparceiro no relatório
+- [x] Adicionar rota e menu na sidebar

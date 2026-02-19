@@ -9,7 +9,7 @@ import {
   Headphones, Podcast, Gift, Calendar, Building2,
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
-  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase,
+  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -444,6 +444,8 @@ export default function AppSidebar() {
             <NavLink path="/teses" icon={BookOpen} label="Teses Tributárias" />
             <NavLink path="/servicos" icon={Settings} label="Serviços" />
             <NavLink path="/gestao-parcerias" icon={Gem} label="Gestão de Parcerias" />
+            <NavLink path="/aprovacoes-comissao" icon={ShieldCheck} label="Aprovações de Comissão" />
+            <NavLink path="/relatorio-comissoes" icon={FileBarChart} label="Relatório de Comissões" />
             <NavLink path="/sla-config" icon={ClipboardList} label="Configuração SLA" />
             <NavLink path="/usuarios" icon={UserCog} label="Gestão de Usuários" />
             <NavLink path="/audit-log" icon={History} label="Audit Log" />

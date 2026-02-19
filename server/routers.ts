@@ -1176,6 +1176,9 @@ export const appRouter = router({
 
   // ---- COMISSÕES POR SERVIÇO ----
   comissoes: router({
+    listAll: protectedProcedure.query(async () => {
+      return db.listAllComissoes();
+    }),
     byServico: protectedProcedure
       .input(z.object({ servicoId: z.number() }))
       .query(async ({ input }) => {
@@ -1450,6 +1453,9 @@ export const appRouter = router({
   aprovacaoComissao: router({
     listPendentes: protectedProcedure.query(async () => {
       return db.listAprovacoesPendentes();
+    }),
+    listAll: protectedProcedure.query(async () => {
+      return db.listAllAprovacoes();
     }),
     create: protectedProcedure
       .input(z.object({

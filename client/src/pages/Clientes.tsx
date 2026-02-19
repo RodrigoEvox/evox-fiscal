@@ -23,7 +23,7 @@ import {
   Plus, Search, Flag, AlertTriangle, Eye, Pencil, Trash2, Loader2,
   Building2, ArrowLeft, MoreVertical, Power, PowerOff, Filter,
   User, FileCheck, ShieldAlert, ShieldCheck, CalendarClock,
-  ChevronsUpDown, Check,
+  ChevronsUpDown, Check, Users,
 } from 'lucide-react';
 
 const estadosBR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -66,8 +66,6 @@ const EMPTY_FORM = {
   naturezaJuridica: '', endereco: '', complemento: '', cidade: '', estado: 'SP',
   cnaesSecundarios: [] as CnaeSecundario[],
   quadroSocietario: [] as QuadroSocio[],
-  industrializa: false, comercializa: false, prestaServicos: false,
-  contribuinteICMS: false, contribuinteIPI: false, regimeMonofasico: false,
   folhaPagamentoMedia: '0', faturamentoMedioMensal: '0', valorMedioGuias: '0',
   processosJudiciaisAtivos: false, parcelamentosAtivos: false,
   atividadePrincipalDescritivo: '',
@@ -86,8 +84,6 @@ function isFormDirty(form: typeof EMPTY_FORM): boolean {
   if (form.classificacaoCliente) return true;
   if (form.parceiroId !== undefined) return true;
   if (form.procuracaoHabilitada) return true;
-  if (form.industrializa || form.comercializa || form.prestaServicos) return true;
-  if (form.contribuinteICMS || form.contribuinteIPI || form.regimeMonofasico) return true;
   return false;
 }
 
@@ -106,6 +102,7 @@ export default function Clientes() {
   const [justificativas, setJustificativas] = useState<Record<string, string>>({});
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'todos' | 'ativos' | 'inativos'>('todos');
+  const [filterParceiro, setFilterParceiro] = useState<string>('todos');
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [parceiroTouched, setParceiroTouched] = useState(false);
@@ -395,12 +392,6 @@ export default function Clientes() {
       estado: cliente.estado || 'SP',
       cnaesSecundarios: cliente.cnaesSecundarios || [],
       quadroSocietario: cliente.quadroSocietario || [],
-      industrializa: !!cliente.industrializa,
-      comercializa: !!cliente.comercializa,
-      prestaServicos: !!cliente.prestaServicos,
-      contribuinteICMS: !!cliente.contribuinteICMS,
-      contribuinteIPI: !!cliente.contribuinteIPI,
-      regimeMonofasico: !!cliente.regimeMonofasico,
       folhaPagamentoMedia: cliente.folhaPagamentoMedia || '0',
       faturamentoMedioMensal: cliente.faturamentoMedioMensal || '0',
       valorMedioGuias: cliente.valorMedioGuias || '0',
@@ -436,6 +427,16 @@ export default function Clientes() {
     if (filterRedFlags) list = list.filter((c: any) => Array.isArray(c.redFlags) && c.redFlags.length > 0);
     if (filterStatus === 'ativos') list = list.filter((c: any) => c.ativo !== false && c.situacaoCadastral === 'ativa');
     if (filterStatus === 'inativos') list = list.filter((c: any) => c.ativo === false || c.situacaoCadastral !== 'ativa');
+    if (filterParceiro !== 'todos') {
+      if (filterParceiro === 'sem_parceiro') {
+        list = list.filter((c: any) => !c.parceiroId);
+      } else {
+        const pid = Number(filterParceiro);
+        // Include clients of this partner AND clients of subpartners under this partner
+        const subIds = parceiros.filter((p: any) => p.ehSubparceiro && p.parceiroPaiId === pid).map((p: any) => p.id);
+        list = list.filter((c: any) => c.parceiroId === pid || subIds.includes(c.parceiroId));
+      }
+    }
     if (search) {
       const s = search.toLowerCase();
       list = list.filter((c: any) =>
@@ -446,7 +447,7 @@ export default function Clientes() {
       );
     }
     return list;
-  }, [clientes, filterPrioridade, filterRedFlags, filterStatus, search]);
+  }, [clientes, filterPrioridade, filterRedFlags, filterStatus, filterParceiro, search, parceiros]);
 
   const prioridadeBadge = (p: string) => {
     if (p === 'alta') return <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">Alta</Badge>;
@@ -478,7 +479,7 @@ export default function Clientes() {
             <p className="text-sm text-muted-foreground mt-1">
               {activeFilter ? (
                 filterPrioridade ? `Filtrando: Prioridade ${filterPrioridade}` : 'Filtrando: Com Red Flags'
-              ) : `${clientes.length} clientes cadastrados`}
+              ) : filterParceiro !== 'todos' ? `${filtered.length} de ${clientes.length} clientes (filtrado por parceiro)` : `${clientes.length} clientes cadastrados`}
             </p>
           </div>
         </div>
@@ -501,6 +502,22 @@ export default function Clientes() {
             <SelectItem value="todos">Todos</SelectItem>
             <SelectItem value="ativos">Ativos</SelectItem>
             <SelectItem value="inativos">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterParceiro} onValueChange={(v: any) => setFilterParceiro(v)}>
+          <SelectTrigger className="w-[200px]">
+            <Users className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Parceiro" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os Parceiros</SelectItem>
+            <SelectItem value="sem_parceiro">Sem Parceiro</SelectItem>
+            {parceiros.filter((p: any) => !p.ehSubparceiro).map((p: any) => (
+              <SelectItem key={p.id} value={String(p.id)}>{p.apelido || p.nomeCompleto}</SelectItem>
+            ))}
+            {parceiros.filter((p: any) => p.ehSubparceiro).map((p: any) => (
+              <SelectItem key={p.id} value={String(p.id)}>↳ {p.apelido || p.nomeCompleto}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

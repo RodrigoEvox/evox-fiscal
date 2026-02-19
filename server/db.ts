@@ -858,6 +858,12 @@ export async function updateModeloParceria(id: number, data: Partial<InsertModel
 // ---- COMISSÕES POR SERVIÇO ----
 // =============================================
 
+export async function listAllComissoes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(comissoesServico);
+}
+
 export async function listComissoesByServico(servicoId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -1115,6 +1121,13 @@ export async function listAprovacoesPendentes() {
   if (!db) return [];
   return db.select().from(aprovacaoComissao)
     .where(eq(aprovacaoComissao.status, 'pendente'))
+    .orderBy(desc(aprovacaoComissao.solicitadoEm));
+}
+
+export async function listAllAprovacoes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(aprovacaoComissao)
     .orderBy(desc(aprovacaoComissao.solicitadoEm));
 }
 
