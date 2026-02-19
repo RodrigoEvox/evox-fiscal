@@ -127,17 +127,21 @@ describe("Evox Fiscal — Parceiros", () => {
   it("authenticated user can create parceiro", async () => {
     const caller = appRouter.createCaller(createUserContext());
     const result = await caller.parceiros.create({
-      nomeCompleto: "Parceiro Teste",
-      cpfCnpj: "12345678000100",
+      tipoPessoa: "pj",
+      apelido: "Parceiro Teste",
+      nomeCompleto: "Parceiro Teste LTDA",
+      cnpj: "12345678000100",
       telefone: "(11) 99999-9999",
       email: "parceiro@teste.com",
+      ehSubparceiro: false,
+      ativo: true,
     });
     expect(result).toEqual({ id: 1 });
   });
 
   it("anonymous user cannot create parceiro", async () => {
     const caller = appRouter.createCaller(createAnonymousContext());
-    await expect(caller.parceiros.create({ nomeCompleto: "Teste" })).rejects.toThrow();
+    await expect(caller.parceiros.create({ tipoPessoa: "pf", apelido: "Teste", nomeCompleto: "Teste", ehSubparceiro: false, ativo: true })).rejects.toThrow();
   });
 });
 

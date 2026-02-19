@@ -55,6 +55,9 @@ export default function ClienteDetalhe() {
   const oportunidadesAceitas = latestReport ? (Array.isArray(latestReport.tesesAplicaveis) ? latestReport.tesesAplicaveis : []) : [];
   const oportunidadesDescartadas = latestReport ? (Array.isArray(latestReport.tesesDescartadas) ? latestReport.tesesDescartadas : []) : [];
   const parceiro = parceiros.find((p: any) => p.id === cliente.parceiroId);
+  const parceiroNomeDisplay = parceiro ? (parceiro.apelido || parceiro.nomeCompleto) : null;
+  const parceiroPai = parceiro?.ehSubparceiro && parceiro?.parceiroPaiId ? parceiros.find((p: any) => p.id === parceiro.parceiroPaiId) : null;
+  const parceiroPaiNome = parceiroPai ? (parceiroPai.apelido || parceiroPai.nomeCompleto) : null;
 
   // Procuração status
   const procStatus = (() => {
@@ -94,7 +97,8 @@ export default function ClienteDetalhe() {
             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
               <span className="font-mono">{cliente.cnpj}</span>
               {cliente.nomeFantasia && <span>• {cliente.nomeFantasia}</span>}
-              {parceiro && <Badge variant="outline" className="text-[10px]">{parceiro.nomeCompleto}</Badge>}
+              {parceiroNomeDisplay && <Badge variant="outline" className="text-[10px]">{parceiroNomeDisplay}{parceiro?.ehSubparceiro ? ' (Subparceiro)' : ''}</Badge>}
+              {parceiroPaiNome && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Parceiro Principal: {parceiroPaiNome}</Badge>}
               <Badge className={`text-[10px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                 {cliente.classificacaoCliente === 'novo' ? 'Cliente Novo' : 'Cliente Base'}
               </Badge>

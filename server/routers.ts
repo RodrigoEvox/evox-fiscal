@@ -186,45 +186,120 @@ export const appRouter = router({
     list: protectedProcedure.query(async () => {
       return db.listParceiros();
     }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return db.getParceiroById(input.id);
+      }),
+    // Lista apenas parceiros principais (não subparceiros) para seleção
+    listPrincipais: protectedProcedure.query(async () => {
+      return db.listParceirosPrincipais();
+    }),
     create: protectedProcedure
       .input(z.object({
+        tipoPessoa: z.enum(['pf', 'pj']),
+        apelido: z.string().optional(),
         nomeCompleto: z.string().min(1),
-        cpfCnpj: z.string().optional(),
-        tipo: z.string().optional(),
+        cpf: z.string().optional(),
+        rg: z.string().optional(),
+        cnpj: z.string().optional(),
+        razaoSocial: z.string().optional(),
+        nomeFantasia: z.string().optional(),
+        situacaoCadastral: z.string().optional(),
+        quadroSocietario: z.array(z.object({ nome: z.string(), qualificacao: z.string(), faixaEtaria: z.string().optional() })).optional(),
+        socioNome: z.string().optional(),
+        socioCpf: z.string().optional(),
+        socioRg: z.string().optional(),
+        socioEmail: z.string().optional(),
+        socioTelefone: z.string().optional(),
         telefone: z.string().optional(),
         email: z.string().optional(),
-        endereco: z.string().optional(),
+        cep: z.string().optional(),
+        logradouro: z.string().optional(),
+        numero: z.string().optional(),
+        complemento: z.string().optional(),
+        bairro: z.string().optional(),
         cidade: z.string().optional(),
         estado: z.string().optional(),
-        comissaoPercentual: z.number().optional(),
+        banco: z.string().optional(),
+        agencia: z.string().optional(),
+        conta: z.string().optional(),
+        tipoConta: z.enum(['corrente', 'poupanca']).optional(),
+        titularConta: z.string().optional(),
+        cpfCnpjConta: z.string().optional(),
+        chavePix: z.string().optional(),
+        tipoChavePix: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']).optional(),
         modeloParceriaId: z.number().nullable().optional(),
+        ehSubparceiro: z.boolean().optional(),
+        parceiroPaiId: z.number().nullable().optional(),
+        percentualRepasseSubparceiro: z.string().optional(),
         observacoes: z.string().optional(),
         ativo: z.boolean().optional(),
+        // Serviços selecionados
+        servicoIds: z.array(z.number()).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const id = await db.createParceiro(input as any);
-        await logAudit('criar', 'parceiro', id, input.nomeCompleto, ctx);
+        const { servicoIds, ...parceiroData } = input;
+        const id = await db.createParceiro(parceiroData as any);
+        // Vincular serviços selecionados
+        if (servicoIds && servicoIds.length > 0 && id) {
+          for (const servicoId of servicoIds) {
+            await db.addParceiroServico({ parceiroId: id, servicoId } as any);
+          }
+        }
+        await logAudit('criar', 'parceiro', id, input.apelido || input.nomeCompleto, ctx);
         return { id };
       }),
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
+        tipoPessoa: z.enum(['pf', 'pj']).optional(),
+        apelido: z.string().optional(),
         nomeCompleto: z.string().optional(),
-        cpfCnpj: z.string().optional(),
-        tipo: z.string().optional(),
+        cpf: z.string().optional(),
+        rg: z.string().optional(),
+        cnpj: z.string().optional(),
+        razaoSocial: z.string().optional(),
+        nomeFantasia: z.string().optional(),
+        situacaoCadastral: z.string().optional(),
+        quadroSocietario: z.array(z.object({ nome: z.string(), qualificacao: z.string(), faixaEtaria: z.string().optional() })).nullable().optional(),
+        socioNome: z.string().optional(),
+        socioCpf: z.string().optional(),
+        socioRg: z.string().optional(),
+        socioEmail: z.string().optional(),
+        socioTelefone: z.string().optional(),
         telefone: z.string().optional(),
         email: z.string().optional(),
-        endereco: z.string().optional(),
+        cep: z.string().optional(),
+        logradouro: z.string().optional(),
+        numero: z.string().optional(),
+        complemento: z.string().optional(),
+        bairro: z.string().optional(),
         cidade: z.string().optional(),
         estado: z.string().optional(),
-        comissaoPercentual: z.number().optional(),
+        banco: z.string().optional(),
+        agencia: z.string().optional(),
+        conta: z.string().optional(),
+        tipoConta: z.enum(['corrente', 'poupanca']).optional(),
+        titularConta: z.string().optional(),
+        cpfCnpjConta: z.string().optional(),
+        chavePix: z.string().optional(),
+        tipoChavePix: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']).optional(),
         modeloParceriaId: z.number().nullable().optional(),
+        ehSubparceiro: z.boolean().optional(),
+        parceiroPaiId: z.number().nullable().optional(),
+        percentualRepasseSubparceiro: z.string().optional(),
         observacoes: z.string().optional(),
         ativo: z.boolean().optional(),
+        servicoIds: z.array(z.number()).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { id, ...data } = input;
+        const { id, servicoIds, ...data } = input;
         await db.updateParceiro(id, data as any);
+        // Atualizar serviços se fornecidos
+        if (servicoIds !== undefined) {
+          await db.syncParceiroServicos(id, servicoIds);
+        }
         await logAudit('editar', 'parceiro', id, null, ctx, data);
         return { success: true };
       }),
@@ -241,6 +316,20 @@ export const appRouter = router({
         await db.updateParceiro(input.id, { ativo: input.ativo } as any);
         await logAudit(input.ativo ? 'ativar' : 'inativar', 'parceiro', input.id, null, ctx);
         return { success: true };
+      }),
+    // Consulta CNPJ para parceiro PJ
+    consultaCNPJ: protectedProcedure
+      .input(z.object({ cnpj: z.string() }))
+      .query(async ({ input }) => {
+        const cnpjLimpo = input.cnpj.replace(/[^\d]/g, '');
+        try {
+          const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+          if (!resp.ok) throw new Error('CNPJ não encontrado');
+          const data = await resp.json();
+          return data;
+        } catch (e: any) {
+          throw new Error(e.message || 'Erro ao consultar CNPJ');
+        }
       }),
   }),
 

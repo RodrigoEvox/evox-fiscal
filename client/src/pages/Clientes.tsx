@@ -512,7 +512,10 @@ export default function Clientes() {
         <div className="space-y-3">
           {filtered.map((cliente: any) => {
             const redFlagCount = Array.isArray(cliente.redFlags) ? cliente.redFlags.length : 0;
-            const parceiroNome = parceiros.find((p: any) => p.id === cliente.parceiroId)?.nomeCompleto;
+            const parceiroObj = parceiros.find((p: any) => p.id === cliente.parceiroId);
+            const parceiroNome = parceiroObj ? (parceiroObj.apelido || parceiroObj.nomeCompleto) : null;
+            const parceiroPaiObj = parceiroObj?.ehSubparceiro && parceiroObj?.parceiroPaiId ? parceiros.find((p: any) => p.id === parceiroObj.parceiroPaiId) : null;
+            const parceiroPaiNome = parceiroPaiObj ? (parceiroPaiObj.apelido || parceiroPaiObj.nomeCompleto) : null;
             const procStatus = procuracaoStatus(cliente);
             const isAtivo = cliente.ativo !== false && cliente.situacaoCadastral === 'ativa';
             return (
@@ -536,7 +539,8 @@ export default function Clientes() {
                         </p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           {cliente.nomeFantasia && <span className="text-xs text-muted-foreground truncate">{cliente.nomeFantasia}</span>}
-                          {parceiroNome && <Badge variant="outline" className="text-[9px] h-4">{parceiroNome}</Badge>}
+                          {parceiroNome && <Badge variant="outline" className="text-[9px] h-4">{parceiroNome}{parceiroObj?.ehSubparceiro ? ' (Sub)' : ''}</Badge>}
+                          {parceiroPaiNome && <Badge variant="outline" className="text-[9px] h-4 bg-blue-50 text-blue-700 border-blue-200">Parceiro: {parceiroPaiNome}</Badge>}
                         </div>
                       </div>
                     </div>
@@ -840,7 +844,11 @@ export default function Clientes() {
                   <SelectValue placeholder="Selecione o parceiro..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {parceiros.filter((p: any) => p.ativo).map((p: any) => <SelectItem key={p.id} value={p.id.toString()}>{p.nomeCompleto}</SelectItem>)}
+                  {parceiros.filter((p: any) => p.ativo).map((p: any) => {
+                    const nome = p.apelido || p.nomeCompleto;
+                    const tipo = p.ehSubparceiro ? ' (Subparceiro)' : '';
+                    return <SelectItem key={p.id} value={p.id.toString()}>{nome}{tipo}</SelectItem>;
+                  })}
                 </SelectContent>
               </Select>
             </div>

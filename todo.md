@@ -443,3 +443,19 @@
 - [x] Agrupar todas as equipes dentro de um menu colapsável "Equipes"
 - [x] Manter Universidade Evox fora do agrupamento de Equipes
 - [x] Menu "Equipes" abre/fecha ao clicar (visualmente mais limpo)
+
+### Reformulação Completa do Cadastro de Parceiros
+- [x] Tipo de pessoa (PF/PJ) como primeiro campo, condiciona formulário
+- [x] PF: campos padrão (nome, CPF com validação, RG, email, telefone, endereço completo com complemento)
+- [x] PJ: consulta automática CNPJ (razão social, endereço, situação cadastral, quadro societário)
+- [x] PJ: campo para sócio PF responsável pela parceria (dados completos)
+- [x] Campo Apelido (nome de exibição do parceiro no sistema)
+- [x] Validador automático de CPF
+- [x] Dados bancários (banco, agência, conta, tipo conta, chave PIX)
+- [x] Seleção de serviços que o parceiro trabalha (importados da aba Serviços)
+- [x] Campo parceiro/subparceiro com seleção de parceiro pai quando subparceiro
+- [x] Hierarquia parceiro/subparceiro acompanha toda jornada no sistema
+- [x] Exibir info parceiro/subparceiro nas visões de clientes/empresas
+- [x] Schema: novos campos na tabela parceiros (tipoPessoa, apelido, razaoSocial, etc.)
+- [x] Schema: tabela dados bancários do parceiro
+- [x] Testes unitários para validação CPF e hierarquia parceiro/subparceiro

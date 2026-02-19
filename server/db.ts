@@ -713,11 +713,13 @@ export async function buscaGlobal(termo: string) {
     ))
     .limit(10);
 
-  const parceirosResult = await db.select({ id: parceiros.id, nomeCompleto: parceiros.nomeCompleto, cpfCnpj: parceiros.cpfCnpj })
+  const parceirosResult = await db.select({ id: parceiros.id, nomeCompleto: parceiros.nomeCompleto, apelido: parceiros.apelido, cpf: parceiros.cpf, cnpj: parceiros.cnpj })
     .from(parceiros)
     .where(or(
       sql`${parceiros.nomeCompleto} LIKE ${like}`,
-      sql`${parceiros.cpfCnpj} LIKE ${like}`,
+      sql`${parceiros.apelido} LIKE ${like}`,
+      sql`${parceiros.cpf} LIKE ${like}`,
+      sql`${parceiros.cnpj} LIKE ${like}`,
     ))
     .limit(10);
 
@@ -1006,4 +1008,23 @@ export async function getParceiroById(id: number) {
   if (!db) return null;
   const result = await db.select().from(parceiros).where(eq(parceiros.id, id)).limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+export async function listParceirosPrincipais() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(parceiros)
+    .where(eq(parceiros.ehSubparceiro, false))
+    .orderBy(asc(parceiros.nomeCompleto));
+}
+
+export async function syncParceiroServicos(parceiroId: number, servicoIds: number[]) {
+  const db = await getDb();
+  if (!db) return;
+  // Remove todos os serviços atuais
+  await db.delete(parceiroServicos).where(eq(parceiroServicos.parceiroId, parceiroId));
+  // Adiciona os novos
+  for (const servicoId of servicoIds) {
+    await db.insert(parceiroServicos).values({ parceiroId, servicoId } as any);
+  }
 }

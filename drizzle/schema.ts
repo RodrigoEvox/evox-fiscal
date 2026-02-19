@@ -59,14 +59,53 @@ export type InsertUsuarioSetor = typeof usuarioSetores.$inferInsert;
 // ---- PARCEIROS ----
 export const parceiros = mysqlTable("parceiros", {
   id: int("id").autoincrement().primaryKey(),
+  // Tipo de pessoa
+  tipoPessoa: mysqlEnum("tipoPessoa", ["pf", "pj"]).default("pj").notNull(),
+  apelido: varchar("apelido", { length: 255 }), // nome de exibição no sistema
+  // Dados PF
   nomeCompleto: varchar("nomeCompleto", { length: 255 }).notNull(),
-  cpfCnpj: varchar("cpfCnpj", { length: 20 }),
+  cpf: varchar("cpf", { length: 14 }),
+  rg: varchar("rg", { length: 20 }),
+  // Dados PJ
+  cnpj: varchar("cnpj", { length: 20 }),
+  razaoSocial: varchar("razaoSocial", { length: 500 }),
+  nomeFantasia: varchar("nomeFantasia", { length: 500 }),
+  situacaoCadastral: varchar("situacaoCadastral", { length: 50 }),
+  quadroSocietario: json("quadroSocietario").$type<{nome: string; qualificacao: string; faixaEtaria?: string}[]>(),
+  // Sócio responsável pela parceria (PJ)
+  socioNome: varchar("socioNome", { length: 255 }),
+  socioCpf: varchar("socioCpf", { length: 14 }),
+  socioRg: varchar("socioRg", { length: 20 }),
+  socioEmail: varchar("socioEmail", { length: 320 }),
+  socioTelefone: varchar("socioTelefone", { length: 20 }),
+  // Contato
   telefone: varchar("telefone", { length: 20 }),
   email: varchar("email", { length: 320 }),
-  endereco: text("endereco"),
+  // Endereço completo
+  cep: varchar("cep", { length: 10 }),
+  logradouro: varchar("logradouro", { length: 500 }),
+  numero: varchar("numero", { length: 20 }),
+  complemento: varchar("complemento", { length: 500 }),
+  bairro: varchar("bairro", { length: 255 }),
+  cidade: varchar("cidade", { length: 255 }),
+  estado: varchar("estado", { length: 2 }),
+  // Dados bancários
+  banco: varchar("banco", { length: 100 }),
+  agencia: varchar("agencia", { length: 20 }),
+  conta: varchar("conta", { length: 30 }),
+  tipoConta: mysqlEnum("tipoConta", ["corrente", "poupanca"]),
+  titularConta: varchar("titularConta", { length: 255 }),
+  cpfCnpjConta: varchar("cpfCnpjConta", { length: 20 }),
+  chavePix: varchar("chavePix", { length: 255 }),
+  tipoChavePix: mysqlEnum("tipoChavePix", ["cpf", "cnpj", "email", "telefone", "aleatoria"]),
+  // Parceria
   modeloParceriaId: int("modeloParceriaId"), // Diamante, Ouro, Prata
+  // Hierarquia parceiro/subparceiro
+  ehSubparceiro: boolean("ehSubparceiro").default(false).notNull(),
   parceiroPaiId: int("parceiroPaiId"), // para subparceiros
-  percentualRepasseSubparceiro: decimal("percentualRepasseSubparceiro", { precision: 5, scale: 2 }), // % que o parceiro pai repassa
+  percentualRepasseSubparceiro: decimal("percentualRepasseSubparceiro", { precision: 5, scale: 2 }),
+  // Observações
+  observacoes: text("observacoes"),
   ativo: boolean("ativo").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
