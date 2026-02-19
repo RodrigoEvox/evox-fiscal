@@ -514,3 +514,8 @@
 - [x] Filtros por modelo de parceria, executivo comercial e tipo (parceiro/subparceiro)
 - [x] Exibir hierarquia parceiro/subparceiro no relatório
 - [x] Adicionar rota e menu na sidebar
+
+## CRM v15 — Correções Cadastro de Parceiros
+- [x] Corrigir consulta automática de CNPJ (não está buscando dados e dá erro de CNPJ inválido)
+- [x] Adicionar busca automática de endereço por CEP (ViaCEP)
+- [x] Tornar todos os campos obrigatórios no cadastro de parceiros

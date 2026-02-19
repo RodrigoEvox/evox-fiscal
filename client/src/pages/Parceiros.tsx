@@ -143,6 +143,7 @@ export default function Parceiros() {
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
   const [cpfErrors, setCpfErrors] = useState<Record<string, string>>({});
   const [formDirty, setFormDirty] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -282,40 +283,118 @@ export default function Parceiros() {
     setShowForm(true);
   };
 
-  // Consulta CNPJ
+  // Consulta CNPJ via BrasilAPI + CNPJ.ws (fallback)
   const handleConsultaCNPJ = async () => {
     const cnpjLimpo = form.cnpj.replace(/\D/g, '');
     if (cnpjLimpo.length !== 14) { toast.error('CNPJ deve ter 14 dígitos'); return; }
     setCnpjLoading(true);
-    try {
-      const data = await (utils as any).client.parceiros.consultaCNPJ.query({ cnpj: cnpjLimpo });
-      if (data) {
-        const qsa = (data as any).qsa || [];
-        setForm(f => ({
-          ...f,
-          razaoSocial: (data as any).razao_social || '',
-          nomeFantasia: (data as any).nome_fantasia || '',
-          situacaoCadastral: (data as any).descricao_situacao_cadastral || '',
-          logradouro: (data as any).logradouro || '',
-          numero: (data as any).numero || '',
-          complemento: (data as any).complemento || '',
-          bairro: (data as any).bairro || '',
-          cidade: (data as any).municipio || '',
-          estado: (data as any).uf || '',
-          cep: (data as any).cep ? maskCep((data as any).cep) : '',
-          quadroSocietario: qsa.map((s: any) => ({
+
+    const apis = [
+      {
+        name: 'BrasilAPI',
+        url: `https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`,
+        parse: (data: any) => ({
+          razaoSocial: data.razao_social || '',
+          nomeFantasia: data.nome_fantasia || '',
+          situacaoCadastral: data.descricao_situacao_cadastral || (data.situacao_cadastral === 2 ? 'Ativa' : data.situacao_cadastral === 8 ? 'Baixada' : String(data.situacao_cadastral || '')),
+          logradouro: data.logradouro || '',
+          numero: data.numero || 'S/N',
+          complemento: data.complemento || '',
+          bairro: data.bairro || '',
+          cidade: data.municipio || '',
+          estado: data.uf || '',
+          cep: data.cep || '',
+          quadroSocietario: (data.qsa || []).map((s: any) => ({
             nome: s.nome_socio || '',
             qualificacao: s.qualificacao_socio || '',
             faixaEtaria: s.faixa_etaria || '',
           })),
-        }));
-        setFormDirty(true);
-        toast.success('Dados do CNPJ carregados com sucesso!');
+        }),
+      },
+      {
+        name: 'CNPJ.ws',
+        url: `https://publica.cnpj.ws/cnpj/${cnpjLimpo}`,
+        parse: (data: any) => ({
+          razaoSocial: data.razao_social || '',
+          nomeFantasia: data.estabelecimento?.nome_fantasia || '',
+          situacaoCadastral: data.estabelecimento?.situacao_cadastral || '',
+          logradouro: data.estabelecimento?.logradouro || '',
+          numero: data.estabelecimento?.numero || 'S/N',
+          complemento: data.estabelecimento?.complemento || '',
+          bairro: data.estabelecimento?.bairro || '',
+          cidade: data.estabelecimento?.cidade?.nome || '',
+          estado: data.estabelecimento?.estado?.sigla || '',
+          cep: data.estabelecimento?.cep || '',
+          quadroSocietario: (data.socios || []).map((s: any) => ({
+            nome: s.nome || '',
+            qualificacao: s.qualificacao?.descricao || '',
+            faixaEtaria: s.faixa_etaria || '',
+          })),
+        }),
+      },
+    ];
+
+    let result: any = null;
+    for (const api of apis) {
+      try {
+        const resp = await fetch(api.url);
+        if (!resp.ok) continue;
+        const raw = await resp.json();
+        result = api.parse(raw);
+        break; // Use first successful result
+      } catch {
+        continue;
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao consultar CNPJ');
-    } finally {
+    }
+
+    if (!result) {
+      toast.error('Não foi possível consultar o CNPJ. Verifique o número e tente novamente.');
       setCnpjLoading(false);
+      return;
+    }
+
+    setForm(f => ({
+      ...f,
+      razaoSocial: result.razaoSocial,
+      nomeFantasia: result.nomeFantasia,
+      situacaoCadastral: result.situacaoCadastral,
+      logradouro: result.logradouro,
+      numero: result.numero,
+      complemento: result.complemento,
+      bairro: result.bairro,
+      cidade: result.cidade,
+      estado: result.estado,
+      cep: result.cep ? maskCep(result.cep) : '',
+      quadroSocietario: result.quadroSocietario,
+    }));
+    setFormDirty(true);
+    toast.success('Dados do CNPJ carregados com sucesso!');
+    setCnpjLoading(false);
+  };
+
+  // Consulta CEP via ViaCEP
+  const handleConsultaCEP = async (cepValue: string) => {
+    const cepLimpo = cepValue.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const resp = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      if (!resp.ok) throw new Error('CEP não encontrado');
+      const data = await resp.json();
+      if (data.erro) { toast.error('CEP não encontrado'); setCepLoading(false); return; }
+      updateForm(f => ({
+        ...f,
+        logradouro: data.logradouro || f.logradouro,
+        bairro: data.bairro || f.bairro,
+        cidade: data.localidade || f.cidade,
+        estado: data.uf || f.estado,
+        complemento: data.complemento || f.complemento,
+      }));
+      toast.success('Endereço carregado pelo CEP!');
+    } catch {
+      toast.error('Não foi possível consultar o CEP.');
+    } finally {
+      setCepLoading(false);
     }
   };
 
@@ -394,16 +473,56 @@ export default function Parceiros() {
   }, [form.ehSubparceiro, form.parceiroPaiId, parceiros]);
 
   const handleSave = () => {
+    // Validar Apelido (obrigatório para todos)
     if (!form.apelido.trim()) { toast.error('Preencha o Apelido (nome de exibição)'); return; }
+
+    // Validar campos por tipo de pessoa
     if (form.tipoPessoa === 'pf') {
       if (!form.nomeCompleto.trim()) { toast.error('Preencha o nome completo'); return; }
-      if (form.cpf && !validarCpf(form.cpf.replace(/\D/g, ''))) { toast.error('CPF do parceiro é inválido'); return; }
+      const cpfLimpo = form.cpf.replace(/\D/g, '');
+      if (!cpfLimpo || cpfLimpo.length !== 11) { toast.error('Preencha o CPF'); return; }
+      if (!validarCpf(cpfLimpo)) { toast.error('CPF do parceiro é inválido'); return; }
+      if (!form.rg.trim()) { toast.error('Preencha o RG'); return; }
+      if (!form.email.trim()) { toast.error('Preencha o e-mail'); return; }
+      if (!form.telefone.trim()) { toast.error('Preencha o telefone'); return; }
     } else {
       if (!form.cnpj || form.cnpj.replace(/\D/g, '').length < 14) { toast.error('Preencha o CNPJ'); return; }
-      if (!form.razaoSocial?.trim() && !form.nomeCompleto.trim()) { toast.error('Preencha a Razão Social ou Nome'); return; }
+      if (!form.razaoSocial?.trim()) { toast.error('Preencha a Razão Social'); return; }
+      if (!form.email.trim()) { toast.error('Preencha o e-mail da empresa'); return; }
+      if (!form.telefone.trim()) { toast.error('Preencha o telefone da empresa'); return; }
+      // Sócio responsável obrigatório para PJ
+      if (!form.socioNome.trim()) { toast.error('Preencha o nome do sócio responsável'); return; }
+      const socioCpfLimpo = form.socioCpf.replace(/\D/g, '');
+      if (!socioCpfLimpo || socioCpfLimpo.length !== 11) { toast.error('Preencha o CPF do sócio responsável'); return; }
+      if (!validarCpf(socioCpfLimpo)) { toast.error('CPF do sócio responsável é inválido'); return; }
+      if (!form.socioRg.trim()) { toast.error('Preencha o RG do sócio responsável'); return; }
+      if (!form.socioEmail.trim()) { toast.error('Preencha o e-mail do sócio responsável'); return; }
+      if (!form.socioTelefone.trim()) { toast.error('Preencha o telefone do sócio responsável'); return; }
     }
-    if (form.socioCpf && !validarCpf(form.socioCpf.replace(/\D/g, ''))) { toast.error('CPF do sócio responsável é inválido'); return; }
+
+    // Validar endereço (obrigatório para todos)
+    if (!form.cep || form.cep.replace(/\D/g, '').length < 8) { toast.error('Preencha o CEP'); return; }
+    if (!form.logradouro.trim()) { toast.error('Preencha o logradouro'); return; }
+    if (!form.numero.trim()) { toast.error('Preencha o número'); return; }
+    if (!form.bairro.trim()) { toast.error('Preencha o bairro'); return; }
+    if (!form.cidade.trim()) { toast.error('Preencha a cidade'); return; }
+    if (!form.estado) { toast.error('Selecione o estado (UF)'); return; }
+
+    // Validar dados bancários (obrigatório)
+    if (!form.banco.trim()) { toast.error('Preencha o banco'); return; }
+    if (!form.agencia.trim()) { toast.error('Preencha a agência'); return; }
+    if (!form.conta.trim()) { toast.error('Preencha a conta'); return; }
+    if (!form.tipoConta) { toast.error('Selecione o tipo de conta'); return; }
+    if (!form.titularConta.trim()) { toast.error('Preencha o titular da conta'); return; }
+    if (!form.cpfCnpjConta.trim()) { toast.error('Preencha o CPF/CNPJ da conta'); return; }
+    if (!form.tipoChavePix) { toast.error('Selecione o tipo da chave PIX'); return; }
+    if (!form.chavePix.trim()) { toast.error('Preencha a chave PIX'); return; }
+
+    // Validar configuração de parceria (obrigatório)
+    if (!form.modeloParceriaId) { toast.error('Selecione o modelo de parceria'); return; }
+    if (!form.executivoComercialId && !form.ehSubparceiro) { toast.error('Selecione o executivo comercial responsável'); return; }
     if (form.ehSubparceiro && !form.parceiroPaiId) { toast.error('Selecione o parceiro principal'); return; }
+    if (form.servicoIds.length === 0) { toast.error('Selecione pelo menos um serviço'); return; }
 
     // Check rateio totals
     if (form.ehSubparceiro) {
@@ -811,7 +930,7 @@ export default function Parceiros() {
                     <Input value={form.nomeCompleto} onChange={e => updateForm(f => ({ ...f, nomeCompleto: e.target.value }))} placeholder="Nome completo do parceiro" />
                   </div>
                   <div>
-                    <Label className="text-xs">CPF</Label>
+                    <Label className="text-xs">CPF *</Label>
                     <Input value={form.cpf} onChange={e => updateForm(f => ({ ...f, cpf: maskCpf(e.target.value) }))}
                       onBlur={() => handleCpfBlur('cpf', form.cpf)}
                       placeholder="000.000.000-00" maxLength={14}
@@ -820,15 +939,15 @@ export default function Parceiros() {
                     {form.cpf && !cpfErrors.cpf && form.cpf.replace(/\D/g, '').length === 11 && <p className="text-[10px] text-green-600 flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> CPF válido</p>}
                   </div>
                   <div>
-                    <Label className="text-xs">RG</Label>
+                    <Label className="text-xs">RG *</Label>
                     <Input value={form.rg} onChange={e => updateForm(f => ({ ...f, rg: e.target.value }))} placeholder="RG" />
                   </div>
                   <div>
-                    <Label className="text-xs">E-mail</Label>
+                    <Label className="text-xs">E-mail *</Label>
                     <Input type="email" value={form.email} onChange={e => updateForm(f => ({ ...f, email: e.target.value }))} placeholder="email@parceiro.com" />
                   </div>
                   <div>
-                    <Label className="text-xs">Telefone</Label>
+                    <Label className="text-xs">Telefone *</Label>
                     <Input value={form.telefone} onChange={e => updateForm(f => ({ ...f, telefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
                   </div>
                 </div>
@@ -848,7 +967,7 @@ export default function Parceiros() {
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Razão Social</Label>
+                      <Label className="text-xs">Razão Social *</Label>
                       <Input value={form.razaoSocial} onChange={e => updateForm(f => ({ ...f, razaoSocial: e.target.value }))} placeholder="Razão social da empresa" />
                     </div>
                     <div>
@@ -860,11 +979,11 @@ export default function Parceiros() {
                       <Input value={form.situacaoCadastral} readOnly className="bg-muted/50" />
                     </div>
                     <div>
-                      <Label className="text-xs">E-mail</Label>
+                      <Label className="text-xs">E-mail *</Label>
                       <Input type="email" value={form.email} onChange={e => updateForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
                     </div>
                     <div>
-                      <Label className="text-xs">Telefone</Label>
+                      <Label className="text-xs">Telefone *</Label>
                       <Input value={form.telefone} onChange={e => updateForm(f => ({ ...f, telefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
                     </div>
                   </div>
@@ -888,11 +1007,11 @@ export default function Parceiros() {
                 <FormSection title="Sócio Responsável pela Parceria" icon={User}>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2">
-                      <Label className="text-xs">Nome Completo do Sócio</Label>
+                      <Label className="text-xs">Nome Completo do Sócio *</Label>
                       <Input value={form.socioNome} onChange={e => updateForm(f => ({ ...f, socioNome: e.target.value }))} placeholder="Nome do sócio responsável" />
                     </div>
                     <div>
-                      <Label className="text-xs">CPF do Sócio</Label>
+                      <Label className="text-xs">CPF do Sócio *</Label>
                       <Input value={form.socioCpf} onChange={e => updateForm(f => ({ ...f, socioCpf: maskCpf(e.target.value) }))}
                         onBlur={() => handleCpfBlur('socioCpf', form.socioCpf)}
                         placeholder="000.000.000-00" maxLength={14}
@@ -901,15 +1020,15 @@ export default function Parceiros() {
                       {form.socioCpf && !cpfErrors.socioCpf && form.socioCpf.replace(/\D/g, '').length === 11 && <p className="text-[10px] text-green-600 flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> CPF válido</p>}
                     </div>
                     <div>
-                      <Label className="text-xs">RG do Sócio</Label>
+                      <Label className="text-xs">RG do Sócio *</Label>
                       <Input value={form.socioRg} onChange={e => updateForm(f => ({ ...f, socioRg: e.target.value }))} placeholder="RG" />
                     </div>
                     <div>
-                      <Label className="text-xs">E-mail do Sócio</Label>
+                      <Label className="text-xs">E-mail do Sócio *</Label>
                       <Input type="email" value={form.socioEmail} onChange={e => updateForm(f => ({ ...f, socioEmail: e.target.value }))} placeholder="email@socio.com" />
                     </div>
                     <div>
-                      <Label className="text-xs">Telefone do Sócio</Label>
+                      <Label className="text-xs">Telefone do Sócio *</Label>
                       <Input value={form.socioTelefone} onChange={e => updateForm(f => ({ ...f, socioTelefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
                     </div>
                   </div>
@@ -921,15 +1040,21 @@ export default function Parceiros() {
             <FormSection title="Endereço Completo" icon={MapPin}>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">CEP</Label>
-                  <Input value={form.cep} onChange={e => updateForm(f => ({ ...f, cep: maskCep(e.target.value) }))} placeholder="00000-000" maxLength={9} />
+                  <Label className="text-xs">CEP *</Label>
+                  <div className="flex gap-2">
+                    <Input value={form.cep} onChange={e => updateForm(f => ({ ...f, cep: maskCep(e.target.value) }))} onBlur={e => handleConsultaCEP(e.target.value)} placeholder="00000-000" maxLength={9} className="flex-1" />
+                    <Button type="button" variant="outline" onClick={() => handleConsultaCEP(form.cep)} disabled={cepLoading} className="shrink-0">
+                      {cepLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      <span className="ml-1 text-xs">Buscar</span>
+                    </Button>
+                  </div>
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-xs">Logradouro</Label>
+                  <Label className="text-xs">Logradouro *</Label>
                   <Input value={form.logradouro} onChange={e => updateForm(f => ({ ...f, logradouro: e.target.value }))} placeholder="Rua, Avenida, etc." />
                 </div>
                 <div>
-                  <Label className="text-xs">Número</Label>
+                  <Label className="text-xs">Número *</Label>
                   <Input value={form.numero} onChange={e => updateForm(f => ({ ...f, numero: e.target.value }))} placeholder="Nº" />
                 </div>
                 <div>
@@ -937,15 +1062,15 @@ export default function Parceiros() {
                   <Input value={form.complemento} onChange={e => updateForm(f => ({ ...f, complemento: e.target.value }))} placeholder="Sala, Andar, Bloco..." />
                 </div>
                 <div>
-                  <Label className="text-xs">Bairro</Label>
+                  <Label className="text-xs">Bairro *</Label>
                   <Input value={form.bairro} onChange={e => updateForm(f => ({ ...f, bairro: e.target.value }))} placeholder="Bairro" />
                 </div>
                 <div>
-                  <Label className="text-xs">Cidade</Label>
+                  <Label className="text-xs">Cidade *</Label>
                   <Input value={form.cidade} onChange={e => updateForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Cidade" />
                 </div>
                 <div>
-                  <Label className="text-xs">UF</Label>
+                  <Label className="text-xs">UF *</Label>
                   <Select value={form.estado} onValueChange={v => updateForm(f => ({ ...f, estado: v }))}>
                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
@@ -960,19 +1085,19 @@ export default function Parceiros() {
             <FormSection title="Dados Bancários para Comissões" icon={Landmark}>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Banco</Label>
+                  <Label className="text-xs">Banco *</Label>
                   <Input value={form.banco} onChange={e => updateForm(f => ({ ...f, banco: e.target.value }))} placeholder="Ex: Banco do Brasil, Itaú..." />
                 </div>
                 <div>
-                  <Label className="text-xs">Agência</Label>
+                  <Label className="text-xs">Agência *</Label>
                   <Input value={form.agencia} onChange={e => updateForm(f => ({ ...f, agencia: e.target.value }))} placeholder="0000" />
                 </div>
                 <div>
-                  <Label className="text-xs">Conta</Label>
+                  <Label className="text-xs">Conta *</Label>
                   <Input value={form.conta} onChange={e => updateForm(f => ({ ...f, conta: e.target.value }))} placeholder="00000-0" />
                 </div>
                 <div>
-                  <Label className="text-xs">Tipo de Conta</Label>
+                  <Label className="text-xs">Tipo de Conta *</Label>
                   <Select value={form.tipoConta} onValueChange={v => updateForm(f => ({ ...f, tipoConta: v }))}>
                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
@@ -982,11 +1107,11 @@ export default function Parceiros() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Titular da Conta</Label>
+                  <Label className="text-xs">Titular da Conta *</Label>
                   <Input value={form.titularConta} onChange={e => updateForm(f => ({ ...f, titularConta: e.target.value }))} placeholder="Nome do titular" />
                 </div>
                 <div>
-                  <Label className="text-xs">CPF/CNPJ da Conta</Label>
+                  <Label className="text-xs">CPF/CNPJ da Conta *</Label>
                   <Input value={form.cpfCnpjConta} onChange={e => updateForm(f => ({ ...f, cpfCnpjConta: e.target.value }))} placeholder="Documento do titular" />
                 </div>
               </div>
@@ -996,7 +1121,7 @@ export default function Parceiros() {
               <h4 className="text-sm font-semibold flex items-center gap-2"><KeyRound className="w-4 h-4" /> Chave PIX</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Tipo da Chave PIX</Label>
+                  <Label className="text-xs">Tipo da Chave PIX *</Label>
                   <Select value={form.tipoChavePix} onValueChange={v => updateForm(f => ({ ...f, tipoChavePix: v }))}>
                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
@@ -1009,7 +1134,7 @@ export default function Parceiros() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Chave PIX</Label>
+                  <Label className="text-xs">Chave PIX *</Label>
                   <Input value={form.chavePix} onChange={e => updateForm(f => ({ ...f, chavePix: e.target.value }))} placeholder="Informe a chave PIX" />
                 </div>
               </div>
@@ -1019,7 +1144,7 @@ export default function Parceiros() {
             <FormSection title="Configuração da Parceria" icon={Handshake}>
               {/* Modelo de Parceria (Diamante/Ouro/Prata) */}
               <div>
-                <Label className="text-xs font-semibold">Modelo de Parceria</Label>
+                <Label className="text-xs font-semibold">Modelo de Parceria *</Label>
                 <Select value={form.modeloParceriaId ? String(form.modeloParceriaId) : 'none'} onValueChange={v => {
                   const newId = v === 'none' ? null : Number(v);
                   updateForm(f => ({ ...f, modeloParceriaId: newId, comissoesCustom: {} }));
