@@ -113,6 +113,8 @@ const EMPTY_FORM = {
   comissoesCustom: {} as Record<number, string>,
   // Rateio subparceiro por serviço: { servicoId: { parceiro: %, subparceiro: % } }
   rateio: {} as Record<number, { parceiro: string; subparceiro: string }>,
+  // Comissões com aprovação pendente: { servicoId: true }
+  comissoesPendentes: {} as Record<number, boolean>,
 };
 
 const UF_LIST = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
@@ -149,9 +151,8 @@ export default function Parceiros() {
   const [formDirty, setFormDirty] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [pendingClose, setPendingClose] = useState(false);
-  // Comissão alert states
-  const [comissaoAlert, setComissaoAlert] = useState<{ servicoId: number; tipo: 'menor' | 'maior'; percentual: string; padrao: string } | null>(null);
-  const comissaoBlurSuppressed = useRef(false);
+  // Track commission status per service: 'pendente' for above-standard needing approval
+  const [comissaoStatus, setComissaoStatus] = useState<Record<number, 'menor' | 'maior' | null>>({});
   const utils = trpc.useUtils();
 
   const { data: parceiros = [], isLoading } = trpc.parceiros.list.useQuery();
@@ -212,8 +213,7 @@ export default function Parceiros() {
     setCpfErrors({});
     setFormDirty(false);
     setPendingClose(false);
-    setComissaoAlert(null);
-    comissaoBlurSuppressed.current = false;
+    setComissaoStatus({});
   }, []);
 
   const tryCloseForm = useCallback(() => {
@@ -281,6 +281,7 @@ export default function Parceiros() {
       servicoIds: [],
       comissoesCustom: {},
       rateio: {},
+      comissoesPendentes: {},
     });
     setEditingId(p.id);
     setFormDirty(false);
@@ -423,37 +424,55 @@ export default function Parceiros() {
     return c ? c.percentualComissao : null;
   }, [comissoesByModelo.data]);
 
-  // Handle comissão change with alerts
+  // Handle comissão change — inline validation, no modal alerts
   const handleComissaoChange = useCallback((servicoId: number, value: string) => {
     updateForm(f => ({
       ...f,
       comissoesCustom: { ...f.comissoesCustom, [servicoId]: value },
     }));
+    // Determine status relative to standard
+    const padrao = getComissaoPadrao(servicoId);
+    if (!padrao || !value) {
+      setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
+      return;
+    }
+    const customNum = parseFloat(value);
+    const padraoNum = parseFloat(padrao);
+    if (isNaN(customNum) || customNum === padraoNum) {
+      setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
+    } else if (customNum < padraoNum) {
+      setComissaoStatus(prev => ({ ...prev, [servicoId]: 'menor' }));
+    } else {
+      setComissaoStatus(prev => ({ ...prev, [servicoId]: 'maior' }));
+    }
+  }, [updateForm, getComissaoPadrao]);
+
+  // Reset commission to standard value
+  const handleComissaoReset = useCallback((servicoId: number) => {
+    updateForm(f => {
+      const newCustom = { ...f.comissoesCustom };
+      delete newCustom[servicoId];
+      const newPendentes = { ...f.comissoesPendentes };
+      delete newPendentes[servicoId];
+      return { ...f, comissoesCustom: newCustom, comissoesPendentes: newPendentes };
+    });
+    setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
   }, [updateForm]);
 
-  const handleComissaoBlur = useCallback((servicoId: number) => {
-    // Skip if blur is suppressed (prevents infinite loop when focus returns after closing alert)
-    if (comissaoBlurSuppressed.current) return;
-    const customVal = form.comissoesCustom[servicoId];
-    if (!customVal) return;
-    const padrao = getComissaoPadrao(servicoId);
-    if (!padrao) return;
-    const customNum = parseFloat(customVal);
-    const padraoNum = parseFloat(padrao);
-    if (isNaN(customNum)) return;
-    // Round to 1 decimal place
-    const rounded = Math.round(customNum * 10) / 10;
-    if (rounded !== customNum) {
-      updateForm(f => ({ ...f, comissoesCustom: { ...f.comissoesCustom, [servicoId]: rounded.toFixed(1) } }));
-    }
-    if (rounded < padraoNum) {
-      comissaoBlurSuppressed.current = true;
-      setComissaoAlert({ servicoId, tipo: 'menor', percentual: rounded.toFixed(1), padrao });
-    } else if (rounded > padraoNum) {
-      comissaoBlurSuppressed.current = true;
-      setComissaoAlert({ servicoId, tipo: 'maior', percentual: rounded.toFixed(1), padrao });
-    }
-  }, [form.comissoesCustom, getComissaoPadrao, updateForm]);
+  // Confirm above-standard commission (mark as pending approval)
+  const handleComissaoConfirmAbove = useCallback((servicoId: number) => {
+    updateForm(f => ({
+      ...f,
+      comissoesPendentes: { ...f.comissoesPendentes, [servicoId]: true },
+    }));
+    toast.info('Comissão será enviada para aprovação do Diretor ao salvar o parceiro.');
+  }, [updateForm]);
+
+  // Confirm below-standard commission (just acknowledge)
+  const handleComissaoConfirmBelow = useCallback((servicoId: number) => {
+    // Just clear the status indicator — user confirmed they want the lower value
+    setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
+  }, []);
 
   // Handle rateio change with validation
   const handleRateioChange = useCallback((servicoId: number, field: 'parceiro' | 'subparceiro', value: string) => {
@@ -576,6 +595,7 @@ export default function Parceiros() {
     delete payload.comissoesCustom;
     delete payload.rateio;
     delete payload.quadroSocietario;
+    delete payload.comissoesPendentes;
 
     if (editingId) {
       updateMutation.mutate({ id: editingId, ...payload });
@@ -583,14 +603,16 @@ export default function Parceiros() {
       createMutation.mutate(payload);
     }
 
-    // Send comissão approval requests for above-standard comissões
+    // Send comissão approval requests for above-standard comissões that were confirmed
     if (form.modeloParceriaId) {
-      for (const [sIdStr, customPct] of Object.entries(form.comissoesCustom)) {
+      for (const [sIdStr, isPending] of Object.entries(form.comissoesPendentes)) {
+        if (!isPending) continue;
         const sId = Number(sIdStr);
+        const customPct = form.comissoesCustom[sId];
         const padrao = getComissaoPadrao(sId);
-        if (padrao && parseFloat(customPct) > parseFloat(padrao)) {
+        if (padrao && customPct && parseFloat(customPct) > parseFloat(padrao)) {
           createAprovacao.mutate({
-            parceiroId: editingId || 0, // Will be updated after create
+            parceiroId: editingId || 0,
             servicoId: sId,
             percentualSolicitado: customPct,
             percentualPadrao: padrao,
@@ -1292,14 +1314,48 @@ export default function Parceiros() {
                               <Input
                                 value={comissaoCustom ?? comissaoPadrao}
                                 onChange={e => handleComissaoChange(s.id, e.target.value)}
-                                onBlur={() => handleComissaoBlur(s.id)}
-                                className="w-20 h-7 text-xs text-center"
+                                className={`w-20 h-7 text-xs text-center ${comissaoStatus[s.id] === 'maior' && !form.comissoesPendentes[s.id] ? 'border-red-400 ring-1 ring-red-200' : comissaoStatus[s.id] === 'menor' ? 'border-amber-400 ring-1 ring-amber-200' : form.comissoesPendentes[s.id] ? 'border-blue-400 ring-1 ring-blue-200' : ''}`}
                                 type="number"
                                 min={0}
                                 max={100}
                                 step={0.1}
                               />
                               <span className="text-xs text-muted-foreground">%</span>
+                              {form.comissoesPendentes[s.id] && (
+                                <Badge variant="outline" className="text-[9px] h-5 border-blue-300 text-blue-600 bg-blue-50 whitespace-nowrap">
+                                  <ShieldCheck className="w-3 h-3 mr-0.5" /> Pendente
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          {/* Inline commission alert — below standard */}
+                          {isSelected && comissaoStatus[s.id] === 'menor' && (
+                            <div className="mx-3 mt-1 p-2 bg-amber-50 rounded-md border border-amber-200">
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-[10px] text-amber-800">Comissão abaixo do padrão ({comissaoPadrao}%). Confirme ou use o padrão.</p>
+                                  <div className="flex gap-2 mt-1.5">
+                                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleComissaoReset(s.id)}>Usar Padrão</Button>
+                                    <Button size="sm" className="h-6 text-[10px] px-2 bg-amber-600 hover:bg-amber-700" onClick={() => handleComissaoConfirmBelow(s.id)}>Confirmar Valor</Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {/* Inline commission alert — above standard */}
+                          {isSelected && comissaoStatus[s.id] === 'maior' && !form.comissoesPendentes[s.id] && (
+                            <div className="mx-3 mt-1 p-2 bg-red-50 rounded-md border border-red-200">
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-[10px] text-red-800">Comissão acima do padrão ({comissaoPadrao}%). Será enviada para aprovação do Diretor.</p>
+                                  <div className="flex gap-2 mt-1.5">
+                                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleComissaoReset(s.id)}>Usar Padrão</Button>
+                                    <Button size="sm" className="h-6 text-[10px] px-2 bg-red-600 hover:bg-red-700" onClick={() => handleComissaoConfirmAbove(s.id)}>Solicitar Aprovação</Button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1383,49 +1439,7 @@ export default function Parceiros() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ===== COMISSÃO ALERT ===== */}
-      <AlertDialog open={!!comissaoAlert} onOpenChange={(open) => { if (!open) { setComissaoAlert(null); setTimeout(() => { comissaoBlurSuppressed.current = false; }, 300); } }}>
-        <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              {comissaoAlert?.tipo === 'menor' ? (
-                <><AlertTriangle className="w-5 h-5 text-amber-500" /> Comissão Abaixo do Padrão</>
-              ) : (
-                <><AlertTriangle className="w-5 h-5 text-red-500" /> Comissão Acima do Padrão</>
-              )}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {comissaoAlert?.tipo === 'menor' ? (
-                <>A comissão informada ({comissaoAlert?.percentual}%) está <strong>abaixo</strong> do padrão ({comissaoAlert?.padrao}%) para o modelo selecionado. Deseja continuar com este valor?</>
-              ) : (
-                <>A comissão informada ({comissaoAlert?.percentual}%) está <strong>acima</strong> do padrão ({comissaoAlert?.padrao}%) para o modelo selecionado. Se continuar, será enviada uma <strong>tarefa de autorização para o Diretor do Setor</strong> aprovar esta comissão.</>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={() => {
-              // Reset to default
-              if (comissaoAlert) {
-                updateForm(f => {
-                  const newCustom = { ...f.comissoesCustom };
-                  delete newCustom[comissaoAlert.servicoId];
-                  return { ...f, comissoesCustom: newCustom };
-                });
-              }
-              setComissaoAlert(null);
-              // Keep blur suppressed briefly so returning focus doesn't re-trigger
-              setTimeout(() => { comissaoBlurSuppressed.current = false; }, 300);
-            }}>Usar Padrão</Button>
-            <Button onClick={() => {
-              setComissaoAlert(null);
-              // Keep blur suppressed briefly so returning focus doesn't re-trigger
-              setTimeout(() => { comissaoBlurSuppressed.current = false; }, 300);
-            }} className={comissaoAlert?.tipo === 'maior' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0A2540] hover:bg-[#0A2540]/90'}>
-              {comissaoAlert?.tipo === 'maior' ? 'Solicitar Aprovação' : 'Continuar'}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
 
       {/* Confirm Delete Dialog */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>

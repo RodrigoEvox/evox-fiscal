@@ -563,3 +563,10 @@
 - [x] Corrigir loop infinito no alerta de comissão acima do padrão (Usar Padrão / Solicitar Aprovação não funciona)
 - [x] Corrigir "Continuar Editando" que gera loop infinito com alerta "Deseja sair do cadastro?"
 - [x] Padronizar todos os percentuais de comissão para 1 casa decimal após a vírgula
+
+## CRM v16.3 — Correção Definitiva do Alerta de Comissão
+- [x] Remover abordagem onBlur que causa loop infinito no alerta de comissão
+- [x] "Usar Padrão": resetar percentual ao padrão e retornar ao formulário normalmente
+- [x] "Solicitar Aprovação": manter percentual solicitado, criar tarefa de aprovação para Diretor, marcar como pendente no parceiro, retornar ao formulário
+- [x] Garantir que o usuário sempre consiga voltar ao formulário de edição após interagir com o alerta
+- [x] Comissão abaixo do padrão: "Continuar" mantém o valor e volta ao formulário
