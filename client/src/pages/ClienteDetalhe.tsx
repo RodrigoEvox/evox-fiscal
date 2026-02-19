@@ -23,6 +23,7 @@ export default function ClienteDetalhe() {
   const { data: relatorios = [] } = trpc.relatorios.list.useQuery();
   const { data: filaItems = [] } = trpc.fila.list.useQuery();
   const { data: parceiros = [] } = trpc.parceiros.list.useQuery();
+  const { data: executivos = [] } = trpc.executivos.list.useQuery();
 
   const runAnalise = trpc.clientes.runAnalise.useMutation({
     onSuccess: () => {
@@ -99,6 +100,7 @@ export default function ClienteDetalhe() {
               {cliente.nomeFantasia && <span>• {cliente.nomeFantasia}</span>}
               {parceiroNomeDisplay && <Badge variant="outline" className="text-[10px]">{parceiroNomeDisplay}{parceiro?.ehSubparceiro ? ' (Subparceiro)' : ''}</Badge>}
               {parceiroPaiNome && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Parceiro Principal: {parceiroPaiNome}</Badge>}
+              {parceiro?.executivoComercialId && (() => { const exec = (executivos as any[]).find((e: any) => e.id === parceiro.executivoComercialId); return exec ? <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Exec. Comercial: {exec.nome}</Badge> : null; })()}
               <Badge className={`text-[10px] ${cliente.classificacaoCliente === 'novo' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                 {cliente.classificacaoCliente === 'novo' ? 'Cliente Novo' : 'Cliente Base'}
               </Badge>

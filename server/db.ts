@@ -23,6 +23,9 @@ import {
   slaConfiguracoes, InsertSlaConfiguracao,
   servicoEtapas, InsertServicoEtapa,
   clienteServicos, InsertClienteServico,
+  executivosComerciais, InsertExecutivoComercial,
+  rateioComissao, InsertRateioComissao,
+  aprovacaoComissao, InsertAprovacaoComissao,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1027,4 +1030,108 @@ export async function syncParceiroServicos(parceiroId: number, servicoIds: numbe
   for (const servicoId of servicoIds) {
     await db.insert(parceiroServicos).values({ parceiroId, servicoId } as any);
   }
+}
+
+
+// =============================================
+// ---- EXECUTIVOS COMERCIAIS ----
+// =============================================
+
+export async function listExecutivos() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(executivosComerciais).orderBy(asc(executivosComerciais.nome));
+}
+
+export async function getExecutivoById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(executivosComerciais).where(eq(executivosComerciais.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createExecutivo(data: InsertExecutivoComercial) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(executivosComerciais).values(data).$returningId();
+  return result[0]?.id;
+}
+
+export async function updateExecutivo(id: number, data: Partial<InsertExecutivoComercial>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(executivosComerciais).set(data).where(eq(executivosComerciais.id, id));
+}
+
+export async function deleteExecutivo(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(executivosComerciais).where(eq(executivosComerciais.id, id));
+}
+
+// =============================================
+// ---- RATEIO DE COMISSÃO ----
+// =============================================
+
+export async function listRateioByParceiro(parceiroId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(rateioComissao).where(eq(rateioComissao.parceiroId, parceiroId));
+}
+
+export async function upsertRateio(data: InsertRateioComissao) {
+  const db = await getDb();
+  if (!db) return null;
+  // Check if exists
+  const existing = await db.select().from(rateioComissao)
+    .where(and(
+      eq(rateioComissao.parceiroId, data.parceiroId),
+      eq(rateioComissao.servicoId, data.servicoId),
+    )).limit(1);
+  if (existing.length > 0) {
+    await db.update(rateioComissao).set(data).where(eq(rateioComissao.id, existing[0].id));
+    return existing[0].id;
+  } else {
+    const result = await db.insert(rateioComissao).values(data).$returningId();
+    return result[0]?.id;
+  }
+}
+
+export async function deleteRateio(parceiroId: number, servicoId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(rateioComissao).where(and(
+    eq(rateioComissao.parceiroId, parceiroId),
+    eq(rateioComissao.servicoId, servicoId),
+  ));
+}
+
+// =============================================
+// ---- APROVAÇÃO DE COMISSÃO ----
+// =============================================
+
+export async function listAprovacoesPendentes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(aprovacaoComissao)
+    .where(eq(aprovacaoComissao.status, 'pendente'))
+    .orderBy(desc(aprovacaoComissao.solicitadoEm));
+}
+
+export async function createAprovacaoComissao(data: InsertAprovacaoComissao) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(aprovacaoComissao).values(data).$returningId();
+  return result[0]?.id;
+}
+
+export async function updateAprovacaoStatus(id: number, status: 'aprovado' | 'rejeitado', aprovadoPorId: number, observacao?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(aprovacaoComissao).set({
+    status,
+    aprovadoPorId,
+    aprovadoEm: new Date(),
+    observacao: observacao || null,
+  }).where(eq(aprovacaoComissao.id, id));
 }

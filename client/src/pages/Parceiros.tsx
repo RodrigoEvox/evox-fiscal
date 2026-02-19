@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,15 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import {
   Handshake, Plus, Search, Edit, Loader2, Phone, Mail, MapPin, MoreVertical,
   Power, PowerOff, Trash2, Eye, Building2, User, Diamond, Award, Medal, Filter,
-  CreditCard, Users, ChevronDown, AlertCircle, CheckCircle2, Landmark, KeyRound
+  CreditCard, Users, AlertCircle, CheckCircle2, Landmark, KeyRound, Briefcase,
+  AlertTriangle, ShieldCheck, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 // ---- Helpers ----
@@ -69,26 +70,21 @@ function validarCpf(cpf: string): boolean {
 const EMPTY_FORM = {
   tipoPessoa: 'pj' as 'pf' | 'pj',
   apelido: '',
-  // PF
   nomeCompleto: '',
   cpf: '',
   rg: '',
-  // PJ
   cnpj: '',
   razaoSocial: '',
   nomeFantasia: '',
   situacaoCadastral: '',
   quadroSocietario: [] as { nome: string; qualificacao: string; faixaEtaria?: string }[],
-  // Sócio responsável
   socioNome: '',
   socioCpf: '',
   socioRg: '',
   socioEmail: '',
   socioTelefone: '',
-  // Contato
   telefone: '',
   email: '',
-  // Endereço
   cep: '',
   logradouro: '',
   numero: '',
@@ -96,7 +92,6 @@ const EMPTY_FORM = {
   bairro: '',
   cidade: '',
   estado: '',
-  // Bancário
   banco: '',
   agencia: '',
   conta: '',
@@ -105,18 +100,37 @@ const EMPTY_FORM = {
   cpfCnpjConta: '',
   chavePix: '',
   tipoChavePix: '' as string,
-  // Parceria
   modeloParceriaId: null as number | null,
+  executivoComercialId: null as number | null,
   ehSubparceiro: false,
   parceiroPaiId: null as number | null,
   percentualRepasseSubparceiro: '',
   observacoes: '',
   ativo: true,
-  // Serviços
   servicoIds: [] as number[],
+  // Comissões customizadas por serviço: { servicoId: percentual }
+  comissoesCustom: {} as Record<number, string>,
+  // Rateio subparceiro por serviço: { servicoId: { parceiro: %, subparceiro: % } }
+  rateio: {} as Record<number, { parceiro: string; subparceiro: string }>,
 };
 
 const UF_LIST = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+
+// ---- Section collapsible component ----
+function FormSection({ title, icon: Icon, children, defaultOpen = true }: { title: string; icon: any; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <button type="button" onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors">
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <Icon className="w-4 h-4 text-[#0A2540]" /> {title}
+        </span>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="p-4 space-y-4">{children}</div>}
+    </div>
+  );
+}
 
 export default function Parceiros() {
   const { user } = useAuth();
@@ -128,22 +142,34 @@ export default function Parceiros() {
   const [viewParceiro, setViewParceiro] = useState<any>(null);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
-  const [formTab, setFormTab] = useState('dados');
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cpfErrors, setCpfErrors] = useState<Record<string, string>>({});
+  const [formDirty, setFormDirty] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [pendingClose, setPendingClose] = useState(false);
+  // Comissão alert states
+  const [comissaoAlert, setComissaoAlert] = useState<{ servicoId: number; tipo: 'menor' | 'maior'; percentual: string; padrao: string } | null>(null);
   const utils = trpc.useUtils();
 
   const { data: parceiros = [], isLoading } = trpc.parceiros.list.useQuery();
   const { data: modelos = [] } = trpc.modelosParceria.list.useQuery();
   const { data: servicos = [] } = trpc.servicos.list.useQuery();
   const { data: parceirosPrincipais = [] } = trpc.parceiros.listPrincipais.useQuery();
+  const { data: executivos = [] } = trpc.executivos.list.useQuery();
+
+  // Get comissões for selected modelo
+  const selectedModeloId = form.modeloParceriaId;
+  const comissoesByModelo = trpc.comissoes.byModelo.useQuery(
+    { modeloParceriaId: selectedModeloId! },
+    { enabled: !!selectedModeloId }
+  );
 
   const createMutation = trpc.parceiros.create.useMutation({
-    onSuccess: () => { utils.parceiros.list.invalidate(); utils.parceiros.listPrincipais.invalidate(); closeForm(); toast.success('Parceiro cadastrado com sucesso!'); },
+    onSuccess: () => { utils.parceiros.list.invalidate(); utils.parceiros.listPrincipais.invalidate(); doCloseForm(); toast.success('Parceiro cadastrado com sucesso!'); },
     onError: (e) => toast.error(e.message),
   });
   const updateMutation = trpc.parceiros.update.useMutation({
-    onSuccess: () => { utils.parceiros.list.invalidate(); utils.parceiros.listPrincipais.invalidate(); closeForm(); toast.success('Parceiro atualizado com sucesso!'); },
+    onSuccess: () => { utils.parceiros.list.invalidate(); utils.parceiros.listPrincipais.invalidate(); doCloseForm(); toast.success('Parceiro atualizado com sucesso!'); },
     onError: (e) => toast.error(e.message),
   });
   const deleteMutation = trpc.parceiros.delete.useMutation({
@@ -152,6 +178,10 @@ export default function Parceiros() {
   });
   const toggleMutation = trpc.parceiros.toggleActive.useMutation({
     onSuccess: (_, vars) => { utils.parceiros.list.invalidate(); toast.success(vars.ativo ? 'Parceiro ativado!' : 'Parceiro inativado!'); },
+    onError: (e) => toast.error(e.message),
+  });
+  const createAprovacao = trpc.aprovacaoComissao.create.useMutation({
+    onSuccess: () => toast.success('Solicitação de aprovação enviada ao Diretor'),
     onError: (e) => toast.error(e.message),
   });
 
@@ -172,13 +202,35 @@ export default function Parceiros() {
     });
   }, [parceiros, filterStatus, search]);
 
-  const closeForm = () => {
+  const doCloseForm = useCallback(() => {
     setShowForm(false);
     setEditingId(null);
     setForm({ ...EMPTY_FORM });
-    setFormTab('dados');
     setCpfErrors({});
-  };
+    setFormDirty(false);
+    setPendingClose(false);
+  }, []);
+
+  const tryCloseForm = useCallback(() => {
+    if (formDirty) {
+      setShowExitConfirm(true);
+      setPendingClose(true);
+    } else {
+      doCloseForm();
+    }
+  }, [formDirty, doCloseForm]);
+
+  const handleDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) tryCloseForm();
+  }, [tryCloseForm]);
+
+  const updateForm = useCallback((updater: (f: typeof EMPTY_FORM) => typeof EMPTY_FORM) => {
+    setForm(prev => {
+      const next = updater(prev);
+      setFormDirty(true);
+      return next;
+    });
+  }, []);
 
   const openEdit = (p: any) => {
     setForm({
@@ -215,17 +267,19 @@ export default function Parceiros() {
       chavePix: p.chavePix || '',
       tipoChavePix: p.tipoChavePix || '',
       modeloParceriaId: p.modeloParceriaId || null,
+      executivoComercialId: p.executivoComercialId || null,
       ehSubparceiro: p.ehSubparceiro || false,
       parceiroPaiId: p.parceiroPaiId || null,
       percentualRepasseSubparceiro: p.percentualRepasseSubparceiro || '',
       observacoes: p.observacoes || '',
       ativo: p.ativo !== false,
       servicoIds: [],
+      comissoesCustom: {},
+      rateio: {},
     });
     setEditingId(p.id);
+    setFormDirty(false);
     setShowForm(true);
-    // Load existing services for this partner
-    // We'll fetch them when the form opens
   };
 
   // Consulta CNPJ
@@ -255,6 +309,7 @@ export default function Parceiros() {
             faixaEtaria: s.faixa_etaria || '',
           })),
         }));
+        setFormDirty(true);
         toast.success('Dados do CNPJ carregados com sucesso!');
       }
     } catch (e: any) {
@@ -278,6 +333,66 @@ export default function Parceiros() {
     }
   };
 
+  // Get comissão padrão for a serviço
+  const getComissaoPadrao = useCallback((servicoId: number): string | null => {
+    if (!comissoesByModelo.data) return null;
+    const c = (comissoesByModelo.data as any[]).find((c: any) => c.servicoId === servicoId);
+    return c ? c.percentualComissao : null;
+  }, [comissoesByModelo.data]);
+
+  // Handle comissão change with alerts
+  const handleComissaoChange = useCallback((servicoId: number, value: string) => {
+    updateForm(f => ({
+      ...f,
+      comissoesCustom: { ...f.comissoesCustom, [servicoId]: value },
+    }));
+  }, [updateForm]);
+
+  const handleComissaoBlur = useCallback((servicoId: number) => {
+    const customVal = form.comissoesCustom[servicoId];
+    if (!customVal) return;
+    const padrao = getComissaoPadrao(servicoId);
+    if (!padrao) return;
+    const customNum = parseFloat(customVal);
+    const padraoNum = parseFloat(padrao);
+    if (isNaN(customNum)) return;
+    if (customNum < padraoNum) {
+      setComissaoAlert({ servicoId, tipo: 'menor', percentual: customVal, padrao });
+    } else if (customNum > padraoNum) {
+      setComissaoAlert({ servicoId, tipo: 'maior', percentual: customVal, padrao });
+    }
+  }, [form.comissoesCustom, getComissaoPadrao]);
+
+  // Handle rateio change with validation
+  const handleRateioChange = useCallback((servicoId: number, field: 'parceiro' | 'subparceiro', value: string) => {
+    updateForm(f => {
+      const current = f.rateio[servicoId] || { parceiro: '', subparceiro: '' };
+      const updated = { ...current, [field]: value };
+      // Auto-calculate the other field
+      const padrao = getComissaoPadrao(servicoId);
+      const maxComissao = padrao ? parseFloat(padrao) : 100;
+      const val = parseFloat(value);
+      if (!isNaN(val) && field === 'parceiro') {
+        const remaining = Math.max(0, maxComissao - val);
+        updated.subparceiro = remaining.toFixed(2);
+      } else if (!isNaN(val) && field === 'subparceiro') {
+        const remaining = Math.max(0, maxComissao - val);
+        updated.parceiro = remaining.toFixed(2);
+      }
+      return { ...f, rateio: { ...f.rateio, [servicoId]: updated } };
+    });
+  }, [updateForm, getComissaoPadrao]);
+
+  // Auto-set executivo when selecting parceiro pai for subparceiro
+  useEffect(() => {
+    if (form.ehSubparceiro && form.parceiroPaiId) {
+      const pai = (parceiros as any[]).find((p: any) => p.id === form.parceiroPaiId);
+      if (pai?.executivoComercialId) {
+        setForm(f => ({ ...f, executivoComercialId: pai.executivoComercialId }));
+      }
+    }
+  }, [form.ehSubparceiro, form.parceiroPaiId, parceiros]);
+
   const handleSave = () => {
     if (!form.apelido.trim()) { toast.error('Preencha o Apelido (nome de exibição)'); return; }
     if (form.tipoPessoa === 'pf') {
@@ -290,10 +405,28 @@ export default function Parceiros() {
     if (form.socioCpf && !validarCpf(form.socioCpf.replace(/\D/g, ''))) { toast.error('CPF do sócio responsável é inválido'); return; }
     if (form.ehSubparceiro && !form.parceiroPaiId) { toast.error('Selecione o parceiro principal'); return; }
 
+    // Check rateio totals
+    if (form.ehSubparceiro) {
+      for (const servicoId of form.servicoIds) {
+        const rateio = form.rateio[servicoId];
+        if (rateio) {
+          const total = parseFloat(rateio.parceiro || '0') + parseFloat(rateio.subparceiro || '0');
+          const padrao = getComissaoPadrao(servicoId);
+          const max = padrao ? parseFloat(padrao) : 100;
+          if (total > max) {
+            const servicoNome = (servicos as any[]).find((s: any) => s.id === servicoId)?.nome || `#${servicoId}`;
+            toast.error(`Rateio do serviço "${servicoNome}" excede o máximo de ${max}%`);
+            return;
+          }
+        }
+      }
+    }
+
     const payload: any = {
       ...form,
       nomeCompleto: form.tipoPessoa === 'pj' ? (form.razaoSocial || form.nomeCompleto) : form.nomeCompleto,
       modeloParceriaId: form.modeloParceriaId || null,
+      executivoComercialId: form.executivoComercialId || null,
       parceiroPaiId: form.ehSubparceiro ? form.parceiroPaiId : null,
       tipoConta: form.tipoConta || undefined,
       tipoChavePix: form.tipoChavePix || undefined,
@@ -302,15 +435,37 @@ export default function Parceiros() {
     for (const key of Object.keys(payload)) {
       if (payload[key] === '') payload[key] = undefined;
     }
+    // Keep required fields
     payload.tipoPessoa = form.tipoPessoa;
     payload.ehSubparceiro = form.ehSubparceiro;
     payload.ativo = form.ativo;
     payload.servicoIds = form.servicoIds;
+    // Remove non-db fields
+    delete payload.comissoesCustom;
+    delete payload.rateio;
+    delete payload.quadroSocietario;
 
     if (editingId) {
       updateMutation.mutate({ id: editingId, ...payload });
     } else {
       createMutation.mutate(payload);
+    }
+
+    // Send comissão approval requests for above-standard comissões
+    if (form.modeloParceriaId) {
+      for (const [sIdStr, customPct] of Object.entries(form.comissoesCustom)) {
+        const sId = Number(sIdStr);
+        const padrao = getComissaoPadrao(sId);
+        if (padrao && parseFloat(customPct) > parseFloat(padrao)) {
+          createAprovacao.mutate({
+            parceiroId: editingId || 0, // Will be updated after create
+            servicoId: sId,
+            percentualSolicitado: customPct,
+            percentualPadrao: padrao,
+            modeloParceriaId: form.modeloParceriaId,
+          });
+        }
+      }
     }
   };
 
@@ -328,6 +483,12 @@ export default function Parceiros() {
     return p ? (p.apelido || p.nomeCompleto) : null;
   };
 
+  const getExecutivoNome = (id: number | null) => {
+    if (!id) return null;
+    const e = (executivos as any[]).find((e: any) => e.id === id);
+    return e ? e.nome : null;
+  };
+
   const stats = {
     total: (parceiros as any[]).length,
     ativos: (parceiros as any[]).filter((p: any) => p.ativo).length,
@@ -336,6 +497,8 @@ export default function Parceiros() {
   };
 
   const displayName = (p: any) => p.apelido || p.nomeCompleto || p.razaoSocial || '';
+
+  const activeExecutivos = useMemo(() => (executivos as any[]).filter((e: any) => e.ativo), [executivos]);
 
   return (
     <div className="space-y-6">
@@ -350,7 +513,7 @@ export default function Parceiros() {
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => { setForm({ ...EMPTY_FORM }); setEditingId(null); setFormTab('dados'); setShowForm(true); }} className="bg-[#0A2540] hover:bg-[#0A2540]/90">
+          <Button onClick={() => { setForm({ ...EMPTY_FORM }); setEditingId(null); setFormDirty(false); setShowForm(true); }} className="bg-[#0A2540] hover:bg-[#0A2540]/90">
             <Plus className="w-4 h-4 mr-2" /> Novo Parceiro
           </Button>
         )}
@@ -387,6 +550,7 @@ export default function Parceiros() {
           {filtered.map((p: any) => {
             const modeloInfo = getModeloInfo(p.modeloParceriaId);
             const parceiroPaiNome = getParceiroNome(p.parceiroPaiId);
+            const execNome = getExecutivoNome(p.executivoComercialId);
             return (
               <Card key={p.id} className={`hover:shadow-md transition-all cursor-pointer group ${!p.ativo ? 'opacity-60' : ''}`}
                 onClick={() => setViewParceiro(p)}>
@@ -451,6 +615,11 @@ export default function Parceiros() {
                           <Users className="w-3 h-3" /> Vinculado a: {parceiroPaiNome}
                         </p>
                       )}
+                      {execNome && (
+                        <p className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5">
+                          <Briefcase className="w-3 h-3" /> Exec: {execNome}
+                        </p>
+                      )}
                       {p.email && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Mail className="w-3 h-3" /> {p.email}</p>}
                       {p.telefone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {p.telefone}</p>}
                     </div>
@@ -500,6 +669,7 @@ export default function Parceiros() {
                     )}
                     <div><Label className="text-xs text-muted-foreground">E-mail</Label><p className="text-sm">{viewParceiro.email || 'N/A'}</p></div>
                     <div><Label className="text-xs text-muted-foreground">Telefone</Label><p className="text-sm">{viewParceiro.telefone || 'N/A'}</p></div>
+                    <div><Label className="text-xs text-muted-foreground">Executivo Comercial</Label><p className="text-sm font-medium text-emerald-700">{getExecutivoNome(viewParceiro.executivoComercialId) || 'N/A'}</p></div>
                     <div><Label className="text-xs text-muted-foreground">Status</Label><Badge variant={viewParceiro.ativo ? 'default' : 'secondary'} className={viewParceiro.ativo ? 'bg-green-100 text-green-700' : ''}>{viewParceiro.ativo ? 'Ativo' : 'Inativo'}</Badge></div>
                   </div>
                   {viewParceiro.tipoPessoa === 'pj' && viewParceiro.quadroSocietario && viewParceiro.quadroSocietario.length > 0 && (
@@ -566,9 +736,10 @@ export default function Parceiros() {
                         <p className="text-sm font-medium text-blue-700">{getParceiroNome(viewParceiro.parceiroPaiId) || 'N/A'}</p>
                       </div>
                     )}
-                    {viewParceiro.percentualRepasseSubparceiro && (
-                      <div><Label className="text-xs text-muted-foreground">% Repasse Subparceiro</Label><p className="text-sm">{viewParceiro.percentualRepasseSubparceiro}%</p></div>
-                    )}
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Executivo Comercial</Label>
+                      <p className="text-sm font-medium text-emerald-700">{getExecutivoNome(viewParceiro.executivoComercialId) || 'N/A'}</p>
+                    </div>
                   </div>
                   {viewParceiro.observacoes && (
                     <div><Label className="text-xs text-muted-foreground">Observações</Label><p className="text-sm">{viewParceiro.observacoes}</p></div>
@@ -597,406 +768,520 @@ export default function Parceiros() {
         </DialogContent>
       </Dialog>
 
-      {/* ===== CREATE/EDIT DIALOG ===== */}
-      <Dialog open={showForm} onOpenChange={(o) => { if (!o) closeForm(); }}>
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+      {/* ===== CREATE/EDIT DIALOG — SINGLE SCROLLABLE FORM ===== */}
+      <Dialog open={showForm} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-hidden flex flex-col p-0" onInteractOutside={(e) => { if (formDirty) { e.preventDefault(); setShowExitConfirm(true); setPendingClose(true); } }}>
+          <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
             <DialogTitle>{editingId ? 'Editar Parceiro' : 'Novo Parceiro'}</DialogTitle>
             <DialogDescription>{editingId ? 'Altere os dados do parceiro.' : 'Preencha os dados para cadastrar um novo parceiro.'}</DialogDescription>
           </DialogHeader>
 
-          <Tabs value={formTab} onValueChange={setFormTab} className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="w-full shrink-0">
-              <TabsTrigger value="dados" className="flex-1 text-xs">
-                <User className="w-3 h-3 mr-1" /> Dados
-              </TabsTrigger>
-              <TabsTrigger value="endereco" className="flex-1 text-xs">
-                <MapPin className="w-3 h-3 mr-1" /> Endereço
-              </TabsTrigger>
-              <TabsTrigger value="bancario" className="flex-1 text-xs">
-                <Landmark className="w-3 h-3 mr-1" /> Bancário
-              </TabsTrigger>
-              <TabsTrigger value="servicos" className="flex-1 text-xs">
-                <CreditCard className="w-3 h-3 mr-1" /> Serviços
-              </TabsTrigger>
-              <TabsTrigger value="parceria" className="flex-1 text-xs">
-                <Handshake className="w-3 h-3 mr-1" /> Parceria
-              </TabsTrigger>
-            </TabsList>
+          {/* Single scrollable form */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
-            <ScrollArea className="flex-1 mt-2 pr-4">
-              {/* ---- TAB DADOS ---- */}
-              <TabsContent value="dados" className="space-y-5 mt-0">
-                {/* Tipo de Pessoa */}
-                <div>
-                  <Label className="text-xs font-semibold">Tipo de Pessoa *</Label>
-                  <div className="flex gap-3 mt-2">
-                    <Button type="button" variant={form.tipoPessoa === 'pf' ? 'default' : 'outline'}
-                      className={form.tipoPessoa === 'pf' ? 'bg-[#0A2540]' : ''}
-                      onClick={() => setForm(f => ({ ...f, tipoPessoa: 'pf' }))}>
-                      <User className="w-4 h-4 mr-2" /> Pessoa Física
-                    </Button>
-                    <Button type="button" variant={form.tipoPessoa === 'pj' ? 'default' : 'outline'}
-                      className={form.tipoPessoa === 'pj' ? 'bg-[#0A2540]' : ''}
-                      onClick={() => setForm(f => ({ ...f, tipoPessoa: 'pj' }))}>
-                      <Building2 className="w-4 h-4 mr-2" /> Pessoa Jurídica
-                    </Button>
-                  </div>
-                </div>
+            {/* === SEÇÃO: TIPO DE PESSOA === */}
+            <FormSection title="Tipo de Pessoa" icon={User}>
+              <div className="flex gap-3">
+                <Button type="button" variant={form.tipoPessoa === 'pf' ? 'default' : 'outline'}
+                  className={form.tipoPessoa === 'pf' ? 'bg-[#0A2540]' : ''}
+                  onClick={() => updateForm(f => ({ ...f, tipoPessoa: 'pf' }))}>
+                  <User className="w-4 h-4 mr-2" /> Pessoa Física
+                </Button>
+                <Button type="button" variant={form.tipoPessoa === 'pj' ? 'default' : 'outline'}
+                  className={form.tipoPessoa === 'pj' ? 'bg-[#0A2540]' : ''}
+                  onClick={() => updateForm(f => ({ ...f, tipoPessoa: 'pj' }))}>
+                  <Building2 className="w-4 h-4 mr-2" /> Pessoa Jurídica
+                </Button>
+              </div>
 
-                <Separator />
+              {/* Apelido */}
+              <div>
+                <Label className="text-xs">Apelido (Nome de Exibição) *</Label>
+                <Input value={form.apelido} onChange={e => updateForm(f => ({ ...f, apelido: e.target.value }))} placeholder="Nome que será exibido no sistema" />
+                <p className="text-[10px] text-muted-foreground mt-1">Este será o nome principal exibido em todas as telas do sistema.</p>
+              </div>
+            </FormSection>
 
-                {/* Apelido */}
-                <div>
-                  <Label className="text-xs">Apelido (Nome de Exibição) *</Label>
-                  <Input value={form.apelido} onChange={e => setForm(f => ({ ...f, apelido: e.target.value }))} placeholder="Nome que será exibido no sistema" />
-                  <p className="text-[10px] text-muted-foreground mt-1">Este será o nome principal exibido em todas as telas do sistema.</p>
-                </div>
-
-                <Separator />
-
-                {form.tipoPessoa === 'pf' ? (
-                  /* ---- PF ---- */
-                  <div>
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><User className="w-4 h-4" /> Dados Pessoais</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2">
-                        <Label className="text-xs">Nome Completo *</Label>
-                        <Input value={form.nomeCompleto} onChange={e => setForm(f => ({ ...f, nomeCompleto: e.target.value }))} placeholder="Nome completo do parceiro" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">CPF</Label>
-                        <Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: maskCpf(e.target.value) }))}
-                          onBlur={() => handleCpfBlur('cpf', form.cpf)}
-                          placeholder="000.000.000-00" maxLength={14}
-                          className={cpfErrors.cpf ? 'border-red-500' : ''} />
-                        {cpfErrors.cpf && <p className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5"><AlertCircle className="w-3 h-3" /> {cpfErrors.cpf}</p>}
-                        {form.cpf && !cpfErrors.cpf && form.cpf.replace(/\D/g, '').length === 11 && <p className="text-[10px] text-green-600 flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> CPF válido</p>}
-                      </div>
-                      <div>
-                        <Label className="text-xs">RG</Label>
-                        <Input value={form.rg} onChange={e => setForm(f => ({ ...f, rg: e.target.value }))} placeholder="RG" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">E-mail</Label>
-                        <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@parceiro.com" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Telefone</Label>
-                        <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* ---- PJ ---- */
-                  <>
-                    <div>
-                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Building2 className="w-4 h-4" /> Dados da Empresa</h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                          <Label className="text-xs">CNPJ *</Label>
-                          <div className="flex gap-2">
-                            <Input value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: maskCnpj(e.target.value) }))} placeholder="00.000.000/0000-00" maxLength={18} className="flex-1" />
-                            <Button type="button" variant="outline" onClick={handleConsultaCNPJ} disabled={cnpjLoading} className="shrink-0">
-                              {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                              <span className="ml-1 text-xs">Consultar</span>
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-xs">Razão Social</Label>
-                          <Input value={form.razaoSocial} onChange={e => setForm(f => ({ ...f, razaoSocial: e.target.value }))} placeholder="Razão social da empresa" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Nome Fantasia</Label>
-                          <Input value={form.nomeFantasia} onChange={e => setForm(f => ({ ...f, nomeFantasia: e.target.value }))} placeholder="Nome fantasia" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Situação Cadastral</Label>
-                          <Input value={form.situacaoCadastral} readOnly className="bg-muted/50" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">E-mail</Label>
-                          <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Telefone</Label>
-                          <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quadro Societário */}
-                    {form.quadroSocietario.length > 0 && (
-                      <div>
-                        <Label className="text-xs font-semibold mb-2 block">Quadro Societário (da Receita Federal)</Label>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {form.quadroSocietario.map((s, i) => (
-                            <div key={i} className="text-xs p-2 bg-muted/50 rounded flex justify-between">
-                              <span className="font-medium">{s.nome}</span>
-                              <span className="text-muted-foreground">{s.qualificacao}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <Separator />
-
-                    {/* Sócio Responsável */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><User className="w-4 h-4" /> Sócio Responsável pela Parceria</h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                          <Label className="text-xs">Nome Completo do Sócio</Label>
-                          <Input value={form.socioNome} onChange={e => setForm(f => ({ ...f, socioNome: e.target.value }))} placeholder="Nome do sócio responsável" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">CPF do Sócio</Label>
-                          <Input value={form.socioCpf} onChange={e => setForm(f => ({ ...f, socioCpf: maskCpf(e.target.value) }))}
-                            onBlur={() => handleCpfBlur('socioCpf', form.socioCpf)}
-                            placeholder="000.000.000-00" maxLength={14}
-                            className={cpfErrors.socioCpf ? 'border-red-500' : ''} />
-                          {cpfErrors.socioCpf && <p className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5"><AlertCircle className="w-3 h-3" /> {cpfErrors.socioCpf}</p>}
-                          {form.socioCpf && !cpfErrors.socioCpf && form.socioCpf.replace(/\D/g, '').length === 11 && <p className="text-[10px] text-green-600 flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> CPF válido</p>}
-                        </div>
-                        <div>
-                          <Label className="text-xs">RG do Sócio</Label>
-                          <Input value={form.socioRg} onChange={e => setForm(f => ({ ...f, socioRg: e.target.value }))} placeholder="RG" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">E-mail do Sócio</Label>
-                          <Input type="email" value={form.socioEmail} onChange={e => setForm(f => ({ ...f, socioEmail: e.target.value }))} placeholder="email@socio.com" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Telefone do Sócio</Label>
-                          <Input value={form.socioTelefone} onChange={e => setForm(f => ({ ...f, socioTelefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </TabsContent>
-
-              {/* ---- TAB ENDEREÇO ---- */}
-              <TabsContent value="endereco" className="space-y-5 mt-0">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><MapPin className="w-4 h-4" /> Endereço Completo</h3>
+            {/* === SEÇÃO: DADOS PF ou PJ === */}
+            {form.tipoPessoa === 'pf' ? (
+              <FormSection title="Dados Pessoais" icon={User}>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">CEP</Label>
-                    <Input value={form.cep} onChange={e => setForm(f => ({ ...f, cep: maskCep(e.target.value) }))} placeholder="00000-000" maxLength={9} />
-                  </div>
                   <div className="col-span-2">
-                    <Label className="text-xs">Logradouro</Label>
-                    <Input value={form.logradouro} onChange={e => setForm(f => ({ ...f, logradouro: e.target.value }))} placeholder="Rua, Avenida, etc." />
+                    <Label className="text-xs">Nome Completo *</Label>
+                    <Input value={form.nomeCompleto} onChange={e => updateForm(f => ({ ...f, nomeCompleto: e.target.value }))} placeholder="Nome completo do parceiro" />
                   </div>
                   <div>
-                    <Label className="text-xs">Número</Label>
-                    <Input value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} placeholder="Nº" />
+                    <Label className="text-xs">CPF</Label>
+                    <Input value={form.cpf} onChange={e => updateForm(f => ({ ...f, cpf: maskCpf(e.target.value) }))}
+                      onBlur={() => handleCpfBlur('cpf', form.cpf)}
+                      placeholder="000.000.000-00" maxLength={14}
+                      className={cpfErrors.cpf ? 'border-red-500' : ''} />
+                    {cpfErrors.cpf && <p className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5"><AlertCircle className="w-3 h-3" /> {cpfErrors.cpf}</p>}
+                    {form.cpf && !cpfErrors.cpf && form.cpf.replace(/\D/g, '').length === 11 && <p className="text-[10px] text-green-600 flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> CPF válido</p>}
                   </div>
                   <div>
-                    <Label className="text-xs">Complemento</Label>
-                    <Input value={form.complemento} onChange={e => setForm(f => ({ ...f, complemento: e.target.value }))} placeholder="Sala, Andar, Bloco..." />
+                    <Label className="text-xs">RG</Label>
+                    <Input value={form.rg} onChange={e => updateForm(f => ({ ...f, rg: e.target.value }))} placeholder="RG" />
                   </div>
                   <div>
-                    <Label className="text-xs">Bairro</Label>
-                    <Input value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} placeholder="Bairro" />
+                    <Label className="text-xs">E-mail</Label>
+                    <Input type="email" value={form.email} onChange={e => updateForm(f => ({ ...f, email: e.target.value }))} placeholder="email@parceiro.com" />
                   </div>
                   <div>
-                    <Label className="text-xs">Cidade</Label>
-                    <Input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Cidade" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">UF</Label>
-                    <Select value={form.estado} onValueChange={v => setForm(f => ({ ...f, estado: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        {UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs">Telefone</Label>
+                    <Input value={form.telefone} onChange={e => updateForm(f => ({ ...f, telefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
                   </div>
                 </div>
-              </TabsContent>
-
-              {/* ---- TAB BANCÁRIO ---- */}
-              <TabsContent value="bancario" className="space-y-5 mt-0">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Landmark className="w-4 h-4" /> Dados Bancários para Comissões</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Banco</Label>
-                    <Input value={form.banco} onChange={e => setForm(f => ({ ...f, banco: e.target.value }))} placeholder="Ex: Banco do Brasil, Itaú..." />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Agência</Label>
-                    <Input value={form.agencia} onChange={e => setForm(f => ({ ...f, agencia: e.target.value }))} placeholder="0000" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Conta</Label>
-                    <Input value={form.conta} onChange={e => setForm(f => ({ ...f, conta: e.target.value }))} placeholder="00000-0" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Tipo de Conta</Label>
-                    <Select value={form.tipoConta} onValueChange={v => setForm(f => ({ ...f, tipoConta: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="corrente">Corrente</SelectItem>
-                        <SelectItem value="poupanca">Poupança</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Titular da Conta</Label>
-                    <Input value={form.titularConta} onChange={e => setForm(f => ({ ...f, titularConta: e.target.value }))} placeholder="Nome do titular" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">CPF/CNPJ da Conta</Label>
-                    <Input value={form.cpfCnpjConta} onChange={e => setForm(f => ({ ...f, cpfCnpjConta: e.target.value }))} placeholder="Documento do titular" />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <h3 className="text-sm font-semibold flex items-center gap-2"><KeyRound className="w-4 h-4" /> Chave PIX</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Tipo da Chave PIX</Label>
-                    <Select value={form.tipoChavePix} onValueChange={v => setForm(f => ({ ...f, tipoChavePix: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cpf">CPF</SelectItem>
-                        <SelectItem value="cnpj">CNPJ</SelectItem>
-                        <SelectItem value="email">E-mail</SelectItem>
-                        <SelectItem value="telefone">Telefone</SelectItem>
-                        <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Chave PIX</Label>
-                    <Input value={form.chavePix} onChange={e => setForm(f => ({ ...f, chavePix: e.target.value }))} placeholder="Informe a chave PIX" />
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* ---- TAB SERVIÇOS ---- */}
-              <TabsContent value="servicos" className="space-y-5 mt-0">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><CreditCard className="w-4 h-4" /> Serviços que o Parceiro Trabalha</h3>
-                <p className="text-xs text-muted-foreground">Selecione os serviços que este parceiro está autorizado a trabalhar com a Evox.</p>
-                {(servicos as any[]).length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhum serviço cadastrado no sistema.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {(servicos as any[]).filter((s: any) => s.ativo !== false).map((s: any) => (
-                      <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/30 transition-colors">
-                        <Checkbox
-                          checked={form.servicoIds.includes(s.id)}
-                          onCheckedChange={(checked) => {
-                            setForm(f => ({
-                              ...f,
-                              servicoIds: checked
-                                ? [...f.servicoIds, s.id]
-                                : f.servicoIds.filter(id => id !== s.id),
-                            }));
-                          }}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{s.nome}</p>
-                          {s.descricao && <p className="text-xs text-muted-foreground">{s.descricao}</p>}
-                        </div>
+              </FormSection>
+            ) : (
+              <>
+                <FormSection title="Dados da Empresa" icon={Building2}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs">CNPJ *</Label>
+                      <div className="flex gap-2">
+                        <Input value={form.cnpj} onChange={e => updateForm(f => ({ ...f, cnpj: maskCnpj(e.target.value) }))} placeholder="00.000.000/0000-00" maxLength={18} className="flex-1" />
+                        <Button type="button" variant="outline" onClick={handleConsultaCNPJ} disabled={cnpjLoading} className="shrink-0">
+                          {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                          <span className="ml-1 text-xs">Consultar</span>
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                )}
-                {form.servicoIds.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{form.servicoIds.length} serviço(s) selecionado(s)</p>
-                )}
-              </TabsContent>
-
-              {/* ---- TAB PARCERIA ---- */}
-              <TabsContent value="parceria" className="space-y-5 mt-0">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Handshake className="w-4 h-4" /> Configuração da Parceria</h3>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Modelo de Parceria</Label>
-                    <Select value={form.modeloParceriaId ? String(form.modeloParceriaId) : 'none'} onValueChange={v => setForm(f => ({ ...f, modeloParceriaId: v === 'none' ? null : Number(v) }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {(modelos as any[]).map((m: any) => (
-                          <SelectItem key={m.id} value={String(m.id)}>{m.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Parceiro / Subparceiro */}
-                <div>
-                  <Label className="text-xs font-semibold mb-2 block">Tipo de Vínculo</Label>
-                  <div className="flex gap-3">
-                    <Button type="button" variant={!form.ehSubparceiro ? 'default' : 'outline'}
-                      className={!form.ehSubparceiro ? 'bg-[#0A2540]' : ''}
-                      onClick={() => setForm(f => ({ ...f, ehSubparceiro: false, parceiroPaiId: null }))}>
-                      <Handshake className="w-4 h-4 mr-2" /> Parceiro Principal
-                    </Button>
-                    <Button type="button" variant={form.ehSubparceiro ? 'default' : 'outline'}
-                      className={form.ehSubparceiro ? 'bg-[#0A2540]' : ''}
-                      onClick={() => setForm(f => ({ ...f, ehSubparceiro: true }))}>
-                      <Users className="w-4 h-4 mr-2" /> Subparceiro
-                    </Button>
-                  </div>
-                </div>
-
-                {form.ehSubparceiro && (
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
-                    <Label className="text-xs font-semibold text-blue-800">Vinculado ao Parceiro Principal *</Label>
-                    <Select value={form.parceiroPaiId ? String(form.parceiroPaiId) : 'none'} onValueChange={v => setForm(f => ({ ...f, parceiroPaiId: v === 'none' ? null : Number(v) }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o parceiro principal..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Selecione...</SelectItem>
-                        {(parceirosPrincipais as any[])
-                          .filter((p: any) => p.id !== editingId) // Não pode ser subparceiro de si mesmo
-                          .map((p: any) => (
-                            <SelectItem key={p.id} value={String(p.id)}>{p.apelido || p.nomeCompleto}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Razão Social</Label>
+                      <Input value={form.razaoSocial} onChange={e => updateForm(f => ({ ...f, razaoSocial: e.target.value }))} placeholder="Razão social da empresa" />
+                    </div>
                     <div>
-                      <Label className="text-xs">% Repasse do Parceiro Pai</Label>
-                      <Input value={form.percentualRepasseSubparceiro} onChange={e => setForm(f => ({ ...f, percentualRepasseSubparceiro: e.target.value }))} placeholder="Ex: 30" type="number" min={0} max={100} />
+                      <Label className="text-xs">Nome Fantasia</Label>
+                      <Input value={form.nomeFantasia} onChange={e => updateForm(f => ({ ...f, nomeFantasia: e.target.value }))} placeholder="Nome fantasia" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Situação Cadastral</Label>
+                      <Input value={form.situacaoCadastral} readOnly className="bg-muted/50" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">E-mail</Label>
+                      <Input type="email" value={form.email} onChange={e => updateForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Telefone</Label>
+                      <Input value={form.telefone} onChange={e => updateForm(f => ({ ...f, telefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
                     </div>
                   </div>
-                )}
 
-                <Separator />
+                  {/* Quadro Societário */}
+                  {form.quadroSocietario.length > 0 && (
+                    <div>
+                      <Label className="text-xs font-semibold mb-2 block">Quadro Societário (da Receita Federal)</Label>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {form.quadroSocietario.map((s, i) => (
+                          <div key={i} className="text-xs p-2 bg-muted/50 rounded flex justify-between">
+                            <span className="font-medium">{s.nome}</span>
+                            <span className="text-muted-foreground">{s.qualificacao}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </FormSection>
 
-                {/* Observações */}
+                <FormSection title="Sócio Responsável pela Parceria" icon={User}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs">Nome Completo do Sócio</Label>
+                      <Input value={form.socioNome} onChange={e => updateForm(f => ({ ...f, socioNome: e.target.value }))} placeholder="Nome do sócio responsável" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">CPF do Sócio</Label>
+                      <Input value={form.socioCpf} onChange={e => updateForm(f => ({ ...f, socioCpf: maskCpf(e.target.value) }))}
+                        onBlur={() => handleCpfBlur('socioCpf', form.socioCpf)}
+                        placeholder="000.000.000-00" maxLength={14}
+                        className={cpfErrors.socioCpf ? 'border-red-500' : ''} />
+                      {cpfErrors.socioCpf && <p className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5"><AlertCircle className="w-3 h-3" /> {cpfErrors.socioCpf}</p>}
+                      {form.socioCpf && !cpfErrors.socioCpf && form.socioCpf.replace(/\D/g, '').length === 11 && <p className="text-[10px] text-green-600 flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> CPF válido</p>}
+                    </div>
+                    <div>
+                      <Label className="text-xs">RG do Sócio</Label>
+                      <Input value={form.socioRg} onChange={e => updateForm(f => ({ ...f, socioRg: e.target.value }))} placeholder="RG" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">E-mail do Sócio</Label>
+                      <Input type="email" value={form.socioEmail} onChange={e => updateForm(f => ({ ...f, socioEmail: e.target.value }))} placeholder="email@socio.com" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Telefone do Sócio</Label>
+                      <Input value={form.socioTelefone} onChange={e => updateForm(f => ({ ...f, socioTelefone: maskTelefone(e.target.value) }))} placeholder="(00) 00000-0000" maxLength={15} />
+                    </div>
+                  </div>
+                </FormSection>
+              </>
+            )}
+
+            {/* === SEÇÃO: ENDEREÇO === */}
+            <FormSection title="Endereço Completo" icon={MapPin}>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Observações</Label>
-                  <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={3} placeholder="Observações sobre o parceiro..." />
+                  <Label className="text-xs">CEP</Label>
+                  <Input value={form.cep} onChange={e => updateForm(f => ({ ...f, cep: maskCep(e.target.value) }))} placeholder="00000-000" maxLength={9} />
                 </div>
-
-                {/* Status */}
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} />
-                  <Label className="text-sm">{form.ativo ? 'Parceiro Ativo' : 'Parceiro Inativo'}</Label>
+                <div className="col-span-2">
+                  <Label className="text-xs">Logradouro</Label>
+                  <Input value={form.logradouro} onChange={e => updateForm(f => ({ ...f, logradouro: e.target.value }))} placeholder="Rua, Avenida, etc." />
                 </div>
-              </TabsContent>
-            </ScrollArea>
-          </Tabs>
+                <div>
+                  <Label className="text-xs">Número</Label>
+                  <Input value={form.numero} onChange={e => updateForm(f => ({ ...f, numero: e.target.value }))} placeholder="Nº" />
+                </div>
+                <div>
+                  <Label className="text-xs">Complemento</Label>
+                  <Input value={form.complemento} onChange={e => updateForm(f => ({ ...f, complemento: e.target.value }))} placeholder="Sala, Andar, Bloco..." />
+                </div>
+                <div>
+                  <Label className="text-xs">Bairro</Label>
+                  <Input value={form.bairro} onChange={e => updateForm(f => ({ ...f, bairro: e.target.value }))} placeholder="Bairro" />
+                </div>
+                <div>
+                  <Label className="text-xs">Cidade</Label>
+                  <Input value={form.cidade} onChange={e => updateForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Cidade" />
+                </div>
+                <div>
+                  <Label className="text-xs">UF</Label>
+                  <Select value={form.estado} onValueChange={v => updateForm(f => ({ ...f, estado: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </FormSection>
 
-          <DialogFooter className="pt-4 border-t shrink-0">
-            <Button variant="outline" onClick={closeForm}>Cancelar</Button>
+            {/* === SEÇÃO: DADOS BANCÁRIOS === */}
+            <FormSection title="Dados Bancários para Comissões" icon={Landmark}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Banco</Label>
+                  <Input value={form.banco} onChange={e => updateForm(f => ({ ...f, banco: e.target.value }))} placeholder="Ex: Banco do Brasil, Itaú..." />
+                </div>
+                <div>
+                  <Label className="text-xs">Agência</Label>
+                  <Input value={form.agencia} onChange={e => updateForm(f => ({ ...f, agencia: e.target.value }))} placeholder="0000" />
+                </div>
+                <div>
+                  <Label className="text-xs">Conta</Label>
+                  <Input value={form.conta} onChange={e => updateForm(f => ({ ...f, conta: e.target.value }))} placeholder="00000-0" />
+                </div>
+                <div>
+                  <Label className="text-xs">Tipo de Conta</Label>
+                  <Select value={form.tipoConta} onValueChange={v => updateForm(f => ({ ...f, tipoConta: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="corrente">Corrente</SelectItem>
+                      <SelectItem value="poupanca">Poupança</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Titular da Conta</Label>
+                  <Input value={form.titularConta} onChange={e => updateForm(f => ({ ...f, titularConta: e.target.value }))} placeholder="Nome do titular" />
+                </div>
+                <div>
+                  <Label className="text-xs">CPF/CNPJ da Conta</Label>
+                  <Input value={form.cpfCnpjConta} onChange={e => updateForm(f => ({ ...f, cpfCnpjConta: e.target.value }))} placeholder="Documento do titular" />
+                </div>
+              </div>
+
+              <Separator />
+
+              <h4 className="text-sm font-semibold flex items-center gap-2"><KeyRound className="w-4 h-4" /> Chave PIX</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Tipo da Chave PIX</Label>
+                  <Select value={form.tipoChavePix} onValueChange={v => updateForm(f => ({ ...f, tipoChavePix: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cpf">CPF</SelectItem>
+                      <SelectItem value="cnpj">CNPJ</SelectItem>
+                      <SelectItem value="email">E-mail</SelectItem>
+                      <SelectItem value="telefone">Telefone</SelectItem>
+                      <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Chave PIX</Label>
+                  <Input value={form.chavePix} onChange={e => updateForm(f => ({ ...f, chavePix: e.target.value }))} placeholder="Informe a chave PIX" />
+                </div>
+              </div>
+            </FormSection>
+
+            {/* === SEÇÃO: CONFIGURAÇÃO DA PARCERIA === */}
+            <FormSection title="Configuração da Parceria" icon={Handshake}>
+              {/* Modelo de Parceria (Diamante/Ouro/Prata) */}
+              <div>
+                <Label className="text-xs font-semibold">Modelo de Parceria</Label>
+                <Select value={form.modeloParceriaId ? String(form.modeloParceriaId) : 'none'} onValueChange={v => {
+                  const newId = v === 'none' ? null : Number(v);
+                  updateForm(f => ({ ...f, modeloParceriaId: newId, comissoesCustom: {} }));
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {(modelos as any[]).map((m: any) => {
+                      const info = MODELO_LABELS[m.nome.toLowerCase()];
+                      const Icon = info?.icon || Award;
+                      return (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          <span className="flex items-center gap-2"><Icon className="w-4 h-4" /> {m.nome}</span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Tipo de Vínculo */}
+              <div>
+                <Label className="text-xs font-semibold mb-2 block">Tipo de Vínculo</Label>
+                <div className="flex gap-3">
+                  <Button type="button" variant={!form.ehSubparceiro ? 'default' : 'outline'}
+                    className={!form.ehSubparceiro ? 'bg-[#0A2540]' : ''}
+                    onClick={() => updateForm(f => ({ ...f, ehSubparceiro: false, parceiroPaiId: null, rateio: {} }))}>
+                    <Handshake className="w-4 h-4 mr-2" /> Parceiro Principal
+                  </Button>
+                  <Button type="button" variant={form.ehSubparceiro ? 'default' : 'outline'}
+                    className={form.ehSubparceiro ? 'bg-[#0A2540]' : ''}
+                    onClick={() => updateForm(f => ({ ...f, ehSubparceiro: true }))}>
+                    <Users className="w-4 h-4 mr-2" /> Subparceiro
+                  </Button>
+                </div>
+              </div>
+
+              {form.ehSubparceiro && (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
+                  <Label className="text-xs font-semibold text-blue-800">Vinculado ao Parceiro Principal *</Label>
+                  <Select value={form.parceiroPaiId ? String(form.parceiroPaiId) : 'none'} onValueChange={v => updateForm(f => ({ ...f, parceiroPaiId: v === 'none' ? null : Number(v) }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o parceiro principal..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Selecione...</SelectItem>
+                      {(parceirosPrincipais as any[])
+                        .filter((p: any) => p.id !== editingId)
+                        .map((p: any) => (
+                          <SelectItem key={p.id} value={String(p.id)}>{p.apelido || p.nomeCompleto}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Executivo Comercial */}
+              <div>
+                <Label className="text-xs font-semibold flex items-center gap-2">
+                  <Briefcase className="w-3.5 h-3.5" /> Executivo Comercial Responsável
+                </Label>
+                {form.ehSubparceiro && form.parceiroPaiId ? (
+                  <div className="mt-2 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <p className="text-xs text-emerald-700 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Herdado automaticamente do parceiro principal: <strong>{getExecutivoNome(form.executivoComercialId) || 'Nenhum definido'}</strong>
+                    </p>
+                  </div>
+                ) : (
+                  <Select value={form.executivoComercialId ? String(form.executivoComercialId) : 'none'} onValueChange={v => updateForm(f => ({ ...f, executivoComercialId: v === 'none' ? null : Number(v) }))}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione um executivo..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {activeExecutivos.map((e: any) => (
+                        <SelectItem key={e.id} value={String(e.id)}>{e.nome}{e.cargo ? ` — ${e.cargo}` : ''}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Observações */}
+              <div>
+                <Label className="text-xs">Observações</Label>
+                <Textarea value={form.observacoes} onChange={e => updateForm(f => ({ ...f, observacoes: e.target.value }))} rows={3} placeholder="Observações sobre o parceiro..." />
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Switch checked={form.ativo} onCheckedChange={v => updateForm(f => ({ ...f, ativo: v }))} />
+                <Label className="text-sm">{form.ativo ? 'Parceiro Ativo' : 'Parceiro Inativo'}</Label>
+              </div>
+            </FormSection>
+
+            {/* === SEÇÃO: SERVIÇOS E COMISSÕES === */}
+            <FormSection title="Serviços e Comissões" icon={CreditCard}>
+              <p className="text-xs text-muted-foreground">Selecione os serviços que este parceiro está autorizado a trabalhar com a Evox. {form.modeloParceriaId ? 'As comissões padrão do modelo selecionado são exibidas e podem ser editadas.' : 'Selecione um modelo de parceria para ver as comissões padrão.'}</p>
+              {(servicos as any[]).length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Nenhum serviço cadastrado no sistema.</p>
+              ) : (
+                <div className="space-y-3">
+                  {(servicos as any[]).filter((s: any) => s.ativo !== false).map((s: any) => {
+                    const isSelected = form.servicoIds.includes(s.id);
+                    const comissaoPadrao = getComissaoPadrao(s.id);
+                    const comissaoCustom = form.comissoesCustom[s.id];
+                    const rateio = form.rateio[s.id];
+                    return (
+                      <div key={s.id} className={`rounded-lg border transition-colors ${isSelected ? 'border-[#0A2540]/30 bg-[#0A2540]/5' : 'hover:bg-muted/30'}`}>
+                        <div className="flex items-center gap-3 p-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              updateForm(f => ({
+                                ...f,
+                                servicoIds: checked
+                                  ? [...f.servicoIds, s.id]
+                                  : f.servicoIds.filter((id: number) => id !== s.id),
+                              }));
+                            }}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{s.nome}</p>
+                            {s.descricao && <p className="text-xs text-muted-foreground">{s.descricao}</p>}
+                          </div>
+                          {isSelected && comissaoPadrao && (
+                            <div className="flex items-center gap-2">
+                              <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Comissão ({comissaoPadrao}% padrão):</Label>
+                              <Input
+                                value={comissaoCustom ?? comissaoPadrao}
+                                onChange={e => handleComissaoChange(s.id, e.target.value)}
+                                onBlur={() => handleComissaoBlur(s.id)}
+                                className="w-20 h-7 text-xs text-center"
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.01}
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Rateio for subparceiro */}
+                        {isSelected && form.ehSubparceiro && form.parceiroPaiId && comissaoPadrao && (
+                          <div className="px-3 pb-3 pt-0">
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 space-y-2">
+                              <Label className="text-[10px] font-semibold text-blue-800 flex items-center gap-1">
+                                <Users className="w-3 h-3" /> Rateio de Comissão (máx: {comissaoCustom || comissaoPadrao}%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-[10px] text-blue-700">% Parceiro Principal</Label>
+                                  <Input
+                                    value={rateio?.parceiro ?? ''}
+                                    onChange={e => handleRateioChange(s.id, 'parceiro', e.target.value)}
+                                    className="h-7 text-xs"
+                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.01}
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-blue-700">% Subparceiro</Label>
+                                  <Input
+                                    value={rateio?.subparceiro ?? ''}
+                                    onChange={e => handleRateioChange(s.id, 'subparceiro', e.target.value)}
+                                    className="h-7 text-xs"
+                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.01}
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                              {rateio && (parseFloat(rateio.parceiro || '0') + parseFloat(rateio.subparceiro || '0')) > parseFloat(comissaoCustom || comissaoPadrao) && (
+                                <p className="text-[10px] text-red-600 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" /> Soma do rateio excede o máximo permitido!
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {form.servicoIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">{form.servicoIds.length} serviço(s) selecionado(s)</p>
+              )}
+            </FormSection>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t shrink-0 flex justify-end gap-3">
+            <Button variant="outline" onClick={tryCloseForm}>Cancelar</Button>
             <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="bg-[#0A2540] hover:bg-[#0A2540]/90">
               {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {editingId ? 'Salvar Alterações' : 'Cadastrar Parceiro'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* ===== EXIT CONFIRMATION ===== */}
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Deseja sair do cadastro?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações não salvas. Se sair agora, todas as informações preenchidas serão perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowExitConfirm(false); setPendingClose(false); }}>Continuar Editando</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowExitConfirm(false); doCloseForm(); }} className="bg-red-600 hover:bg-red-700">
+              Sair sem Salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ===== COMISSÃO ALERT ===== */}
+      <AlertDialog open={!!comissaoAlert} onOpenChange={() => setComissaoAlert(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {comissaoAlert?.tipo === 'menor' ? (
+                <><AlertTriangle className="w-5 h-5 text-amber-500" /> Comissão Abaixo do Padrão</>
+              ) : (
+                <><AlertTriangle className="w-5 h-5 text-red-500" /> Comissão Acima do Padrão</>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {comissaoAlert?.tipo === 'menor' ? (
+                <>A comissão informada ({comissaoAlert?.percentual}%) está <strong>abaixo</strong> do padrão ({comissaoAlert?.padrao}%) para o modelo selecionado. Deseja continuar com este valor?</>
+              ) : (
+                <>A comissão informada ({comissaoAlert?.percentual}%) está <strong>acima</strong> do padrão ({comissaoAlert?.padrao}%) para o modelo selecionado. Se continuar, será enviada uma <strong>tarefa de autorização para o Diretor do Setor</strong> aprovar esta comissão.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              // Reset to default
+              if (comissaoAlert) {
+                updateForm(f => {
+                  const newCustom = { ...f.comissoesCustom };
+                  delete newCustom[comissaoAlert.servicoId];
+                  return { ...f, comissoesCustom: newCustom };
+                });
+              }
+              setComissaoAlert(null);
+            }}>Usar Padrão</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setComissaoAlert(null)} className={comissaoAlert?.tipo === 'maior' ? 'bg-red-600 hover:bg-red-700' : ''}>
+              {comissaoAlert?.tipo === 'maior' ? 'Solicitar Aprovação' : 'Continuar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirm Delete Dialog */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>

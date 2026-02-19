@@ -1,0 +1,13 @@
+{
+  "query": "SELECT submenus FROM setor_config WHERE sigla = 'COM'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT submenus FROM setor_config WHERE sigla = 'COM'",
+  "rows": [
+    {
+      "submenus": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/com/nova-tarefa\"}, {\"key\": \"fila-execucao\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/com/fila-execucao\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "submenus\n[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/com/nova-tarefa\"}, {\"key\": \"fila-execucao\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/com/fila-execucao\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

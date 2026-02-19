@@ -230,6 +230,7 @@ export const appRouter = router({
         chavePix: z.string().optional(),
         tipoChavePix: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']).optional(),
         modeloParceriaId: z.number().nullable().optional(),
+        executivoComercialId: z.number().nullable().optional(),
         ehSubparceiro: z.boolean().optional(),
         parceiroPaiId: z.number().nullable().optional(),
         percentualRepasseSubparceiro: z.string().optional(),
@@ -286,6 +287,7 @@ export const appRouter = router({
         chavePix: z.string().optional(),
         tipoChavePix: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']).optional(),
         modeloParceriaId: z.number().nullable().optional(),
+        executivoComercialId: z.number().nullable().optional(),
         ehSubparceiro: z.boolean().optional(),
         parceiroPaiId: z.number().nullable().optional(),
         percentualRepasseSubparceiro: z.string().optional(),
@@ -1349,6 +1351,135 @@ export const appRouter = router({
       .input(z.object({ parceiroPaiId: z.number() }))
       .query(async ({ input }) => {
         return db.listSubparceiros(input.parceiroPaiId);
+      }),
+  }),
+
+  // ---- EXECUTIVOS COMERCIAIS ----
+  executivos: router({
+    list: protectedProcedure.query(async () => {
+      return db.listExecutivos();
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return db.getExecutivoById(input.id);
+      }),
+    create: adminProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        email: z.string().optional(),
+        telefone: z.string().optional(),
+        cargo: z.string().optional(),
+        userId: z.number().nullable().optional(),
+        ativo: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createExecutivo(input as any);
+        await logAudit('criar', 'executivo_comercial', id, input.nome, ctx);
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        nome: z.string().optional(),
+        email: z.string().optional(),
+        telefone: z.string().optional(),
+        cargo: z.string().optional(),
+        userId: z.number().nullable().optional(),
+        ativo: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        await db.updateExecutivo(id, data as any);
+        await logAudit('editar', 'executivo_comercial', id, null, ctx, data);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteExecutivo(input.id);
+        await logAudit('excluir', 'executivo_comercial', input.id, null, ctx);
+        return { success: true };
+      }),
+    toggleActive: adminProcedure
+      .input(z.object({ id: z.number(), ativo: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateExecutivo(input.id, { ativo: input.ativo } as any);
+        await logAudit(input.ativo ? 'ativar' : 'inativar', 'executivo_comercial', input.id, null, ctx);
+        return { success: true };
+      }),
+  }),
+
+  // ---- RATEIO DE COMISSÃO ----
+  rateio: router({
+    byParceiro: protectedProcedure
+      .input(z.object({ parceiroId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listRateioByParceiro(input.parceiroId);
+      }),
+    upsert: protectedProcedure
+      .input(z.object({
+        parceiroId: z.number(),
+        parceiroPaiId: z.number(),
+        servicoId: z.number(),
+        percentualParceiro: z.string(),
+        percentualSubparceiro: z.string(),
+        percentualMaximo: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Validar que rateio não excede máximo
+        const totalRateio = parseFloat(input.percentualParceiro) + parseFloat(input.percentualSubparceiro);
+        const maximo = parseFloat(input.percentualMaximo);
+        if (totalRateio > maximo) {
+          throw new Error(`Rateio total (${totalRateio}%) excede o m\u00e1ximo permitido (${maximo}%)`);
+        }
+        const id = await db.upsertRateio(input as any);
+        await logAudit('editar', 'rateio_comissao', id, null, ctx, input);
+        return { id };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ parceiroId: z.number(), servicoId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteRateio(input.parceiroId, input.servicoId);
+        await logAudit('excluir', 'rateio_comissao', null, null, ctx, input);
+        return { success: true };
+      }),
+  }),
+
+  // ---- APROVAÇÃO DE COMISSÃO ----
+  aprovacaoComissao: router({
+    listPendentes: protectedProcedure.query(async () => {
+      return db.listAprovacoesPendentes();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        parceiroId: z.number(),
+        servicoId: z.number(),
+        percentualSolicitado: z.string(),
+        percentualPadrao: z.string(),
+        modeloParceriaId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createAprovacaoComissao({
+          ...input,
+          solicitadoPorId: ctx.user.id,
+        } as any);
+        await logAudit('criar', 'aprovacao_comissao', id, null, ctx, input);
+        return { id };
+      }),
+    aprovar: adminProcedure
+      .input(z.object({ id: z.number(), observacao: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateAprovacaoStatus(input.id, 'aprovado', ctx.user.id, input.observacao);
+        await logAudit('aprovar', 'aprovacao_comissao', input.id, null, ctx);
+        return { success: true };
+      }),
+    rejeitar: adminProcedure
+      .input(z.object({ id: z.number(), observacao: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateAprovacaoStatus(input.id, 'rejeitado', ctx.user.id, input.observacao);
+        await logAudit('rejeitar', 'aprovacao_comissao', input.id, null, ctx);
+        return { success: true };
       }),
   }),
 

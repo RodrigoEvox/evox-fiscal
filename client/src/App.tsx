@@ -34,6 +34,7 @@ const SetorPage = lazy(() => import("./pages/SetorPage"));
 const GestaoParcerias = lazy(() => import("./pages/GestaoParcerias"));
 const SlaConfig = lazy(() => import("./pages/SlaConfig"));
 const MinhasTarefas = lazy(() => import("./pages/MinhasTarefas"));
+const ExecutivosComerciais = lazy(() => import("./pages/ExecutivosComerciais"));
 
 function LazyFallback() {
   return (
@@ -67,6 +68,7 @@ function Router() {
         <Route path="/perfil" component={Perfil} />
         <Route path="/servicos" component={Servicos} />
         <Route path="/gestao-parcerias" component={GestaoParcerias} />
+        <Route path="/executivos-comerciais" component={ExecutivosComerciais} />
         <Route path="/sla-config" component={SlaConfig} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />

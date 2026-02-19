@@ -9,7 +9,7 @@ import {
   Headphones, Podcast, Gift, Calendar, Building2,
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
-  ClipboardList, FileBarChart, Gem, Search, UsersRound,
+  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -73,6 +73,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'treinamentos': GraduationCap,
   'monitoramento': MonitorCheck,
   'busca': Search,
+  'executivos-comerciais': Briefcase,
 };
 
 interface SetorConfigItem {

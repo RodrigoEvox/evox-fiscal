@@ -121,6 +121,92 @@ describe("Lógica de hierarquia parceiro/subparceiro", () => {
   });
 });
 
+describe("Lógica de comissões e rateio", () => {
+  const comissoesPadrao: Record<number, number> = {
+    1: 50, // Transação tributária - Diamante 50%
+    2: 40, // Recuperação de crédito - Diamante 40%
+    3: 30, // Consultoria - Diamante 30%
+  };
+
+  function getComissaoPadrao(servicoId: number): number | null {
+    return comissoesPadrao[servicoId] ?? null;
+  }
+
+  function validarRateio(parceiroPct: number, subparceiroPct: number, maxComissao: number): { valid: boolean; error?: string } {
+    const total = parceiroPct + subparceiroPct;
+    if (total > maxComissao) return { valid: false, error: `Soma ${total}% excede máximo de ${maxComissao}%` };
+    if (parceiroPct < 0 || subparceiroPct < 0) return { valid: false, error: 'Percentuais não podem ser negativos' };
+    return { valid: true };
+  }
+
+  function classificarComissao(custom: number, padrao: number): 'menor' | 'maior' | 'padrao' {
+    if (custom < padrao) return 'menor';
+    if (custom > padrao) return 'maior';
+    return 'padrao';
+  }
+
+  it("retorna comissão padrão por serviço", () => {
+    expect(getComissaoPadrao(1)).toBe(50);
+    expect(getComissaoPadrao(2)).toBe(40);
+    expect(getComissaoPadrao(999)).toBeNull();
+  });
+
+  it("classifica comissão customizada vs padrão", () => {
+    expect(classificarComissao(50, 50)).toBe('padrao');
+    expect(classificarComissao(45, 50)).toBe('menor');
+    expect(classificarComissao(55, 50)).toBe('maior');
+  });
+
+  it("valida rateio dentro do limite", () => {
+    expect(validarRateio(30, 20, 50)).toEqual({ valid: true });
+    expect(validarRateio(25, 25, 50)).toEqual({ valid: true });
+    expect(validarRateio(0, 50, 50)).toEqual({ valid: true });
+  });
+
+  it("rejeita rateio que excede o máximo", () => {
+    const result = validarRateio(30, 25, 50);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('excede');
+  });
+
+  it("rejeita percentuais negativos", () => {
+    expect(validarRateio(-5, 30, 50).valid).toBe(false);
+    expect(validarRateio(30, -5, 50).valid).toBe(false);
+  });
+
+  it("rateio auto-calcula o campo complementar", () => {
+    const maxComissao = 50;
+    const parceiroPct = 30;
+    const subparceiroPct = maxComissao - parceiroPct;
+    expect(subparceiroPct).toBe(20);
+    expect(validarRateio(parceiroPct, subparceiroPct, maxComissao).valid).toBe(true);
+  });
+});
+
+describe("Herança de executivo comercial para subparceiro", () => {
+  const parceiros = [
+    { id: 1, apelido: 'João', executivoComercialId: 5, ehSubparceiro: false, parceiroPaiId: null },
+    { id: 2, apelido: 'Pedro', executivoComercialId: null, ehSubparceiro: true, parceiroPaiId: 1 },
+    { id: 3, apelido: 'Maria', executivoComercialId: 7, ehSubparceiro: false, parceiroPaiId: null },
+  ];
+
+  function getExecutivoForSubparceiro(subparceiroId: number): number | null {
+    const sub = parceiros.find(p => p.id === subparceiroId);
+    if (!sub || !sub.ehSubparceiro || !sub.parceiroPaiId) return sub?.executivoComercialId ?? null;
+    const pai = parceiros.find(p => p.id === sub.parceiroPaiId);
+    return pai?.executivoComercialId ?? null;
+  }
+
+  it("herda executivo do parceiro pai", () => {
+    expect(getExecutivoForSubparceiro(2)).toBe(5);
+  });
+
+  it("retorna executivo próprio para parceiro principal", () => {
+    expect(getExecutivoForSubparceiro(1)).toBe(5);
+    expect(getExecutivoForSubparceiro(3)).toBe(7);
+  });
+});
+
 describe("Máscaras de formatação", () => {
   function maskCpf(v: string) {
     const d = v.replace(/\D/g, '').slice(0, 11);

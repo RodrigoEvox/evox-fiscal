@@ -100,6 +100,7 @@ export const parceiros = mysqlTable("parceiros", {
   tipoChavePix: mysqlEnum("tipoChavePix", ["cpf", "cnpj", "email", "telefone", "aleatoria"]),
   // Parceria
   modeloParceriaId: int("modeloParceriaId"), // Diamante, Ouro, Prata
+  executivoComercialId: int("executivoComercialId"), // Executivo Comercial responsável
   // Hierarquia parceiro/subparceiro
   ehSubparceiro: boolean("ehSubparceiro").default(false).notNull(),
   parceiroPaiId: int("parceiroPaiId"), // para subparceiros
@@ -520,3 +521,56 @@ export const clienteServicos = mysqlTable("cliente_servicos", {
 
 export type ClienteServico = typeof clienteServicos.$inferSelect;
 export type InsertClienteServico = typeof clienteServicos.$inferInsert;
+
+// ---- EXECUTIVOS COMERCIAIS (internos da Evox) ----
+export const executivosComerciais = mysqlTable("executivos_comerciais", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  telefone: varchar("telefone", { length: 20 }),
+  cargo: varchar("cargo", { length: 255 }),
+  userId: int("userId"), // link to users table (optional)
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ExecutivoComercial = typeof executivosComerciais.$inferSelect;
+export type InsertExecutivoComercial = typeof executivosComerciais.$inferInsert;
+
+// ---- RATEIO DE COMISSÃO (parceiro + subparceiro por serviço) ----
+export const rateioComissao = mysqlTable("rateio_comissao", {
+  id: int("id").autoincrement().primaryKey(),
+  parceiroId: int("parceiroId").notNull(), // subparceiro
+  parceiroPaiId: int("parceiroPaiId").notNull(), // parceiro principal
+  servicoId: int("servicoId").notNull(),
+  percentualParceiro: decimal("percentualParceiro", { precision: 5, scale: 2 }).notNull(), // % do parceiro pai
+  percentualSubparceiro: decimal("percentualSubparceiro", { precision: 5, scale: 2 }).notNull(), // % do subparceiro
+  percentualMaximo: decimal("percentualMaximo", { precision: 5, scale: 2 }).notNull(), // teto do modelo
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RateioComissao = typeof rateioComissao.$inferSelect;
+export type InsertRateioComissao = typeof rateioComissao.$inferInsert;
+
+// ---- TAREFAS DE APROVAÇÃO DE COMISSÃO ----
+export const aprovacaoComissao = mysqlTable("aprovacao_comissao", {
+  id: int("id").autoincrement().primaryKey(),
+  parceiroId: int("parceiroId").notNull(),
+  servicoId: int("servicoId").notNull(),
+  percentualSolicitado: decimal("percentualSolicitado", { precision: 5, scale: 2 }).notNull(),
+  percentualPadrao: decimal("percentualPadrao", { precision: 5, scale: 2 }).notNull(),
+  modeloParceriaId: int("modeloParceriaId").notNull(),
+  solicitadoPorId: int("solicitadoPorId").notNull(),
+  solicitadoEm: timestamp("solicitadoEm").defaultNow().notNull(),
+  status: mysqlEnum("status", ["pendente", "aprovado", "rejeitado"]).default("pendente").notNull(),
+  aprovadoPorId: int("aprovadoPorId"),
+  aprovadoEm: timestamp("aprovadoEm"),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AprovacaoComissao = typeof aprovacaoComissao.$inferSelect;
+export type InsertAprovacaoComissao = typeof aprovacaoComissao.$inferInsert;

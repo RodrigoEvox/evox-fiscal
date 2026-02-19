@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, setorId, sigla, submenus FROM setor_config WHERE sigla = 'COM'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, setorId, sigla, submenus FROM setor_config WHERE sigla = 'COM'",
+  "rows": [
+    {
+      "id": "30001",
+      "setorId": "30001",
+      "sigla": "COM",
+      "submenus": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/com/nova-tarefa\"}, {\"key\": \"fila-execucao\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/com/fila-execucao\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsetorId\tsigla\tsubmenus\n30001\t30001\tCOM\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/com/nova-tarefa\"}, {\"key\": \"fila-execucao\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/com/fila-execucao\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 119
+}

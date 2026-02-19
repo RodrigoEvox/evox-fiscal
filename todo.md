@@ -459,3 +459,34 @@
 - [x] Schema: novos campos na tabela parceiros (tipoPessoa, apelido, razaoSocial, etc.)
 - [x] Schema: tabela dados bancários do parceiro
 - [x] Testes unitários para validação CPF e hierarquia parceiro/subparceiro
+
+### CRM v13 — Comissões, Executivos Comerciais e Melhorias no Cadastro de Parceiros
+
+#### Comissões Editáveis com Alertas
+- [x] Campo modelo parceria (Diamante/Ouro/Prata) busca automática da Gestão de Parcerias
+- [x] Comissão padrão carregada automaticamente mas editável
+- [x] Alerta se comissão editada for menor que o padrão (confirmar para seguir)
+- [x] Alerta se comissão editada for maior que o padrão (enviar tarefa de aprovação ao Diretor)
+- [x] Parâmetro de comissão baseado no percentual cadastrado em Gestão de Parcerias e Serviços
+
+#### Rateio de Comissão para Subparceiros
+- [x] Habilitar rateio de comissão por tipo de serviço quando subparceiro
+- [x] Rateio parceiro + subparceiro jamais pode exceder o percentual máximo do modelo
+- [x] Validação automática do teto de comissão por serviço
+
+#### Executivos Comerciais
+- [x] Schema: tabela executivos_comerciais
+- [x] CRUD completo de Executivos Comerciais (incluir, editar, excluir, ativar, inativar)
+- [x] Submenu "Executivos Comerciais" dentro do menu Comercial na sidebar
+- [x] Página de listagem e cadastro de Executivos Comerciais
+
+#### Associação Executivo ao Parceiro
+- [x] Campo para associar Executivo Comercial ao parceiro no cadastro
+- [x] Subparceiro herda automaticamente o Executivo do parceiro pai
+- [x] Subparceiro não pode ter Executivo diferente do parceiro pai
+- [x] Info do Executivo acompanha o parceiro em toda jornada no sistema
+
+#### Formulário de Parceiro - Melhorias UX
+- [x] Formulário em aba única com rolagem (remover tabs)
+- [x] Proteção contra perda de dados (alerta ao cancelar ou clicar fora)
+- [x] Admin pode incluir, excluir, ativar, inativar e editar todos os parceiros

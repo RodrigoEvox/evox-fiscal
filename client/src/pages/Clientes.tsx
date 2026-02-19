@@ -115,6 +115,7 @@ export default function Clientes() {
   const utils = trpc.useUtils();
   const { data: clientes = [], isLoading } = trpc.clientes.list.useQuery();
   const { data: parceiros = [] } = trpc.parceiros.list.useQuery();
+  const { data: executivos = [] } = trpc.executivos.list.useQuery();
   const createCliente = trpc.clientes.create.useMutation({
     onSuccess: () => { utils.clientes.list.invalidate(); utils.dashboard.stats.invalidate(); toast.success('Cliente cadastrado com sucesso!'); setShowForm(false); resetForm(); },
     onError: (err) => toast.error(err.message),
@@ -541,6 +542,7 @@ export default function Clientes() {
                           {cliente.nomeFantasia && <span className="text-xs text-muted-foreground truncate">{cliente.nomeFantasia}</span>}
                           {parceiroNome && <Badge variant="outline" className="text-[9px] h-4">{parceiroNome}{parceiroObj?.ehSubparceiro ? ' (Sub)' : ''}</Badge>}
                           {parceiroPaiNome && <Badge variant="outline" className="text-[9px] h-4 bg-blue-50 text-blue-700 border-blue-200">Parceiro: {parceiroPaiNome}</Badge>}
+                          {parceiroObj?.executivoComercialId && (() => { const exec = (executivos as any[])?.find((e: any) => e.id === parceiroObj.executivoComercialId); return exec ? <Badge variant="outline" className="text-[9px] h-4 bg-emerald-50 text-emerald-700 border-emerald-200">Exec: {exec.nome}</Badge> : null; })()}
                         </div>
                       </div>
                     </div>
