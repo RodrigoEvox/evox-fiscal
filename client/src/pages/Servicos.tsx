@@ -397,7 +397,7 @@ export default function Servicos() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">% Honorários ao Cliente</Label>
-                    <Input type="number" min={0} max={100} step="0.01" value={form.percentualHonorariosCliente} onChange={(e) => setForm({ ...form, percentualHonorariosCliente: e.target.value })} placeholder="0" />
+                    <Input type="number" min={0} max={100} step="0.1" value={form.percentualHonorariosCliente} onChange={(e) => setForm({ ...form, percentualHonorariosCliente: e.target.value })} placeholder="0" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Forma de Cobrança</Label>
@@ -423,10 +423,9 @@ export default function Servicos() {
                 {showPercentualExito && (
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">% sobre o Êxito</Label>
-                    <Input type="number" min={0} max={100} step="0.01" value={form.percentualExito} onChange={(e) => setForm({ ...form, percentualExito: e.target.value })} placeholder="0" />
-                  </div>
+                    <Input type="number" min={0} max={100} step="0.1" value={form.percentualExito} onChange={(e) => setForm({ ...form, percentualExito: e.target.value })} placeholder="0" />
+                   </div>
                 )}
-
                 {showEntradaExito && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
@@ -435,9 +434,9 @@ export default function Servicos() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">% sobre o Êxito</Label>
-                      <Input type="number" min={0} max={100} step="0.01" value={form.percentualExito} onChange={(e) => setForm({ ...form, percentualExito: e.target.value })} placeholder="0" />
-                    </div>
-                  </div>
+                     <Input type="number" min={0} max={100} step="0.1" value={form.percentualExito} onChange={(e) => setForm({ ...form, percentualExito: e.target.value })} placeholder="0" />
+                     </div>
+                   </div>
                 )}
 
                 {showParcelado && (
@@ -473,7 +472,7 @@ export default function Servicos() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">% Honorários Comercial</Label>
-                  <Input type="number" min={0} max={100} step="0.01" value={form.percentualHonorariosComercial} onChange={(e) => setForm({ ...form, percentualHonorariosComercial: e.target.value })} placeholder="0" />
+                  <Input type="number" min={0} max={100} step="0.1" value={form.percentualHonorariosComercial} onChange={(e) => setForm({ ...form, percentualHonorariosComercial: e.target.value })} placeholder="0" />
                 </div>
               </TabsContent>
 
@@ -498,7 +497,7 @@ export default function Servicos() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-blue-600">% Comissão</Label>
-                      <Input type="number" min={0} max={100} step="0.01" value={form.comissaoPadraoDiamante} onChange={(e) => setForm({ ...form, comissaoPadraoDiamante: e.target.value })} placeholder="0" className="border-blue-200 focus:border-blue-400" />
+                      <Input type="number" min={0} max={100} step="0.1" value={form.comissaoPadraoDiamante} onChange={(e) => setForm({ ...form, comissaoPadraoDiamante: e.target.value })} placeholder="0" className="border-blue-200 focus:border-blue-400" />
                     </div>
                   </div>
 
@@ -515,7 +514,7 @@ export default function Servicos() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-amber-600">% Comissão</Label>
-                      <Input type="number" min={0} max={100} step="0.01" value={form.comissaoPadraoOuro} onChange={(e) => setForm({ ...form, comissaoPadraoOuro: e.target.value })} placeholder="0" className="border-amber-200 focus:border-amber-400" />
+                      <Input type="number" min={0} max={100} step="0.1" value={form.comissaoPadraoOuro} onChange={(e) => setForm({ ...form, comissaoPadraoOuro: e.target.value })} placeholder="0" className="border-amber-200 focus:border-amber-400" />
                     </div>
                   </div>
 
@@ -532,7 +531,7 @@ export default function Servicos() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-gray-500">% Comissão</Label>
-                      <Input type="number" min={0} max={100} step="0.01" value={form.comissaoPadraoPrata} onChange={(e) => setForm({ ...form, comissaoPadraoPrata: e.target.value })} placeholder="0" className="border-gray-300 focus:border-gray-400" />
+                      <Input type="number" min={0} max={100} step="0.1" value={form.comissaoPadraoPrata} onChange={(e) => setForm({ ...form, comissaoPadraoPrata: e.target.value })} placeholder="0" className="border-gray-300 focus:border-gray-400" />
                     </div>
                   </div>
                 </div>

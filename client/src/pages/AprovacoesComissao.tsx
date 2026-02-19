@@ -134,7 +134,7 @@ export default function AprovacoesComissao() {
                     <ArrowDownRight className="w-5 h-5 text-amber-500" />
                   )}
                   <span className={`text-sm font-semibold ${diff > 0 ? 'text-red-600' : 'text-amber-600'}`}>
-                    {diff > 0 ? '+' : ''}{diff.toFixed(2)}%
+                    {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
                   </span>
                 </div>
                 <div className="text-center">

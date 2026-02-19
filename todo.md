@@ -558,3 +558,8 @@
 
 ### Ordem Alfabética
 - [x] Todas as opções dos menus de filtro em ordem alfabética
+
+## CRM v16.2 — Correção Alerta Comissão e Percentuais
+- [x] Corrigir loop infinito no alerta de comissão acima do padrão (Usar Padrão / Solicitar Aprovação não funciona)
+- [x] Corrigir "Continuar Editando" que gera loop infinito com alerta "Deseja sair do cadastro?"
+- [x] Padronizar todos os percentuais de comissão para 1 casa decimal após a vírgula

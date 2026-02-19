@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -150,6 +151,7 @@ export default function Parceiros() {
   const [pendingClose, setPendingClose] = useState(false);
   // Comissão alert states
   const [comissaoAlert, setComissaoAlert] = useState<{ servicoId: number; tipo: 'menor' | 'maior'; percentual: string; padrao: string } | null>(null);
+  const comissaoBlurSuppressed = useRef(false);
   const utils = trpc.useUtils();
 
   const { data: parceiros = [], isLoading } = trpc.parceiros.list.useQuery();
@@ -210,6 +212,8 @@ export default function Parceiros() {
     setCpfErrors({});
     setFormDirty(false);
     setPendingClose(false);
+    setComissaoAlert(null);
+    comissaoBlurSuppressed.current = false;
   }, []);
 
   const tryCloseForm = useCallback(() => {
@@ -428,6 +432,8 @@ export default function Parceiros() {
   }, [updateForm]);
 
   const handleComissaoBlur = useCallback((servicoId: number) => {
+    // Skip if blur is suppressed (prevents infinite loop when focus returns after closing alert)
+    if (comissaoBlurSuppressed.current) return;
     const customVal = form.comissoesCustom[servicoId];
     if (!customVal) return;
     const padrao = getComissaoPadrao(servicoId);
@@ -435,12 +441,19 @@ export default function Parceiros() {
     const customNum = parseFloat(customVal);
     const padraoNum = parseFloat(padrao);
     if (isNaN(customNum)) return;
-    if (customNum < padraoNum) {
-      setComissaoAlert({ servicoId, tipo: 'menor', percentual: customVal, padrao });
-    } else if (customNum > padraoNum) {
-      setComissaoAlert({ servicoId, tipo: 'maior', percentual: customVal, padrao });
+    // Round to 1 decimal place
+    const rounded = Math.round(customNum * 10) / 10;
+    if (rounded !== customNum) {
+      updateForm(f => ({ ...f, comissoesCustom: { ...f.comissoesCustom, [servicoId]: rounded.toFixed(1) } }));
     }
-  }, [form.comissoesCustom, getComissaoPadrao]);
+    if (rounded < padraoNum) {
+      comissaoBlurSuppressed.current = true;
+      setComissaoAlert({ servicoId, tipo: 'menor', percentual: rounded.toFixed(1), padrao });
+    } else if (rounded > padraoNum) {
+      comissaoBlurSuppressed.current = true;
+      setComissaoAlert({ servicoId, tipo: 'maior', percentual: rounded.toFixed(1), padrao });
+    }
+  }, [form.comissoesCustom, getComissaoPadrao, updateForm]);
 
   // Handle rateio change with validation
   const handleRateioChange = useCallback((servicoId: number, field: 'parceiro' | 'subparceiro', value: string) => {
@@ -453,10 +466,10 @@ export default function Parceiros() {
       const val = parseFloat(value);
       if (!isNaN(val) && field === 'parceiro') {
         const remaining = Math.max(0, maxComissao - val);
-        updated.subparceiro = remaining.toFixed(2);
+        updated.subparceiro = remaining.toFixed(1);
       } else if (!isNaN(val) && field === 'subparceiro') {
         const remaining = Math.max(0, maxComissao - val);
-        updated.parceiro = remaining.toFixed(2);
+        updated.parceiro = remaining.toFixed(1);
       }
       return { ...f, rateio: { ...f.rateio, [servicoId]: updated } };
     });
@@ -1284,7 +1297,7 @@ export default function Parceiros() {
                                 type="number"
                                 min={0}
                                 max={100}
-                                step={0.01}
+                                step={0.1}
                               />
                               <span className="text-xs text-muted-foreground">%</span>
                             </div>
@@ -1305,8 +1318,8 @@ export default function Parceiros() {
                                     value={rateio?.parceiro ?? ''}
                                     onChange={e => handleRateioChange(s.id, 'parceiro', e.target.value)}
                                     className="h-7 text-xs"
-                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.01}
-                                    placeholder="0.00"
+                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.1}
+                                    placeholder="0.0"
                                   />
                                 </div>
                                 <div>
@@ -1315,8 +1328,8 @@ export default function Parceiros() {
                                     value={rateio?.subparceiro ?? ''}
                                     onChange={e => handleRateioChange(s.id, 'subparceiro', e.target.value)}
                                     className="h-7 text-xs"
-                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.01}
-                                    placeholder="0.00"
+                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.1}
+                                    placeholder="0.0"
                                   />
                                 </div>
                               </div>
@@ -1371,8 +1384,8 @@ export default function Parceiros() {
       </AlertDialog>
 
       {/* ===== COMISSÃO ALERT ===== */}
-      <AlertDialog open={!!comissaoAlert} onOpenChange={() => setComissaoAlert(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!comissaoAlert} onOpenChange={(open) => { if (!open) { setComissaoAlert(null); setTimeout(() => { comissaoBlurSuppressed.current = false; }, 300); } }}>
+        <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               {comissaoAlert?.tipo === 'menor' ? (
@@ -1390,7 +1403,7 @@ export default function Parceiros() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
+            <Button variant="outline" onClick={() => {
               // Reset to default
               if (comissaoAlert) {
                 updateForm(f => {
@@ -1400,10 +1413,16 @@ export default function Parceiros() {
                 });
               }
               setComissaoAlert(null);
-            }}>Usar Padrão</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setComissaoAlert(null)} className={comissaoAlert?.tipo === 'maior' ? 'bg-red-600 hover:bg-red-700' : ''}>
+              // Keep blur suppressed briefly so returning focus doesn't re-trigger
+              setTimeout(() => { comissaoBlurSuppressed.current = false; }, 300);
+            }}>Usar Padrão</Button>
+            <Button onClick={() => {
+              setComissaoAlert(null);
+              // Keep blur suppressed briefly so returning focus doesn't re-trigger
+              setTimeout(() => { comissaoBlurSuppressed.current = false; }, 300);
+            }} className={comissaoAlert?.tipo === 'maior' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0A2540] hover:bg-[#0A2540]/90'}>
               {comissaoAlert?.tipo === 'maior' ? 'Solicitar Aprovação' : 'Continuar'}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
