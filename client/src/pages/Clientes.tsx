@@ -101,14 +101,18 @@ export default function Clientes() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [justificativas, setJustificativas] = useState<Record<string, string>>({});
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<'todos' | 'ativos' | 'inativos'>('todos');
+  const [filterStatus, setFilterStatus] = useState<'todos' | 'ativos' | 'inativos' | 'sem_atribuicao'>('todos');
   const [filterParceiro, setFilterParceiro] = useState<string>('todos');
-  const [filterTipoCliente, setFilterTipoCliente] = useState<'todos' | 'novo' | 'base'>('todos');
-  const [filterProcuracao, setFilterProcuracao] = useState<'todos' | 'habilitada' | 'vencida' | 'vencendo' | 'desabilitada'>('todos');
-  const [filterPrioridadeLocal, setFilterPrioridadeLocal] = useState<'todos' | 'alta' | 'media' | 'baixa'>('todos');
+  const [filterTipoCliente, setFilterTipoCliente] = useState<'todos' | 'novo' | 'base' | 'sem_atribuicao'>('todos');
+  const [filterProcuracao, setFilterProcuracao] = useState<'todos' | 'habilitada' | 'vencida' | 'vencendo' | 'desabilitada' | 'sem_atribuicao'>('todos');
+  const [filterPrioridadeLocal, setFilterPrioridadeLocal] = useState<'todos' | 'alta' | 'media' | 'baixa' | 'sem_atribuicao'>('todos');
   const [filterSegmento, setFilterSegmento] = useState<string>('todos');
-  const [filterRegime, setFilterRegime] = useState<string>('todos');
+  const [filterRegime, setFilterRegime] = useState<string>('todos'); // 'todos' | 'sem_atribuicao' | value
   const [showFilters, setShowFilters] = useState(false);
+  const [parceiroFilterOpen, setParceiroFilterOpen] = useState(false);
+  const [parceiroFilterSearch, setParceiroFilterSearch] = useState('');
+  const [segmentoFilterOpen, setSegmentoFilterOpen] = useState(false);
+  const [segmentoFilterSearch, setSegmentoFilterSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [parceiroTouched, setParceiroTouched] = useState(false);
@@ -428,6 +432,26 @@ export default function Clientes() {
   }
 
   // Compute unique segments and regimes for filter dropdowns
+  // Parceiros ordenados para o filtro
+  const sortedParceiros = useMemo(() => {
+    const principais = parceiros.filter((p: any) => !p.ehSubparceiro).sort((a: any, b: any) => (a.apelido || a.nomeCompleto).localeCompare(b.apelido || b.nomeCompleto, 'pt-BR'));
+    const subs = parceiros.filter((p: any) => p.ehSubparceiro).sort((a: any, b: any) => (a.apelido || a.nomeCompleto).localeCompare(b.apelido || b.nomeCompleto, 'pt-BR'));
+    return [...principais, ...subs];
+  }, [parceiros]);
+
+  const parceiroFilterLabel = useMemo(() => {
+    if (filterParceiro === 'todos') return 'Todos';
+    if (filterParceiro === 'sem_parceiro') return 'Sem atribuição';
+    const p = parceiros.find((p: any) => String(p.id) === filterParceiro);
+    return p ? (p.apelido || p.nomeCompleto) : 'Todos';
+  }, [filterParceiro, parceiros]);
+
+  const segmentoFilterLabel = useMemo(() => {
+    if (filterSegmento === 'todos') return 'Todos';
+    if (filterSegmento === 'sem_atribuicao') return 'Sem atribuição';
+    return filterSegmento;
+  }, [filterSegmento]);
+
   const uniqueSegmentos = useMemo(() => {
     const segs = new Set<string>();
     clientes.forEach((c: any) => { if (c.segmentoEconomico) segs.add(c.segmentoEconomico); });
@@ -478,19 +502,39 @@ export default function Clientes() {
       }
     }
     if (filterTipoCliente !== 'todos') {
-      list = list.filter((c: any) => c.classificacaoCliente === filterTipoCliente);
+      if (filterTipoCliente === 'sem_atribuicao') {
+        list = list.filter((c: any) => !c.classificacaoCliente);
+      } else {
+        list = list.filter((c: any) => c.classificacaoCliente === filterTipoCliente);
+      }
     }
     if (filterProcuracao !== 'todos') {
-      list = list.filter((c: any) => procuracaoStatus(c) === filterProcuracao);
+      if (filterProcuracao === 'sem_atribuicao') {
+        list = list.filter((c: any) => !c.procuracaoHabilitada);
+      } else {
+        list = list.filter((c: any) => procuracaoStatus(c) === filterProcuracao);
+      }
     }
     if (filterPrioridadeLocal !== 'todos') {
-      list = list.filter((c: any) => c.prioridade === filterPrioridadeLocal);
+      if (filterPrioridadeLocal === 'sem_atribuicao') {
+        list = list.filter((c: any) => !c.prioridade);
+      } else {
+        list = list.filter((c: any) => c.prioridade === filterPrioridadeLocal);
+      }
     }
     if (filterSegmento !== 'todos') {
-      list = list.filter((c: any) => c.segmentoEconomico === filterSegmento);
+      if (filterSegmento === 'sem_atribuicao') {
+        list = list.filter((c: any) => !c.segmentoEconomico);
+      } else {
+        list = list.filter((c: any) => c.segmentoEconomico === filterSegmento);
+      }
     }
     if (filterRegime !== 'todos') {
-      list = list.filter((c: any) => c.regimeTributario === filterRegime);
+      if (filterRegime === 'sem_atribuicao') {
+        list = list.filter((c: any) => !c.regimeTributario);
+      } else {
+        list = list.filter((c: any) => c.regimeTributario === filterRegime);
+      }
     }
     if (search) {
       const s = search.toLowerCase();
@@ -567,63 +611,82 @@ export default function Clientes() {
         {/* Painel de filtros avançados */}
         {showFilters && (
           <Card>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <CardContent className="p-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
                 {/* Status Ativo/Inativo */}
-                <div className="space-y-1">
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Status</Label>
                   <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-9 text-xs w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todos</SelectItem>
                       <SelectItem value="ativos">Ativos</SelectItem>
                       <SelectItem value="inativos">Inativos</SelectItem>
+                      <SelectItem value="sem_atribuicao"><span className="italic text-muted-foreground">Sem atribuição</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Parceiro */}
-                <div className="space-y-1">
+                {/* Parceiro - Combobox com autocomplete */}
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Parceiro</Label>
-                  <Select value={filterParceiro} onValueChange={(v: any) => setFilterParceiro(v)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="sem_parceiro">Sem Parceiro</SelectItem>
-                      {parceiros.filter((p: any) => !p.ehSubparceiro).map((p: any) => (
-                        <SelectItem key={p.id} value={String(p.id)}>{p.apelido || p.nomeCompleto}</SelectItem>
-                      ))}
-                      {parceiros.filter((p: any) => p.ehSubparceiro).map((p: any) => (
-                        <SelectItem key={p.id} value={String(p.id)}>↳ {p.apelido || p.nomeCompleto}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={parceiroFilterOpen} onOpenChange={setParceiroFilterOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="h-9 w-full justify-between text-xs font-normal px-2 truncate">
+                        <span className="truncate">{parceiroFilterLabel}</span>
+                        <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[260px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar parceiro..." value={parceiroFilterSearch} onValueChange={setParceiroFilterSearch} className="h-8 text-xs" />
+                        <CommandList className="max-h-60">
+                          <CommandEmpty>Nenhum parceiro encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem value="todos" onSelect={() => { setFilterParceiro('todos'); setParceiroFilterOpen(false); setParceiroFilterSearch(''); }}>
+                              <Check className={`mr-1.5 h-3 w-3 ${filterParceiro === 'todos' ? 'opacity-100' : 'opacity-0'}`} />
+                              Todos
+                            </CommandItem>
+                            <CommandItem value="sem_parceiro sem atribuição" onSelect={() => { setFilterParceiro('sem_parceiro'); setParceiroFilterOpen(false); setParceiroFilterSearch(''); }}>
+                              <Check className={`mr-1.5 h-3 w-3 ${filterParceiro === 'sem_parceiro' ? 'opacity-100' : 'opacity-0'}`} />
+                              <span className="italic text-muted-foreground">Sem atribuição</span>
+                            </CommandItem>
+                            {sortedParceiros.map((p: any) => (
+                              <CommandItem key={p.id} value={`${p.apelido || ''} ${p.nomeCompleto || ''}`} onSelect={() => { setFilterParceiro(String(p.id)); setParceiroFilterOpen(false); setParceiroFilterSearch(''); }}>
+                                <Check className={`mr-1.5 h-3 w-3 ${filterParceiro === String(p.id) ? 'opacity-100' : 'opacity-0'}`} />
+                                {p.ehSubparceiro ? '↳ ' : ''}{p.apelido || p.nomeCompleto}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Tipo Cliente */}
-                <div className="space-y-1">
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Tipo</Label>
                   <Select value={filterTipoCliente} onValueChange={(v: any) => setFilterTipoCliente(v)}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-9 text-xs w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todos</SelectItem>
                       <SelectItem value="novo">Novo</SelectItem>
                       <SelectItem value="base">Base</SelectItem>
+                      <SelectItem value="sem_atribuicao"><span className="italic text-muted-foreground">Sem atribuição</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Procuração */}
-                <div className="space-y-1">
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Procuração</Label>
                   <Select value={filterProcuracao} onValueChange={(v: any) => setFilterProcuracao(v)}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-9 text-xs w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -632,15 +695,16 @@ export default function Clientes() {
                       <SelectItem value="vencida">Vencida</SelectItem>
                       <SelectItem value="vencendo">Próx. Vencimento</SelectItem>
                       <SelectItem value="desabilitada">Desabilitada</SelectItem>
+                      <SelectItem value="sem_atribuicao"><span className="italic text-muted-foreground">Sem atribuição</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Prioridade */}
-                <div className="space-y-1">
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Prioridade</Label>
                   <Select value={filterPrioridadeLocal} onValueChange={(v: any) => setFilterPrioridadeLocal(v)}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-9 text-xs w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -648,31 +712,53 @@ export default function Clientes() {
                       <SelectItem value="alta">Alta</SelectItem>
                       <SelectItem value="media">Média</SelectItem>
                       <SelectItem value="baixa">Baixa</SelectItem>
+                      <SelectItem value="sem_atribuicao"><span className="italic text-muted-foreground">Sem atribuição</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Segmento */}
-                <div className="space-y-1">
+                {/* Segmento - Combobox com autocomplete */}
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Segmento</Label>
-                  <Select value={filterSegmento} onValueChange={(v: any) => setFilterSegmento(v)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value="todos">Todos</SelectItem>
-                      {uniqueSegmentos.map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={segmentoFilterOpen} onOpenChange={setSegmentoFilterOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="h-9 w-full justify-between text-xs font-normal px-2 truncate">
+                        <span className="truncate">{segmentoFilterLabel}</span>
+                        <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar segmento..." value={segmentoFilterSearch} onValueChange={setSegmentoFilterSearch} className="h-8 text-xs" />
+                        <CommandList className="max-h-60">
+                          <CommandEmpty>Nenhum segmento encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem value="todos" onSelect={() => { setFilterSegmento('todos'); setSegmentoFilterOpen(false); setSegmentoFilterSearch(''); }}>
+                              <Check className={`mr-1.5 h-3 w-3 ${filterSegmento === 'todos' ? 'opacity-100' : 'opacity-0'}`} />
+                              Todos
+                            </CommandItem>
+                            <CommandItem value="sem_atribuicao sem atribuição" onSelect={() => { setFilterSegmento('sem_atribuicao'); setSegmentoFilterOpen(false); setSegmentoFilterSearch(''); }}>
+                              <Check className={`mr-1.5 h-3 w-3 ${filterSegmento === 'sem_atribuicao' ? 'opacity-100' : 'opacity-0'}`} />
+                              <span className="italic text-muted-foreground">Sem atribuição</span>
+                            </CommandItem>
+                            {uniqueSegmentos.map(s => (
+                              <CommandItem key={s} value={s} onSelect={() => { setFilterSegmento(s); setSegmentoFilterOpen(false); setSegmentoFilterSearch(''); }}>
+                                <Check className={`mr-1.5 h-3 w-3 ${filterSegmento === s ? 'opacity-100' : 'opacity-0'}`} />
+                                {s}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Regime Tributário */}
-                <div className="space-y-1">
+                <div className="space-y-0.5 w-full min-w-0">
                   <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Regime</Label>
                   <Select value={filterRegime} onValueChange={(v: any) => setFilterRegime(v)}>
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-9 text-xs w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -680,6 +766,7 @@ export default function Clientes() {
                       {uniqueRegimes.map(r => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
                       ))}
+                      <SelectItem value="sem_atribuicao"><span className="italic text-muted-foreground">Sem atribuição</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

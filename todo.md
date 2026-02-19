@@ -540,3 +540,21 @@
 - [x] Exibir segmento econômico no card
 - [x] Exibir regime tributário no card
 - [x] Propagar cards atualizados em todas as visões do sistema (lista, detalhe, fila, relatórios)
+
+## CRM v16.1 — Ajustes nos Filtros de Clientes
+
+### Layout dos Filtros
+- [x] Campos maiores com largura fixa (não expandem com o texto)
+- [x] Diminuir espaçamento entre os campos de filtro
+- [x] Filtros fixos (não mudam de tamanho conforme seleção)
+
+### Opção "Sem Atribuição"
+- [x] Adicionar opção "Sem atribuição" em todos os menus de filtro
+- [x] Filtrar empresas que não possuem a informação preenchida
+
+### Autocomplete nos Filtros
+- [x] Campo de digitação autocomplete no filtro de Parceiro (muitas opções)
+- [x] Campo de digitação autocomplete no filtro de Segmento (muitas opções)
+
+### Ordem Alfabética
+- [x] Todas as opções dos menus de filtro em ordem alfabética
