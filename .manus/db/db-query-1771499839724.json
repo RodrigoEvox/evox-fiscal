@@ -1,0 +1,94 @@
+{
+  "query": "SELECT sc.sigla, s.nome, s.ativo, s.icone FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY s.nome;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT sc.sigla, s.nome, s.ativo, s.icone FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY s.nome;",
+  "rows": [
+    {
+      "sigla": "COM",
+      "nome": "Comercial",
+      "ativo": "1",
+      "icone": "ShoppingBag"
+    },
+    {
+      "sigla": "CTN",
+      "nome": "Contencioso",
+      "ativo": "1",
+      "icone": "Gavel"
+    },
+    {
+      "sigla": "CON",
+      "nome": "Contratos",
+      "ativo": "1",
+      "icone": "FileText"
+    },
+    {
+      "sigla": "CRE",
+      "nome": "Crédito",
+      "ativo": "1",
+      "icone": "BadgeDollarSign"
+    },
+    {
+      "sigla": "MON",
+      "nome": "Evox Monitor",
+      "ativo": "1",
+      "icone": "Monitor"
+    },
+    {
+      "sigla": "FIN",
+      "nome": "Financeiro",
+      "ativo": "1",
+      "icone": "Wallet"
+    },
+    {
+      "sigla": "GEG",
+      "nome": "Gente e Gestão",
+      "ativo": "1",
+      "icone": "Users"
+    },
+    {
+      "sigla": "JUR",
+      "nome": "Jurídico",
+      "ativo": "1",
+      "icone": "Scale"
+    },
+    {
+      "sigla": "MKT",
+      "nome": "Marketing",
+      "ativo": "1",
+      "icone": "Megaphone"
+    },
+    {
+      "sigla": "REF",
+      "nome": "Reforma",
+      "ativo": "1",
+      "icone": "Landmark"
+    },
+    {
+      "sigla": "SOF",
+      "nome": "Soluções Financeiras",
+      "ativo": "1",
+      "icone": "Wallet"
+    },
+    {
+      "sigla": "SUP",
+      "nome": "Suporte",
+      "ativo": "1",
+      "icone": "Handshake"
+    },
+    {
+      "sigla": "TRA",
+      "nome": "Transação",
+      "ativo": "1",
+      "icone": "ArrowLeftRight"
+    },
+    {
+      "sigla": "UNI",
+      "nome": "Universidade Evox",
+      "ativo": "1",
+      "icone": "GraduationCap"
+    }
+  ],
+  "messages": [],
+  "stdout": "sigla\tnome\tativo\ticone\nCOM\tComercial\t1\tShoppingBag\nCTN\tContencioso\t1\tGavel\nCON\tContratos\t1\tFileText\nCRE\tCrédito\t1\tBadgeDollarSign\nMON\tEvox Monitor\t1\tMonitor\nFIN\tFinanceiro\t1\tWallet\nGEG\tGente e Gestão\t1\tUsers\nJUR\tJurídico\t1\tScale\nMKT\tMarketing\t1\tMegaphone\nREF\tReforma\t1\tLandmark\nSOF\tSoluções Financeiras\t1\tWallet\nSUP\tSuporte\t1\tHandshake\nTRA\tTransação\t1\tArrowLeftRight\nUNI\tUniversidade Evox\t1\tGraduationCap\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

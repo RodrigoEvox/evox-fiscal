@@ -1,0 +1,80 @@
+{
+  "query": "SELECT sc.sigla, s.nome, s.ativo FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY sc.sigla;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT sc.sigla, s.nome, s.ativo FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY sc.sigla;",
+  "rows": [
+    {
+      "sigla": "COM",
+      "nome": "Comercial",
+      "ativo": "1"
+    },
+    {
+      "sigla": "CON",
+      "nome": "Contratos",
+      "ativo": "1"
+    },
+    {
+      "sigla": "CRE",
+      "nome": "Crédito",
+      "ativo": "1"
+    },
+    {
+      "sigla": "CTN",
+      "nome": "Contencioso",
+      "ativo": "1"
+    },
+    {
+      "sigla": "FIN",
+      "nome": "Financeiro",
+      "ativo": "1"
+    },
+    {
+      "sigla": "GEG",
+      "nome": "Gente e Gestão",
+      "ativo": "1"
+    },
+    {
+      "sigla": "JUR",
+      "nome": "Jurídico",
+      "ativo": "1"
+    },
+    {
+      "sigla": "MKT",
+      "nome": "Marketing",
+      "ativo": "1"
+    },
+    {
+      "sigla": "MON",
+      "nome": "Evox Monitor",
+      "ativo": "1"
+    },
+    {
+      "sigla": "REF",
+      "nome": "Reforma",
+      "ativo": "1"
+    },
+    {
+      "sigla": "SOF",
+      "nome": "Soluções Financeiras",
+      "ativo": "1"
+    },
+    {
+      "sigla": "SUP",
+      "nome": "Suporte",
+      "ativo": "1"
+    },
+    {
+      "sigla": "TRA",
+      "nome": "Transação",
+      "ativo": "1"
+    },
+    {
+      "sigla": "UNI",
+      "nome": "Universidade Evox",
+      "ativo": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "sigla\tnome\tativo\nCOM\tComercial\t1\nCON\tContratos\t1\nCRE\tCrédito\t1\nCTN\tContencioso\t1\nFIN\tFinanceiro\t1\nGEG\tGente e Gestão\t1\nJUR\tJurídico\t1\nMKT\tMarketing\t1\nMON\tEvox Monitor\t1\nREF\tReforma\t1\nSOF\tSoluções Financeiras\t1\nSUP\tSuporte\t1\nTRA\tTransação\t1\nUNI\tUniversidade Evox\t1\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

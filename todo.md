@@ -437,3 +437,9 @@
 - [x] Remover preenchimento automático do segmento via CNPJ
 - [x] Deixar segmento econômico manual, em branco, com preenchimento obrigatório
 - [x] Campo Segmento Econômico como combobox com autocomplete (atividades do salario.com.br/empresas, ordem alfabética, filtro dinâmico ao digitar)
+
+### Menu Lateral - Reorganização
+- [x] Renomear "Setores" para "Equipes" no menu lateral
+- [x] Agrupar todas as equipes dentro de um menu colapsável "Equipes"
+- [x] Manter Universidade Evox fora do agrupamento de Equipes
+- [x] Menu "Equipes" abre/fecha ao clicar (visualmente mais limpo)

@@ -9,7 +9,7 @@ import {
   Headphones, Podcast, Gift, Calendar, Building2,
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
-  ClipboardList, FileBarChart, Gem, Search,
+  ClipboardList, FileBarChart, Gem, Search, UsersRound,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -29,20 +29,23 @@ const ICON_MAP: Record<string, any> = {
 // Mapeamento de siglas para nomes de exibição (sem siglas)
 const SIGLA_TO_NOME: Record<string, string> = {
   'COM': 'Comercial',
-  'CONT': 'Contencioso',
-  'CT': 'Contratos',
-  'RCT': 'Crédito',
-  'MONITOR': 'Evox Monitor',
+  'CTN': 'Contencioso',
+  'CON': 'Contratos',
+  'CRE': 'Crédito',
+  'MON': 'Evox Monitor',
   'FIN': 'Financeiro',
-  'RH': 'Gente e Gestão',
+  'GEG': 'Gente e Gestão',
   'JUR': 'Jurídico',
   'MKT': 'Marketing',
-  'RT': 'Reforma',
-  'SF': 'Soluções Financeiras',
-  'SPC': 'Suporte',
-  'DPT': 'Transação',
-  'UEVOX': 'Universidade Evox',
+  'REF': 'Reforma',
+  'SOF': 'Soluções Financeiras',
+  'SUP': 'Suporte',
+  'TRA': 'Transação',
+  'UNI': 'Universidade Evox',
 };
+
+// Sigla da Universidade Evox (fica fora do grupo Equipes)
+const UNIVERSIDADE_SIGLA = 'UNI';
 
 // Ícones para submenus
 const SUBMENU_ICONS: Record<string, any> = {
@@ -93,6 +96,7 @@ export default function AppSidebar() {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [equipesOpen, setEquipesOpen] = useState(false);
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -103,12 +107,13 @@ export default function AppSidebar() {
   const setoresData = trpc.setores.list.useQuery();
 
   // Build setor nav from config, sorted alphabetically by display name
-  const setorNav = useMemo(() => {
-    if (!setorConfigs.data || !setoresData.data) return [];
+  // Separate Universidade Evox from the rest
+  const { equipesNav, universidadeEvox } = useMemo(() => {
+    if (!setorConfigs.data || !setoresData.data) return { equipesNav: [], universidadeEvox: null };
     const configs = setorConfigs.data as SetorConfigItem[];
     const setoresList = setoresData.data as SetorItem[];
 
-    return configs
+    const allSetores = configs
       .map(cfg => {
         const setor = setoresList.find(s => s.id === cfg.setorId);
         if (!setor || !setor.ativo) return null;
@@ -122,9 +127,26 @@ export default function AppSidebar() {
           submenus: (cfg.submenus || []) as { key: string; label: string; rota: string }[],
         };
       })
-      .filter(Boolean)
-      .sort((a: any, b: any) => (a as any).nome.localeCompare((b as any).nome, 'pt-BR')) as any[];
+      .filter(Boolean) as any[];
+
+    // Separate Universidade Evox
+    const uevox = allSetores.find((s: any) => s.sigla === UNIVERSIDADE_SIGLA);
+    const equipes = allSetores
+      .filter((s: any) => s.sigla !== UNIVERSIDADE_SIGLA)
+      .sort((a: any, b: any) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    return { equipesNav: equipes, universidadeEvox: uevox || null };
   }, [setorConfigs.data, setoresData.data]);
+
+  // Check if any equipe route is active
+  const isAnyEquipeActive = useMemo(() => {
+    return equipesNav.some((setor: any) =>
+      location.startsWith(`/setor/${setor.sigla.toLowerCase()}`)
+    );
+  }, [equipesNav, location]);
+
+  // Auto-open equipes section if a equipe route is active
+  const effectiveEquipesOpen = equipesOpen || isAnyEquipeActive;
 
   const toggleSection = (sigla: string) => {
     setOpenSections(prev => ({ ...prev, [sigla]: !prev[sigla] }));
@@ -184,6 +206,64 @@ export default function AppSidebar() {
     );
   };
 
+  // Render a setor item (used inside Equipes group)
+  const renderSetorItem = (setor: any) => {
+    const IconComp = ICON_MAP[setor.icone] || Building2;
+    const isOpen = openSections[setor.sigla] || false;
+    const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`);
+
+    return (
+      <div key={setor.sigla}>
+        <button
+          onClick={() => toggleSection(setor.sigla)}
+          className={cn(
+            'flex items-center gap-2.5 w-full px-3 py-1.5 rounded-lg transition-all duration-150 text-[13px] font-medium',
+            isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+          )}
+        >
+          <IconComp className="w-4 h-4 shrink-0" style={{ color: setor.cor }} />
+          <span className="truncate flex-1 text-left">{setor.nome}</span>
+          <ChevronDown className={cn(
+            'w-3 h-3 transition-transform duration-200 shrink-0',
+            isOpen && 'rotate-180'
+          )} />
+        </button>
+
+        {isOpen && setor.submenus.length > 0 && (
+          <div className="ml-4 pl-3 border-l border-white/5 space-y-0.5 py-0.5">
+            {setor.submenus.map((sub: any) => {
+              const SubIcon = SUBMENU_ICONS[sub.key] || FileText;
+              const subActive = location === sub.rota;
+              return (
+                <Link key={sub.key} href={sub.rota}>
+                  <div className={cn(
+                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[12px]',
+                    subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                  )}>
+                    <SubIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{sub.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+            {/* Relatórios - disponível em todos os setores */}
+            <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
+              <div className={cn(
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[12px]',
+                location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+              )}>
+                <FileBarChart className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Relatórios</span>
+              </div>
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <aside className={cn(
       'h-screen sticky top-0 flex flex-col transition-all duration-300 ease-in-out z-30',
@@ -210,92 +290,146 @@ export default function AppSidebar() {
         {/* Minhas Tarefas */}
         <NavLink path="/minhas-tarefas" icon={ClipboardList} label="Minhas Tarefas" />
 
-        {/* Setores - Ordem Alfabética */}
-        {!collapsed && (
-          <div className="pt-3 pb-1 px-3">
-            <span className="text-[10px] uppercase tracking-wider text-white/25 font-semibold">Setores</span>
-          </div>
+        {/* ===== EQUIPES (menu colapsável) ===== */}
+        {collapsed ? (
+          <>
+            {/* When collapsed, show Equipes as a tooltip icon that expands all equipes */}
+            <div className="pt-2 border-t border-white/5 mt-2" />
+            {equipesNav.map((setor: any) => {
+              const IconComp = ICON_MAP[setor.icone] || Building2;
+              const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`);
+              return (
+                <TooltipProvider key={setor.sigla} delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link href={`/setor/${setor.sigla.toLowerCase()}`}>
+                        <div className={cn(
+                          'flex items-center justify-center px-2 py-2 rounded-lg transition-all duration-150',
+                          isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+                        )}>
+                          <IconComp className="w-[18px] h-[18px]" style={{ color: setor.cor }} />
+                        </div>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-[#0A1929] border-white/10 text-white text-xs">
+                      {setor.nome}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            {/* Equipes collapsible group header */}
+            <div className="pt-3">
+              <button
+                onClick={() => setEquipesOpen(!effectiveEquipesOpen)}
+                className={cn(
+                  'flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
+                  isAnyEquipeActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+                )}
+              >
+                <UsersRound className="w-[18px] h-[18px] shrink-0" />
+                <span className="truncate flex-1 text-left">Equipes</span>
+                <ChevronDown className={cn(
+                  'w-3.5 h-3.5 transition-transform duration-200 shrink-0',
+                  effectiveEquipesOpen && 'rotate-180'
+                )} />
+              </button>
+
+              {/* Equipes children */}
+              {effectiveEquipesOpen && (
+                <div className="ml-3 pl-3 border-l border-white/5 space-y-0.5 py-1">
+                  {equipesNav.map((setor: any) => renderSetorItem(setor))}
+                </div>
+              )}
+            </div>
+          </>
         )}
-        {collapsed && <div className="pt-2 border-t border-white/5 mt-2" />}
 
-        {setorNav.map((setor: any) => {
-          const IconComp = ICON_MAP[setor.icone] || Building2;
-          const isOpen = openSections[setor.sigla] || false;
-          const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`);
-
-          if (collapsed) {
-            return (
-              <TooltipProvider key={setor.sigla} delayDuration={0}>
+        {/* ===== UNIVERSIDADE EVOX (fora do grupo Equipes) ===== */}
+        {universidadeEvox && (
+          <>
+            {collapsed ? (
+              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href={`/setor/${setor.sigla.toLowerCase()}`}>
+                    <Link href={`/setor/${universidadeEvox.sigla.toLowerCase()}`}>
                       <div className={cn(
                         'flex items-center justify-center px-2 py-2 rounded-lg transition-all duration-150',
-                        isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+                        location.startsWith(`/setor/${universidadeEvox.sigla.toLowerCase()}`)
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/50 hover:text-white/80 hover:bg-white/5',
                       )}>
-                        <IconComp className="w-[18px] h-[18px]" style={{ color: setor.cor }} />
+                        <GraduationCap className="w-[18px] h-[18px]" style={{ color: universidadeEvox.cor }} />
                       </div>
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="bg-[#0A1929] border-white/10 text-white text-xs">
-                    {setor.nome}
+                    Universidade Evox
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            );
-          }
+            ) : (
+              (() => {
+                const isUevoxOpen = openSections[universidadeEvox.sigla] || false;
+                const isUevoxActive = location.startsWith(`/setor/${universidadeEvox.sigla.toLowerCase()}`);
+                return (
+                  <div className="pt-1">
+                    <button
+                      onClick={() => toggleSection(universidadeEvox.sigla)}
+                      className={cn(
+                        'flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
+                        isUevoxActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
+                      )}
+                    >
+                      <GraduationCap className="w-[18px] h-[18px] shrink-0" style={{ color: universidadeEvox.cor }} />
+                      <span className="truncate flex-1 text-left">Universidade Evox</span>
+                      {universidadeEvox.submenus.length > 0 && (
+                        <ChevronDown className={cn(
+                          'w-3.5 h-3.5 transition-transform duration-200 shrink-0',
+                          isUevoxOpen && 'rotate-180'
+                        )} />
+                      )}
+                    </button>
 
-          return (
-            <div key={setor.sigla}>
-              <button
-                onClick={() => toggleSection(setor.sigla)}
-                className={cn(
-                  'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
-                  isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
-                )}
-              >
-                <IconComp className="w-[18px] h-[18px] shrink-0" style={{ color: setor.cor }} />
-                <span className="truncate flex-1 text-left">{setor.nome}</span>
-                <ChevronDown className={cn(
-                  'w-3.5 h-3.5 transition-transform duration-200 shrink-0',
-                  isOpen && 'rotate-180'
-                )} />
-              </button>
-
-              {isOpen && setor.submenus.length > 0 && (
-                <div className="ml-4 pl-3 border-l border-white/5 space-y-0.5 py-0.5">
-                  {setor.submenus.map((sub: any) => {
-                    const SubIcon = SUBMENU_ICONS[sub.key] || FileText;
-                    const subActive = location === sub.rota;
-                    return (
-                      <Link key={sub.key} href={sub.rota}>
-                        <div className={cn(
-                          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
-                          subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                        )}>
-                          <SubIcon className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{sub.label}</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                  {/* Relatórios - disponível em todos os setores */}
-                  <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
-                    <div className={cn(
-                      'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
-                      location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
-                        ? 'bg-white/10 text-white'
-                        : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                    )}>
-                      <FileBarChart className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Relatórios</span>
-                    </div>
-                  </Link>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                    {isUevoxOpen && universidadeEvox.submenus.length > 0 && (
+                      <div className="ml-4 pl-3 border-l border-white/5 space-y-0.5 py-0.5">
+                        {universidadeEvox.submenus.map((sub: any) => {
+                          const SubIcon = SUBMENU_ICONS[sub.key] || FileText;
+                          const subActive = location === sub.rota;
+                          return (
+                            <Link key={sub.key} href={sub.rota}>
+                              <div className={cn(
+                                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                                subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                              )}>
+                                <SubIcon className="w-4 h-4 shrink-0" />
+                                <span className="truncate">{sub.label}</span>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                        <Link href={`/setor/${universidadeEvox.sigla.toLowerCase()}/relatorio`}>
+                          <div className={cn(
+                            'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                            location === `/setor/${universidadeEvox.sigla.toLowerCase()}/relatorio`
+                              ? 'bg-white/10 text-white'
+                              : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                          )}>
+                            <FileBarChart className="w-4 h-4 shrink-0" />
+                            <span className="truncate">Relatórios</span>
+                          </div>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            )}
+          </>
+        )}
 
         {/* Administração */}
         {isAdmin && (
