@@ -1843,6 +1843,30 @@ export const appRouter = router({
         }
         return { id, fileUrl: url };
       }),
+    // ---- BUSCA GLOBAL ----
+    searchGlobal: protectedProcedure
+      .input(z.object({ query: z.string().min(2) }))
+      .query(async ({ input }) => {
+        return db.searchChatMessagesGlobal(input.query);
+      }),
+    // ---- BUSCA DE ARQUIVOS ----
+    searchFiles: protectedProcedure
+      .input(z.object({
+        channelId: z.number().optional(),
+        fileType: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.searchChatFiles(input.channelId, input.fileType);
+      }),
+    // ---- BUSCA POR USUÁRIO ----
+    searchByUser: protectedProcedure
+      .input(z.object({
+        channelId: z.number(),
+        userName: z.string().min(1),
+      }))
+      .query(async ({ input }) => {
+        return db.searchChatMessagesByUser(input.channelId, input.userName);
+      }),
   }),
 
   // ---- SEED ----

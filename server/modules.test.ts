@@ -510,3 +510,87 @@ describe("chat.fileUpload", () => {
     }
   });
 });
+
+
+// ============================================================
+// CHAT v31 — Global Search, File Search, User Search
+// ============================================================
+describe("Chat v31 — Global Search, File Search, User Search", () => {
+
+  it("should search messages globally across all channels", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // First ensure we have a channel and a message
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return; // skip if no channels
+
+    const channelId = channels[0].id;
+    // Send a unique message to search for
+    const uniqueText = `global-search-test-${Date.now()}`;
+    await caller.chat.send({ channelId, content: uniqueText });
+
+    // Search globally
+    const results = await caller.chat.searchGlobal({ query: uniqueText });
+    expect(Array.isArray(results)).toBe(true);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    const found = results.find((r: any) => r.content === uniqueText);
+    expect(found).toBeTruthy();
+  });
+
+  it("should search files in a channel", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Search for files (may return empty if no files uploaded)
+    const results = await caller.chat.searchFiles({});
+    expect(Array.isArray(results)).toBe(true);
+    // Each result should have fileUrl
+    for (const r of results as any[]) {
+      expect(r.fileUrl).toBeTruthy();
+    }
+  });
+
+  it("should search files filtered by type", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const results = await caller.chat.searchFiles({ fileType: "image" });
+    expect(Array.isArray(results)).toBe(true);
+    for (const r of results as any[]) {
+      expect(r.fileType).toMatch(/^image/);
+    }
+  });
+
+  it("should search messages by user name in a channel", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    const channelId = channels[0].id;
+    // Send a message first
+    await caller.chat.send({ channelId, content: "user-search-test-message" });
+
+    // Search by user name
+    const results = await caller.chat.searchByUser({ channelId, userName: "Teste" });
+    expect(Array.isArray(results)).toBe(true);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should return empty array for non-matching global search", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const results = await caller.chat.searchGlobal({ query: "zzz-nonexistent-query-xyz-999" });
+    expect(Array.isArray(results)).toBe(true);
+    expect(results.length).toBe(0);
+  });
+
+  it("should return empty array for non-matching user search", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    const results = await caller.chat.searchByUser({ channelId: channels[0].id, userName: "UsuarioInexistente999" });
+    expect(Array.isArray(results)).toBe(true);
+    expect(results.length).toBe(0);
+  });
+});

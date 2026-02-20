@@ -991,3 +991,32 @@
 - [x] UI com botão de anexo (Paperclip), preview de imagens inline, card de documentos com download
 - [x] Barra de preview do arquivo antes do envio com opção de cancelar
 - [x] 2 testes vitest passando (upload file, reject >10MB)
+
+## CRM v31 — Chat: Notificações, Buscas e Alerta Sonoro
+
+### Notificações Push de DM
+- [x] Notificações de DM já existiam via sistema de notificações do chat (chat_notifications)
+- [x] Badge visual na sidebar indicando DMs não lidas (contador com animação pulse)
+- [x] Contador de mensagens não lidas por canal e total geral na aba DMs
+
+### Busca Global de Mensagens
+- [x] Rota backend searchGlobal para buscar mensagens em todos os canais simultaneamente
+- [x] UI com painel de busca global (ícone Globe) com resultados mostrando canal, autor e data
+- [x] Clicar no resultado navega diretamente ao canal correspondente
+- [x] 2 testes vitest passando (busca global com resultados, busca sem resultados)
+
+### Busca de Arquivos na Conversa
+- [x] Rota backend searchFiles para listar arquivos enviados (por canal ou global)
+- [x] Painel de arquivos (ícone FileSearch) com filtro por tipo (imagens, PDF, texto)
+- [x] Preview com ícone, nome, autor, tamanho e data + download direto
+- [x] 2 testes vitest passando (busca geral, busca filtrada por tipo)
+
+### Busca por Nome de Usuário na Conversa
+- [x] Rota backend searchByUser para buscar mensagens de um usuário no canal
+- [x] Painel de busca por usuário (ícone UserSearch) com resultados formatados
+- [x] 2 testes vitest passando (busca com resultados, busca sem resultados)
+
+### Alerta Sonoro de Nova Mensagem
+- [x] Som de notificação via Web Audio API (beep 880Hz, 0.3s) ao receber nova mensagem
+- [x] Alerta sonoro também para novas notificações não lidas (DMs e outros canais)
+- [x] Toggle de som (ícone Volume2/VolumeX) no header do chat com persistência em localStorage

@@ -2402,3 +2402,70 @@ export async function createChatMessageWithFile(data: {
   } as any).$returningId();
   return result[0]?.id;
 }
+
+// ============================================================
+// CHAT: BUSCA GLOBAL, BUSCA DE ARQUIVOS, BUSCA POR USUÁRIO
+// ============================================================
+
+export async function searchChatMessagesGlobal(query: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  const like = `%${query}%`;
+  const rows = await db.execute(
+    sql`SELECT m.*, c.nome as channelNome, c.tipo as channelTipo
+        FROM chat_messages m
+        JOIN chat_channels c ON m.channelId = c.id
+        WHERE m.content LIKE ${like} AND m.deletedAt IS NULL
+        ORDER BY m.id DESC
+        LIMIT ${limit}`
+  );
+  return (rows as any)[0] || [];
+}
+
+export async function searchChatFiles(channelId?: number, fileType?: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  if (channelId && fileType) {
+    const likeType = `${fileType}%`;
+    return db.select().from(chatMessages)
+      .where(sql`${chatMessages.channelId} = ${channelId} AND ${chatMessages.fileUrl} IS NOT NULL AND ${chatMessages.fileUrl} != '' AND ${chatMessages.fileType} LIKE ${likeType} AND ${chatMessages.deletedAt} IS NULL`)
+      .orderBy(desc(chatMessages.id))
+      .limit(limit);
+  }
+  if (channelId) {
+    return db.select().from(chatMessages)
+      .where(sql`${chatMessages.channelId} = ${channelId} AND ${chatMessages.fileUrl} IS NOT NULL AND ${chatMessages.fileUrl} != '' AND ${chatMessages.deletedAt} IS NULL`)
+      .orderBy(desc(chatMessages.id))
+      .limit(limit);
+  }
+  if (fileType) {
+    const likeType = `${fileType}%`;
+    return db.select().from(chatMessages)
+      .where(sql`${chatMessages.fileUrl} IS NOT NULL AND ${chatMessages.fileUrl} != '' AND ${chatMessages.fileType} LIKE ${likeType} AND ${chatMessages.deletedAt} IS NULL`)
+      .orderBy(desc(chatMessages.id))
+      .limit(limit);
+  }
+  return db.select().from(chatMessages)
+    .where(sql`${chatMessages.fileUrl} IS NOT NULL AND ${chatMessages.fileUrl} != '' AND ${chatMessages.deletedAt} IS NULL`)
+    .orderBy(desc(chatMessages.id))
+    .limit(limit);
+}
+
+export async function searchChatMessagesByUser(channelId: number, userName: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  const like = `%${userName}%`;
+  return db.select().from(chatMessages)
+    .where(sql`${chatMessages.channelId} = ${channelId} AND ${chatMessages.userName} LIKE ${like} AND ${chatMessages.deletedAt} IS NULL`)
+    .orderBy(desc(chatMessages.id))
+    .limit(limit);
+}
+
+export async function countUnreadByChannelForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(
+    sql`SELECT channelId, COUNT(*) as cnt FROM chat_notifications WHERE userId = ${userId} AND lida = false GROUP BY channelId`
+  );
+  return ((rows as any)[0] || []).map((r: any) => ({ channelId: r.channelId, count: Number(r.cnt) }));
+}

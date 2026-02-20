@@ -17,13 +17,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import {
   MessageCircle, Send, Loader2, Users, Building2, Hash, Plus,
   AtSign, Search, X, Trash2, MoreVertical, Power, PowerOff,
   Eraser, Settings2, ShieldAlert, Menu, Pin, PinOff, Smile,
   Archive, RotateCcw, ChevronDown, Paperclip, FileText, Image,
-  Download, User, Mail,
+  Download, User, Mail, Volume2, VolumeX, Globe, FileSearch,
+  UserSearch, Bell,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
@@ -64,6 +66,25 @@ function isImageType(type: string): boolean {
   return type.startsWith('image/');
 }
 
+// Notification sound - simple beep using Web Audio API
+function playNotificationSound() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.frequency.value = 880;
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.3);
+  } catch {
+    // Silently fail if audio context is not available
+  }
+}
+
 export default function Chat() {
   const { user: currentUser } = useAuth();
   const isAdmin = (currentUser as any)?.role === 'admin';
@@ -97,6 +118,21 @@ export default function Chat() {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [typingTimeout, setTypingTimeoutState] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  // New state for v31 features
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem('chat-sound') !== 'off'; } catch { return true; }
+  });
+  const [searchMode, setSearchMode] = useState<'local' | 'global' | 'files' | 'user'>('local');
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [fileSearchType, setFileSearchType] = useState<string>('');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [showFilePanel, setShowFilePanel] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const prevMessageCountRef = useRef<number>(0);
+  const prevUnreadRef = useRef<number>(0);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -160,7 +196,55 @@ export default function Chat() {
     { enabled: showNewDm && dmSearchQuery.length >= 1 }
   );
 
+  // Global search query
+  const { data: globalSearchResults = [], isLoading: loadingGlobalSearch } = trpc.chat.searchGlobal.useQuery(
+    { query: globalSearchQuery },
+    { enabled: showGlobalSearch && globalSearchQuery.length >= 2 }
+  );
+
+  // File search query
+  const { data: fileSearchResults = [], isLoading: loadingFileSearch } = trpc.chat.searchFiles.useQuery(
+    { channelId: showFilePanel && activeChannelId ? activeChannelId : undefined, fileType: fileSearchType || undefined },
+    { enabled: showFilePanel }
+  );
+
+  // User search query
+  const { data: userSearchResults = [], isLoading: loadingUserSearch } = trpc.chat.searchByUser.useQuery(
+    { channelId: activeChannelId!, userName: userSearchQuery },
+    { enabled: showUserSearch && !!activeChannelId && userSearchQuery.length >= 1 }
+  );
+
   const suggestions = mentionType === 'user' ? userSuggestions.data : clientSuggestions.data;
+
+  // Sound toggle
+  const toggleSound = useCallback(() => {
+    const newVal = !soundEnabled;
+    setSoundEnabled(newVal);
+    try { localStorage.setItem('chat-sound', newVal ? 'on' : 'off'); } catch {}
+    toast.success(newVal ? 'Alerta sonoro ativado' : 'Alerta sonoro desativado');
+  }, [soundEnabled]);
+
+  // Sound alert on new messages
+  useEffect(() => {
+    const currentCount = (messages as any[]).length;
+    if (prevMessageCountRef.current > 0 && currentCount > prevMessageCountRef.current && soundEnabled) {
+      // Check if the newest message is NOT from the current user
+      const newest = (messages as any[]).sort((a: any, b: any) => b.id - a.id)[0];
+      if (newest && newest.userId !== currentUser?.id) {
+        playNotificationSound();
+      }
+    }
+    prevMessageCountRef.current = currentCount;
+  }, [messages, soundEnabled, currentUser]);
+
+  // Sound alert on new unread notifications (for DMs and other channels)
+  useEffect(() => {
+    const currentTotal = unreadData?.total || 0;
+    if (prevUnreadRef.current > 0 && currentTotal > prevUnreadRef.current && soundEnabled) {
+      playNotificationSound();
+    }
+    prevUnreadRef.current = currentTotal;
+  }, [unreadData, soundEnabled]);
 
   // Mutations
   const sendMessage = trpc.chat.send.useMutation({
@@ -169,7 +253,6 @@ export default function Chat() {
       utils.chat.unreadCount.invalidate();
       setInputValue('');
       setMentions([]);
-      // Stop typing when message sent
       if (activeChannelId) stopTypingMut.mutate({ channelId: activeChannelId });
     },
     onError: (err) => toast.error(err.message),
@@ -357,9 +440,7 @@ export default function Chat() {
   const handleTyping = useCallback(() => {
     if (!activeChannelId) return;
     startTypingMut.mutate({ channelId: activeChannelId });
-    // Clear previous timeout
     if (typingTimeout) clearTimeout(typingTimeout);
-    // Set new timeout to stop typing after 3s of inactivity
     const timeout = setTimeout(() => {
       if (activeChannelId) stopTypingMut.mutate({ channelId: activeChannelId });
     }, 3000);
@@ -453,7 +534,6 @@ export default function Chat() {
     if (isImageType(file.type)) {
       setFilePreviewUrl(URL.createObjectURL(file));
     }
-    // Reset file input
     e.target.value = '';
   };
 
@@ -557,7 +637,7 @@ export default function Chat() {
     return groups;
   }, [messages]);
 
-  // Filter messages by search
+  // Filter messages by local search
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return groupedMessages;
     const q = searchQuery.toLowerCase();
@@ -582,6 +662,15 @@ export default function Chat() {
   const projetoChannels = activeChannels.filter((c: any) => c.tipo === 'projeto');
 
   const totalUnread = unreadData?.total || 0;
+
+  // Count DM unread
+  const dmUnreadCount = useMemo(() => {
+    if (!unreadData?.byChannel) return 0;
+    const dmIds = new Set((dmChannels as any[]).map((c: any) => c.id));
+    return unreadData.byChannel
+      .filter((c: any) => dmIds.has(c.channelId))
+      .reduce((sum: number, c: any) => sum + (c.count || 0), 0);
+  }, [unreadData, dmChannels]);
 
   // Get DM partner name
   const getDmPartnerName = (ch: any) => {
@@ -624,33 +713,22 @@ export default function Chat() {
           {isInactive && <PowerOff className="w-3 h-3 text-muted-foreground shrink-0" />}
           {isDeleted && <Trash2 className="w-3 h-3 text-muted-foreground shrink-0" />}
           {unread > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
               {unread > 99 ? '99+' : unread}
             </span>
           )}
         </button>
-        {/* Quick actions for admin */}
         {isAdmin && (showRestore || showDelete) && (
           <div className="opacity-0 group-hover/ch:opacity-100 transition-opacity flex shrink-0">
             {showRestore && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-green-600"
-                onClick={(e) => { e.stopPropagation(); setConfirmRestoreChannel(ch.id); }}
-                title="Restaurar canal"
-              >
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-green-600"
+                onClick={(e) => { e.stopPropagation(); setConfirmRestoreChannel(ch.id); }} title="Restaurar canal">
                 <RotateCcw className="w-3 h-3" />
               </Button>
             )}
             {showDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-red-600"
-                onClick={(e) => { e.stopPropagation(); setConfirmDeleteChannel(ch.id); }}
-                title="Mover para lixeira"
-              >
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-600"
+                onClick={(e) => { e.stopPropagation(); setConfirmDeleteChannel(ch.id); }} title="Mover para lixeira">
                 <Trash2 className="w-3 h-3" />
               </Button>
             )}
@@ -668,20 +746,12 @@ export default function Chat() {
       <div className="mt-2 max-w-sm">
         {isImage ? (
           <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
-            <img
-              src={msg.fileUrl}
-              alt={msg.fileName || 'Imagem'}
-              className="rounded-lg border max-h-64 object-cover hover:opacity-90 transition-opacity cursor-pointer"
-              loading="lazy"
-            />
+            <img src={msg.fileUrl} alt={msg.fileName || 'Imagem'}
+              className="rounded-lg border max-h-64 object-cover hover:opacity-90 transition-opacity cursor-pointer" loading="lazy" />
           </a>
         ) : (
-          <a
-            href={msg.fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-          >
+          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <FileText className="w-5 h-5 text-primary" />
             </div>
@@ -711,21 +781,10 @@ export default function Chat() {
           )}
         </h2>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setShowNewChannel(true)}
-            title="Novo canal"
-          >
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowNewChannel(true)} title="Novo canal">
             <Plus className="w-4 h-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 lg:hidden"
-            onClick={() => setShowSidebar(false)}
-          >
+          <Button variant="ghost" size="icon" className="h-7 w-7 lg:hidden" onClick={() => setShowSidebar(false)}>
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -738,9 +797,13 @@ export default function Chat() {
             <TabsTrigger value="active" className="text-[10px] h-6 gap-0.5 px-1">
               <Power className="w-3 h-3" /> Canais
             </TabsTrigger>
-            <TabsTrigger value="dm" className="text-[10px] h-6 gap-0.5 px-1">
+            <TabsTrigger value="dm" className="text-[10px] h-6 gap-0.5 px-1 relative">
               <Mail className="w-3 h-3" /> DMs
-              {(dmChannels as any[]).length > 0 && <span className="text-[9px] opacity-60">({(dmChannels as any[]).length})</span>}
+              {dmUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                  {dmUnreadCount > 9 ? '9+' : dmUnreadCount}
+                </span>
+              )}
             </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="inactive" className="text-[10px] h-6 gap-0.5 px-1">
@@ -782,12 +845,7 @@ export default function Chat() {
 
           {/* DM Tab */}
           <TabsContent value="dm" className="flex-1 overflow-y-auto mt-0 p-2 space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-xs gap-1.5 mb-2"
-              onClick={() => setShowNewDm(true)}
-            >
+            <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 mb-2" onClick={() => setShowNewDm(true)}>
               <Plus className="w-3.5 h-3.5" /> Nova Conversa Privada
             </Button>
             {(dmChannels as any[]).length > 0 ? (
@@ -832,13 +890,10 @@ export default function Chat() {
     <div className="flex h-[calc(100vh-6rem)] gap-0 rounded-xl border overflow-hidden bg-background">
       {/* Mobile sidebar overlay */}
       {showSidebar && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setShowSidebar(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowSidebar(false)} />
       )}
 
-      {/* Channel sidebar - responsive */}
+      {/* Channel sidebar */}
       <div className={`
         ${showSidebar ? 'fixed inset-y-0 left-0 z-50 w-72' : 'hidden'}
         lg:relative lg:block lg:w-64 lg:z-auto
@@ -852,12 +907,7 @@ export default function Chat() {
         {/* Chat header */}
         <div className="h-12 border-b flex items-center justify-between px-3 sm:px-4 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 lg:hidden shrink-0 relative"
-              onClick={() => setShowSidebar(true)}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 lg:hidden shrink-0 relative" onClick={() => setShowSidebar(true)}>
               <Menu className="w-4 h-4" />
               {totalUnread > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
@@ -874,47 +924,66 @@ export default function Chat() {
                 <span className="font-semibold text-sm truncate">
                   {isDmChannel ? getDmPartnerName(activeChannel) : (activeChannel as any).nome}
                 </span>
-                {isDmChannel && (
-                  <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 shrink-0">DM</Badge>
-                )}
-                {channelStatus === 'inactive' && (
-                  <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600 shrink-0">Inativo</Badge>
-                )}
-                {channelStatus === 'deleted' && (
-                  <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 shrink-0">Lixeira</Badge>
-                )}
+                {isDmChannel && <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 shrink-0">DM</Badge>}
+                {channelStatus === 'inactive' && <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600 shrink-0">Inativo</Badge>}
+                {channelStatus === 'deleted' && <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 shrink-0">Lixeira</Badge>}
                 {!isDmChannel && (activeChannel as any).descricao && (
-                  <span className="text-xs text-muted-foreground hidden md:inline ml-2 truncate">
-                    — {(activeChannel as any).descricao}
-                  </span>
+                  <span className="text-xs text-muted-foreground hidden md:inline ml-2 truncate">— {(activeChannel as any).descricao}</span>
                 )}
               </>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {/* Sound toggle */}
+            <Button variant="ghost" size="icon" className={`h-8 w-8 ${soundEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+              onClick={toggleSound} title={soundEnabled ? 'Desativar som' : 'Ativar som'}>
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </Button>
+
             {/* Pinned messages button */}
             {activeChannelId && (pinnedMessages as any[]).length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 relative ${showPinnedPanel ? 'text-primary' : ''}`}
-                onClick={() => setShowPinnedPanel(!showPinnedPanel)}
-                title={`${(pinnedMessages as any[]).length} mensagem(ns) fixada(s)`}
-              >
+              <Button variant="ghost" size="icon" className={`h-8 w-8 relative ${showPinnedPanel ? 'text-primary' : ''}`}
+                onClick={() => setShowPinnedPanel(!showPinnedPanel)} title={`${(pinnedMessages as any[]).length} mensagem(ns) fixada(s)`}>
                 <Pin className="w-4 h-4" />
                 <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {(pinnedMessages as any[]).length}
                 </span>
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowSearch(!showSearch)}
-            >
-              <Search className="w-4 h-4" />
-            </Button>
+
+            {/* Search dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={`h-8 w-8 ${showSearch || showGlobalSearch || showFilePanel || showUserSearch ? 'text-primary' : ''}`}>
+                  <Search className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => {
+                  setShowSearch(true); setShowGlobalSearch(false); setShowFilePanel(false); setShowUserSearch(false);
+                }}>
+                  <Search className="w-4 h-4 mr-2" /> Buscar no canal
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setShowGlobalSearch(true); setShowSearch(false); setShowFilePanel(false); setShowUserSearch(false);
+                }}>
+                  <Globe className="w-4 h-4 mr-2" /> Busca global
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setShowFilePanel(true); setShowSearch(false); setShowGlobalSearch(false); setShowUserSearch(false);
+                }}>
+                  <FileSearch className="w-4 h-4 mr-2" /> Buscar arquivos
+                </DropdownMenuItem>
+                {activeChannelId && (
+                  <DropdownMenuItem onClick={() => {
+                    setShowUserSearch(true); setShowSearch(false); setShowGlobalSearch(false); setShowFilePanel(false);
+                  }}>
+                    <UserSearch className="w-4 h-4 mr-2" /> Buscar por usuário
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Admin channel controls */}
             {isAdmin && activeChannelId && !isDmChannel && (
               <DropdownMenu>
@@ -930,41 +999,20 @@ export default function Chat() {
                     </p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setConfirmClear(true)}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Eraser className="w-4 h-4 mr-2" />
-                    Limpar todas as mensagens
+                  <DropdownMenuItem onClick={() => setConfirmClear(true)} className="text-red-600 focus:text-red-600">
+                    <Eraser className="w-4 h-4 mr-2" /> Limpar todas as mensagens
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setConfirmToggle({
-                      channelId: activeChannelId,
-                      ativo: !isChannelActive,
-                    })}
-                  >
-                    {isChannelActive ? (
-                      <><PowerOff className="w-4 h-4 mr-2" /> Desativar canal</>
-                    ) : (
-                      <><Power className="w-4 h-4 mr-2" /> Reativar canal</>
-                    )}
+                  <DropdownMenuItem onClick={() => setConfirmToggle({ channelId: activeChannelId, ativo: !isChannelActive })}>
+                    {isChannelActive ? <><PowerOff className="w-4 h-4 mr-2" /> Desativar canal</> : <><Power className="w-4 h-4 mr-2" /> Reativar canal</>}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {channelStatus !== 'deleted' ? (
-                    <DropdownMenuItem
-                      onClick={() => setConfirmDeleteChannel(activeChannelId)}
-                      className="text-red-600 focus:text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Mover para lixeira
+                    <DropdownMenuItem onClick={() => setConfirmDeleteChannel(activeChannelId)} className="text-red-600 focus:text-red-600">
+                      <Trash2 className="w-4 h-4 mr-2" /> Mover para lixeira
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem
-                      onClick={() => setConfirmRestoreChannel(activeChannelId)}
-                      className="text-green-600 focus:text-green-600"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Restaurar canal
+                    <DropdownMenuItem onClick={() => setConfirmRestoreChannel(activeChannelId)} className="text-green-600 focus:text-green-600">
+                      <RotateCcw className="w-4 h-4 mr-2" /> Restaurar canal
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -973,20 +1021,144 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Search bar */}
+        {/* Local search bar */}
         {showSearch && (
           <div className="px-3 sm:px-4 py-2 border-b flex items-center gap-2 bg-muted/20 shrink-0">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar mensagens..."
-              className="h-8 text-sm"
-              autoFocus
-            />
+            <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar mensagens neste canal..." className="h-8 text-sm" autoFocus />
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setShowSearch(false); setSearchQuery(''); }}>
               <X className="w-4 h-4" />
             </Button>
+          </div>
+        )}
+
+        {/* Global search bar */}
+        {showGlobalSearch && (
+          <div className="px-3 sm:px-4 py-2 border-b bg-blue-50/50 dark:bg-blue-900/10 shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">Busca Global</span>
+              <div className="flex-1" />
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setShowGlobalSearch(false); setGlobalSearchQuery(''); }}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <Input value={globalSearchQuery} onChange={(e) => setGlobalSearchQuery(e.target.value)}
+              placeholder="Buscar em todos os canais..." className="h-8 text-sm" autoFocus />
+            {globalSearchQuery.length >= 2 && (
+              <div className="mt-2 max-h-[300px] overflow-y-auto space-y-1">
+                {loadingGlobalSearch ? (
+                  <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                ) : (globalSearchResults as any[]).length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum resultado encontrado</p>
+                ) : (
+                  (globalSearchResults as any[]).map((r: any) => (
+                    <button key={r.id} className="w-full text-left px-3 py-2 rounded-lg hover:bg-accent transition-colors"
+                      onClick={() => { setActiveChannelId(r.channelId); setShowGlobalSearch(false); setGlobalSearchQuery(''); }}>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">{r.channelNome || `Canal #${r.channelId}`}</Badge>
+                        <span className="text-[10px] text-muted-foreground font-medium">{r.userName}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      <p className="text-xs text-foreground/80 truncate">{r.content}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* File search panel */}
+        {showFilePanel && (
+          <div className="px-3 sm:px-4 py-2 border-b bg-emerald-50/50 dark:bg-emerald-900/10 shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <FileSearch className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                Arquivos {activeChannelId ? 'neste canal' : 'em todos os canais'}
+              </span>
+              <div className="flex-1" />
+              <Select value={fileSearchType || 'all'} onValueChange={(v) => setFileSearchType(v === 'all' ? '' : v)}>
+                <SelectTrigger className="h-7 w-32 text-[10px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="image">Imagens</SelectItem>
+                  <SelectItem value="application/pdf">PDF</SelectItem>
+                  <SelectItem value="text">Texto</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setShowFilePanel(false); setFileSearchType(''); }}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto space-y-1">
+              {loadingFileSearch ? (
+                <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+              ) : (fileSearchResults as any[]).length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">Nenhum arquivo encontrado</p>
+              ) : (
+                (fileSearchResults as any[]).map((f: any) => (
+                  <a key={f.id} href={f.fileUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      {isImageType(f.fileType || '') ? <Image className="w-4 h-4 text-primary" /> : <FileText className="w-4 h-4 text-primary" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{f.fileName || 'Arquivo'}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {f.userName} • {f.fileSize ? formatFileSize(f.fileSize) : ''} • {new Date(f.createdAt).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    <Download className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  </a>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* User search panel */}
+        {showUserSearch && activeChannelId && (
+          <div className="px-3 sm:px-4 py-2 border-b bg-purple-50/50 dark:bg-purple-900/10 shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <UserSearch className="w-4 h-4 text-purple-600 shrink-0" />
+              <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">Buscar por usuário</span>
+              <div className="flex-1" />
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setShowUserSearch(false); setUserSearchQuery(''); }}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <Input value={userSearchQuery} onChange={(e) => setUserSearchQuery(e.target.value)}
+              placeholder="Nome do usuário..." className="h-8 text-sm" autoFocus />
+            {userSearchQuery.length >= 1 && (
+              <div className="mt-2 max-h-[250px] overflow-y-auto space-y-1">
+                {loadingUserSearch ? (
+                  <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                ) : (userSearchResults as any[]).length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhuma mensagem encontrada</p>
+                ) : (
+                  (userSearchResults as any[]).map((m: any) => (
+                    <div key={m.id} className="px-3 py-2 rounded-lg bg-background/80 border">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-semibold">{m.userName}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(m.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-foreground/80">{m.content}</p>
+                      {m.fileUrl && (
+                        <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline flex items-center gap-1 mt-1">
+                          <Paperclip className="w-3 h-3" /> {m.fileName || 'Arquivo'}
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1008,20 +1180,13 @@ export default function Chat() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-semibold">{pm.userName}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(pm.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground">{new Date(pm.createdAt).toLocaleDateString('pt-BR')}</span>
                     </div>
                     <p className="text-xs text-foreground/80 truncate">{pm.content}</p>
                   </div>
                   {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 text-muted-foreground hover:text-red-500 shrink-0"
-                      onClick={() => unpinMessageMut.mutate({ messageId: pm.id })}
-                      title="Desfixar"
-                    >
+                    <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-red-500 shrink-0"
+                      onClick={() => unpinMessageMut.mutate({ messageId: pm.id })} title="Desfixar">
                       <PinOff className="w-3 h-3" />
                     </Button>
                   )}
@@ -1032,11 +1197,7 @@ export default function Chat() {
         )}
 
         {/* Messages area */}
-        <div
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-4 py-4 space-y-1"
-          style={{ minHeight: 0 }}
-        >
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-4 py-4 space-y-1" style={{ minHeight: 0 }}>
           {!activeChannelId ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageCircle className="w-16 h-16 opacity-20 mb-4" />
@@ -1054,7 +1215,6 @@ export default function Chat() {
           ) : (
             filteredGroups.map((group, gi) => (
               <div key={gi}>
-                {/* Date separator */}
                 <div className="flex items-center gap-3 py-3">
                   <div className="flex-1 h-px bg-border" />
                   <span className="text-[11px] text-muted-foreground font-medium capitalize whitespace-nowrap">{group.date}</span>
@@ -1067,18 +1227,13 @@ export default function Chat() {
                   const isPinned = !!msg.pinned;
                   const prevMsg = mi > 0 ? group.messages[mi - 1] : null;
                   const isSameUser = prevMsg && prevMsg.userId === msg.userId;
-                  const timeDiff = prevMsg
-                    ? (new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) / 60000
-                    : 999;
+                  const timeDiff = prevMsg ? (new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) / 60000 : 999;
                   const showHeader = !isSameUser || timeDiff > 5;
                   const msgReactions = getMessageReactions(msg.id);
 
                   return (
-                    <div
-                      key={msg.id}
-                      className={`group flex gap-2.5 px-2 py-0.5 hover:bg-muted/30 rounded-lg transition-colors ${showHeader ? 'mt-3' : 'mt-0'} ${isDeleted ? 'opacity-50' : ''} ${isPinned ? 'border-l-2 border-amber-400 pl-3' : ''}`}
-                    >
-                      {/* Avatar */}
+                    <div key={msg.id}
+                      className={`group flex gap-2.5 px-2 py-0.5 hover:bg-muted/30 rounded-lg transition-colors ${showHeader ? 'mt-3' : 'mt-0'} ${isDeleted ? 'opacity-50' : ''} ${isPinned ? 'border-l-2 border-amber-400 pl-3' : ''}`}>
                       <div className="w-8 shrink-0">
                         {showHeader && (
                           <Avatar className="h-8 w-8">
@@ -1090,13 +1245,10 @@ export default function Chat() {
                         )}
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
                         {showHeader && (
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className={`text-sm font-semibold ${isOwn ? 'text-primary' : 'text-foreground'}`}>
-                              {msg.userName}
-                            </span>
+                            <span className={`text-sm font-semibold ${isOwn ? 'text-primary' : 'text-foreground'}`}>{msg.userName}</span>
                             <span className="text-[10px] text-muted-foreground">
                               {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -1105,34 +1257,24 @@ export default function Chat() {
                                 <Pin className="w-2.5 h-2.5" /> Fixada
                               </Badge>
                             )}
-                            {isDeleted && (
-                              <Badge variant="outline" className="text-[9px] border-red-200 text-red-500 py-0">excluída</Badge>
-                            )}
+                            {isDeleted && <Badge variant="outline" className="text-[9px] border-red-200 text-red-500 py-0">excluída</Badge>}
                           </div>
                         )}
                         <div className={`text-sm leading-relaxed break-words ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground/90'}`}>
                           {isDeleted ? msg.content : renderContent(msg.content, msg.mentions)}
                         </div>
 
-                        {/* File attachment */}
                         {!isDeleted && renderFileAttachment(msg)}
 
-                        {/* Reactions display */}
                         {!isDeleted && msgReactions.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {msgReactions.map((r) => {
                               const hasReacted = currentUser && r.userIds.includes(currentUser.id);
                               return (
-                                <button
-                                  key={r.emoji}
-                                  onClick={() => handleToggleReaction(msg.id, r.emoji)}
+                                <button key={r.emoji} onClick={() => handleToggleReaction(msg.id, r.emoji)}
                                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-                                    hasReacted
-                                      ? 'bg-primary/10 border-primary/30 text-primary'
-                                      : 'bg-muted/50 border-border hover:bg-muted'
-                                  }`}
-                                  title={r.users.join(', ')}
-                                >
+                                    hasReacted ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-muted/50 border-border hover:bg-muted'
+                                  }`} title={r.users.join(', ')}>
                                   <span>{r.emoji}</span>
                                   <span className="font-medium">{r.count}</span>
                                 </button>
@@ -1142,29 +1284,19 @@ export default function Chat() {
                         )}
                       </div>
 
-                      {/* Action buttons - appears on hover */}
                       {!isDeleted && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-1 flex items-center gap-0.5">
-                          {/* Emoji reaction picker */}
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                title="Reagir"
-                              >
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Reagir">
                                 <Smile className="w-3.5 h-3.5" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-2" side="top" align="end">
                               <div className="grid grid-cols-6 gap-1">
                                 {QUICK_EMOJIS.map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    onClick={() => handleToggleReaction(msg.id, emoji)}
-                                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
-                                  >
+                                  <button key={emoji} onClick={() => handleToggleReaction(msg.id, emoji)}
+                                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors">
                                     {emoji}
                                   </button>
                                 ))}
@@ -1172,28 +1304,18 @@ export default function Chat() {
                             </PopoverContent>
                           </Popover>
 
-                          {/* Admin: Pin/Unpin */}
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
+                            <Button variant="ghost" size="icon"
                               className={`h-6 w-6 ${isPinned ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500'}`}
                               onClick={() => isPinned ? unpinMessageMut.mutate({ messageId: msg.id }) : pinMessageMut.mutate({ messageId: msg.id })}
-                              title={isPinned ? 'Desfixar mensagem' : 'Fixar mensagem'}
-                            >
+                              title={isPinned ? 'Desfixar mensagem' : 'Fixar mensagem'}>
                               {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                             </Button>
                           )}
 
-                          {/* Admin: Delete */}
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-red-500"
-                              onClick={() => setConfirmDeleteMsg(msg.id)}
-                              title="Excluir mensagem"
-                            >
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                              onClick={() => setConfirmDeleteMsg(msg.id)} title="Excluir mensagem">
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           )}
@@ -1222,8 +1344,7 @@ export default function Chat() {
                   ? `${(typingUsers as any[])[0].userName} está digitando...`
                   : (typingUsers as any[]).length === 2
                     ? `${(typingUsers as any[])[0].userName} e ${(typingUsers as any[])[1].userName} estão digitando...`
-                    : `${(typingUsers as any[]).length} pessoas estão digitando...`
-                }
+                    : `${(typingUsers as any[]).length} pessoas estão digitando...`}
               </span>
             </div>
           </div>
@@ -1244,13 +1365,7 @@ export default function Chat() {
                 <p className="text-sm font-medium truncate">{pendingFile.name}</p>
                 <p className="text-[10px] text-muted-foreground">{formatFileSize(pendingFile.size)}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-red-500"
-                onClick={cancelFileUpload}
-                title="Cancelar"
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={cancelFileUpload} title="Cancelar">
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -1260,16 +1375,8 @@ export default function Chat() {
         {/* Input area */}
         {activeChannelId && isChannelActive && channelStatus !== 'deleted' && (
           <div className="border-t p-2 sm:p-3 relative shrink-0">
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept={ALLOWED_FILE_TYPES.join(',')}
-              onChange={handleFileSelect}
-            />
+            <input ref={fileInputRef} type="file" className="hidden" accept={ALLOWED_FILE_TYPES.join(',')} onChange={handleFileSelect} />
 
-            {/* Mention suggestions dropdown */}
             {showMentions && suggestions && suggestions.length > 0 && (
               <div className="absolute bottom-full mb-1 left-2 right-2 sm:left-3 sm:right-3 bg-popover text-popover-foreground border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
                 <div className="px-3 py-1.5 border-b">
@@ -1278,11 +1385,9 @@ export default function Chat() {
                   </p>
                 </div>
                 {(suggestions as MentionSuggestion[]).map((s) => (
-                  <button
-                    key={`${s.type}-${s.id}`}
+                  <button key={`${s.type}-${s.id}`}
                     className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-accent transition-colors text-left"
-                    onClick={() => handleSelectMention(s)}
-                  >
+                    onClick={() => handleSelectMention(s)}>
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
                       s.type === 'user' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
                     }`}>
@@ -1298,90 +1403,46 @@ export default function Chat() {
             )}
 
             <div className="flex items-center gap-2">
-              {/* File attach button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0 text-muted-foreground hover:text-primary"
-                onClick={() => fileInputRef.current?.click()}
-                title="Anexar arquivo"
-              >
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-primary"
+                onClick={() => fileInputRef.current?.click()} title="Anexar arquivo">
                 <Paperclip className="w-4 h-4" />
               </Button>
 
               <div className="relative flex-1 min-w-0">
-                <Input
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
+                <Input ref={inputRef} value={inputValue} onChange={handleInputChange} onKeyDown={handleKeyDown}
                   placeholder={pendingFile ? "Adicione uma mensagem (opcional)..." : "Mensagem... @ para usuários, # para clientes"}
-                  className="pr-16 sm:pr-20 text-sm"
-                  disabled={sendMessage.isPending || uploadingFile}
-                />
+                  className="pr-16 sm:pr-20 text-sm" disabled={sendMessage.isPending || uploadingFile} />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                  <button
-                    className="text-muted-foreground hover:text-blue-500 transition-colors p-1 rounded"
+                  <button className="text-muted-foreground hover:text-blue-500 transition-colors p-1 rounded"
                     onClick={() => {
                       setInputValue(prev => prev + '@');
-                      setShowMentions(true);
-                      setMentionType('user');
-                      setMentionQuery('');
-                      setMentionCursorPos(inputValue.length);
+                      setShowMentions(true); setMentionType('user'); setMentionQuery(''); setMentionCursorPos(inputValue.length);
                       inputRef.current?.focus();
-                    }}
-                    title="Mencionar usuário (@)"
-                  >
+                    }} title="Mencionar usuário (@)">
                     <AtSign className="w-4 h-4" />
                   </button>
-                  <button
-                    className="text-muted-foreground hover:text-emerald-500 transition-colors p-1 rounded"
+                  <button className="text-muted-foreground hover:text-emerald-500 transition-colors p-1 rounded"
                     onClick={() => {
                       setInputValue(prev => prev + '#');
-                      setShowMentions(true);
-                      setMentionType('client');
-                      setMentionQuery('');
-                      setMentionCursorPos(inputValue.length);
+                      setShowMentions(true); setMentionType('client'); setMentionQuery(''); setMentionCursorPos(inputValue.length);
                       inputRef.current?.focus();
-                    }}
-                    title="Mencionar cliente (#)"
-                  >
+                    }} title="Mencionar cliente (#)">
                     <Hash className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Send button - handles both text and file */}
               {pendingFile ? (
-                <Button
-                  onClick={handleFileUpload}
-                  disabled={uploadingFile}
-                  size="sm"
-                  className="gap-1.5 px-3 sm:px-4 shrink-0"
-                >
-                  {uploadingFile ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
+                <Button onClick={handleFileUpload} disabled={uploadingFile} size="sm" className="gap-1.5 px-3 sm:px-4 shrink-0">
+                  {uploadingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSend}
-                  disabled={!inputValue.trim() || sendMessage.isPending}
-                  size="sm"
-                  className="gap-1.5 px-3 sm:px-4 shrink-0"
-                >
-                  {sendMessage.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
+                <Button onClick={handleSend} disabled={!inputValue.trim() || sendMessage.isPending} size="sm" className="gap-1.5 px-3 sm:px-4 shrink-0">
+                  {sendMessage.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               )}
             </div>
 
-            {/* Active mentions indicator */}
             {mentions.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <span className="text-[10px] text-muted-foreground">Menções:</span>
@@ -1419,26 +1480,16 @@ export default function Chat() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nome do Canal</Label>
-              <Input
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                placeholder="Ex: Projeto Alpha"
-              />
+              <Input value={newChannelName} onChange={(e) => setNewChannelName(e.target.value)} placeholder="Ex: Projeto Alpha" />
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
-              <Input
-                value={newChannelDesc}
-                onChange={(e) => setNewChannelDesc(e.target.value)}
-                placeholder="Breve descrição do canal"
-              />
+              <Input value={newChannelDesc} onChange={(e) => setNewChannelDesc(e.target.value)} placeholder="Breve descrição do canal" />
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select value={newChannelTipo} onValueChange={(v) => setNewChannelTipo(v as 'projeto' | 'setor')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="projeto">Projeto</SelectItem>
                   <SelectItem value="setor">Setor</SelectItem>
@@ -1448,17 +1499,10 @@ export default function Chat() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewChannel(false)}>Cancelar</Button>
-            <Button
-              onClick={() => {
-                if (!newChannelName.trim()) { toast.error('Nome é obrigatório'); return; }
-                createChannel.mutate({
-                  nome: newChannelName.trim(),
-                  descricao: newChannelDesc.trim() || undefined,
-                  tipo: newChannelTipo,
-                });
-              }}
-              disabled={createChannel.isPending}
-            >
+            <Button onClick={() => {
+              if (!newChannelName.trim()) { toast.error('Nome é obrigatório'); return; }
+              createChannel.mutate({ nome: newChannelName.trim(), descricao: newChannelDesc.trim() || undefined, tipo: newChannelTipo });
+            }} disabled={createChannel.isPending}>
               {createChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
               Criar Canal
             </Button>
@@ -1470,47 +1514,28 @@ export default function Chat() {
       <Dialog open={showNewDm} onOpenChange={setShowNewDm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="w-5 h-5" /> Nova Conversa Privada
-            </DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Mail className="w-5 h-5" /> Nova Conversa Privada</DialogTitle>
             <DialogDescription>Selecione um usuário para iniciar uma conversa direta.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Input
-              value={dmSearchQuery}
-              onChange={(e) => setDmSearchQuery(e.target.value)}
-              placeholder="Buscar usuário..."
-              autoFocus
-            />
+            <Input value={dmSearchQuery} onChange={(e) => setDmSearchQuery(e.target.value)} placeholder="Buscar usuário..." autoFocus />
             <div className="max-h-64 overflow-y-auto space-y-1">
               {dmSearchQuery.length >= 1 && dmUserSearch.data ? (
                 (dmUserSearch.data as any[]).filter((u: any) => u.id !== currentUser?.id).map((u: any) => (
-                  <button
-                    key={u.id}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left"
-                    onClick={() => startDm.mutate({ targetUserId: u.id })}
-                    disabled={startDm.isPending}
-                  >
+                  <button key={u.id} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left"
+                    onClick={() => startDm.mutate({ targetUserId: u.id })} disabled={startDm.isPending}>
                     <Avatar className="h-9 w-9">
                       {u.avatar && <AvatarImage src={u.avatar} />}
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {(u.name || 'U').charAt(0).toUpperCase()}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">{(u.name || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{u.name}</p>
-                    </div>
+                    <div className="flex-1 min-w-0"><p className="text-sm font-medium">{u.name}</p></div>
                     <Mail className="w-4 h-4 text-muted-foreground" />
                   </button>
                 ))
               ) : dmSearchQuery.length < 1 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  Digite pelo menos 1 caractere para buscar
-                </p>
+                <p className="text-xs text-muted-foreground text-center py-4">Digite pelo menos 1 caractere para buscar</p>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  Nenhum usuário encontrado
-                </p>
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhum usuário encontrado</p>
               )}
             </div>
           </div>
@@ -1522,18 +1547,12 @@ export default function Chat() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Mensagem</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta mensagem? A mensagem será marcada como excluída e o conteúdo original não poderá ser recuperado.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Tem certeza que deseja excluir esta mensagem? A mensagem será marcada como excluída e o conteúdo original não poderá ser recuperado.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmDeleteMsg && deleteMessage.mutate({ messageId: confirmDeleteMsg })}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleteMessage.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-              Excluir
+            <AlertDialogAction onClick={() => confirmDeleteMsg && deleteMessage.mutate({ messageId: confirmDeleteMsg })} className="bg-red-600 hover:bg-red-700">
+              {deleteMessage.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />} Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1544,18 +1563,12 @@ export default function Chat() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Limpar Canal</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir TODAS as mensagens deste canal? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Tem certeza que deseja excluir TODAS as mensagens deste canal? Esta ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => activeChannelId && clearChannel.mutate({ channelId: activeChannelId })}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {clearChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Eraser className="w-4 h-4 mr-1" />}
-              Limpar Tudo
+            <AlertDialogAction onClick={() => activeChannelId && clearChannel.mutate({ channelId: activeChannelId })} className="bg-red-600 hover:bg-red-700">
+              {clearChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Eraser className="w-4 h-4 mr-1" />} Limpar Tudo
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1565,9 +1578,7 @@ export default function Chat() {
       <AlertDialog open={!!confirmToggle} onOpenChange={(open) => !open && setConfirmToggle(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmToggle?.ativo ? 'Reativar Canal' : 'Desativar Canal'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{confirmToggle?.ativo ? 'Reativar Canal' : 'Desativar Canal'}</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmToggle?.ativo
                 ? 'Deseja reativar este canal? Os usuários poderão enviar mensagens novamente.'
@@ -1576,9 +1587,7 @@ export default function Chat() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmToggle && toggleChannel.mutate(confirmToggle)}
-            >
+            <AlertDialogAction onClick={() => confirmToggle && toggleChannel.mutate(confirmToggle)}>
               {toggleChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
               {confirmToggle?.ativo ? 'Reativar' : 'Desativar'}
             </AlertDialogAction>
@@ -1591,18 +1600,12 @@ export default function Chat() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Mover Canal para Lixeira</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja mover este canal para a lixeira? O canal ficará oculto para os usuários comuns, mas poderá ser restaurado por um administrador.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Deseja mover este canal para a lixeira? O canal ficará oculto para os usuários comuns, mas poderá ser restaurado por um administrador.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmDeleteChannel && deleteChannelMut.mutate({ channelId: confirmDeleteChannel })}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleteChannelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-              Mover para Lixeira
+            <AlertDialogAction onClick={() => confirmDeleteChannel && deleteChannelMut.mutate({ channelId: confirmDeleteChannel })} className="bg-red-600 hover:bg-red-700">
+              {deleteChannelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />} Mover para Lixeira
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1613,18 +1616,12 @@ export default function Chat() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Restaurar Canal</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja restaurar este canal? Ele voltará a ficar visível e ativo para todos os usuários.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Deseja restaurar este canal? Ele voltará a ficar visível e ativo para todos os usuários.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmRestoreChannel && restoreChannelMut.mutate({ channelId: confirmRestoreChannel })}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {restoreChannelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />}
-              Restaurar
+            <AlertDialogAction onClick={() => confirmRestoreChannel && restoreChannelMut.mutate({ channelId: confirmRestoreChannel })} className="bg-green-600 hover:bg-green-700">
+              {restoreChannelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />} Restaurar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
