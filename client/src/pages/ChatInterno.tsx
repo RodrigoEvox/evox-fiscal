@@ -22,12 +22,24 @@ import {
   MessageCircle, Send, Loader2, Users, Building2, Hash, Plus,
   AtSign, Search, X, Trash2, MoreVertical, Power, PowerOff,
   Eraser, Settings2, ShieldAlert, Menu, Pin, PinOff, Smile,
-  Archive, RotateCcw, ChevronDown,
+  Archive, RotateCcw, ChevronDown, Paperclip, FileText, Image,
+  Download, User, Mail,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
 // Common emojis for quick reactions
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '👀', '✅', '💯', '🙏', '😮', '👎', '💡'];
+
+// Max file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+];
 
 interface Mention {
   type: 'user' | 'client';
@@ -40,6 +52,16 @@ interface MentionSuggestion {
   id: number;
   name: string;
   avatar?: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isImageType(type: string): boolean {
+  return type.startsWith('image/');
 }
 
 export default function Chat() {
@@ -68,12 +90,19 @@ export default function Chat() {
   const [confirmDeleteChannel, setConfirmDeleteChannel] = useState<number | null>(null);
   const [confirmRestoreChannel, setConfirmRestoreChannel] = useState<number | null>(null);
   const [showPinnedPanel, setShowPinnedPanel] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'active' | 'inactive' | 'trash'>('active');
+  const [sidebarTab, setSidebarTab] = useState<'active' | 'inactive' | 'trash' | 'dm'>('active');
+  const [showNewDm, setShowNewDm] = useState(false);
+  const [dmSearchQuery, setDmSearchQuery] = useState('');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [typingTimeout, setTypingTimeoutState] = useState<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Queries — FAST POLLING (1.5s for messages, 2s for unread)
+  // Queries — FAST POLLING
   const { data: channels = [], isLoading: loadingChannels } = trpc.chat.channels.useQuery(
     undefined,
     { refetchInterval: 10000 }
@@ -89,6 +118,12 @@ export default function Chat() {
     { enabled: !!activeChannelId, refetchInterval: 1500 }
   );
 
+  // DM channels query
+  const { data: dmChannels = [] } = trpc.chat.dmChannels.useQuery(
+    undefined,
+    { refetchInterval: 10000 }
+  );
+
   // Reactions query for visible messages
   const messageIds = useMemo(() => (messages as any[]).map((m: any) => m.id), [messages]);
   const { data: reactions = [] } = trpc.chat.reactions.useQuery(
@@ -102,6 +137,13 @@ export default function Chat() {
     { enabled: !!activeChannelId }
   );
 
+  // Typing indicator query
+  const { data: typingUsers = [] } = trpc.chat.typingUsers.useQuery(
+    { channelId: activeChannelId! },
+    { enabled: !!activeChannelId, refetchInterval: 1500 }
+  );
+
+  // User suggestions for mentions and DM
   const userSuggestions = trpc.chat.userSuggestions.useQuery(
     { query: mentionQuery },
     { enabled: showMentions && mentionType === 'user' && mentionQuery.length >= 1 }
@@ -110,6 +152,12 @@ export default function Chat() {
   const clientSuggestions = trpc.chat.clientSuggestions.useQuery(
     { query: mentionQuery },
     { enabled: showMentions && mentionType === 'client' && mentionQuery.length >= 1 }
+  );
+
+  // DM user search
+  const dmUserSearch = trpc.chat.userSuggestions.useQuery(
+    { query: dmSearchQuery },
+    { enabled: showNewDm && dmSearchQuery.length >= 1 }
   );
 
   const suggestions = mentionType === 'user' ? userSuggestions.data : clientSuggestions.data;
@@ -121,6 +169,8 @@ export default function Chat() {
       utils.chat.unreadCount.invalidate();
       setInputValue('');
       setMentions([]);
+      // Stop typing when message sent
+      if (activeChannelId) stopTypingMut.mutate({ channelId: activeChannelId });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -215,6 +265,42 @@ export default function Chat() {
     onError: (err) => toast.error(err.message),
   });
 
+  // DM mutation
+  const startDm = trpc.chat.startDm.useMutation({
+    onSuccess: (data: any) => {
+      utils.chat.dmChannels.invalidate();
+      utils.chat.channels.invalidate();
+      if (data?.id) {
+        setActiveChannelId(data.id);
+        setSidebarTab('dm');
+      }
+      setShowNewDm(false);
+      setDmSearchQuery('');
+      toast.success('Conversa privada iniciada!');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Typing mutations
+  const startTypingMut = trpc.chat.startTyping.useMutation();
+  const stopTypingMut = trpc.chat.stopTyping.useMutation();
+
+  // File upload mutation
+  const uploadFileMut = trpc.chat.uploadFile.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      utils.chat.unreadCount.invalidate();
+      setPendingFile(null);
+      setFilePreviewUrl(null);
+      setUploadingFile(false);
+      toast.success('Arquivo enviado!');
+    },
+    onError: (err) => {
+      setUploadingFile(false);
+      toast.error(err.message);
+    },
+  });
+
   // Auto-select first channel
   useEffect(() => {
     if (channels.length > 0 && !activeChannelId) {
@@ -238,6 +324,13 @@ export default function Chat() {
     }
   }, [messages]);
 
+  // Cleanup file preview URL
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
+
   // Get unread count for a channel
   const getChannelUnread = useCallback((channelId: number) => {
     if (!unreadData?.byChannel) return 0;
@@ -260,10 +353,24 @@ export default function Chat() {
     return Object.values(grouped);
   }, [reactions]);
 
-  // Handle input change with dual mention detection
+  // Typing indicator handler
+  const handleTyping = useCallback(() => {
+    if (!activeChannelId) return;
+    startTypingMut.mutate({ channelId: activeChannelId });
+    // Clear previous timeout
+    if (typingTimeout) clearTimeout(typingTimeout);
+    // Set new timeout to stop typing after 3s of inactivity
+    const timeout = setTimeout(() => {
+      if (activeChannelId) stopTypingMut.mutate({ channelId: activeChannelId });
+    }, 3000);
+    setTypingTimeoutState(timeout);
+  }, [activeChannelId, typingTimeout]);
+
+  // Handle input change with dual mention detection + typing indicator
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
+    handleTyping();
 
     const cursorPos = e.target.selectionStart || 0;
     const textBeforeCursor = value.slice(0, cursorPos);
@@ -331,6 +438,56 @@ export default function Chat() {
       removeReaction.mutate({ messageId, emoji });
     } else {
       addReaction.mutate({ messageId, emoji });
+    }
+  };
+
+  // File upload handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Arquivo muito grande. Máximo: 10MB');
+      return;
+    }
+    setPendingFile(file);
+    if (isImageType(file.type)) {
+      setFilePreviewUrl(URL.createObjectURL(file));
+    }
+    // Reset file input
+    e.target.value = '';
+  };
+
+  const handleFileUpload = async () => {
+    if (!pendingFile || !activeChannelId) return;
+    setUploadingFile(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        uploadFileMut.mutate({
+          channelId: activeChannelId,
+          fileName: pendingFile.name,
+          fileType: pendingFile.type,
+          fileSize: pendingFile.size,
+          fileBase64: base64,
+          content: inputValue.trim() || undefined,
+          mentions: mentions.length > 0 ? mentions : undefined,
+        });
+        setInputValue('');
+        setMentions([]);
+      };
+      reader.readAsDataURL(pendingFile);
+    } catch {
+      setUploadingFile(false);
+      toast.error('Erro ao ler o arquivo');
+    }
+  };
+
+  const cancelFileUpload = () => {
+    setPendingFile(null);
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+      setFilePreviewUrl(null);
     }
   };
 
@@ -410,12 +567,13 @@ export default function Chat() {
     })).filter(g => g.messages.length > 0);
   }, [groupedMessages, searchQuery]);
 
-  const activeChannel = channels.find((c: any) => c.id === activeChannelId);
+  const activeChannel = channels.find((c: any) => c.id === activeChannelId) || (dmChannels as any[]).find((c: any) => c.id === activeChannelId);
   const isChannelActive = activeChannel ? (activeChannel as any).ativo !== false : true;
   const channelStatus = (activeChannel as any)?.status || 'active';
+  const isDmChannel = (activeChannel as any)?.tipo === 'dm';
 
   // Separate channels by status
-  const activeChannels = channels.filter((c: any) => (c.status === 'active' || (!c.status && c.ativo !== false)));
+  const activeChannels = channels.filter((c: any) => (c.status === 'active' || (!c.status && c.ativo !== false)) && c.tipo !== 'dm');
   const inactiveChannels = channels.filter((c: any) => c.status === 'inactive');
   const deletedChannels = channels.filter((c: any) => c.status === 'deleted');
 
@@ -424,6 +582,17 @@ export default function Chat() {
   const projetoChannels = activeChannels.filter((c: any) => c.tipo === 'projeto');
 
   const totalUnread = unreadData?.total || 0;
+
+  // Get DM partner name
+  const getDmPartnerName = (ch: any) => {
+    if (!currentUser) return ch.nome;
+    const name = ch.nome?.replace('DM: ', '') || '';
+    const parts = name.split(' & ');
+    if (parts.length === 2) {
+      return parts[0] === ((currentUser as any)?.apelido || currentUser?.name) ? parts[1] : parts[0];
+    }
+    return name;
+  };
 
   if (loadingChannels) {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>;
@@ -435,7 +604,10 @@ export default function Chat() {
     const isDeleted = ch.status === 'deleted';
     const icon = ch.tipo === 'geral' ? <MessageCircle className="w-4 h-4 shrink-0" />
       : ch.tipo === 'setor' ? <Building2 className="w-3.5 h-3.5 shrink-0" />
+      : ch.tipo === 'dm' ? <User className="w-3.5 h-3.5 shrink-0" />
       : <Hash className="w-3.5 h-3.5 shrink-0" />;
+
+    const displayName = ch.tipo === 'dm' ? getDmPartnerName(ch) : ch.nome;
 
     return (
       <div key={ch.id} className="flex items-center gap-0.5 group/ch">
@@ -448,7 +620,7 @@ export default function Chat() {
           } ${isInactive || isDeleted ? 'opacity-60' : ''}`}
         >
           {icon}
-          <span className="truncate flex-1">{ch.nome}</span>
+          <span className="truncate flex-1">{displayName}</span>
           {isInactive && <PowerOff className="w-3 h-3 text-muted-foreground shrink-0" />}
           {isDeleted && <Trash2 className="w-3 h-3 text-muted-foreground shrink-0" />}
           {unread > 0 && (
@@ -488,6 +660,44 @@ export default function Chat() {
     );
   };
 
+  // Render file attachment in message
+  const renderFileAttachment = (msg: any) => {
+    if (!msg.fileUrl) return null;
+    const isImage = isImageType(msg.fileType || '');
+    return (
+      <div className="mt-2 max-w-sm">
+        {isImage ? (
+          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+            <img
+              src={msg.fileUrl}
+              alt={msg.fileName || 'Imagem'}
+              className="rounded-lg border max-h-64 object-cover hover:opacity-90 transition-opacity cursor-pointer"
+              loading="lazy"
+            />
+          </a>
+        ) : (
+          <a
+            href={msg.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{msg.fileName || 'Arquivo'}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {msg.fileSize ? formatFileSize(msg.fileSize) : ''} {msg.fileType ? `• ${msg.fileType.split('/')[1]?.toUpperCase()}` : ''}
+              </p>
+            </div>
+            <Download className="w-4 h-4 text-muted-foreground shrink-0" />
+          </a>
+        )}
+      </div>
+    );
+  };
+
   const sidebarContent = (
     <>
       {/* Sidebar header */}
@@ -521,49 +731,77 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Channel tabs for admin */}
-      {isAdmin ? (
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="mx-2 mt-2 h-8 shrink-0">
-              <TabsTrigger value="active" className="text-[10px] h-6 gap-1">
-                <Power className="w-3 h-3" /> Ativos
-                {activeChannels.length > 0 && <span className="text-[9px] opacity-60">({activeChannels.length})</span>}
-              </TabsTrigger>
-              <TabsTrigger value="inactive" className="text-[10px] h-6 gap-1">
-                <PowerOff className="w-3 h-3" /> Inativos
+      {/* Channel tabs */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="mx-2 mt-2 h-8 shrink-0 grid grid-cols-4">
+            <TabsTrigger value="active" className="text-[10px] h-6 gap-0.5 px-1">
+              <Power className="w-3 h-3" /> Canais
+            </TabsTrigger>
+            <TabsTrigger value="dm" className="text-[10px] h-6 gap-0.5 px-1">
+              <Mail className="w-3 h-3" /> DMs
+              {(dmChannels as any[]).length > 0 && <span className="text-[9px] opacity-60">({(dmChannels as any[]).length})</span>}
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="inactive" className="text-[10px] h-6 gap-0.5 px-1">
+                <PowerOff className="w-3 h-3" /> Inat.
                 {inactiveChannels.length > 0 && <span className="text-[9px] opacity-60">({inactiveChannels.length})</span>}
               </TabsTrigger>
-              <TabsTrigger value="trash" className="text-[10px] h-6 gap-1">
-                <Trash2 className="w-3 h-3" /> Lixeira
+            )}
+            {isAdmin && (
+              <TabsTrigger value="trash" className="text-[10px] h-6 gap-0.5 px-1">
+                <Trash2 className="w-3 h-3" /> Lixo
                 {deletedChannels.length > 0 && <span className="text-[9px] opacity-60">({deletedChannels.length})</span>}
               </TabsTrigger>
-            </TabsList>
+            )}
+          </TabsList>
 
-            <TabsContent value="active" className="flex-1 overflow-y-auto mt-0 p-2 space-y-3">
-              {geralChannels.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
-                  {geralChannels.map(ch => renderChannelButton(ch, false, true))}
-                </div>
-              )}
-              {setorChannels.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
-                  {setorChannels.map(ch => renderChannelButton(ch, false, true))}
-                </div>
-              )}
-              {projetoChannels.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
-                  {projetoChannels.map(ch => renderChannelButton(ch, false, true))}
-                </div>
-              )}
-              {activeChannels.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">Nenhum canal ativo</p>
-              )}
-            </TabsContent>
+          <TabsContent value="active" className="flex-1 overflow-y-auto mt-0 p-2 space-y-3">
+            {geralChannels.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
+                {geralChannels.map(ch => renderChannelButton(ch, false, isAdmin))}
+              </div>
+            )}
+            {setorChannels.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
+                {setorChannels.map(ch => renderChannelButton(ch, false, isAdmin))}
+              </div>
+            )}
+            {projetoChannels.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
+                {projetoChannels.map(ch => renderChannelButton(ch, false, isAdmin))}
+              </div>
+            )}
+            {activeChannels.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum canal ativo</p>
+            )}
+          </TabsContent>
 
+          {/* DM Tab */}
+          <TabsContent value="dm" className="flex-1 overflow-y-auto mt-0 p-2 space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs gap-1.5 mb-2"
+              onClick={() => setShowNewDm(true)}
+            >
+              <Plus className="w-3.5 h-3.5" /> Nova Conversa Privada
+            </Button>
+            {(dmChannels as any[]).length > 0 ? (
+              (dmChannels as any[]).map((ch: any) => renderChannelButton(ch))
+            ) : (
+              <div className="text-center py-6">
+                <Mail className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">Nenhuma conversa privada</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">Clique acima para iniciar</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {isAdmin && (
             <TabsContent value="inactive" className="flex-1 overflow-y-auto mt-0 p-2 space-y-1">
               {inactiveChannels.length > 0 ? (
                 inactiveChannels.map(ch => renderChannelButton(ch, true, true))
@@ -571,7 +809,9 @@ export default function Chat() {
                 <p className="text-xs text-muted-foreground text-center py-4">Nenhum canal inativo</p>
               )}
             </TabsContent>
+          )}
 
+          {isAdmin && (
             <TabsContent value="trash" className="flex-1 overflow-y-auto mt-0 p-2 space-y-1">
               {deletedChannels.length > 0 ? (
                 deletedChannels.map(ch => renderChannelButton(ch, true, false))
@@ -582,33 +822,9 @@ export default function Chat() {
                 </div>
               )}
             </TabsContent>
-          </Tabs>
-        </div>
-      ) : (
-        /* Non-admin: simple channel list */
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-2 space-y-3">
-            {geralChannels.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
-                {geralChannels.map(ch => renderChannelButton(ch))}
-              </div>
-            )}
-            {setorChannels.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
-                {setorChannels.map(ch => renderChannelButton(ch))}
-              </div>
-            )}
-            {projetoChannels.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
-                {projetoChannels.map(ch => renderChannelButton(ch))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          )}
+        </Tabs>
+      </div>
     </>
   );
 
@@ -651,19 +867,25 @@ export default function Chat() {
             </Button>
             {activeChannel && (
               <>
-                {activeChannel.tipo === 'geral' && <MessageCircle className="w-4 h-4 text-primary shrink-0" />}
-                {activeChannel.tipo === 'setor' && <Building2 className="w-4 h-4 text-primary shrink-0" />}
-                {activeChannel.tipo === 'projeto' && <Hash className="w-4 h-4 text-primary shrink-0" />}
-                <span className="font-semibold text-sm truncate">{activeChannel.nome}</span>
+                {(activeChannel as any).tipo === 'geral' && <MessageCircle className="w-4 h-4 text-primary shrink-0" />}
+                {(activeChannel as any).tipo === 'setor' && <Building2 className="w-4 h-4 text-primary shrink-0" />}
+                {(activeChannel as any).tipo === 'projeto' && <Hash className="w-4 h-4 text-primary shrink-0" />}
+                {(activeChannel as any).tipo === 'dm' && <User className="w-4 h-4 text-primary shrink-0" />}
+                <span className="font-semibold text-sm truncate">
+                  {isDmChannel ? getDmPartnerName(activeChannel) : (activeChannel as any).nome}
+                </span>
+                {isDmChannel && (
+                  <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 shrink-0">DM</Badge>
+                )}
                 {channelStatus === 'inactive' && (
                   <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600 shrink-0">Inativo</Badge>
                 )}
                 {channelStatus === 'deleted' && (
                   <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 shrink-0">Lixeira</Badge>
                 )}
-                {activeChannel.descricao && (
+                {!isDmChannel && (activeChannel as any).descricao && (
                   <span className="text-xs text-muted-foreground hidden md:inline ml-2 truncate">
-                    — {activeChannel.descricao}
+                    — {(activeChannel as any).descricao}
                   </span>
                 )}
               </>
@@ -675,7 +897,7 @@ export default function Chat() {
               <Button
                 variant="ghost"
                 size="icon"
-                className={`h-8 w-8 ${showPinnedPanel ? 'text-primary' : ''}`}
+                className={`h-8 w-8 relative ${showPinnedPanel ? 'text-primary' : ''}`}
                 onClick={() => setShowPinnedPanel(!showPinnedPanel)}
                 title={`${(pinnedMessages as any[]).length} mensagem(ns) fixada(s)`}
               >
@@ -694,7 +916,7 @@ export default function Chat() {
               <Search className="w-4 h-4" />
             </Button>
             {/* Admin channel controls */}
-            {isAdmin && activeChannelId && (
+            {isAdmin && activeChannelId && !isDmChannel && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -892,6 +1114,9 @@ export default function Chat() {
                           {isDeleted ? msg.content : renderContent(msg.content, msg.mentions)}
                         </div>
 
+                        {/* File attachment */}
+                        {!isDeleted && renderFileAttachment(msg)}
+
                         {/* Reactions display */}
                         {!isDeleted && msgReactions.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
@@ -983,9 +1208,67 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Typing indicator */}
+        {activeChannelId && (typingUsers as any[]).length > 0 && (
+          <div className="px-4 py-1.5 border-t bg-muted/10 shrink-0">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="italic">
+                {(typingUsers as any[]).length === 1
+                  ? `${(typingUsers as any[])[0].userName} está digitando...`
+                  : (typingUsers as any[]).length === 2
+                    ? `${(typingUsers as any[])[0].userName} e ${(typingUsers as any[])[1].userName} estão digitando...`
+                    : `${(typingUsers as any[]).length} pessoas estão digitando...`
+                }
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* File preview bar */}
+        {pendingFile && (
+          <div className="border-t bg-muted/20 px-3 py-2 shrink-0">
+            <div className="flex items-center gap-3">
+              {filePreviewUrl && isImageType(pendingFile.type) ? (
+                <img src={filePreviewUrl} alt="Preview" className="w-12 h-12 rounded-lg object-cover border" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center border">
+                  <FileText className="w-6 h-6 text-primary" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{pendingFile.name}</p>
+                <p className="text-[10px] text-muted-foreground">{formatFileSize(pendingFile.size)}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                onClick={cancelFileUpload}
+                title="Cancelar"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Input area */}
         {activeChannelId && isChannelActive && channelStatus !== 'deleted' && (
           <div className="border-t p-2 sm:p-3 relative shrink-0">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept={ALLOWED_FILE_TYPES.join(',')}
+              onChange={handleFileSelect}
+            />
+
             {/* Mention suggestions dropdown */}
             {showMentions && suggestions && suggestions.length > 0 && (
               <div className="absolute bottom-full mb-1 left-2 right-2 sm:left-3 sm:right-3 bg-popover text-popover-foreground border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
@@ -1015,15 +1298,26 @@ export default function Chat() {
             )}
 
             <div className="flex items-center gap-2">
+              {/* File attach button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 text-muted-foreground hover:text-primary"
+                onClick={() => fileInputRef.current?.click()}
+                title="Anexar arquivo"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+
               <div className="relative flex-1 min-w-0">
                 <Input
                   ref={inputRef}
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
-                  placeholder="Mensagem... @ para usuários, # para clientes"
+                  placeholder={pendingFile ? "Adicione uma mensagem (opcional)..." : "Mensagem... @ para usuários, # para clientes"}
                   className="pr-16 sm:pr-20 text-sm"
-                  disabled={sendMessage.isPending}
+                  disabled={sendMessage.isPending || uploadingFile}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                   <button
@@ -1056,18 +1350,35 @@ export default function Chat() {
                   </button>
                 </div>
               </div>
-              <Button
-                onClick={handleSend}
-                disabled={!inputValue.trim() || sendMessage.isPending}
-                size="sm"
-                className="gap-1.5 px-3 sm:px-4 shrink-0"
-              >
-                {sendMessage.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
+
+              {/* Send button - handles both text and file */}
+              {pendingFile ? (
+                <Button
+                  onClick={handleFileUpload}
+                  disabled={uploadingFile}
+                  size="sm"
+                  className="gap-1.5 px-3 sm:px-4 shrink-0"
+                >
+                  {uploadingFile ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || sendMessage.isPending}
+                  size="sm"
+                  className="gap-1.5 px-3 sm:px-4 shrink-0"
+                >
+                  {sendMessage.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
             </div>
 
             {/* Active mentions indicator */}
@@ -1152,6 +1463,57 @@ export default function Chat() {
               Criar Canal
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New DM Dialog */}
+      <Dialog open={showNewDm} onOpenChange={setShowNewDm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5" /> Nova Conversa Privada
+            </DialogTitle>
+            <DialogDescription>Selecione um usuário para iniciar uma conversa direta.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              value={dmSearchQuery}
+              onChange={(e) => setDmSearchQuery(e.target.value)}
+              placeholder="Buscar usuário..."
+              autoFocus
+            />
+            <div className="max-h-64 overflow-y-auto space-y-1">
+              {dmSearchQuery.length >= 1 && dmUserSearch.data ? (
+                (dmUserSearch.data as any[]).filter((u: any) => u.id !== currentUser?.id).map((u: any) => (
+                  <button
+                    key={u.id}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left"
+                    onClick={() => startDm.mutate({ targetUserId: u.id })}
+                    disabled={startDm.isPending}
+                  >
+                    <Avatar className="h-9 w-9">
+                      {u.avatar && <AvatarImage src={u.avatar} />}
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        {(u.name || 'U').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{u.name}</p>
+                    </div>
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                ))
+              ) : dmSearchQuery.length < 1 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Digite pelo menos 1 caractere para buscar
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Nenhum usuário encontrado
+                </p>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

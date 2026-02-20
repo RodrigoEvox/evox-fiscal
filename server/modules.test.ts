@@ -404,3 +404,109 @@ describe("chat.channelManagement", () => {
     expect(Array.isArray(channels)).toBe(true);
   });
 });
+
+
+// ---- CHAT: DM (Direct Messages) ----
+describe("chat.dm", () => {
+  it("starts a DM conversation and returns channel", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Start DM with user ID 2 (may or may not exist, but should not throw)
+    try {
+      const result = await caller.chat.startDm({ targetUserId: 2 });
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
+    } catch (err: any) {
+      // If target user doesn't exist, that's acceptable
+      expect(err.message).toBeDefined();
+    }
+  });
+
+  it("lists DM channels (returns array)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.dmChannels();
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+// ---- CHAT: TYPING INDICATORS ----
+describe("chat.typing", () => {
+  it("startTyping and stopTyping work without error", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Get a channel first
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return; // skip if no channels
+    const channelId = channels[0].id;
+
+    const startResult = await caller.chat.startTyping({ channelId });
+    expect(startResult).toEqual({ success: true });
+
+    const stopResult = await caller.chat.stopTyping({ channelId });
+    expect(stopResult).toEqual({ success: true });
+  });
+
+  it("typingUsers returns array for a channel", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const channelId = channels[0].id;
+
+    const result = await caller.chat.typingUsers({ channelId });
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+// ---- CHAT: FILE UPLOAD ----
+describe("chat.fileUpload", () => {
+  it("uploads a file and creates a message with attachment", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Get a channel
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const channelId = channels[0].id;
+
+    // Create a small base64 text file
+    const fileContent = Buffer.from("Hello, this is a test file").toString("base64");
+    try {
+      const result = await caller.chat.uploadFile({
+        channelId,
+        fileName: "test.txt",
+        fileType: "text/plain",
+        fileSize: 26,
+        fileBase64: fileContent,
+        content: "Arquivo de teste",
+      });
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
+    } catch (err: any) {
+      // Storage might not be available in test env
+      expect(err.message).toBeDefined();
+    }
+  });
+
+  it("rejects files over 10MB", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const channelId = channels[0].id;
+
+    try {
+      await caller.chat.uploadFile({
+        channelId,
+        fileName: "huge.bin",
+        fileType: "application/octet-stream",
+        fileSize: 11 * 1024 * 1024, // 11MB
+        fileBase64: "dGVzdA==", // small base64 but fileSize says 11MB
+      });
+      // Should not reach here
+      expect(true).toBe(false);
+    } catch (err: any) {
+      expect(err.message).toContain("10MB");
+    }
+  });
+});

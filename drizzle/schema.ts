@@ -596,7 +596,10 @@ export const chatChannels = mysqlTable("chat_channels", {
   id: int("id").autoincrement().primaryKey(),
   nome: varchar("nome", { length: 255 }).notNull(),
   descricao: text("descricao"),
-  tipo: mysqlEnum("tipo", ["geral", "setor", "projeto"]).default("setor").notNull(),
+  tipo: mysqlEnum("tipo", ["geral", "setor", "projeto", "dm"]).default("setor").notNull(),
+  // For DM channels: store the two user IDs
+  dmUser1Id: int("dmUser1Id"),
+  dmUser2Id: int("dmUser2Id"),
   setorId: int("setorId"),
   cor: varchar("cor", { length: 7 }).default("#3B82F6"),
   icone: varchar("icone", { length: 50 }).default("MessageCircle"),
@@ -620,6 +623,11 @@ export const chatMessages = mysqlTable("chat_messages", {
   userAvatar: varchar("userAvatar", { length: 500 }),
   content: text("content").notNull(),
   mentions: json("mentions").$type<{type: 'user' | 'client'; id: number; name: string}[]>(),
+  // File attachment fields
+  fileUrl: varchar("fileUrl", { length: 1000 }),
+  fileName: varchar("fileName", { length: 500 }),
+  fileType: varchar("fileType", { length: 100 }),
+  fileSize: int("fileSize"),
   pinned: boolean("pinned").default(false).notNull(),
   pinnedBy: int("pinnedBy"),
   pinnedByName: varchar("pinnedByName", { length: 255 }),
@@ -660,6 +668,19 @@ export const chatReactions = mysqlTable("chat_reactions", {
 
 export type ChatReaction = typeof chatReactions.$inferSelect;
 export type InsertChatReaction = typeof chatReactions.$inferInsert;
+
+// ---- CHAT: INDICADOR DE DIGITAÇÃO ----
+export const chatTypingIndicators = mysqlTable("chat_typing_indicators", {
+  id: int("id").autoincrement().primaryKey(),
+  channelId: int("channelId").notNull(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  userAvatar: varchar("userAvatar", { length: 500 }),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+});
+
+export type ChatTypingIndicator = typeof chatTypingIndicators.$inferSelect;
+export type InsertChatTypingIndicator = typeof chatTypingIndicators.$inferInsert;
 
 // ============================================================
 // MÓDULO RH — GENTE & GESTÃO

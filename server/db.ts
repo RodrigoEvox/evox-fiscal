@@ -31,6 +31,7 @@ import {
   chatChannels, InsertChatChannel,
   chatNotifications, InsertChatNotification,
   chatReactions, InsertChatReaction,
+  chatTypingIndicators, InsertChatTypingIndicator,
   colaboradores, InsertColaborador,
   ferias, InsertFerias,
   solicitacoesFolga, InsertSolicitacaoFolga,
@@ -2284,4 +2285,120 @@ export async function getSaldosBancoHorasAll() {
     else map[r.colaboradorId].compensacoes += h;
   }
   return Object.values(map).map(m => ({ ...m, saldo: m.extras - m.compensacoes }));
+}
+
+
+// ---- CHAT: MENSAGENS PRIVADAS (DM) ----
+// =============================================
+
+export async function findOrCreateDmChannel(user1Id: number, user1Name: string, user2Id: number, user2Name: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Normalize: smaller ID is always user1
+  const [uid1, uname1, uid2, uname2] = user1Id < user2Id
+    ? [user1Id, user1Name, user2Id, user2Name]
+    : [user2Id, user2Name, user1Id, user1Name];
+  // Check if DM channel already exists
+  const existing = await db.select().from(chatChannels)
+    .where(sql`${chatChannels.tipo} = 'dm' AND ${chatChannels.dmUser1Id} = ${uid1} AND ${chatChannels.dmUser2Id} = ${uid2} AND ${chatChannels.status} != 'deleted'`);
+  if (existing.length > 0) return existing[0];
+  // Create new DM channel
+  const nome = `DM: ${uname1} & ${uname2}`;
+  const result = await db.insert(chatChannels).values({
+    nome,
+    tipo: 'dm',
+    dmUser1Id: uid1,
+    dmUser2Id: uid2,
+    criadoPorId: user1Id,
+    criadoPorNome: user1Name,
+    status: 'active',
+    ativo: true,
+  } as any).$returningId();
+  const newId = result[0]?.id;
+  if (!newId) return null;
+  const rows = await db.select().from(chatChannels).where(sql`${chatChannels.id} = ${newId}`);
+  return rows[0] || null;
+}
+
+export async function listDmChannelsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatChannels)
+    .where(sql`${chatChannels.tipo} = 'dm' AND (${chatChannels.dmUser1Id} = ${userId} OR ${chatChannels.dmUser2Id} = ${userId}) AND ${chatChannels.status} != 'deleted'`)
+    .orderBy(desc(chatChannels.updatedAt));
+}
+
+// ---- CHAT: INDICADOR DE DIGITAÇÃO ----
+// =============================================
+
+export async function setTyping(channelId: number, userId: number, userName: string, userAvatar: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert: delete old entry then insert new
+  await db.execute(
+    sql`DELETE FROM chat_typing_indicators WHERE channelId = ${channelId} AND userId = ${userId}`
+  );
+  await db.insert(chatTypingIndicators).values({
+    channelId,
+    userId,
+    userName,
+    userAvatar,
+  } as any);
+}
+
+export async function clearTyping(channelId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`DELETE FROM chat_typing_indicators WHERE channelId = ${channelId} AND userId = ${userId}`
+  );
+}
+
+export async function getTypingUsers(channelId: number, excludeUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Only return indicators from the last 5 seconds (stale entries are ignored)
+  return db.select().from(chatTypingIndicators)
+    .where(sql`${chatTypingIndicators.channelId} = ${channelId} AND ${chatTypingIndicators.userId} != ${excludeUserId} AND ${chatTypingIndicators.startedAt} > DATE_SUB(NOW(), INTERVAL 5 SECOND)`);
+}
+
+export async function cleanupStaleTyping() {
+  const db = await getDb();
+  if (!db) return;
+  // Remove typing indicators older than 10 seconds
+  await db.execute(
+    sql`DELETE FROM chat_typing_indicators WHERE startedAt < DATE_SUB(NOW(), INTERVAL 10 SECOND)`
+  );
+}
+
+// ---- CHAT: UPLOAD DE ARQUIVOS ----
+// =============================================
+
+export async function createChatMessageWithFile(data: {
+  channelId: number;
+  userId: number;
+  userName: string;
+  userAvatar: string | null;
+  content: string;
+  mentions?: any[];
+  fileUrl: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(chatMessages).values({
+    channelId: data.channelId,
+    userId: data.userId,
+    userName: data.userName,
+    userAvatar: data.userAvatar,
+    content: data.content,
+    mentions: data.mentions || [],
+    fileUrl: data.fileUrl,
+    fileName: data.fileName,
+    fileType: data.fileType,
+    fileSize: data.fileSize,
+  } as any).$returningId();
+  return result[0]?.id;
 }

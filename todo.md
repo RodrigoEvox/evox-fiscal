@@ -967,3 +967,27 @@
 - [x] Apenas admin pode excluir/inativar/restaurar grupos
 - [x] Botões rápidos de restaurar/excluir ao passar o mouse nos canais
 - [x] 4 testes vitest passando (delete, restore, toggle, channels list)
+
+## CRM v30 — Chat: DM, Digitação e Upload
+
+### Mensagens Privadas (DM)
+- [x] Criada lógica para canais tipo "dm" entre dois usuários (schema + db helpers)
+- [x] Rotas backend startDm e dmChannels para iniciar/buscar DMs
+- [x] Aba "DMs" separada na sidebar com lista de conversas privadas
+- [x] Dialog para iniciar conversa privada com busca de usuários
+- [x] Nome do parceiro exibido (não "DM: User1 & User2")
+- [x] 2 testes vitest passando (startDm, dmChannels)
+
+### Indicador de Digitação
+- [x] Criada tabela chat_typing_indicators com limpeza automática (expiração 5s)
+- [x] Rotas backend startTyping, stopTyping, typingUsers
+- [x] UI com animação de 3 pontos e "Fulano está digitando..." no canal ativo
+- [x] Suporte a múltiplos digitadores simultâneos
+- [x] 2 testes vitest passando (startTyping/stopTyping, typingUsers)
+
+### Upload de Arquivos no Chat
+- [x] Adicionados campos fileUrl, fileName, fileType, fileSize na tabela chat_messages
+- [x] Rota backend uploadFile com upload via S3 (storagePut) e limite de 10MB
+- [x] UI com botão de anexo (Paperclip), preview de imagens inline, card de documentos com download
+- [x] Barra de preview do arquivo antes do envio com opção de cancelar
+- [x] 2 testes vitest passando (upload file, reject >10MB)

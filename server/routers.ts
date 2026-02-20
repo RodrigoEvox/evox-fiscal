@@ -1752,6 +1752,97 @@ export const appRouter = router({
           .slice(0, 10)
           .map((c: any) => ({ type: 'client' as const, id: c.id, name: c.nomeFantasia || c.razaoSocial || 'Cliente' }));
       }),
+    // ---- DM (Mensagens Privadas) ----
+    startDm: protectedProcedure
+      .input(z.object({ targetUserId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const senderName = (ctx.user as any).apelido || ctx.user.name || 'Usu\u00e1rio';
+        const allUsers = await db.listUsers();
+        const targetUser = allUsers.find((u: any) => u.id === input.targetUserId);
+        if (!targetUser) throw new Error('Usu\u00e1rio n\u00e3o encontrado');
+        const targetName = (targetUser as any).apelido || targetUser.name || 'Usu\u00e1rio';
+        const channel = await db.findOrCreateDmChannel(ctx.user.id, senderName, input.targetUserId, targetName);
+        return channel;
+      }),
+    dmChannels: protectedProcedure.query(async ({ ctx }) => {
+      return db.listDmChannelsForUser(ctx.user.id);
+    }),
+    // ---- INDICADOR DE DIGITA\u00c7\u00c3O ----
+    startTyping: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const userName = (ctx.user as any).apelido || ctx.user.name || 'Usu\u00e1rio';
+        const userAvatar = (ctx.user as any).avatar || null;
+        await db.setTyping(input.channelId, ctx.user.id, userName, userAvatar);
+        return { success: true };
+      }),
+    stopTyping: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.clearTyping(input.channelId, ctx.user.id);
+        return { success: true };
+      }),
+    typingUsers: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        return db.getTypingUsers(input.channelId, ctx.user.id);
+      }),
+    // ---- UPLOAD DE ARQUIVOS ----
+    uploadFile: protectedProcedure
+      .input(z.object({
+        channelId: z.number(),
+        fileName: z.string(),
+        fileType: z.string(),
+        fileSize: z.number(),
+        fileBase64: z.string(),
+        content: z.string().optional(),
+        mentions: z.array(z.object({
+          type: z.enum(['user', 'client']),
+          id: z.number(),
+          name: z.string(),
+        })).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Validate file size (max 10MB)
+        if (input.fileSize > 10 * 1024 * 1024) {
+          throw new Error('Arquivo muito grande. M\u00e1ximo: 10MB');
+        }
+        const senderName = (ctx.user as any).apelido || ctx.user.name || 'Usu\u00e1rio';
+        // Upload to S3
+        const buffer = Buffer.from(input.fileBase64, 'base64');
+        const randomSuffix = crypto.randomBytes(4).toString('hex');
+        const fileKey = `chat-files/${ctx.user.id}/${randomSuffix}-${input.fileName}`;
+        const { url } = await storagePut(fileKey, buffer, input.fileType);
+        // Create message with file
+        const msgContent = input.content?.trim() || `\ud83d\udcce ${input.fileName}`;
+        const id = await db.createChatMessageWithFile({
+          channelId: input.channelId,
+          userId: ctx.user.id,
+          userName: senderName,
+          userAvatar: (ctx.user as any).avatar || null,
+          content: msgContent,
+          mentions: input.mentions || [],
+          fileUrl: url,
+          fileName: input.fileName,
+          fileType: input.fileType,
+          fileSize: input.fileSize,
+        });
+        // Notify users
+        const allUsers = await db.listUsers();
+        for (const u of allUsers) {
+          if (u.id === ctx.user.id) continue;
+          if (!(u as any).ativo) continue;
+          await db.createChatNotification({
+            userId: u.id,
+            messageId: id!,
+            channelId: input.channelId,
+            tipo: 'mensagem',
+            remetenteNome: senderName,
+            preview: `\ud83d\udcce ${input.fileName}`,
+          } as any);
+        }
+        return { id, fileUrl: url };
+      }),
   }),
 
   // ---- SEED ----
