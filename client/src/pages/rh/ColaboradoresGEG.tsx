@@ -15,8 +15,12 @@ import {
   Plus, Search, User, Edit2, Eye, X, AlertTriangle, Loader2,
   CheckCircle2, XCircle, UserCheck, UserX, Clock, Briefcase,
   HeartPulse, Palmtree, ShieldAlert, FileWarning, Filter, RotateCcw,
-  ChevronDown, ChevronUp, History, MapPin, Bus, Building2
+  ChevronDown, ChevronUp, History, MapPin, Bus, Building2,
+  Download, FileSpreadsheet, FileText
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 // ---- Helpers ----
 function validarCPF(cpf: string): boolean {
@@ -321,6 +325,70 @@ export default function ColaboradoresGEG() {
     setSearch('');
   };
 
+  const getFilterLabel = () => {
+    const parts: string[] = [];
+    if (filterStatus !== 'todos') parts.push(STATUS_CONFIG[filterStatus]?.label || filterStatus);
+    if (filterCargo !== 'todos') parts.push(filterCargo);
+    if (filterLocal !== 'todos') parts.push(filterLocal === 'home_office' ? 'HomeOffice' : filterLocal);
+    return parts.length > 0 ? parts.join('_') : 'Todos';
+  };
+
+  const exportToCSV = () => {
+    if (filtered.length === 0) { toast.error('Nenhum colaborador para exportar'); return; }
+    const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Fun\u00e7\u00e3o','Setor','Sal\u00e1rio Base','Status','Tipo Contrato','Local Trabalho','N\u00edvel Hier\u00e1rquico','Data Admiss\u00e3o','Email','Telefone','Vale Transporte'];
+    const rows = filtered.map((c: any) => [
+      c.nomeCompleto || '', c.cpf || '', c.dataNascimento || '', c.cargo || '', c.funcao || '',
+      setoresList.find((s: any) => s.id === c.setorId)?.nome || '', c.salarioBase || '',
+      STATUS_CONFIG[c.statusColaborador || 'ativo']?.label || 'Ativo',
+      (c.tipoContrato || '').toUpperCase(),
+      c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : c.localTrabalho === 'uberaba' ? 'Uberaba' : '',
+      c.nivelHierarquico || '', c.dataAdmissao || '', c.email || '', c.telefone || '',
+      c.valeTransporte ? 'Sim' : 'N\u00e3o',
+    ]);
+    const csvContent = '\uFEFF' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Colaboradores_${getFilterLabel()}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${filtered.length} colaboradores exportados em CSV`);
+  };
+
+  const exportToExcel = () => {
+    if (filtered.length === 0) { toast.error('Nenhum colaborador para exportar'); return; }
+    const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Fun\u00e7\u00e3o','Setor','Sal\u00e1rio Base','Status','Tipo Contrato','Local Trabalho','N\u00edvel Hier\u00e1rquico','Data Admiss\u00e3o','Email','Telefone','Vale Transporte'];
+    const rows = filtered.map((c: any) => [
+      c.nomeCompleto || '', c.cpf || '', c.dataNascimento || '', c.cargo || '', c.funcao || '',
+      setoresList.find((s: any) => s.id === c.setorId)?.nome || '', c.salarioBase || '',
+      STATUS_CONFIG[c.statusColaborador || 'ativo']?.label || 'Ativo',
+      (c.tipoContrato || '').toUpperCase(),
+      c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : c.localTrabalho === 'uberaba' ? 'Uberaba' : '',
+      c.nivelHierarquico || '', c.dataAdmissao || '', c.email || '', c.telefone || '',
+      c.valeTransporte ? 'Sim' : 'N\u00e3o',
+    ]);
+    // Generate HTML table for Excel compatibility
+    let html = '<html><head><meta charset="utf-8"></head><body>';
+    html += '<table border="1"><thead><tr>';
+    headers.forEach(h => { html += `<th style="background:#0A2540;color:white;font-weight:bold;padding:8px">${h}</th>`; });
+    html += '</tr></thead><tbody>';
+    rows.forEach(row => {
+      html += '<tr>';
+      row.forEach(cell => { html += `<td style="padding:6px">${cell}</td>`; });
+      html += '</tr>';
+    });
+    html += '</tbody></table></body></html>';
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Colaboradores_${getFilterLabel()}_${new Date().toISOString().split('T')[0]}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${filtered.length} colaboradores exportados em Excel`);
+  };
+
   const filtered = useMemo(() => {
     let list = [...allColabs];
     if (filterStatus !== 'todos') {
@@ -457,6 +525,21 @@ export default function ColaboradoresGEG() {
               <RotateCcw className="w-3.5 h-3.5" /> Limpar Filtros
             </Button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Download className="w-4 h-4" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToExcel} className="gap-2 cursor-pointer">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" /> Exportar Excel (.xls)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToCSV} className="gap-2 cursor-pointer">
+                <FileText className="w-4 h-4 text-blue-600" /> Exportar CSV (.csv)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

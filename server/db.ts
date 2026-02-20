@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql, or, isNull, lt } from "drizzle-orm";
+import { eq, desc, asc, and, sql, or, isNull, isNotNull, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -1763,4 +1763,60 @@ export async function changeColaboradorStatus(
     alteradoPorId,
     alteradoPorNome,
   });
+}
+
+// =============================================
+// ---- ANIVERSARIANTES DO MÊS ----
+// =============================================
+
+export async function getAniversariantesMes(mes?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const mesAtual = mes || (new Date().getMonth() + 1);
+  const mesStr = String(mesAtual).padStart(2, '0');
+  const rows = await db.select().from(colaboradores)
+    .where(sql`SUBSTRING(${colaboradores.dataNascimento}, 6, 2) = ${mesStr}`)
+    .orderBy(sql`SUBSTRING(${colaboradores.dataNascimento}, 9, 2) ASC`);
+  return rows;
+}
+
+// =============================================
+// ---- CONTRATOS PRÓXIMOS DO VENCIMENTO ----
+// =============================================
+
+export async function getContratosVencendo(diasAntecedencia: number = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  // Buscar colaboradores com periodoExperiencia definido e status ativo/experiencia
+  const rows = await db.select().from(colaboradores)
+    .where(
+      and(
+        isNotNull(colaboradores.periodoExperiencia),
+        sql`${colaboradores.periodoExperiencia} > 0`,
+        sql`${colaboradores.statusColaborador} IN ('ativo', 'experiencia')`,
+        isNotNull(colaboradores.dataAdmissao),
+      )
+    );
+  
+  const hoje = new Date();
+  const resultado: any[] = [];
+  
+  for (const c of rows) {
+    if (!c.dataAdmissao || !c.periodoExperiencia) continue;
+    const admissao = new Date(c.dataAdmissao);
+    const vencimento = new Date(admissao);
+    vencimento.setDate(vencimento.getDate() + c.periodoExperiencia);
+    
+    const diffDias = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDias >= 0 && diffDias <= diasAntecedencia) {
+      resultado.push({
+        ...c,
+        dataVencimento: vencimento.toISOString().split('T')[0],
+        diasRestantes: diffDias,
+      });
+    }
+  }
+  
+  return resultado.sort((a, b) => a.diasRestantes - b.diasRestantes);
 }

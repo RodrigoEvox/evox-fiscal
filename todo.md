@@ -809,3 +809,28 @@
 - [x] Filtro por tipo de contrato
 - [x] Combinar múltiplos filtros simultaneamente
 - [x] Limpar todos os filtros com um clique
+
+## CRM v24 — Exportação, Aniversariantes e Alertas de Contrato
+
+### Exportação da Listagem Filtrada em Excel/CSV
+- [x] Botão de exportação na listagem de colaboradores
+- [x] Exportar apenas os colaboradores visíveis (respeitando filtros ativos)
+- [x] Gerar arquivo Excel (.xlsx) com todas as colunas relevantes
+- [x] Opção de exportar em CSV também
+- [x] Incluir nome do filtro aplicado no nome do arquivo
+
+### Dashboard de Aniversariantes do Mês
+- [x] Card no painel principal com aniversariantes do mês corrente
+- [x] Exibir foto/avatar, nome, data de aniversário e setor
+- [x] Destacar aniversariantes do dia
+- [x] Rota backend para buscar aniversariantes por mês
+
+### Alertas de Vencimento de Contratos
+- [x] Identificar contratos de experiência próximos do vencimento
+- [x] Identificar contratos temporários próximos do vencimento
+- [x] Gerar notificação automática 30 e 15 dias antes do vencimento
+- [x] Exibir card de alertas no dashboard ou na listagem de colaboradores
+- [x] Rota backend para listar contratos próximos do vencimento
+
+### Renomear Submenu
+- [x] Renomear "Relatórios" para "Visão Analítica" no submenu Gente & Gestão

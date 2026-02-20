@@ -2478,6 +2478,35 @@ export const appRouter = router({
       return db.listHistoricoStatus(input.colaboradorId);
     }),
   }),
+
+  // ---- ANIVERSARIANTES DO MÊS ----
+  aniversariantes: router({
+    mes: protectedProcedure.input(z.object({ mes: z.number().min(1).max(12).optional() }).optional()).query(async ({ input }) => {
+      return db.getAniversariantesMes(input?.mes);
+    }),
+  }),
+
+  // ---- CONTRATOS PRÓXIMOS DO VENCIMENTO ----
+  contratosVencendo: router({
+    list: protectedProcedure.input(z.object({ diasAntecedencia: z.number().default(30) }).optional()).query(async ({ input, ctx }) => {
+      const contratos = await db.getContratosVencendo(input?.diasAntecedencia || 30);
+      // Gerar notificações automáticas para contratos urgentes (15 e 7 dias)
+      for (const c of contratos) {
+        if (c.diasRestantes === 15 || c.diasRestantes === 7 || c.diasRestantes === 1) {
+          try {
+            await db.createNotificacao({
+              usuarioId: ctx.user.id,
+              tipo: 'geral',
+              titulo: `Contrato vencendo: ${c.nomeCompleto}`,
+              mensagem: `O contrato de ${c.nomeCompleto} (${c.cargo}) vence em ${c.diasRestantes} dia(s) - ${new Date(c.dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR')}`,
+              lida: false,
+            });
+          } catch (e) { /* ignora duplicatas */ }
+        }
+      }
+      return contratos;
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
