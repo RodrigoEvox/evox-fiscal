@@ -25,7 +25,8 @@ import {
   Eraser, Settings2, ShieldAlert, Menu, Pin, PinOff, Smile,
   Archive, RotateCcw, ChevronDown, Paperclip, FileText, Image,
   Download, User, Mail, Volume2, VolumeX, Globe, FileSearch,
-  UserSearch, Bell,
+  UserSearch, Bell, Reply, MessageSquare, Pencil, Check, Circle,
+  CornerDownRight,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
@@ -133,6 +134,12 @@ export default function Chat() {
   const prevMessageCountRef = useRef<number>(0);
   const prevUnreadRef = useRef<number>(0);
 
+  // v32 state: threads, editing, presence
+  const [replyingTo, setReplyingTo] = useState<{ id: number; userName: string; content: string } | null>(null);
+  const [editingMessage, setEditingMessage] = useState<{ id: number; content: string } | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [showThread, setShowThread] = useState<number | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -213,6 +220,50 @@ export default function Chat() {
     { channelId: activeChannelId!, userName: userSearchQuery },
     { enabled: showUserSearch && !!activeChannelId && userSearchQuery.length >= 1 }
   );
+
+  // v32 queries: presence, threads
+  const { data: onlineUsers = [] } = trpc.chat.onlineUsers.useQuery(
+    undefined,
+    { refetchInterval: 5000 }
+  );
+
+  // Heartbeat to keep user online
+  const heartbeatMut = trpc.chat.heartbeat.useMutation();
+  useEffect(() => {
+    heartbeatMut.mutate();
+    const interval = setInterval(() => heartbeatMut.mutate(), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Thread counts for visible messages
+  const { data: threadCounts = [] } = trpc.chat.threadCounts.useQuery(
+    { messageIds },
+    { enabled: messageIds.length > 0, refetchInterval: 5000 }
+  );
+
+  // Thread messages when viewing a thread
+  const { data: threadMessages = [], isLoading: loadingThread } = trpc.chat.threadMessages.useQuery(
+    { parentMessageId: showThread! },
+    { enabled: !!showThread, refetchInterval: 2000 }
+  );
+
+  // Parent message for thread view
+  const { data: threadParent } = trpc.chat.getMessage.useQuery(
+    { messageId: showThread! },
+    { enabled: !!showThread }
+  );
+
+  // Online user IDs set for quick lookup
+  const onlineUserIds = useMemo(() => new Set((onlineUsers as any[]).map((u: any) => u.userId)), [onlineUsers]);
+
+  // Thread count map
+  const threadCountMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    for (const tc of threadCounts as any[]) {
+      map[tc.parentId] = tc.count;
+    }
+    return map;
+  }, [threadCounts]);
 
   const suggestions = mentionType === 'user' ? userSuggestions.data : clientSuggestions.data;
 
@@ -384,6 +435,30 @@ export default function Chat() {
     },
   });
 
+  // v32 mutations: reply, edit
+  const sendReplyMut = trpc.chat.sendReply.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      utils.chat.threadMessages.invalidate();
+      utils.chat.threadCounts.invalidate();
+      setInputValue('');
+      setMentions([]);
+      setReplyingTo(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const editMessageMut = trpc.chat.editMessage.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      utils.chat.threadMessages.invalidate();
+      setEditingMessage(null);
+      setEditContent('');
+      toast.success('Mensagem editada');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   // Auto-select first channel
   useEffect(() => {
     if (channels.length > 0 && !activeChannelId) {
@@ -495,11 +570,19 @@ export default function Chat() {
 
   const handleSend = () => {
     if (!inputValue.trim() || !activeChannelId) return;
-    sendMessage.mutate({
-      channelId: activeChannelId,
-      content: inputValue.trim(),
-      mentions: mentions.length > 0 ? mentions : undefined,
-    });
+    if (replyingTo) {
+      sendReplyMut.mutate({
+        channelId: activeChannelId,
+        content: inputValue.trim(),
+        replyToId: replyingTo.id,
+      });
+    } else {
+      sendMessage.mutate({
+        channelId: activeChannelId,
+        content: inputValue.trim(),
+        mentions: mentions.length > 0 ? mentions : undefined,
+      });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -697,6 +780,9 @@ export default function Chat() {
       : <Hash className="w-3.5 h-3.5 shrink-0" />;
 
     const displayName = ch.tipo === 'dm' ? getDmPartnerName(ch) : ch.nome;
+    // Check if DM partner is online
+    const dmPartnerId = ch.tipo === 'dm' ? (ch.user1Id === currentUser?.id ? ch.user2Id : ch.user1Id) : null;
+    const isPartnerOnline = dmPartnerId ? onlineUserIds.has(dmPartnerId) : false;
 
     return (
       <div key={ch.id} className="flex items-center gap-0.5 group/ch">
@@ -708,7 +794,12 @@ export default function Chat() {
               : 'hover:bg-muted text-foreground/80'
           } ${isInactive || isDeleted ? 'opacity-60' : ''}`}
         >
-          {icon}
+          <span className="relative">
+            {icon}
+            {ch.tipo === 'dm' && (
+              <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${isPartnerOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+            )}
+          </span>
           <span className="truncate flex-1">{displayName}</span>
           {isInactive && <PowerOff className="w-3 h-3 text-muted-foreground shrink-0" />}
           {isDeleted && <Trash2 className="w-3 h-3 text-muted-foreground shrink-0" />}
@@ -924,7 +1015,21 @@ export default function Chat() {
                 <span className="font-semibold text-sm truncate">
                   {isDmChannel ? getDmPartnerName(activeChannel) : (activeChannel as any).nome}
                 </span>
-                {isDmChannel && <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 shrink-0">DM</Badge>}
+                {isDmChannel && (
+                  <>
+                    <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 shrink-0">DM</Badge>
+                    {(() => {
+                      const pId = (activeChannel as any)?.user1Id === currentUser?.id ? (activeChannel as any)?.user2Id : (activeChannel as any)?.user1Id;
+                      const isOn = pId ? onlineUserIds.has(pId) : false;
+                      return (
+                        <Badge variant="outline" className={`text-[10px] shrink-0 gap-1 ${isOn ? 'border-green-300 text-green-600' : 'border-gray-300 text-gray-500'}`}>
+                          <Circle className={`w-2 h-2 ${isOn ? 'fill-green-500 text-green-500' : 'fill-gray-400 text-gray-400'}`} />
+                          {isOn ? 'Online' : 'Offline'}
+                        </Badge>
+                      );
+                    })()}
+                  </>
+                )}
                 {channelStatus === 'inactive' && <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600 shrink-0">Inativo</Badge>}
                 {channelStatus === 'deleted' && <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 shrink-0">Lixeira</Badge>}
                 {!isDmChannel && (activeChannel as any).descricao && (
@@ -1246,9 +1351,19 @@ export default function Chat() {
                       </div>
 
                       <div className="flex-1 min-w-0">
+                        {/* Reply-to preview */}
+                        {msg.replyToId && (msg as any).replyToUserName && (
+                          <div className="flex items-center gap-1.5 mb-1 pl-2 border-l-2 border-primary/30">
+                            <CornerDownRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[10px] font-semibold text-primary/70">{(msg as any).replyToUserName}</span>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{(msg as any).replyToContent || ''}</span>
+                          </div>
+                        )}
                         {showHeader && (
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className={`text-sm font-semibold ${isOwn ? 'text-primary' : 'text-foreground'}`}>{msg.userName}</span>
+                            <span className="relative">
+                              <span className={`text-sm font-semibold ${isOwn ? 'text-primary' : 'text-foreground'}`}>{msg.userName}</span>
+                            </span>
                             <span className="text-[10px] text-muted-foreground">
                               {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -1257,12 +1372,33 @@ export default function Chat() {
                                 <Pin className="w-2.5 h-2.5" /> Fixada
                               </Badge>
                             )}
+                            {msg.editedAt && (
+                              <span className="text-[9px] text-muted-foreground italic" title={`Editada em ${new Date(msg.editedAt).toLocaleString('pt-BR')}`}>(editada)</span>
+                            )}
                             {isDeleted && <Badge variant="outline" className="text-[9px] border-red-200 text-red-500 py-0">excluída</Badge>}
                           </div>
                         )}
-                        <div className={`text-sm leading-relaxed break-words ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground/90'}`}>
-                          {isDeleted ? msg.content : renderContent(msg.content, msg.mentions)}
-                        </div>
+                        {/* Editing mode */}
+                        {editingMessage?.id === msg.id ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input value={editContent} onChange={(e) => setEditContent(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { editMessageMut.mutate({ messageId: msg.id, content: editContent }); }
+                                if (e.key === 'Escape') { setEditingMessage(null); setEditContent(''); }
+                              }}
+                              className="h-8 text-sm flex-1" autoFocus />
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => editMessageMut.mutate({ messageId: msg.id, content: editContent })}>
+                              <Check className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => { setEditingMessage(null); setEditContent(''); }}>
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className={`text-sm leading-relaxed break-words ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground/90'}`}>
+                            {isDeleted ? msg.content : renderContent(msg.content, msg.mentions)}
+                          </div>
+                        )}
 
                         {!isDeleted && renderFileAttachment(msg)}
 
@@ -1281,6 +1417,15 @@ export default function Chat() {
                               );
                             })}
                           </div>
+                        )}
+
+                        {/* Thread count indicator */}
+                        {!isDeleted && threadCountMap[msg.id] > 0 && (
+                          <button onClick={() => setShowThread(msg.id)}
+                            className="flex items-center gap-1.5 mt-1.5 text-xs text-primary hover:underline">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {threadCountMap[msg.id]} resposta{threadCountMap[msg.id] > 1 ? 's' : ''}
+                          </button>
                         )}
                       </div>
 
@@ -1303,6 +1448,28 @@ export default function Chat() {
                               </div>
                             </PopoverContent>
                           </Popover>
+
+                          {/* Reply button */}
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary"
+                            onClick={() => { setReplyingTo({ id: msg.id, userName: msg.userName, content: msg.content?.slice(0, 80) || '' }); inputRef.current?.focus(); }}
+                            title="Responder">
+                            <Reply className="w-3.5 h-3.5" />
+                          </Button>
+
+                          {/* Thread button */}
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary"
+                            onClick={() => setShowThread(msg.id)} title="Ver thread">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </Button>
+
+                          {/* Edit button (own messages only) */}
+                          {isOwn && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-blue-500"
+                              onClick={() => { setEditingMessage({ id: msg.id, content: msg.content }); setEditContent(msg.content); }}
+                              title="Editar mensagem">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
 
                           {isAdmin && (
                             <Button variant="ghost" size="icon"
@@ -1369,6 +1536,94 @@ export default function Chat() {
                 <X className="w-4 h-4" />
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Thread side panel */}
+        {showThread && (
+          <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-background border-l shadow-xl z-50 flex flex-col">
+            <div className="h-12 border-b flex items-center justify-between px-4 shrink-0">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Thread
+              </h3>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowThread(null)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            {/* Parent message */}
+            {threadParent && (
+              <div className="px-4 py-3 border-b bg-muted/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold">{(threadParent as any).userName}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date((threadParent as any).createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-sm text-foreground/80">{(threadParent as any).content}</p>
+              </div>
+            )}
+            {/* Thread replies */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ minHeight: 0 }}>
+              {loadingThread ? (
+                <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+              ) : (threadMessages as any[]).length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Nenhuma resposta ainda. Seja o primeiro!</p>
+              ) : (
+                (threadMessages as any[]).map((tm: any) => (
+                  <div key={tm.id} className="flex gap-2.5">
+                    <Avatar className="h-7 w-7 shrink-0">
+                      <AvatarFallback className="text-xs">{(tm.userName || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-semibold">{tm.userName}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(tm.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {tm.editedAt && <span className="text-[9px] text-muted-foreground italic">(editada)</span>}
+                      </div>
+                      <p className="text-sm text-foreground/80 break-words">{tm.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Thread reply input */}
+            <div className="border-t p-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && inputValue.trim()) {
+                      sendReplyMut.mutate({ channelId: activeChannelId!, content: inputValue.trim(), replyToId: showThread });
+                    }
+                  }}
+                  placeholder="Responder na thread..."
+                  className="text-sm flex-1" />
+                <Button size="sm" onClick={() => {
+                  if (inputValue.trim() && activeChannelId) {
+                    sendReplyMut.mutate({ channelId: activeChannelId, content: inputValue.trim(), replyToId: showThread });
+                  }
+                }} disabled={!inputValue.trim() || sendReplyMut.isPending}>
+                  {sendReplyMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reply-to preview bar */}
+        {replyingTo && (
+          <div className="border-t bg-primary/5 px-3 py-2 shrink-0 flex items-center gap-2">
+            <Reply className="w-4 h-4 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-semibold text-primary">{replyingTo.userName}</span>
+              <p className="text-xs text-muted-foreground truncate">{replyingTo.content}</p>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setReplyingTo(null)}>
+              <X className="w-3.5 h-3.5" />
+            </Button>
           </div>
         )}
 

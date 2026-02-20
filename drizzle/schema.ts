@@ -634,11 +634,29 @@ export const chatMessages = mysqlTable("chat_messages", {
   pinnedAt: timestamp("pinnedAt"),
   deletedAt: timestamp("deletedAt"),
   deletedBy: int("deletedBy"),
+  // Thread / reply
+  replyToId: int("replyToId"),
+  // Edit tracking
+  editedAt: timestamp("editedAt"),
+  editedContent: text("editedContent"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+// ---- CHAT: PRESENÇA ONLINE ----
+export const userPresence = mysqlTable("user_presence", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  userAvatar: varchar("userAvatar", { length: 500 }),
+  lastSeen: timestamp("lastSeen").defaultNow().notNull(),
+  status: mysqlEnum("status", ["online", "away", "offline"]).default("online").notNull(),
+});
+
+export type UserPresence = typeof userPresence.$inferSelect;
+export type InsertUserPresence = typeof userPresence.$inferInsert;
 
 // ---- CHAT: NOTIFICAÇÕES ----
 export const chatNotifications = mysqlTable("chat_notifications", {

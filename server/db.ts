@@ -48,6 +48,7 @@ import {
   perguntasClima, InsertPerguntaClima,
   respostasClima, InsertRespostaClima,
   bancoHoras, InsertBancoHoras,
+  userPresence, InsertUserPresence,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2468,4 +2469,238 @@ export async function countUnreadByChannelForUser(userId: number) {
     sql`SELECT channelId, COUNT(*) as cnt FROM chat_notifications WHERE userId = ${userId} AND lida = false GROUP BY channelId`
   );
   return ((rows as any)[0] || []).map((r: any) => ({ channelId: r.channelId, count: Number(r.cnt) }));
+}
+
+
+// ============================================================
+// THREADS / REPLIES
+// ============================================================
+export async function sendMessageWithReply(data: {
+  channelId: number;
+  userId: number;
+  userName: string;
+  userAvatar?: string | null;
+  content: string;
+  mentions?: {type: 'user' | 'client'; id: number; name: string}[];
+  replyToId?: number | null;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(chatMessages).values({
+    channelId: data.channelId,
+    userId: data.userId,
+    userName: data.userName,
+    userAvatar: data.userAvatar,
+    content: data.content,
+    mentions: data.mentions || [],
+    replyToId: data.replyToId || null,
+  });
+  return { id: (result as any).insertId };
+}
+
+export async function getThreadMessages(parentMessageId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatMessages)
+    .where(and(
+      eq(chatMessages.replyToId, parentMessageId),
+      isNull(chatMessages.deletedAt)
+    ))
+    .orderBy(asc(chatMessages.createdAt));
+}
+
+export async function getThreadCount(messageIds: number[]) {
+  if (messageIds.length === 0) return [];
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(
+    sql`SELECT replyToId, COUNT(*) as cnt FROM chat_messages WHERE replyToId IN (${sql.join(messageIds.map(id => sql`${id}`), sql`, `)}) AND deletedAt IS NULL GROUP BY replyToId`
+  );
+  return ((rows as any)[0] || []).map((r: any) => ({ messageId: Number(r.replyToId), count: Number(r.cnt) }));
+}
+
+export async function getMessageById(messageId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId)).limit(1);
+  return rows[0] || null;
+}
+
+// ============================================================
+// USER PRESENCE (ONLINE/OFFLINE)
+// ============================================================
+export async function updatePresence(userId: number, userName: string, userAvatar?: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert: try insert, on duplicate update
+  await db.execute(
+    sql`INSERT INTO user_presence (userId, userName, userAvatar, lastSeen, status)
+        VALUES (${userId}, ${userName}, ${userAvatar || null}, NOW(), 'online')
+        ON DUPLICATE KEY UPDATE userName = ${userName}, userAvatar = ${userAvatar || null}, lastSeen = NOW(), status = 'online'`
+  );
+}
+
+export async function getOnlineUsers(timeoutMinutes: number = 3) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(
+    sql`SELECT userId, userName, userAvatar, lastSeen, status FROM user_presence WHERE lastSeen >= DATE_SUB(NOW(), INTERVAL ${timeoutMinutes} MINUTE)`
+  );
+  return ((rows as any)[0] || []).map((r: any) => ({
+    userId: Number(r.userId),
+    userName: r.userName,
+    userAvatar: r.userAvatar,
+    lastSeen: r.lastSeen,
+    status: r.status,
+  }));
+}
+
+export async function setUserOffline(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE user_presence SET status = 'offline' WHERE userId = ${userId}`
+  );
+}
+
+// ============================================================
+// MESSAGE EDITING
+// ============================================================
+export async function editMessage(messageId: number, userId: number, newContent: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Only allow editing own messages
+  const [msg] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId)).limit(1);
+  if (!msg || msg.userId !== userId) return null;
+  if (msg.deletedAt) return null;
+  
+  // Store original content in editedContent if first edit
+  const originalContent = msg.editedContent || msg.content;
+  
+  await db.update(chatMessages)
+    .set({
+      content: newContent,
+      editedContent: originalContent,
+      editedAt: new Date(),
+    })
+    .where(eq(chatMessages.id, messageId));
+  
+  return { id: messageId, content: newContent, editedAt: new Date() };
+}
+
+// ============================================================
+// PARTNER COMMISSIONS DASHBOARD
+// ============================================================
+export async function getParceiroComissoesDashboard(parceiroId: number) {
+  const db = await getDb();
+  if (!db) return { kpis: { totalComissoes: 0, comissoesPendentes: 0, comissoesAprovadas: 0, clientesVinculados: 0 }, comissoesRecentes: [] };
+  
+  // Get commission stats
+  const statsRows = await db.execute(
+    sql`SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN ac.status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
+      SUM(CASE WHEN ac.status = 'aprovada' THEN 1 ELSE 0 END) as aprovadas,
+      SUM(CASE WHEN ac.status = 'aprovada' THEN ac.valorComissao ELSE 0 END) as valorTotal
+    FROM aprovacao_comissao ac
+    WHERE ac.parceiroId = ${parceiroId}`
+  );
+  const stats = ((statsRows as any)[0] || [])[0] || {};
+  
+  // Count linked clients
+  const clienteRows = await db.execute(
+    sql`SELECT COUNT(DISTINCT c.id) as cnt FROM clientes c WHERE c.parceiroId = ${parceiroId}`
+  );
+  const clienteCount = Number(((clienteRows as any)[0] || [])[0]?.cnt || 0);
+  
+  // Recent commissions
+  const recentRows = await db.execute(
+    sql`SELECT ac.id, ac.valorComissao, ac.status, ac.createdAt, c.nome as clienteNome, s.nome as servicoNome
+    FROM aprovacao_comissao ac
+    LEFT JOIN clientes c ON ac.clienteId = c.id
+    LEFT JOIN servicos s ON ac.servicoId = s.id
+    WHERE ac.parceiroId = ${parceiroId}
+    ORDER BY ac.createdAt DESC
+    LIMIT 20`
+  );
+  const comissoesRecentes = ((recentRows as any)[0] || []).map((r: any) => ({
+    id: r.id,
+    valorComissao: Number(r.valorComissao || 0),
+    status: r.status,
+    createdAt: r.createdAt,
+    clienteNome: r.clienteNome,
+    servicoNome: r.servicoNome,
+  }));
+  
+  return {
+    kpis: {
+      totalComissoes: Number(stats.total || 0),
+      comissoesPendentes: Number(stats.pendentes || 0),
+      comissoesAprovadas: Number(stats.aprovadas || 0),
+      valorTotalAprovado: Number(stats.valorTotal || 0),
+      clientesVinculados: clienteCount,
+    },
+    comissoesRecentes,
+  };
+}
+
+// ---- DASHBOARD COMISSÕES DO PARCEIRO ----
+export async function getPartnerCommissionsDashboard(parceiroId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not initialized');
+  // Get the partner info
+  const [parceiro] = await db.select().from(parceiros).where(eq(parceiros.id, parceiroId)).limit(1);
+  if (!parceiro) return null;
+
+  // Get clients linked to this partner
+  const clientesVinculados = await db.select({
+    id: clientes.id,
+    razaoSocial: clientes.razaoSocial,
+    cnpj: clientes.cnpj,
+    ativo: clientes.ativo,
+    prioridade: clientes.prioridade,
+    segmentoEconomico: clientes.segmentoEconomico,
+    createdAt: clientes.createdAt,
+  }).from(clientes).where(eq(clientes.parceiroId, parceiroId));
+
+  // Get services this partner works with
+  const servicos = await db.select({
+    id: parceiroServicos.id,
+    servicoId: parceiroServicos.servicoId,
+    percentualCustomizado: parceiroServicos.percentualCustomizado,
+    servicoNome: sql<string>`(SELECT nome FROM servicos WHERE id = ${parceiroServicos.servicoId})`,
+  }).from(parceiroServicos).where(eq(parceiroServicos.parceiroId, parceiroId));
+
+  // Get commission approvals
+  const aprovacoes = await db.select().from(aprovacaoComissao).where(eq(aprovacaoComissao.parceiroId, parceiroId)).orderBy(desc(aprovacaoComissao.createdAt)).limit(10);
+
+  // Get subpartners if this is a main partner
+  const subparceiros = await db.select({
+    id: parceiros.id,
+    nomeCompleto: parceiros.nomeCompleto,
+    apelido: parceiros.apelido,
+    ativo: parceiros.ativo,
+  }).from(parceiros).where(and(eq(parceiros.parceiroPaiId, parceiroId), eq(parceiros.ehSubparceiro, true)));
+
+  // Get rateio info if subpartner
+  const rateios = parceiro.ehSubparceiro && parceiro.parceiroPaiId
+    ? await db.select().from(rateioComissao).where(eq(rateioComissao.parceiroId, parceiroId))
+    : [];
+
+  // Get commission model info
+  const modelo = parceiro.modeloParceriaId
+    ? await db.select().from(modelosParceria).where(eq(modelosParceria.id, parceiro.modeloParceriaId)).limit(1)
+    : [];
+
+  return {
+    parceiro,
+    clientesVinculados,
+    totalClientes: clientesVinculados.length,
+    clientesAtivos: clientesVinculados.filter((c: any) => c.ativo).length,
+    servicos,
+    aprovacoes,
+    subparceiros,
+    rateios,
+    modelo: modelo[0] || null,
+  };
 }

@@ -594,3 +594,131 @@ describe("Chat v31 — Global Search, File Search, User Search", () => {
     expect(results.length).toBe(0);
   });
 });
+
+// ---- v32: Threads, Presence, Edit, Partner Commissions ----
+describe("Chat Threads", () => {
+  it("should send a reply to a message", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    // Send original message
+    const original = await caller.chat.send({ channelId: channels[0].id, content: "Original message for thread test" });
+    expect(original).toBeDefined();
+    const originalId = typeof original === "object" && original !== null && "id" in original ? (original as any).id : original;
+
+    // Send reply
+    const reply = await caller.chat.sendReply({ channelId: channels[0].id, content: "This is a reply", replyToId: originalId });
+    expect(reply).toBeDefined();
+  });
+
+  it("should fetch thread messages for a parent message", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    // Send original
+    const original = await caller.chat.send({ channelId: channels[0].id, content: "Thread parent message" });
+    const originalId = typeof original === "object" && original !== null && "id" in original ? (original as any).id : original;
+
+    // Send reply
+    await caller.chat.sendReply({ channelId: channels[0].id, content: "Thread reply 1", replyToId: originalId });
+
+    // Fetch thread using parentMessageId
+    const thread = await caller.chat.threadMessages({ parentMessageId: originalId });
+    expect(Array.isArray(thread)).toBe(true);
+    expect(thread.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should return thread counts for message ids", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    // Send a message to have a valid id
+    const msg = await caller.chat.send({ channelId: channels[0].id, content: "Thread count test" });
+    const msgId = typeof msg === "object" && msg !== null && "id" in msg ? (msg as any).id : msg;
+
+    const counts = await caller.chat.threadCounts({ messageIds: [msgId] });
+    expect(Array.isArray(counts)).toBe(true);
+  });
+});
+
+describe("Chat Presence (Online/Offline)", () => {
+  it("should send heartbeat and appear online", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.chat.heartbeat();
+    expect(result).toBeDefined();
+  });
+
+  it("should list online users", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Send heartbeat first
+    await caller.chat.heartbeat();
+    const users = await caller.chat.onlineUsers();
+    expect(Array.isArray(users)).toBe(true);
+    expect(users.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("Chat Message Editing", () => {
+  it("should edit a message", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    // Send a message
+    const msg = await caller.chat.send({ channelId: channels[0].id, content: "Message to edit" });
+    const msgId = typeof msg === "object" && msg !== null && "id" in msg ? (msg as any).id : msg;
+
+    // Edit it
+    const edited = await caller.chat.editMessage({ messageId: msgId, content: "Edited content" });
+    expect(edited).toBeDefined();
+  });
+
+  it("should fetch a single message by id", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+
+    const msg = await caller.chat.send({ channelId: channels[0].id, content: "Fetch me" });
+    const msgId = typeof msg === "object" && msg !== null && "id" in msg ? (msg as any).id : msg;
+
+    const fetched = await caller.chat.getMessage({ messageId: msgId });
+    expect(fetched).toBeDefined();
+    expect(fetched?.content).toBe("Fetch me");
+  });
+});
+
+describe("Partner Commissions Dashboard", () => {
+  it("should return commissions dashboard for a partner", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const parceiros = await caller.parceiros.list();
+    if (parceiros.length === 0) return;
+
+    const dashboard = await caller.parceiros.commissionsDashboard({ parceiroId: parceiros[0].id });
+    expect(dashboard).toBeDefined();
+    if (dashboard) {
+      expect(dashboard).toHaveProperty("totalClientes");
+      expect(dashboard).toHaveProperty("clientesAtivos");
+      expect(dashboard).toHaveProperty("servicos");
+      expect(dashboard).toHaveProperty("aprovacoes");
+      expect(dashboard).toHaveProperty("subparceiros");
+    }
+  });
+
+  it("should return null for non-existent partner", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const dashboard = await caller.parceiros.commissionsDashboard({ parceiroId: 999999 });
+    expect(dashboard).toBeNull();
+  });
+});

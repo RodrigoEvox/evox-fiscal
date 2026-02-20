@@ -348,6 +348,12 @@ export const appRouter = router({
         await logAudit(input.ativo ? 'ativar' : 'inativar', 'parceiro', input.id, null, ctx);
         return { success: true };
       }),
+    // Dashboard de comissões do parceiro
+    commissionsDashboard: protectedProcedure
+      .input(z.object({ parceiroId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getPartnerCommissionsDashboard(input.parceiroId);
+      }),
     // Consulta CNPJ para parceiro PJ
     consultaCNPJ: protectedProcedure
       .input(z.object({ cnpj: z.string() }))
@@ -1866,6 +1872,75 @@ export const appRouter = router({
       }))
       .query(async ({ input }) => {
         return db.searchChatMessagesByUser(input.channelId, input.userName);
+      }),
+
+    // ---- THREADS / REPLIES ----
+    sendReply: protectedProcedure
+      .input(z.object({
+        channelId: z.number(),
+        content: z.string().min(1),
+        replyToId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.sendMessageWithReply({
+          channelId: input.channelId,
+          userId: ctx.user.id,
+          userName: ctx.user.name || 'Anônimo',
+          content: input.content,
+          replyToId: input.replyToId,
+        });
+        return result;
+      }),
+
+    threadMessages: protectedProcedure
+      .input(z.object({ parentMessageId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getThreadMessages(input.parentMessageId);
+      }),
+
+    threadCounts: protectedProcedure
+      .input(z.object({ messageIds: z.array(z.number()) }))
+      .query(async ({ input }) => {
+        return db.getThreadCount(input.messageIds);
+      }),
+
+    getMessage: protectedProcedure
+      .input(z.object({ messageId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getMessageById(input.messageId);
+      }),
+
+    // ---- USER PRESENCE (ONLINE/OFFLINE) ----
+    heartbeat: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        await db.updatePresence(ctx.user.id, ctx.user.name || 'Anônimo');
+        return { ok: true };
+      }),
+
+    onlineUsers: protectedProcedure
+      .query(async () => {
+        return db.getOnlineUsers(3);
+      }),
+
+    // ---- MESSAGE EDITING ----
+    editMessage: protectedProcedure
+      .input(z.object({
+        messageId: z.number(),
+        content: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.editMessage(input.messageId, ctx.user.id, input.content);
+        if (!result) throw new Error('Não foi possível editar a mensagem. Apenas o autor pode editar.');
+        return result;
+      }),
+  }),
+
+  // ---- PARTNER COMMISSIONS DASHBOARD ----
+  parceiroComissoes: router({
+    dashboard: protectedProcedure
+      .input(z.object({ parceiroId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getParceiroComissoesDashboard(input.parceiroId);
       }),
   }),
 

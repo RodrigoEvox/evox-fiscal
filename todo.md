@@ -1020,3 +1020,34 @@
 - [x] Som de notificação via Web Audio API (beep 880Hz, 0.3s) ao receber nova mensagem
 - [x] Alerta sonoro também para novas notificações não lidas (DMs e outros canais)
 - [x] Toggle de som (ícone Volume2/VolumeX) no header do chat com persistência em localStorage
+
+## CRM v32 — Chat: Threads, Status Online, Edição + Dashboard Comissões Parceiro
+
+### Threads/Respostas em Mensagens
+- [x] Adicionado campo replyToId na tabela chat_messages
+- [x] Rotas backend sendReply, threadMessages, threadCounts, getMessage
+- [x] UI de resposta: botão "Responder" no hover, preview da mensagem original com barra lateral azul
+- [x] Painel de thread inline com contagem de respostas e botão "Ver thread"
+- [x] 3 testes vitest passando (send reply, fetch thread, thread counts)
+
+### Status Online/Offline dos Usuários
+- [x] Criada tabela user_presence com heartbeat e status (online/away/offline)
+- [x] Rotas backend heartbeat e onlineUsers com limpeza automática (5min timeout)
+- [x] Indicador verde/cinza ao lado do avatar na sidebar (DMs) e no header do chat
+- [x] Heartbeat automático a cada 30s via useEffect
+- [x] 2 testes vitest passando (heartbeat, online users)
+
+### Edição de Mensagens
+- [x] Adicionados campos editedAt e editedContent na tabela chat_messages
+- [x] Rota backend editMessage (apenas autor pode editar)
+- [x] UI com botão "Editar" no hover (apenas para mensagens próprias)
+- [x] Indicador visual "(editada)" na mensagem com tooltip de data
+- [x] Modo de edição inline com campo de texto e botões Salvar/Cancelar
+- [x] 2 testes vitest passando (edit message, fetch single message)
+
+### Dashboard de Comissões no Perfil do Parceiro
+- [x] Rota backend commissionsDashboard com clientes, serviços, aprovações, subparceiros, rateios
+- [x] Componente CommissionsDashboardTab na aba "Comissões" do dialog de detalhes do parceiro
+- [x] KPIs: clientes vinculados (ativos), serviços autorizados, subparceiros
+- [x] Seções: modelo de parceria, serviços e comissões, rateio, clientes vinculados, subparceiros, histórico de aprovações
+- [x] 2 testes vitest passando (dashboard com dados, parceiro inexistente)

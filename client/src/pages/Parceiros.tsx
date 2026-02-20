@@ -21,7 +21,8 @@ import {
   Handshake, Plus, Search, Edit, Loader2, Phone, Mail, MapPin, MoreVertical,
   Power, PowerOff, Trash2, Eye, Building2, User, Diamond, Award, Medal, Filter,
   CreditCard, Users, AlertCircle, CheckCircle2, Landmark, KeyRound, Briefcase,
-  AlertTriangle, ShieldCheck, ChevronDown, ChevronUp,
+  AlertTriangle, ShieldCheck, ChevronDown, ChevronUp, DollarSign, TrendingUp,
+  FileText, Clock, BarChart3,
 } from 'lucide-react';
 
 // ---- Helpers ----
@@ -131,6 +132,183 @@ function FormSection({ title, icon: Icon, children, defaultOpen = true }: { titl
         {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
       </button>
       {open && <div className="p-4 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
+// ---- DASHBOARD DE COMISSÕES DO PARCEIRO ----
+function CommissionsDashboardTab({ parceiroId }: { parceiroId: number }) {
+  const { data, isLoading } = trpc.parceiros.commissionsDashboard.useQuery({ parceiroId });
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-sm text-muted-foreground">Carregando comissões...</span>
+    </div>
+  );
+
+  if (!data) return (
+    <div className="text-center py-8 text-muted-foreground text-sm">Dados não encontrados.</div>
+  );
+
+  const { clientesVinculados, totalClientes, clientesAtivos, servicos, aprovacoes, subparceiros, rateios, modelo } = data;
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-medium text-blue-700">Clientes Vinculados</span>
+          </div>
+          <p className="text-xl font-bold text-blue-900">{totalClientes}</p>
+          <p className="text-[10px] text-blue-600">{clientesAtivos} ativos</p>
+        </div>
+        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+          <div className="flex items-center gap-2 mb-1">
+            <Briefcase className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-medium text-emerald-700">Serviços Autorizados</span>
+          </div>
+          <p className="text-xl font-bold text-emerald-900">{servicos.length}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-purple-600" />
+            <span className="text-xs font-medium text-purple-700">Subparceiros</span>
+          </div>
+          <p className="text-xl font-bold text-purple-900">{subparceiros.length}</p>
+        </div>
+      </div>
+
+      {/* Modelo de Parceria */}
+      {modelo && (
+        <div className="p-3 rounded-lg bg-muted/50 border">
+          <div className="flex items-center gap-2 mb-1">
+            <Diamond className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-semibold">Modelo de Parceria</span>
+          </div>
+          <p className="text-sm font-medium">{modelo.nome}</p>
+          {modelo.descricao && <p className="text-xs text-muted-foreground mt-1">{modelo.descricao}</p>}
+        </div>
+      )}
+
+      {/* Serviços e Comissões */}
+      {servicos.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+            <DollarSign className="w-3.5 h-3.5" /> Serviços e Comissões
+          </h4>
+          <div className="space-y-1">
+            {servicos.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                <span className="font-medium">{s.servicoNome || `Serviço #${s.servicoId}`}</span>
+                <Badge variant="outline" className="text-xs">
+                  {s.percentualCustomizado ? `${s.percentualCustomizado}%` : 'Padrão'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Rateio (se subparceiro) */}
+      {rateios.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+            <BarChart3 className="w-3.5 h-3.5" /> Rateio de Comissão
+          </h4>
+          <div className="space-y-1">
+            {rateios.map((r: any) => (
+              <div key={r.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                <span>Serviço #{r.servicoId}</span>
+                <div className="flex gap-3">
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">Parceiro: {r.percentualParceiro || 0}%</Badge>
+                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">Sub: {r.percentualSubparceiro || 0}%</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Clientes Vinculados */}
+      {clientesVinculados.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+            <FileText className="w-3.5 h-3.5" /> Clientes Vinculados ({totalClientes})
+          </h4>
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {clientesVinculados.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                <div>
+                  <span className="font-medium">{c.razaoSocial}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{c.cnpj}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-[10px] ${c.prioridade === 'alta' ? 'bg-red-50 text-red-700' : c.prioridade === 'media' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
+                    {c.prioridade}
+                  </Badge>
+                  <span className={`w-2 h-2 rounded-full ${c.ativo ? 'bg-green-500' : 'bg-gray-300'}`} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Subparceiros */}
+      {subparceiros.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" /> Subparceiros ({subparceiros.length})
+          </h4>
+          <div className="space-y-1">
+            {subparceiros.map((sp: any) => (
+              <div key={sp.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                <span className="font-medium">{sp.apelido || sp.nomeCompleto}</span>
+                <span className={`w-2 h-2 rounded-full ${sp.ativo ? 'bg-green-500' : 'bg-gray-300'}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Histórico de Aprovações */}
+      {aprovacoes.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" /> Últimas Aprovações de Comissão
+          </h4>
+          <div className="max-h-32 overflow-y-auto space-y-1">
+            {aprovacoes.map((a: any) => (
+              <div key={a.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-[10px] ${
+                    a.statusAprovacao === 'aprovado' ? 'bg-green-50 text-green-700' :
+                    a.statusAprovacao === 'rejeitado' ? 'bg-red-50 text-red-700' :
+                    'bg-amber-50 text-amber-700'
+                  }`}>
+                    {a.statusAprovacao === 'aprovado' ? 'Aprovado' : a.statusAprovacao === 'rejeitado' ? 'Rejeitado' : 'Pendente'}
+                  </Badge>
+                  <span className="text-muted-foreground">{a.percentualSolicitado}%</span>
+                </div>
+                <span className="text-muted-foreground">
+                  {a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {clientesVinculados.length === 0 && servicos.length === 0 && aprovacoes.length === 0 && (
+        <div className="text-center py-6 text-muted-foreground">
+          <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Nenhuma comissão ou cliente vinculado ainda.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -828,6 +1006,7 @@ export default function Parceiros() {
                   <TabsTrigger value="endereco" className="flex-1">Endereço</TabsTrigger>
                   <TabsTrigger value="bancario" className="flex-1">Bancário</TabsTrigger>
                   <TabsTrigger value="parceria" className="flex-1">Parceria</TabsTrigger>
+                  <TabsTrigger value="comissoes" className="flex-1">Comissões</TabsTrigger>
                 </TabsList>
                 <TabsContent value="info" className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -929,6 +1108,9 @@ export default function Parceiros() {
                     <div>Cadastrado em: {viewParceiro.createdAt ? new Date(viewParceiro.createdAt).toLocaleDateString('pt-BR') : 'N/A'}</div>
                     <div>Atualizado em: {viewParceiro.updatedAt ? new Date(viewParceiro.updatedAt).toLocaleDateString('pt-BR') : 'N/A'}</div>
                   </div>
+                </TabsContent>
+                <TabsContent value="comissoes" className="space-y-4 mt-4">
+                  <CommissionsDashboardTab parceiroId={viewParceiro.id} />
                 </TabsContent>
               </Tabs>
               <DialogFooter>
