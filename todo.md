@@ -784,3 +784,28 @@
 - [x] Notificar quando o usuário for mencionado (@nome) em uma mensagem
 - [x] Badge de contagem de mensagens não lidas
 - [x] Integrar com sistema de notificações existente
+
+## CRM v23 — Status Automático, Histórico e Filtros Avançados
+
+### Alteração Automática de Status
+- [x] Ao registrar férias, alterar status do colaborador para 'ferias' automaticamente
+- [x] Ao registrar atestado, alterar status do colaborador para 'atestado' automaticamente
+- [x] Ao registrar desligamento/demissão, alterar status para 'desligado' automaticamente
+- [x] Ao encerrar férias/atestado, retornar status para 'ativo' automaticamente
+
+### Histórico de Mudanças de Status
+- [x] Criar tabela historico_status_colaborador no schema
+- [x] Registrar cada alteração de status com data, motivo e usuário responsável
+- [x] Exibir timeline de histórico no cadastro do colaborador
+- [x] Permitir consulta de auditoria por colaborador
+
+### Filtros Avançados na Listagem de Colaboradores
+- [x] Filtro por local de trabalho
+- [x] Filtro por cargo
+- [x] Filtro por setor
+- [x] Filtro por status do colaborador
+- [x] Filtro por vale transporte (sim/não)
+- [x] Filtro por nível hierárquico
+- [x] Filtro por tipo de contrato
+- [x] Combinar múltiplos filtros simultaneamente
+- [x] Limpar todos os filtros com um clique

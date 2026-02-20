@@ -37,6 +37,7 @@ import {
   acoesBeneficios, InsertAcaoBeneficio,
   atestadosLicencas, InsertAtestadoLicenca,
   planosCarreira, InsertPlanoCarreira,
+  historicoStatusColaborador, InsertHistoricoStatusColaborador,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1708,5 +1709,58 @@ export async function notificarAvaliacaoPendente(colaboradorNome: string, avalia
     titulo: 'Avaliação Pendente',
     mensagem: `Você tem uma avaliação pendente para ${colaboradorNome} no ciclo "${cicloTitulo}". Acesse o módulo de Avaliação 360° para completar.`,
     usuarioId: avaliadorUserId,
+  });
+}
+
+// ---- HISTÓRICO DE STATUS DO COLABORADOR ----
+export async function listHistoricoStatus(colaboradorId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(historicoStatusColaborador)
+    .where(eq(historicoStatusColaborador.colaboradorId, colaboradorId))
+    .orderBy(desc(historicoStatusColaborador.createdAt));
+}
+
+export async function createHistoricoStatus(data: InsertHistoricoStatusColaborador) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(historicoStatusColaborador).values(data);
+  return result[0].insertId;
+}
+
+// Helper: change colaborador status with audit trail
+export async function changeColaboradorStatus(
+  colaboradorId: number,
+  novoStatus: string,
+  motivo: string,
+  origemModulo: string,
+  origemRegistroId: number | null,
+  alteradoPorId: number | null,
+  alteradoPorNome: string
+) {
+  const db = await getDb();
+  if (!db) return;
+  // Get current status
+  const [colab] = await db.select({ statusColaborador: colaboradores.statusColaborador })
+    .from(colaboradores)
+    .where(eq(colaboradores.id, colaboradorId))
+    .limit(1);
+  if (!colab) return;
+  const statusAnterior = colab.statusColaborador || 'ativo';
+  if (statusAnterior === novoStatus) return; // no change needed
+  // Update status
+  await db.update(colaboradores)
+    .set({ statusColaborador: novoStatus as any })
+    .where(eq(colaboradores.id, colaboradorId));
+  // Record history
+  await db.insert(historicoStatusColaborador).values({
+    colaboradorId,
+    statusAnterior,
+    statusNovo: novoStatus,
+    motivo,
+    origemModulo,
+    origemRegistroId,
+    alteradoPorId,
+    alteradoPorNome,
   });
 }

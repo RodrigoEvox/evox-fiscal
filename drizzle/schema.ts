@@ -960,3 +960,20 @@ export const metasIndividuais = mysqlTable("metas_individuais", {
 
 export type MetaIndividual = typeof metasIndividuais.$inferSelect;
 export type InsertMetaIndividual = typeof metasIndividuais.$inferInsert;
+
+// ---- HISTÓRICO DE STATUS DO COLABORADOR ----
+export const historicoStatusColaborador = mysqlTable("historico_status_colaborador", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  statusAnterior: varchar("statusAnterior", { length: 50 }).notNull(),
+  statusNovo: varchar("statusNovo", { length: 50 }).notNull(),
+  motivo: text("motivo"),
+  origemModulo: varchar("origemModulo", { length: 50 }), // 'ferias', 'atestado', 'manual', 'desligamento'
+  origemRegistroId: int("origemRegistroId"), // ID do registro que originou a mudança
+  alteradoPorId: int("alteradoPorId"),
+  alteradoPorNome: varchar("alteradoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type HistoricoStatusColaborador = typeof historicoStatusColaborador.$inferSelect;
+export type InsertHistoricoStatusColaborador = typeof historicoStatusColaborador.$inferInsert;

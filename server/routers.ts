@@ -1892,7 +1892,31 @@ export const appRouter = router({
       id: z.number(),
       data: z.record(z.string(), z.any()),
     })).mutation(async ({ input, ctx }) => {
-      await db.updateColaborador(input.id, input.data as any);
+      // Track status changes for audit
+      if (input.data.statusColaborador) {
+        await db.changeColaboradorStatus(
+          input.id, input.data.statusColaborador,
+          input.data.motivoDesligamento || 'Altera\u00e7\u00e3o manual de status',
+          'manual', null,
+          ctx.user?.id || null, ctx.user?.name || 'Sistema'
+        );
+        // Remove statusColaborador from data since changeColaboradorStatus already updates it
+        const { statusColaborador, ...restData } = input.data;
+        if (Object.keys(restData).length > 0) {
+          await db.updateColaborador(input.id, restData as any);
+        }
+      } else {
+        await db.updateColaborador(input.id, input.data as any);
+      }
+      // Auto status change for desligamento
+      if (input.data.dataDesligamento && !input.data.statusColaborador) {
+        await db.changeColaboradorStatus(
+          input.id, 'desligado',
+          input.data.motivoDesligamento || 'Desligamento registrado',
+          'desligamento', null,
+          ctx.user?.id || null, ctx.user?.name || 'Sistema'
+        );
+      }
       await logAudit('edicao', 'colaborador', input.id, null, ctx, input.data);
       return { success: true };
     }),
@@ -1935,14 +1959,43 @@ export const appRouter = router({
     })).mutation(async ({ input, ctx }) => {
       const id = await db.createFerias(input as any);
       await logAudit('criacao', 'ferias', id, null, ctx);
+      // Auto status change: if status is em_gozo, change colaborador status to 'ferias'
+      if (input.status === 'em_gozo') {
+        await db.changeColaboradorStatus(
+          input.colaboradorId, 'ferias',
+          'Férias registradas com status em gozo',
+          'ferias', id,
+          ctx.user?.id || null, ctx.user?.name || 'Sistema'
+        );
+      }
       return { id };
     }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
       data: z.record(z.string(), z.any()),
     })).mutation(async ({ input, ctx }) => {
+      // Get the ferias record to know the colaboradorId
+      const feriasRecord = await db.getFeriasById(input.id);
       await db.updateFerias(input.id, input.data as any);
       await logAudit('edicao', 'ferias', input.id, null, ctx, input.data);
+      // Auto status change based on ferias status update
+      if (feriasRecord && input.data.status) {
+        if (input.data.status === 'em_gozo') {
+          await db.changeColaboradorStatus(
+            feriasRecord.colaboradorId, 'ferias',
+            'Férias alteradas para status em gozo',
+            'ferias', input.id,
+            ctx.user?.id || null, ctx.user?.name || 'Sistema'
+          );
+        } else if (input.data.status === 'concluida') {
+          await db.changeColaboradorStatus(
+            feriasRecord.colaboradorId, 'ativo',
+            'Férias concluídas - retorno ao trabalho',
+            'ferias', input.id,
+            ctx.user?.id || null, ctx.user?.name || 'Sistema'
+          );
+        }
+      }
       return { success: true };
     }),
   }),
@@ -2075,14 +2128,37 @@ export const appRouter = router({
         registradoPorNome: ctx.user?.name || 'Sistema',
       } as any);
       await logAudit('criacao', 'atestado_licenca', id, null, ctx);
+      // Auto status change: set colaborador to 'atestado' or 'licenca' or 'afastado'
+      const tiposLicenca = ['licenca_maternidade','licenca_paternidade','licenca_casamento','licenca_obito','licenca_medica'];
+      let novoStatus = 'atestado';
+      if (tiposLicenca.includes(input.tipo)) novoStatus = 'licenca';
+      if (input.tipo === 'licenca_medica' && input.diasAfastamento > 15) novoStatus = 'afastado';
+      await db.changeColaboradorStatus(
+        input.colaboradorId, novoStatus,
+        `Registro de ${input.tipo.replace(/_/g, ' ')} por ${input.diasAfastamento} dias`,
+        'atestado', id,
+        ctx.user?.id || null, ctx.user?.name || 'Sistema'
+      );
       return { id };
     }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
       data: z.record(z.string(), z.any()),
     })).mutation(async ({ input, ctx }) => {
+      // Get atestado record to know colaboradorId
+      const atestadoList = await db.listAtestadosLicencas();
+      const atestado = atestadoList.find((a: any) => a.id === input.id);
       await db.updateAtestadoLicenca(input.id, input.data as any);
       await logAudit('edicao', 'atestado_licenca', input.id, null, ctx, input.data);
+      // Auto status change when atestado is encerrado
+      if (atestado && input.data.status === 'encerrado') {
+        await db.changeColaboradorStatus(
+          atestado.colaboradorId, 'ativo',
+          'Atestado/licen\u00e7a encerrado - retorno ao trabalho',
+          'atestado', input.id,
+          ctx.user?.id || null, ctx.user?.name || 'Sistema'
+        );
+      }
       return { success: true };
     }),
   }),
@@ -2393,6 +2469,13 @@ export const appRouter = router({
       await db.deleteMetaIndividual(input.id);
       await logAudit('exclusao', 'meta_individual', input.id, null, ctx);
       return { success: true };
+    }),
+  }),
+
+  // ---- HISTÓRICO DE STATUS DO COLABORADOR ----
+  historicoStatus: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number() })).query(async ({ input }) => {
+      return db.listHistoricoStatus(input.colaboradorId);
     }),
   }),
 });

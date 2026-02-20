@@ -10,10 +10,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { Separator } from '@/components/ui/separator';
 import {
   Plus, Search, User, Edit2, Eye, X, AlertTriangle, Loader2,
   CheckCircle2, XCircle, UserCheck, UserX, Clock, Briefcase,
-  HeartPulse, Palmtree, ShieldAlert, FileWarning
+  HeartPulse, Palmtree, ShieldAlert, FileWarning, Filter, RotateCcw,
+  ChevronDown, ChevronUp, History, MapPin, Bus, Building2
 } from 'lucide-react';
 
 // ---- Helpers ----
@@ -115,6 +117,13 @@ export default function ColaboradoresGEG() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
+  const [filterCargo, setFilterCargo] = useState<string>('todos');
+  const [filterSetor, setFilterSetor] = useState<string>('todos');
+  const [filterLocal, setFilterLocal] = useState<string>('todos');
+  const [filterVT, setFilterVT] = useState<string>('todos');
+  const [filterNivel, setFilterNivel] = useState<string>('todos');
+  const [filterContrato, setFilterContrato] = useState<string>('todos');
+  const [showFilters, setShowFilters] = useState(false);
   const [admissaoAlert, setAdmissaoAlert] = useState(false);
   const [exitAlert, setExitAlert] = useState(false);
   const [cpfValid, setCpfValid] = useState<boolean | null>(null);
@@ -124,6 +133,10 @@ export default function ColaboradoresGEG() {
 
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
+  const historicoStatus = trpc.historicoStatus.list.useQuery(
+    { colaboradorId: editId || 0 },
+    { enabled: !!editId && (viewMode || showForm) }
+  );
   const createMut = trpc.colaboradores.create.useMutation({
     onSuccess: () => { colaboradores.refetch(); closeFormClean(); toast.success('Colaborador cadastrado!'); },
     onError: (e: any) => toast.error(e.message),
@@ -279,10 +292,60 @@ export default function ColaboradoresGEG() {
 
   const allColabs = (colaboradores.data || []) as any[];
 
+  // Extract unique values for filter dropdowns
+  const uniqueCargos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.cargo).filter(Boolean))).sort(), [allColabs]);
+  const uniqueLocais = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.localTrabalho).filter(Boolean))).sort(), [allColabs]);
+  const uniqueNiveis = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.nivelHierarquico).filter(Boolean))).sort(), [allColabs]);
+  const uniqueContratos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.tipoContrato).filter(Boolean))).sort(), [allColabs]);
+  const setoresList = (setores.data || []) as any[];
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCargo !== 'todos') count++;
+    if (filterSetor !== 'todos') count++;
+    if (filterLocal !== 'todos') count++;
+    if (filterVT !== 'todos') count++;
+    if (filterNivel !== 'todos') count++;
+    if (filterContrato !== 'todos') count++;
+    return count;
+  }, [filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato]);
+
+  const clearAllFilters = () => {
+    setFilterStatus('todos');
+    setFilterCargo('todos');
+    setFilterSetor('todos');
+    setFilterLocal('todos');
+    setFilterVT('todos');
+    setFilterNivel('todos');
+    setFilterContrato('todos');
+    setSearch('');
+  };
+
   const filtered = useMemo(() => {
     let list = [...allColabs];
     if (filterStatus !== 'todos') {
       list = list.filter((c: any) => (c.statusColaborador || 'ativo') === filterStatus);
+    }
+    if (filterCargo !== 'todos') {
+      list = list.filter((c: any) => c.cargo === filterCargo);
+    }
+    if (filterSetor !== 'todos') {
+      list = list.filter((c: any) => String(c.setorId) === filterSetor);
+    }
+    if (filterLocal !== 'todos') {
+      list = list.filter((c: any) => c.localTrabalho === filterLocal);
+    }
+    if (filterVT !== 'todos') {
+      list = list.filter((c: any) => {
+        if (filterVT === 'sim') return c.valeTransporte === true;
+        return c.valeTransporte === false || !c.valeTransporte;
+      });
+    }
+    if (filterNivel !== 'todos') {
+      list = list.filter((c: any) => c.nivelHierarquico === filterNivel);
+    }
+    if (filterContrato !== 'todos') {
+      list = list.filter((c: any) => c.tipoContrato === filterContrato);
     }
     if (search.trim()) {
       const s = search.toLowerCase();
@@ -291,7 +354,7 @@ export default function ColaboradoresGEG() {
       );
     }
     return list;
-  }, [allColabs, search, filterStatus]);
+  }, [allColabs, search, filterStatus, filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato]);
 
   // Status summary counts
   const statusCounts = useMemo(() => {
@@ -367,10 +430,124 @@ export default function ColaboradoresGEG() {
         })}
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Buscar por nome, CPF ou cargo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+      {/* Search + Advanced Filters Toggle */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nome, CPF ou cargo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={showFilters ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="gap-1.5"
+          >
+            <Filter className="w-4 h-4" />
+            Filtros Avançados
+            {activeFilterCount > 0 && (
+              <Badge className="ml-1 bg-white text-primary h-5 w-5 p-0 flex items-center justify-center text-[10px] rounded-full">
+                {activeFilterCount}
+              </Badge>
+            )}
+            {showFilters ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </Button>
+          {(activeFilterCount > 0 || filterStatus !== 'todos' || search.trim()) && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-muted-foreground">
+              <RotateCcw className="w-3.5 h-3.5" /> Limpar Filtros
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Advanced Filters Panel */}
+      {showFilters && (
+        <Card className="border-dashed">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><MapPin className="w-3 h-3 inline mr-1" />Local de Trabalho</Label>
+                <Select value={filterLocal} onValueChange={setFilterLocal}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="home_office">Home Office</SelectItem>
+                    <SelectItem value="barueri">Barueri</SelectItem>
+                    <SelectItem value="uberaba">Uberaba</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><Briefcase className="w-3 h-3 inline mr-1" />Cargo</Label>
+                <Select value={filterCargo} onValueChange={setFilterCargo}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {uniqueCargos.map((c: string) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><Building2 className="w-3 h-3 inline mr-1" />Setor</Label>
+                <Select value={filterSetor} onValueChange={setFilterSetor}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {setoresList.map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><User className="w-3 h-3 inline mr-1" />Nível Hierárquico</Label>
+                <Select value={filterNivel} onValueChange={setFilterNivel}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="estagiario">Estagiário</SelectItem>
+                    <SelectItem value="auxiliar">Auxiliar</SelectItem>
+                    <SelectItem value="assistente">Assistente</SelectItem>
+                    <SelectItem value="analista_jr">Analista Jr</SelectItem>
+                    <SelectItem value="analista_pl">Analista Pl</SelectItem>
+                    <SelectItem value="analista_sr">Analista Sr</SelectItem>
+                    <SelectItem value="coordenador">Coordenador</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="gerente">Gerente</SelectItem>
+                    <SelectItem value="diretor">Diretor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><FileWarning className="w-3 h-3 inline mr-1" />Tipo de Contrato</Label>
+                <Select value={filterContrato} onValueChange={setFilterContrato}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="clt">CLT</SelectItem>
+                    <SelectItem value="pj">PJ</SelectItem>
+                    <SelectItem value="contrato_trabalho">Contrato de Trabalho</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><Bus className="w-3 h-3 inline mr-1" />Vale Transporte</Label>
+                <Select value={filterVT} onValueChange={setFilterVT}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">Mostrando {filtered.length} de {allColabs.length} colaboradores</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -832,6 +1009,48 @@ export default function ColaboradoresGEG() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* ===== HISTÓRICO DE STATUS ===== */}
+            {editId && (viewMode || showForm) && (
+              <>
+                <SectionTitle>Histórico de Status</SectionTitle>
+                {historicoStatus.isLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando histórico...
+                  </div>
+                ) : (historicoStatus.data || []).length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-4 flex items-center gap-2">
+                    <History className="w-4 h-4" /> Nenhuma alteração de status registrada.
+                  </div>
+                ) : (
+                  <div className="relative ml-4 border-l-2 border-border/60 space-y-0">
+                    {(historicoStatus.data as any[]).slice(0, 10).map((h: any, i: number) => {
+                      const cfgNovo = STATUS_CONFIG[h.statusNovo] || STATUS_CONFIG.ativo;
+                      const cfgAnterior = STATUS_CONFIG[h.statusAnterior] || STATUS_CONFIG.ativo;
+                      const IconNovo = cfgNovo.icon;
+                      return (
+                        <div key={h.id || i} className="relative pl-6 pb-4">
+                          <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center ${cfgNovo.color.split(' ')[0]}`}>
+                            <IconNovo className="w-2.5 h-2.5" />
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-medium">{cfgAnterior.label}</span>
+                            <span className="text-muted-foreground mx-1.5">&rarr;</span>
+                            <span className="font-semibold">{cfgNovo.label}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{h.motivo || 'Sem motivo informado'}</p>
+                          <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
+                            <span>Módulo: {h.origemModulo || 'manual'}</span>
+                            <span>Por: {h.alteradoPorNome || 'Sistema'}</span>
+                            <span>{h.createdAt ? new Date(h.createdAt).toLocaleString('pt-BR') : ''}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
 
             {!viewMode && (
