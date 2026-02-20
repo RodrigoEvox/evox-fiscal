@@ -10,7 +10,7 @@ import {
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu,
-  MessageCircle, Target, FolderOpen,
+  MessageCircle, Target, FolderOpen, FileCheck, Mail,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -83,6 +83,9 @@ const SUBMENU_ICONS: Record<string, any> = {
   'avaliacao-desempenho': Target,
   'documentos': FolderOpen,
   'relatorios-rh': FileBarChart,
+  'bi-indicadores': BarChart3,
+  'workflow-renovacao': FileCheck,
+  'email-aniversario': Mail,
   'metas': TrendingUp,
 };
 

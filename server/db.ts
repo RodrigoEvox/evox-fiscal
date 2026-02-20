@@ -1820,3 +1820,116 @@ export async function getContratosVencendo(diasAntecedencia: number = 30) {
   
   return resultado.sort((a, b) => a.diasRestantes - b.diasRestantes);
 }
+
+// =============================================
+// ---- E-MAIL ANIVERSARIANTES ----
+// =============================================
+
+export async function getEmailAniversarianteConfig() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.execute(
+    sql`SELECT * FROM email_aniversariante_config ORDER BY id DESC LIMIT 1`
+  );
+  const result = (rows as any)[0];
+  return result?.[0] || null;
+}
+
+export async function upsertEmailAniversarianteConfig(data: {
+  assunto: string;
+  mensagem: string;
+  assinatura: string;
+  ativo: boolean;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await getEmailAniversarianteConfig();
+  if (existing) {
+    await db.execute(
+      sql`UPDATE email_aniversariante_config SET assunto = ${data.assunto}, mensagem = ${data.mensagem}, assinatura = ${data.assinatura}, ativo = ${data.ativo}, updatedAt = NOW() WHERE id = ${existing.id}`
+    );
+    return existing.id;
+  } else {
+    const result = await db.execute(
+      sql`INSERT INTO email_aniversariante_config (assunto, mensagem, assinatura, ativo) VALUES (${data.assunto}, ${data.mensagem}, ${data.assinatura}, ${data.ativo})`
+    );
+    return (result as any)[0]?.insertId;
+  }
+}
+
+export async function registrarEmailAniversarianteEnviado(colaboradorId: number, ano: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`INSERT IGNORE INTO email_aniversariante_log (colaboradorId, ano, enviadoEm) VALUES (${colaboradorId}, ${ano}, NOW())`
+  );
+}
+
+export async function getEmailsAniversarianteEnviados(ano: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(
+    sql`SELECT colaboradorId FROM email_aniversariante_log WHERE ano = ${ano}`
+  );
+  return ((rows as any)[0] || []).map((r: any) => r.colaboradorId);
+}
+
+// =============================================
+// ---- WORKFLOW RENOVAÇÃO CONTRATO ----
+// =============================================
+
+export async function getWorkflowContratoCriado(colaboradorId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.execute(
+    sql`SELECT * FROM workflow_renovacao_contrato WHERE colaboradorId = ${colaboradorId} AND status = 'pendente' LIMIT 1`
+  );
+  const result = (rows as any)[0];
+  return result?.[0] || null;
+}
+
+export async function criarWorkflowRenovacao(data: {
+  colaboradorId: number;
+  colaboradorNome: string;
+  cargo: string;
+  dataVencimento: string;
+  diasRestantes: number;
+  tarefaId: number | null;
+  criadoPorId: number;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.execute(
+    sql`INSERT INTO workflow_renovacao_contrato (colaboradorId, colaboradorNome, cargo, dataVencimento, diasRestantes, tarefaId, criadoPorId, status) VALUES (${data.colaboradorId}, ${data.colaboradorNome}, ${data.cargo}, ${data.dataVencimento}, ${data.diasRestantes}, ${data.tarefaId}, ${data.criadoPorId}, 'pendente')`
+  );
+  return (result as any)[0]?.insertId;
+}
+
+export async function updateWorkflowRenovacao(id: number, data: { status: string; decisao?: string; observacao?: string }) {
+  const db = await getDb();
+  if (!db) return;
+  if (data.decisao) {
+    await db.execute(
+      sql`UPDATE workflow_renovacao_contrato SET status = ${data.status}, decisao = ${data.decisao}, observacao = ${data.observacao || ''}, resolvidoEm = NOW() WHERE id = ${id}`
+    );
+  } else {
+    await db.execute(
+      sql`UPDATE workflow_renovacao_contrato SET status = ${data.status} WHERE id = ${id}`
+    );
+  }
+}
+
+export async function listWorkflowsRenovacao(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (status) {
+    const rows = await db.execute(
+      sql`SELECT * FROM workflow_renovacao_contrato WHERE status = ${status} ORDER BY diasRestantes ASC`
+    );
+    return (rows as any)[0] || [];
+  }
+  const rows = await db.execute(
+    sql`SELECT * FROM workflow_renovacao_contrato ORDER BY createdAt DESC`
+  );
+  return (rows as any)[0] || [];
+}

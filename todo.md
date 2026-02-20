@@ -834,3 +834,27 @@
 
 ### Renomear Submenu
 - [x] Renomear "Relatórios" para "Visão Analítica" no submenu Gente & Gestão
+
+## CRM v25 — E-mail Aniversariantes, BI RH e Workflow Contratos
+
+### E-mail Automático de Aniversariantes
+- [x] Rota backend para enviar e-mail de parabéns aos aniversariantes do dia
+- [x] Template de e-mail personalizável (título, mensagem, assinatura)
+- [x] Configuração de template na interface administrativa
+- [x] Disparar e-mails automaticamente ao consultar aniversariantes
+- [x] Registro de e-mails enviados para evitar duplicatas
+
+### Painel de BI Consolidado do RH
+- [x] Página dedicada com gráficos interativos (Recharts)
+- [x] Cruzamento de dados: turnover x absenteísmo x custo salarial
+- [x] Filtros por período (mês/trimestre/ano)
+- [x] Indicadores de metas (KPIs) por ciclo de avaliação
+- [x] Gráficos de evolução temporal comparativos
+- [x] Adicionar rota e submenu no Gente & Gestão
+
+### Workflow de Renovação de Contrato
+- [x] Detectar contratos próximos do vencimento automaticamente
+- [x] Criar tarefa no sistema de tarefas para o gestor
+- [x] Tarefa com dados do colaborador e opções (renovar/desligar)
+- [x] Notificar gestor sobre a tarefa criada
+- [x] Evitar criação de tarefas duplicadas para o mesmo contrato

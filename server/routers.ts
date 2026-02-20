@@ -2507,6 +2507,164 @@ export const appRouter = router({
       return contratos;
     }),
   }),
+
+  // ---- E-MAIL ANIVERSARIANTES ----
+  emailAniversariante: router({
+    getConfig: protectedProcedure.query(async () => {
+      return db.getEmailAniversarianteConfig();
+    }),
+    saveConfig: protectedProcedure.input(z.object({
+      assunto: z.string().min(1),
+      mensagem: z.string().min(1),
+      assinatura: z.string().min(1),
+      ativo: z.boolean(),
+    })).mutation(async ({ input }) => {
+      return db.upsertEmailAniversarianteConfig(input);
+    }),
+    enviar: protectedProcedure.input(z.object({ mes: z.number().optional(), dia: z.number().optional() }).optional()).mutation(async ({ input, ctx }) => {
+      const config = await db.getEmailAniversarianteConfig();
+      if (!config || !config.ativo) return { enviados: 0, mensagem: 'E-mail de aniversário desativado' };
+      
+      const hoje = new Date();
+      const mesAtual = input?.mes || (hoje.getMonth() + 1);
+      const diaAtual = input?.dia || hoje.getDate();
+      const anoAtual = hoje.getFullYear();
+      
+      const aniversariantes = await db.getAniversariantesMes(mesAtual);
+      const jaEnviados = await db.getEmailsAniversarianteEnviados(anoAtual);
+      const jaEnviadosSet = new Set(jaEnviados);
+      
+      // Filter to today's birthdays that haven't been sent yet
+      const diaStr = String(diaAtual).padStart(2, '0');
+      const paraEnviar = (aniversariantes as any[]).filter((c: any) => {
+        const diaNasc = c.dataNascimento?.substring(8, 10);
+        return diaNasc === diaStr && !jaEnviadosSet.has(c.id);
+      });
+      
+      let enviados = 0;
+      for (const colab of paraEnviar) {
+        try {
+          // Create notification for the collaborator's linked user
+          const mensagemPersonalizada = config.mensagem.replace(/{nome}/g, colab.nomeCompleto?.split(' ')[0] || 'Colaborador');
+          
+          await db.createNotificacao({
+            usuarioId: ctx.user.id,
+            tipo: 'geral',
+            titulo: config.assunto,
+            mensagem: `${mensagemPersonalizada}\n\n${config.assinatura}`,
+            lida: false,
+          });
+          
+          // If collaborador has a linked userId, notify them too
+          if (colab.userId) {
+            await db.createNotificacao({
+              usuarioId: colab.userId,
+              tipo: 'geral',
+              titulo: config.assunto,
+              mensagem: `${mensagemPersonalizada}\n\n${config.assinatura}`,
+              lida: false,
+            });
+          }
+          
+          await db.registrarEmailAniversarianteEnviado(colab.id, anoAtual);
+          enviados++;
+        } catch (e) { /* ignora erros individuais */ }
+      }
+      
+      return { enviados, total: paraEnviar.length, mensagem: `${enviados} e-mail(s) de aniversário enviado(s)` };
+    }),
+    historico: protectedProcedure.input(z.object({ ano: z.number().optional() }).optional()).query(async ({ input }) => {
+      const ano = input?.ano || new Date().getFullYear();
+      return db.getEmailsAniversarianteEnviados(ano);
+    }),
+  }),
+
+  // ---- WORKFLOW RENOVAÇÃO DE CONTRATO ----
+  workflowRenovacao: router({
+    list: protectedProcedure.input(z.object({ status: z.string().optional() }).optional()).query(async ({ input }) => {
+      return db.listWorkflowsRenovacao(input?.status);
+    }),
+    criar: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      cargo: z.string(),
+      dataVencimento: z.string(),
+      diasRestantes: z.number(),
+    })).mutation(async ({ input, ctx }) => {
+      // Check if workflow already exists for this collaborator
+      const existing = await db.getWorkflowContratoCriado(input.colaboradorId);
+      if (existing) return { id: existing.id, duplicado: true };
+      
+      // Create a task for the manager
+      const nextCode = `WRK-${Date.now().toString(36).toUpperCase()}`;
+      const tarefaId = await db.createTarefa({
+        codigo: nextCode,
+        titulo: `Renovação de Contrato: ${input.colaboradorNome}`,
+        descricao: `O contrato de experiência de ${input.colaboradorNome} (${input.cargo}) vence em ${input.dataVencimento}. Restam ${input.diasRestantes} dia(s).\n\nDecisão necessária:\n- Renovar contrato\n- Converter para CLT efetivo\n- Desligar colaborador`,
+        tipo: 'tarefa',
+        status: 'a_fazer',
+        prioridade: input.diasRestantes <= 7 ? 'urgente' : input.diasRestantes <= 15 ? 'alta' : 'media',
+        responsavelId: ctx.user.id,
+        criadorId: ctx.user.id,
+        dataVencimento: new Date(input.dataVencimento + 'T23:59:59'),
+        tags: ['workflow', 'renovacao_contrato'],
+      });
+      
+      const workflowId = await db.criarWorkflowRenovacao({
+        ...input,
+        tarefaId: tarefaId || null,
+        criadoPorId: ctx.user.id,
+      });
+      
+      // Notify the user
+      await db.createNotificacao({
+        usuarioId: ctx.user.id,
+        tipo: 'geral',
+        titulo: 'Workflow de Renovação Criado',
+        mensagem: `Uma tarefa foi criada para decisão sobre o contrato de ${input.colaboradorNome} (vence em ${input.dataVencimento}).`,
+        lida: false,
+      });
+      
+      return { id: workflowId, tarefaId, duplicado: false };
+    }),
+    resolver: protectedProcedure.input(z.object({
+      id: z.number(),
+      decisao: z.enum(['renovar', 'desligar', 'converter_clt']),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      await db.updateWorkflowRenovacao(input.id, {
+        status: 'resolvido',
+        decisao: input.decisao,
+        observacao: input.observacao,
+      });
+      return { success: true };
+    }),
+    cancelar: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.updateWorkflowRenovacao(input.id, { status: 'cancelado' });
+      return { success: true };
+    }),
+    // Auto-detect and create workflows for expiring contracts
+    verificar: protectedProcedure.mutation(async ({ ctx }) => {
+      const contratos = await db.getContratosVencendo(30);
+      let criados = 0;
+      for (const c of contratos) {
+        const existing = await db.getWorkflowContratoCriado(c.id);
+        if (!existing) {
+          await db.criarWorkflowRenovacao({
+            colaboradorId: c.id,
+            colaboradorNome: c.nomeCompleto,
+            cargo: c.cargo,
+            dataVencimento: c.dataVencimento,
+            diasRestantes: c.diasRestantes,
+            tarefaId: null,
+            criadoPorId: ctx.user.id,
+          });
+          criados++;
+        }
+      }
+      return { criados, total: contratos.length };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
