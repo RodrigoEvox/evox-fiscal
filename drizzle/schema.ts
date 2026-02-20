@@ -696,6 +696,9 @@ export const colaboradores = mysqlTable("colaboradores", {
   agencia: varchar("agencia", { length: 20 }),
   conta: varchar("conta", { length: 30 }),
   tipoConta: mysqlEnum("tipoConta", ["corrente", "poupanca"]),
+  chavePix: varchar("chavePix", { length: 255 }),
+  // Jornada - dias da semana (JSON array)
+  jornadaDias: json("jornadaDias").$type<string[]>(),
   // Saúde
   asoAdmissionalApto: boolean("asoAdmissionalApto").default(true),
   asoAdmissionalData: varchar("asoAdmissionalData", { length: 10 }),

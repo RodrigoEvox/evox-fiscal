@@ -670,3 +670,31 @@
 - [x] Rotas backend (tRPC) para CRUD de todas as entidades
 - [x] Atualizar sidebar com os 7 submenus
 - [x] Testes unitários para as rotas do módulo RH
+
+## CRM v18.1 — Refatoração Formulário Colaboradores
+
+### Layout
+- [x] Remover abas e colocar todos os dados em aba única com rolagem
+- [x] Alerta de sair e descartar alterações ao fechar formulário
+
+### Dados Pessoais
+- [x] Validador automático de CPF no campo CPF
+- [x] Máscara de telefone com separadores (XX) XXXXX-XXXX
+- [x] Preenchimento automático de endereço a partir do CEP (via API ViaCEP)
+
+### Dados Profissionais
+- [x] Jornada de trabalho com dias da semana (checkboxes)
+- [x] Vale transporte com toggle Sim/Não (verde/vermelho)
+
+### Dados Bancários
+- [x] Campo Chave PIX
+
+### Saúde
+- [x] ASO Apto com toggle Sim/Não (verde/vermelho)
+
+### Dependentes
+- [x] Opções pré-definidas de parentesco (cônjuge, filho, etc.)
+- [x] Nome completo, data de nascimento e idade calculada automaticamente
+
+### Dados de Teste
+- [x] Inserir 5 colaboradores de teste para refletir em todos os ambientes do sistema
