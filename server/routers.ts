@@ -2888,6 +2888,17 @@ export const appRouter = router({
     resultados: protectedProcedure.input(z.object({ pesquisaId: z.number() })).query(async ({ input }) => {
       return db.getResultadosClima(input.pesquisaId);
     }),
+    exportPdf: protectedProcedure.input(z.object({ pesquisaId: z.number() })).mutation(async ({ input }) => {
+      const pesquisas = await db.listPesquisasClima();
+      const pesquisa = (pesquisas as any[]).find((p: any) => p.id === input.pesquisaId);
+      if (!pesquisa) throw new Error('Pesquisa não encontrada');
+      const resultados = await db.getResultadosClima(input.pesquisaId);
+      return {
+        pesquisa,
+        perguntas: resultados.perguntas,
+        respostas: resultados.respostas,
+      };
+    }),
   }),
 
   // ---- BANCO DE HORAS ----

@@ -14,8 +14,10 @@ import { toast } from 'sonner';
 import {
   Plus, BarChart3, ClipboardCheck, FileText, Trash2, Send,
   Eye, CheckCircle2, Clock, XCircle, AlertCircle, Loader2,
-  Star, MessageSquare, ToggleLeft, ThumbsUp, ThumbsDown
+  Star, MessageSquare, ToggleLeft, ThumbsUp, ThumbsDown,
+  Download
 } from 'lucide-react';
+import { generatePesquisaClimaPdf } from '@/lib/pesquisaClimaPdf';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -606,6 +608,20 @@ function ResponderDialog({ pesquisa, respostas, setRespostas, onSubmit, onClose,
 
 function ResultadosDialog({ pesquisa, onClose }: { pesquisa: any; onClose: () => void }) {
   const { data, isLoading } = trpc.pesquisaClima.resultados.useQuery({ pesquisaId: pesquisa.id });
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  async function handleExportPdf() {
+    if (!data) return;
+    setExportingPdf(true);
+    try {
+      await generatePesquisaClimaPdf(pesquisa, data.perguntas as any[], data.respostas as any[]);
+      toast.success('PDF gerado com sucesso!');
+    } catch (e: any) {
+      toast.error('Erro ao gerar PDF: ' + e.message);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -714,7 +730,15 @@ function ResultadosDialog({ pesquisa, onClose }: { pesquisa: any; onClose: () =>
             ))}
           </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          <Button
+            variant="default"
+            onClick={handleExportPdf}
+            disabled={exportingPdf || !data || (data?.respostas?.length || 0) === 0}
+          >
+            {exportingPdf ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+            Exportar PDF
+          </Button>
           <Button variant="outline" onClick={onClose}>Fechar</Button>
         </DialogFooter>
       </DialogContent>

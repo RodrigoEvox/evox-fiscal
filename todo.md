@@ -917,3 +917,26 @@
 - [x] Rotas backend CRUD para banco de horas com saldo individual e geral
 - [x] Adicionar rota /rh/banco-horas e submenu no GEG
 - [x] Testes vitest para banco de horas (7 testes passando)
+
+## CRM v28 — Melhorias Banco de Horas e Pesquisa de Clima
+
+### Integração Banco de Horas no Dashboard GEG
+- [x] Card resumo com saldo geral de banco de horas no Dashboard GEG
+- [x] Alertas de colaboradores com saldo negativo
+- [x] Indicadores visuais (cores, ícones) para saldos positivos/negativos
+
+### Exportação PDF da Pesquisa de Clima
+- [x] Botão de exportar PDF no painel de resultados
+- [x] Relatório consolidado com gráficos (barras, distribuição, resumo geral) para apresentações gerenciais
+- [x] Rota backend exportPdf + geração PDF via jsPDF no frontend
+
+## CRM v28.1 — Dashboard GEG em Branco
+
+### Verificação do Dashboard GEG
+- [x] Diagnosticado: Dashboard GEG estava funcional (possível estado transitório durante deploy)
+- [x] Confirmado KPIs: ativos, inativos, total, turnover, absenteísmo, custo salarial
+- [x] Confirmado gráficos: distribuição por status, headcount por setor, turnover mensal
+- [x] Confirmado card de Banco de Horas com saldo geral e alertas de saldo negativo
+- [x] Confirmado aniversariantes do mês e contratos vencendo
+- [x] Confirmado links rápidos para módulos do GEG
+- [x] Verificado renderização correta no navegador — todos indicadores visíveis

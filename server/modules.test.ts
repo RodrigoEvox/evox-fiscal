@@ -160,6 +160,21 @@ describe("pesquisaClima", () => {
       expect(resultados).toHaveProperty("respostas");
     }
   });
+
+  it("exports PDF data for a pesquisa", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const pesquisas = await caller.pesquisaClima.list();
+    if (pesquisas.length > 0) {
+      const p = pesquisas[0] as any;
+      const pdfData = await caller.pesquisaClima.exportPdf({ pesquisaId: p.id });
+      expect(pdfData).toBeDefined();
+      expect(pdfData).toHaveProperty("pesquisa");
+      expect(pdfData).toHaveProperty("perguntas");
+      expect(pdfData).toHaveProperty("respostas");
+      expect(pdfData.pesquisa.titulo).toBeDefined();
+    }
+  });
 });
 
 // ---- BANCO DE HORAS ----
