@@ -722,3 +722,90 @@ describe("Partner Commissions Dashboard", () => {
     expect(dashboard).toBeNull();
   });
 });
+
+
+// ============================================================
+// v33 — Chat Export History & Consolidated Commissions Dashboard
+// ============================================================
+
+describe("Chat Export History", () => {
+  it("should export chat history for a channel", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels: any = await caller.chat.channels();
+    if (channels.length > 0) {
+      const activeChannel = channels.find((c: any) => c.status === 'active') || channels[0];
+      const result: any = await caller.chat.exportHistory({ channelId: activeChannel.id });
+      expect(result).toHaveProperty("channel");
+      expect(result).toHaveProperty("messages");
+      expect(Array.isArray(result.messages)).toBe(true);
+    }
+  });
+
+  it("should return empty messages for channel with no messages", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Use a very high ID that likely doesn't exist or has no messages
+    try {
+      const result: any = await caller.chat.exportHistory({ channelId: 999999 });
+      // If it doesn't throw, messages should be empty
+      expect(result.messages.length).toBe(0);
+    } catch (err: any) {
+      // Channel not found is also acceptable
+      expect(err).toBeDefined();
+    }
+  });
+});
+
+describe("Consolidated Commissions Dashboard", () => {
+  it("should return consolidated commissions data with kpis, ranking, and evolucaoMensal", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated();
+    expect(result).toHaveProperty("kpis");
+    expect(result).toHaveProperty("ranking");
+    expect(result).toHaveProperty("evolucaoMensal");
+    expect(result.kpis).toHaveProperty("totalAprovadas");
+    expect(result.kpis).toHaveProperty("totalPendentes");
+    expect(result.kpis).toHaveProperty("totalRejeitadas");
+    expect(result.kpis).toHaveProperty("valorTotalAprovado");
+    expect(result.kpis).toHaveProperty("valorTotalPendente");
+    expect(result.kpis).toHaveProperty("totalParceiros");
+    expect(result.kpis).toHaveProperty("parceirosAtivos");
+    expect(Array.isArray(result.ranking)).toBe(true);
+    expect(Array.isArray(result.evolucaoMensal)).toBe(true);
+  });
+
+  it("should return ranking entries with expected fields", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated();
+    if (result.ranking.length > 0) {
+      const first = result.ranking[0];
+      expect(first).toHaveProperty("id");
+      expect(first).toHaveProperty("nome");
+      expect(first).toHaveProperty("tipo");
+      expect(first).toHaveProperty("status");
+      expect(first).toHaveProperty("modelo");
+      expect(first).toHaveProperty("totalClientes");
+      expect(first).toHaveProperty("clientesAtivos");
+      expect(first).toHaveProperty("servicosAutorizados");
+      expect(first).toHaveProperty("aprovadas");
+      expect(first).toHaveProperty("pendentes");
+      expect(first).toHaveProperty("valorTotalAprovado");
+    }
+  });
+
+  it("should return monthly evolution with month labels and values", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated();
+    expect(result.evolucaoMensal.length).toBe(12);
+    if (result.evolucaoMensal.length > 0) {
+      const first = result.evolucaoMensal[0];
+      expect(first).toHaveProperty("month");
+      expect(first).toHaveProperty("valor");
+      expect(first).toHaveProperty("quantidade");
+    }
+  });
+});

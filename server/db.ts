@@ -2704,3 +2704,124 @@ export async function getPartnerCommissionsDashboard(parceiroId: number) {
     modelo: modelo[0] || null,
   };
 }
+
+
+// ---- CHAT HISTORY EXPORT ----
+export async function getChatHistoryForExport(channelId: number) {
+  const db = await getDb();
+  if (!db) return { channel: null, messages: [] };
+
+  const channel = await db.select().from(chatChannels).where(eq(chatChannels.id, channelId)).limit(1);
+  if (channel.length === 0) return { channel: null, messages: [] };
+
+  const msgs = await db.select()
+    .from(chatMessages)
+    .where(eq(chatMessages.channelId, channelId))
+    .orderBy(asc(chatMessages.createdAt));
+
+  return { channel: channel[0], messages: msgs };
+}
+
+// ---- CONSOLIDATED COMMISSIONS DASHBOARD ----
+export async function getConsolidatedCommissionsDashboard() {
+  const db = await getDb();
+  if (!db) return null;
+
+  // All parceiros
+  const allParceiros = await db.select().from(parceiros).orderBy(desc(parceiros.createdAt));
+
+  // All aprovacoes
+  const allAprovacoes = await db.select().from(aprovacaoComissao).orderBy(desc(aprovacaoComissao.createdAt));
+
+  // All comissoes por servico
+  const allComissoes = await db.select().from(comissoesServico);
+
+  // All clientes vinculados a parceiros
+  const allClientes = await db.select().from(clientes).where(isNotNull(clientes.parceiroId));
+
+  // All servicos autorizados por parceiro
+  const allParceiroServicos = await db.select().from(parceiroServicos);
+
+  // All servicos
+  const allServicos = await db.select().from(servicos);
+
+  // All modelos de parceria
+  const allModelos = await db.select().from(modelosParceria);
+
+  // Aggregate per parceiro
+  const parceiroStats = allParceiros.map(p => {
+    const pClientes = allClientes.filter((c: any) => c.parceiroId === p.id);
+    const pAprovacoes = allAprovacoes.filter((a: any) => a.parceiroId === p.id);
+    const pServicos = allParceiroServicos.filter((s: any) => s.parceiroId === p.id);
+    const modelo = allModelos.find((m: any) => m.id === p.modeloParceriaId);
+
+    const aprovadas = pAprovacoes.filter((a: any) => a.status === 'aprovada');
+    const pendentes = pAprovacoes.filter((a: any) => a.status === 'pendente');
+    const totalValor = aprovadas.reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0);
+
+    return {
+      id: p.id,
+      nome: p.apelido || p.nomeCompleto,
+      tipo: p.tipoPessoa,
+      status: p.ativo ? 'ativo' : 'inativo',
+      modelo: (modelo as any)?.nome || 'N/A',
+      totalClientes: pClientes.length,
+      clientesAtivos: pClientes.filter((c: any) => c.ativo).length,
+      servicosAutorizados: pServicos.length,
+      totalAprovacoes: pAprovacoes.length,
+      aprovadas: aprovadas.length,
+      pendentes: pendentes.length,
+      valorTotalAprovado: totalValor,
+      createdAt: p.createdAt,
+    };
+  });
+
+  // Monthly evolution (last 12 months)
+  const now = new Date();
+  const monthlyData: { month: string; valor: number; quantidade: number }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    const monthAprovacoes = allAprovacoes.filter((a: any) => {
+      if (a.status !== 'aprovada') return false;
+      const aDate = new Date(a.createdAt);
+      return aDate.getFullYear() === d.getFullYear() && aDate.getMonth() === d.getMonth();
+    });
+    monthlyData.push({
+      month: monthLabel,
+      valor: monthAprovacoes.reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0),
+      quantidade: monthAprovacoes.length,
+    });
+  }
+
+  // Summary KPIs
+  const totalComissoes = allAprovacoes.length;
+  const totalAprovadas = allAprovacoes.filter((a: any) => a.status === 'aprovada').length;
+  const totalPendentes = allAprovacoes.filter((a: any) => a.status === 'pendente').length;
+  const totalRejeitadas = allAprovacoes.filter((a: any) => a.status === 'rejeitada').length;
+  const valorTotalAprovado = allAprovacoes
+    .filter((a: any) => a.status === 'aprovada')
+    .reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0);
+  const valorTotalPendente = allAprovacoes
+    .filter((a: any) => a.status === 'pendente')
+    .reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0);
+
+  return {
+    kpis: {
+      totalComissoes,
+      totalAprovadas,
+      totalPendentes,
+      totalRejeitadas,
+      valorTotalAprovado,
+      valorTotalPendente,
+      totalParceiros: allParceiros.length,
+      parceirosAtivos: allParceiros.filter((p: any) => p.ativo).length,
+    },
+    ranking: parceiroStats
+      .sort((a, b) => b.valorTotalAprovado - a.valorTotalAprovado)
+      .slice(0, 20),
+    evolucaoMensal: monthlyData,
+    parceiros: parceiroStats,
+  };
+}

@@ -477,6 +477,7 @@ export default function AppSidebar() {
             <NavLink path="/gestao-parcerias" icon={Gem} label="Gestão de Parcerias" />
             <NavLink path="/aprovacoes-comissao" icon={ShieldCheck} label="Aprovações de Comissão" />
             <NavLink path="/relatorio-comissoes" icon={FileBarChart} label="Relatório de Comissões" />
+            <NavLink path="/dashboard-comissoes" icon={BarChart3} label="Dashboard Comissões" />
             <NavLink path="/sla-config" icon={ClipboardList} label="Configuração SLA" />
             <NavLink path="/usuarios" icon={UserCog} label="Gestão de Usuários" />
             <NavLink path="/audit-log" icon={History} label="Audit Log" />

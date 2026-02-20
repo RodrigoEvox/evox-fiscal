@@ -1933,6 +1933,21 @@ export const appRouter = router({
         if (!result) throw new Error('Não foi possível editar a mensagem. Apenas o autor pode editar.');
         return result;
       }),
+
+    // ---- CHAT HISTORY EXPORT ----
+    exportHistory: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getChatHistoryForExport(input.channelId);
+      }),
+  }),
+
+  // ---- CONSOLIDATED COMMISSIONS DASHBOARD ----
+  comissoesDashboard: router({
+    consolidated: protectedProcedure
+      .query(async () => {
+        return db.getConsolidatedCommissionsDashboard();
+      }),
   }),
 
   // ---- PARTNER COMMISSIONS DASHBOARD ----

@@ -56,6 +56,7 @@ const DashboardGEG = lazy(() => import("./pages/rh/DashboardGEG"));
 const OnboardingDigital = lazy(() => import("./pages/rh/OnboardingDigital"));
 const PesquisaClima = lazy(() => import("./pages/rh/PesquisaClima"));
 const BancoHoras = lazy(() => import("./pages/rh/BancoHoras"));
+const DashboardComissoes = lazy(() => import("./pages/DashboardComissoes"));
 
 function LazyFallback() {
   return (
@@ -92,6 +93,7 @@ function Router() {
         <Route path="/executivos-comerciais" component={ExecutivosComerciais} />
         <Route path="/aprovacoes-comissao" component={AprovacoesComissao} />
         <Route path="/relatorio-comissoes" component={RelatorioComissoes} />
+        <Route path="/dashboard-comissoes" component={DashboardComissoes} />
         <Route path="/sla-config" component={SlaConfig} />
         <Route path="/chat" component={ChatInterno} />
         {/* Gente & Gestão (RH) */}

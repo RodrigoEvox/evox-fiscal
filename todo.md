@@ -1051,3 +1051,28 @@
 - [x] KPIs: clientes vinculados (ativos), serviços autorizados, subparceiros
 - [x] Seções: modelo de parceria, serviços e comissões, rateio, clientes vinculados, subparceiros, histórico de aprovações
 - [x] 2 testes vitest passando (dashboard com dados, parceiro inexistente)
+
+## CRM v33 — Menções Autocomplete, Export PDF Chat, Dashboard Comissões
+
+### Menções com Autocomplete no Chat
+- [x] Detecção de "@" no campo de mensagem já existia (sistema de menções com autocomplete)
+- [x] Popup de autocomplete com lista de usuários filtrada por digitação
+- [x] Inserção de menção formatada ao selecionar usuário
+- [x] Destaque visual das menções (@nome) nas mensagens renderizadas com cor primária
+- [x] Notificações automáticas para usuários mencionados
+
+### Exportação do Histórico de Chat em PDF
+- [x] Rota backend exportHistory para buscar histórico completo de um canal
+- [x] Geração de PDF via jsPDF com mensagens formatadas (autor, data, conteúdo, arquivos)
+- [x] Botão "Exportar PDF" (ícone FileDown) no header do canal
+- [x] 2 testes vitest passando (export com canal, export canal inexistente)
+
+### Dashboard Consolidado de Comissões
+- [x] Página dedicada /dashboard-comissoes com visão geral de comissões por parceiro
+- [x] Gráfico AreaChart de evolução mensal de comissões (últimos 12 meses)
+- [x] Gráfico BarChart de quantidade de aprovações por mês
+- [x] Gráfico PieChart de top 8 parceiros por valor aprovado
+- [x] Ranking completo com tabela (posição, nome, tipo, status, modelo, clientes, serviços, aprovadas, pendentes, valor)
+- [x] KPIs: valor total aprovado, valor pendente, aprovações/pendentes/rejeitadas, parceiros ativos
+- [x] Rota registrada no App.tsx e link adicionado ao sidebar
+- [x] 3 testes vitest passando (dados consolidados, ranking, evolução mensal)

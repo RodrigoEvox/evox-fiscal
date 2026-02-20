@@ -26,7 +26,7 @@ import {
   Archive, RotateCcw, ChevronDown, Paperclip, FileText, Image,
   Download, User, Mail, Volume2, VolumeX, Globe, FileSearch,
   UserSearch, Bell, Reply, MessageSquare, Pencil, Check, Circle,
-  CornerDownRight,
+  CornerDownRight, FileDown,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
@@ -139,6 +139,7 @@ export default function Chat() {
   const [editingMessage, setEditingMessage] = useState<{ id: number; content: string } | null>(null);
   const [editContent, setEditContent] = useState('');
   const [showThread, setShowThread] = useState<number | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -654,6 +655,85 @@ export default function Chat() {
     }
   };
 
+  // Export chat history as PDF
+  const handleExportPdf = async () => {
+    if (!activeChannelId) return;
+    setExportingPdf(true);
+    try {
+      const data: any = await utils.client.chat.exportHistory.query({ channelId: activeChannelId });
+      if (!data?.channel || !data?.messages?.length) {
+        toast.error('Nenhuma mensagem para exportar');
+        setExportingPdf(false);
+        return;
+      }
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      const channelName = isDmChannel ? getDmPartnerName(activeChannel) : (activeChannel as any)?.nome || 'Canal';
+      doc.text(`Histórico: ${channelName}`, margin, y);
+      y += 8;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')} • ${data.messages.length} mensagens`, margin, y);
+      y += 10;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, y, pageW - margin, y);
+      y += 6;
+
+      // Messages
+      for (const msg of data.messages) {
+        if (y > pageH - 25) { doc.addPage(); y = margin; }
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(50, 50, 50);
+        const dateStr = new Date(msg.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+        doc.text(`${msg.userName || 'Anônimo'} — ${dateStr}`, margin, y);
+        y += 4.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(30, 30, 30);
+        const content = msg.content || (msg.fileUrl ? `[Arquivo: ${msg.fileName || 'arquivo'}]` : '');
+        if (content) {
+          const lines = doc.splitTextToSize(content, maxW);
+          for (const line of lines) {
+            if (y > pageH - 15) { doc.addPage(); y = margin; }
+            doc.text(line, margin, y);
+            y += 4;
+          }
+        }
+        if (msg.editedAt) {
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          doc.text('(editada)', margin, y);
+          y += 3;
+        }
+        y += 3;
+      }
+
+      // Footer on last page
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Evox Fiscal — Chat Interno', margin, pageH - 8);
+
+      doc.save(`chat-${channelName.replace(/[^a-zA-Z0-9]/g, '_')}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success('PDF exportado com sucesso!');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      toast.error('Erro ao exportar PDF');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   // Render message content with highlighted mentions
   const renderContent = useCallback((content: string, msgMentions: Mention[] | null) => {
     if (!msgMentions || msgMentions.length === 0) return content;
@@ -1088,6 +1168,15 @@ export default function Chat() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* PDF Export button */}
+            {activeChannelId && (messages as any[]).length > 0 && (
+              <Button variant="ghost" size="icon" className={`h-8 w-8 ${exportingPdf ? 'text-primary animate-pulse' : ''}`}
+                onClick={handleExportPdf} disabled={exportingPdf}
+                title="Exportar histórico em PDF">
+                {exportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+              </Button>
+            )}
 
             {/* Admin channel controls */}
             {isAdmin && activeChannelId && !isDmChannel && (
