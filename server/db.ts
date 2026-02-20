@@ -30,6 +30,7 @@ import {
   chatMessages, InsertChatMessage,
   chatChannels, InsertChatChannel,
   chatNotifications, InsertChatNotification,
+  chatReactions, InsertChatReaction,
   colaboradores, InsertColaborador,
   ferias, InsertFerias,
   solicitacoesFolga, InsertSolicitacaoFolga,
@@ -1200,11 +1201,15 @@ export async function listAllUserHistory() {
 // ---- CHAT: CANAIS ----
 // =============================================
 
-export async function listChatChannels() {
+export async function listChatChannels(includeAll = false) {
   const db = await getDb();
   if (!db) return [];
+  if (includeAll) {
+    return db.select().from(chatChannels)
+      .orderBy(chatChannels.tipo, chatChannels.nome);
+  }
   return db.select().from(chatChannels)
-    .where(sql`${chatChannels.ativo} = true`)
+    .where(sql`${chatChannels.status} != 'deleted'`)
     .orderBy(chatChannels.tipo, chatChannels.nome);
 }
 
@@ -1269,8 +1274,27 @@ export async function clearChatChannel(channelId: number, deletedByUserId: numbe
 export async function toggleChatChannel(channelId: number, ativo: boolean) {
   const db = await getDb();
   if (!db) return;
+  const newStatus = ativo ? 'active' : 'inactive';
   await db.execute(
-    sql`UPDATE chat_channels SET ativo = ${ativo} WHERE id = ${channelId}`
+    sql`UPDATE chat_channels SET ativo = ${ativo}, status = ${newStatus} WHERE id = ${channelId}`
+  );
+}
+
+// Admin: soft-delete channel (move to trash)
+export async function softDeleteChatChannel(channelId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_channels SET status = 'deleted', ativo = false WHERE id = ${channelId}`
+  );
+}
+
+// Admin: restore channel from trash
+export async function restoreChatChannel(channelId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_channels SET status = 'active', ativo = true WHERE id = ${channelId}`
   );
 }
 
@@ -1300,6 +1324,64 @@ export async function searchChatMessages(query: string, channelId?: number) {
     .where(sql`${chatMessages.content} LIKE ${like} AND ${chatMessages.deletedAt} IS NULL`)
     .orderBy(desc(chatMessages.id))
     .limit(50);
+}
+
+// ---- CHAT: REAÇÕES ----
+// =============================================
+
+export async function addReaction(data: InsertChatReaction) {
+  const db = await getDb();
+  if (!db) return null;
+  // Check if user already reacted with this emoji
+  const existing = await db.select().from(chatReactions)
+    .where(sql`${chatReactions.messageId} = ${data.messageId} AND ${chatReactions.userId} = ${data.userId} AND ${chatReactions.emoji} = ${data.emoji}`);
+  if (existing.length > 0) return null; // already reacted
+  const result = await db.insert(chatReactions).values(data).$returningId();
+  return result[0]?.id;
+}
+
+export async function removeReaction(messageId: number, userId: number, emoji: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`DELETE FROM chat_reactions WHERE messageId = ${messageId} AND userId = ${userId} AND emoji = ${emoji}`
+  );
+}
+
+export async function getReactionsForMessages(messageIds: number[]) {
+  const db = await getDb();
+  if (!db) return [];
+  if (messageIds.length === 0) return [];
+  const idList = messageIds.join(',');
+  const result = await db.execute(sql.raw(`SELECT * FROM chat_reactions WHERE messageId IN (${idList}) ORDER BY createdAt ASC`));
+  return ((result as unknown as any[])[0] as any[]) || [];
+}
+
+// ---- CHAT: MENSAGENS FIXADAS (PIN) ----
+// =============================================
+
+export async function pinMessage(messageId: number, userId: number, userName: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_messages SET pinned = true, pinnedBy = ${userId}, pinnedByName = ${userName}, pinnedAt = NOW() WHERE id = ${messageId}`
+  );
+}
+
+export async function unpinMessage(messageId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_messages SET pinned = false, pinnedBy = NULL, pinnedByName = NULL, pinnedAt = NULL WHERE id = ${messageId}`
+  );
+}
+
+export async function getPinnedMessages(channelId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatMessages)
+    .where(sql`${chatMessages.channelId} = ${channelId} AND ${chatMessages.pinned} = true AND ${chatMessages.deletedAt} IS NULL`)
+    .orderBy(desc(chatMessages.pinnedAt));
 }
 
 // ---- CHAT: NOTIFICAÇÕES ----

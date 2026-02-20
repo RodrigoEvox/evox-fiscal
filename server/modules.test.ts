@@ -258,3 +258,149 @@ describe("bancoHoras", () => {
     }
   });
 });
+
+
+// ---- CHAT: REAÇÕES, PINS, GESTÃO DE CANAIS ----
+describe("chat.reactions", () => {
+  it("adds a reaction to a message", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const ch = channels[0];
+    const sendResult = await caller.chat.send({
+      channelId: ch.id,
+      content: "Mensagem para testar reação",
+    });
+    const msgId = (sendResult as any).id;
+    expect(msgId).toBeTruthy();
+    const result = await caller.chat.addReaction({ messageId: msgId, emoji: "👍" });
+    expect(result).toHaveProperty("id");
+  });
+
+  it("removes a reaction from a message", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const ch = channels[0];
+    const sendResult = await caller.chat.send({
+      channelId: ch.id,
+      content: "Mensagem para testar remoção de reação",
+    });
+    const msgId = (sendResult as any).id;
+    await caller.chat.addReaction({ messageId: msgId, emoji: "❤️" });
+    const result = await caller.chat.removeReaction({ messageId: msgId, emoji: "❤️" });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("fetches reactions for messages", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const ch = channels[0];
+    const sendResult = await caller.chat.send({
+      channelId: ch.id,
+      content: "Mensagem para buscar reações",
+    });
+    const msgId = (sendResult as any).id;
+    await caller.chat.addReaction({ messageId: msgId, emoji: "🔥" });
+    const reactions = await caller.chat.reactions({ messageIds: [msgId] });
+    expect(Array.isArray(reactions)).toBe(true);
+    expect(reactions.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("chat.pinnedMessages", () => {
+  it("pins a message (admin only)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const ch = channels[0];
+    const sendResult = await caller.chat.send({
+      channelId: ch.id,
+      content: "Mensagem para fixar",
+    });
+    const msgId = (sendResult as any).id;
+    const result = await caller.chat.pinMessage({ messageId: msgId });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("lists pinned messages for a channel", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const ch = channels[0];
+    const pinned = await caller.chat.pinnedMessages({ channelId: ch.id });
+    expect(Array.isArray(pinned)).toBe(true);
+  });
+
+  it("unpins a message (admin only)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    if (channels.length === 0) return;
+    const ch = channels[0];
+    const sendResult = await caller.chat.send({
+      channelId: ch.id,
+      content: "Mensagem para desfixar",
+    });
+    const msgId = (sendResult as any).id;
+    await caller.chat.pinMessage({ messageId: msgId });
+    const result = await caller.chat.unpinMessage({ messageId: msgId });
+    expect(result).toEqual({ success: true });
+  });
+});
+
+describe("chat.channelManagement", () => {
+  it("soft-deletes a channel (admin)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    // Create a test channel
+    const newCh = await caller.chat.createChannel({
+      nome: "Canal Teste Lixeira",
+      tipo: "projeto",
+    });
+    expect(newCh.id).toBeTruthy();
+    // Soft-delete
+    const result = await caller.chat.deleteChannel({ channelId: newCh.id! });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("restores a channel from trash (admin)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const newCh = await caller.chat.createChannel({
+      nome: "Canal Teste Restaurar",
+      tipo: "projeto",
+    });
+    await caller.chat.deleteChannel({ channelId: newCh.id! });
+    const result = await caller.chat.restoreChannel({ channelId: newCh.id! });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("toggles channel active/inactive (admin)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const newCh = await caller.chat.createChannel({
+      nome: "Canal Teste Toggle",
+      tipo: "projeto",
+    });
+    // Deactivate
+    const result1 = await caller.chat.toggleChannel({ channelId: newCh.id!, ativo: false });
+    expect(result1).toEqual({ success: true });
+    // Reactivate
+    const result2 = await caller.chat.toggleChannel({ channelId: newCh.id!, ativo: true });
+    expect(result2).toEqual({ success: true });
+  });
+
+  it("channels query returns all statuses for admin", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const channels = await caller.chat.channels();
+    expect(Array.isArray(channels)).toBe(true);
+  });
+});

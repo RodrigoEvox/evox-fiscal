@@ -1532,9 +1532,10 @@ export const appRouter = router({
 
   // ---- CHAT ----
   chat: router({
-    // Canais
-    channels: protectedProcedure.query(async () => {
-      return db.listChatChannels();
+    // Canais (admin sees all including deleted, others see active+inactive)
+    channels: protectedProcedure.query(async ({ ctx }) => {
+      const isAdmin = (ctx.user as any).role === 'admin';
+      return db.listChatChannels(isAdmin);
     }),
     createChannel: protectedProcedure
       .input(z.object({
@@ -1668,6 +1669,67 @@ export const appRouter = router({
         if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem alterar canais');
         await db.toggleChatChannel(input.channelId, input.ativo);
         return { success: true };
+      }),
+    // Admin: soft-delete canal (lixeira)
+    deleteChannel: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem excluir canais');
+        await db.softDeleteChatChannel(input.channelId);
+        return { success: true };
+      }),
+    // Admin: restaurar canal da lixeira
+    restoreChannel: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem restaurar canais');
+        await db.restoreChatChannel(input.channelId);
+        return { success: true };
+      }),
+    // Reações
+    addReaction: protectedProcedure
+      .input(z.object({ messageId: z.number(), emoji: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const userName = (ctx.user as any).apelido || ctx.user.name || 'Usu\u00e1rio';
+        const id = await db.addReaction({
+          messageId: input.messageId,
+          userId: ctx.user.id,
+          userName,
+          emoji: input.emoji,
+        } as any);
+        return { id };
+      }),
+    removeReaction: protectedProcedure
+      .input(z.object({ messageId: z.number(), emoji: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.removeReaction(input.messageId, ctx.user.id, input.emoji);
+        return { success: true };
+      }),
+    reactions: protectedProcedure
+      .input(z.object({ messageIds: z.array(z.number()) }))
+      .query(async ({ input }) => {
+        return db.getReactionsForMessages(input.messageIds);
+      }),
+    // Mensagens fixadas (pin)
+    pinMessage: protectedProcedure
+      .input(z.object({ messageId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem fixar mensagens');
+        const userName = (ctx.user as any).apelido || ctx.user.name || 'Usu\u00e1rio';
+        await db.pinMessage(input.messageId, ctx.user.id, userName);
+        return { success: true };
+      }),
+    unpinMessage: protectedProcedure
+      .input(z.object({ messageId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem desfixar mensagens');
+        await db.unpinMessage(input.messageId);
+        return { success: true };
+      }),
+    pinnedMessages: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getPinnedMessages(input.channelId);
       }),
     // Sugestões de menção (@ para usuários, # para clientes)
     userSuggestions: protectedProcedure

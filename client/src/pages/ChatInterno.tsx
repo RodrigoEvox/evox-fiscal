@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,13 +15,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
   MessageCircle, Send, Loader2, Users, Building2, Hash, Plus,
   AtSign, Search, X, Trash2, MoreVertical, Power, PowerOff,
-  Eraser, Settings2, ShieldAlert, Menu,
+  Eraser, Settings2, ShieldAlert, Menu, Pin, PinOff, Smile,
+  Archive, RotateCcw, ChevronDown,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+
+// Common emojis for quick reactions
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '👀', '✅', '💯', '🙏', '😮', '👎', '💡'];
 
 interface Mention {
   type: 'user' | 'client';
@@ -60,24 +65,41 @@ export default function Chat() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState<{ channelId: number; ativo: boolean } | null>(null);
   const [confirmDeleteMsg, setConfirmDeleteMsg] = useState<number | null>(null);
+  const [confirmDeleteChannel, setConfirmDeleteChannel] = useState<number | null>(null);
+  const [confirmRestoreChannel, setConfirmRestoreChannel] = useState<number | null>(null);
+  const [showPinnedPanel, setShowPinnedPanel] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'active' | 'inactive' | 'trash'>('active');
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Queries
+  // Queries — FAST POLLING (1.5s for messages, 2s for unread)
   const { data: channels = [], isLoading: loadingChannels } = trpc.chat.channels.useQuery(
     undefined,
-    { refetchInterval: 30000 }
+    { refetchInterval: 10000 }
   );
 
   const { data: unreadData } = trpc.chat.unreadCount.useQuery(
     undefined,
-    { refetchInterval: 5000 }
+    { refetchInterval: 2000 }
   );
 
   const { data: messages = [], isLoading: loadingMessages } = trpc.chat.list.useQuery(
     { channelId: activeChannelId!, limit: 200 },
-    { enabled: !!activeChannelId, refetchInterval: 5000 }
+    { enabled: !!activeChannelId, refetchInterval: 1500 }
+  );
+
+  // Reactions query for visible messages
+  const messageIds = useMemo(() => (messages as any[]).map((m: any) => m.id), [messages]);
+  const { data: reactions = [] } = trpc.chat.reactions.useQuery(
+    { messageIds },
+    { enabled: messageIds.length > 0, refetchInterval: 3000 }
+  );
+
+  // Pinned messages query
+  const { data: pinnedMessages = [] } = trpc.chat.pinnedMessages.useQuery(
+    { channelId: activeChannelId! },
+    { enabled: !!activeChannelId }
   );
 
   const userSuggestions = trpc.chat.userSuggestions.useQuery(
@@ -146,11 +168,59 @@ export default function Chat() {
     onError: (err) => toast.error(err.message),
   });
 
+  const deleteChannelMut = trpc.chat.deleteChannel.useMutation({
+    onSuccess: () => {
+      utils.chat.channels.invalidate();
+      toast.success('Canal movido para a lixeira');
+      setConfirmDeleteChannel(null);
+      setActiveChannelId(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const restoreChannelMut = trpc.chat.restoreChannel.useMutation({
+    onSuccess: () => {
+      utils.chat.channels.invalidate();
+      toast.success('Canal restaurado');
+      setConfirmRestoreChannel(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const addReaction = trpc.chat.addReaction.useMutation({
+    onSuccess: () => utils.chat.reactions.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const removeReaction = trpc.chat.removeReaction.useMutation({
+    onSuccess: () => utils.chat.reactions.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const pinMessageMut = trpc.chat.pinMessage.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      utils.chat.pinnedMessages.invalidate();
+      toast.success('Mensagem fixada');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const unpinMessageMut = trpc.chat.unpinMessage.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      utils.chat.pinnedMessages.invalidate();
+      toast.success('Mensagem desfixada');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   // Auto-select first channel
   useEffect(() => {
     if (channels.length > 0 && !activeChannelId) {
-      const geral = channels.find((c: any) => c.tipo === 'geral');
-      setActiveChannelId(geral ? geral.id : channels[0].id);
+      const activeChans = channels.filter((c: any) => c.status === 'active' || (!c.status && c.ativo !== false));
+      const geral = activeChans.find((c: any) => c.tipo === 'geral');
+      setActiveChannelId(geral ? geral.id : (activeChans[0]?.id || channels[0].id));
     }
   }, [channels, activeChannelId]);
 
@@ -174,6 +244,21 @@ export default function Chat() {
     const ch = unreadData.byChannel.find((c: any) => c.channelId === channelId);
     return ch?.count || 0;
   }, [unreadData]);
+
+  // Get reactions grouped by emoji for a message
+  const getMessageReactions = useCallback((messageId: number) => {
+    const msgReactions = (reactions as any[]).filter((r: any) => r.messageId === messageId);
+    const grouped: Record<string, { emoji: string; count: number; users: string[]; userIds: number[] }> = {};
+    for (const r of msgReactions) {
+      if (!grouped[r.emoji]) {
+        grouped[r.emoji] = { emoji: r.emoji, count: 0, users: [], userIds: [] };
+      }
+      grouped[r.emoji].count++;
+      grouped[r.emoji].users.push(r.userName);
+      grouped[r.emoji].userIds.push(r.userId);
+    }
+    return Object.values(grouped);
+  }, [reactions]);
 
   // Handle input change with dual mention detection
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,6 +321,16 @@ export default function Chat() {
     }
     if (e.key === 'Escape') {
       setShowMentions(false);
+    }
+  };
+
+  const handleToggleReaction = (messageId: number, emoji: string) => {
+    const msgReactions = getMessageReactions(messageId);
+    const existing = msgReactions.find(r => r.emoji === emoji);
+    if (existing && currentUser && existing.userIds.includes(currentUser.id)) {
+      removeReaction.mutate({ messageId, emoji });
+    } else {
+      addReaction.mutate({ messageId, emoji });
     }
   };
 
@@ -317,10 +412,13 @@ export default function Chat() {
 
   const activeChannel = channels.find((c: any) => c.id === activeChannelId);
   const isChannelActive = activeChannel ? (activeChannel as any).ativo !== false : true;
+  const channelStatus = (activeChannel as any)?.status || 'active';
 
-  // Separate channels by type
-  const activeChannels = channels.filter((c: any) => c.ativo !== false);
-  const inactiveChannels = channels.filter((c: any) => c.ativo === false);
+  // Separate channels by status
+  const activeChannels = channels.filter((c: any) => (c.status === 'active' || (!c.status && c.ativo !== false)));
+  const inactiveChannels = channels.filter((c: any) => c.status === 'inactive');
+  const deletedChannels = channels.filter((c: any) => c.status === 'deleted');
+
   const geralChannels = activeChannels.filter((c: any) => c.tipo === 'geral');
   const setorChannels = activeChannels.filter((c: any) => c.tipo === 'setor');
   const projetoChannels = activeChannels.filter((c: any) => c.tipo === 'projeto');
@@ -331,32 +429,62 @@ export default function Chat() {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  const renderChannelButton = (ch: any) => {
+  const renderChannelButton = (ch: any, showRestore = false, showDelete = false) => {
     const unread = getChannelUnread(ch.id);
-    const isInactive = ch.ativo === false;
+    const isInactive = ch.status === 'inactive' || (ch.ativo === false && ch.status !== 'deleted');
+    const isDeleted = ch.status === 'deleted';
     const icon = ch.tipo === 'geral' ? <MessageCircle className="w-4 h-4 shrink-0" />
       : ch.tipo === 'setor' ? <Building2 className="w-3.5 h-3.5 shrink-0" />
       : <Hash className="w-3.5 h-3.5 shrink-0" />;
 
     return (
-      <button
-        key={ch.id}
-        onClick={() => { setActiveChannelId(ch.id); setShowSidebar(false); }}
-        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-colors ${
-          activeChannelId === ch.id
-            ? 'bg-primary/10 text-primary font-medium'
-            : 'hover:bg-muted text-foreground/80'
-        } ${isInactive ? 'opacity-50' : ''}`}
-      >
-        {icon}
-        <span className="truncate flex-1">{ch.nome}</span>
-        {isInactive && <PowerOff className="w-3 h-3 text-muted-foreground shrink-0" />}
-        {unread > 0 && (
-          <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-            {unread > 99 ? '99+' : unread}
-          </span>
+      <div key={ch.id} className="flex items-center gap-0.5 group/ch">
+        <button
+          onClick={() => { setActiveChannelId(ch.id); setShowSidebar(false); }}
+          className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-colors ${
+            activeChannelId === ch.id
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'hover:bg-muted text-foreground/80'
+          } ${isInactive || isDeleted ? 'opacity-60' : ''}`}
+        >
+          {icon}
+          <span className="truncate flex-1">{ch.nome}</span>
+          {isInactive && <PowerOff className="w-3 h-3 text-muted-foreground shrink-0" />}
+          {isDeleted && <Trash2 className="w-3 h-3 text-muted-foreground shrink-0" />}
+          {unread > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          )}
+        </button>
+        {/* Quick actions for admin */}
+        {isAdmin && (showRestore || showDelete) && (
+          <div className="opacity-0 group-hover/ch:opacity-100 transition-opacity flex shrink-0">
+            {showRestore && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-green-600"
+                onClick={(e) => { e.stopPropagation(); setConfirmRestoreChannel(ch.id); }}
+                title="Restaurar canal"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </Button>
+            )}
+            {showDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-red-600"
+                onClick={(e) => { e.stopPropagation(); setConfirmDeleteChannel(ch.id); }}
+                title="Mover para lixeira"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
         )}
-      </button>
+      </div>
     );
   };
 
@@ -382,7 +510,6 @@ export default function Chat() {
           >
             <Plus className="w-4 h-4" />
           </Button>
-          {/* Close sidebar on mobile */}
           <Button
             variant="ghost"
             size="icon"
@@ -394,38 +521,94 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Channel list - scrollable */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-2 space-y-3">
-          {geralChannels.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
-              {geralChannels.map(renderChannelButton)}
-            </div>
-          )}
-          {setorChannels.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
-              {setorChannels.map(renderChannelButton)}
-            </div>
-          )}
-          {projetoChannels.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
-              {projetoChannels.map(renderChannelButton)}
-            </div>
-          )}
-          {/* Inactive channels (admin only) */}
-          {isAdmin && inactiveChannels.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1 flex items-center gap-1">
+      {/* Channel tabs for admin */}
+      {isAdmin ? (
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="mx-2 mt-2 h-8 shrink-0">
+              <TabsTrigger value="active" className="text-[10px] h-6 gap-1">
+                <Power className="w-3 h-3" /> Ativos
+                {activeChannels.length > 0 && <span className="text-[9px] opacity-60">({activeChannels.length})</span>}
+              </TabsTrigger>
+              <TabsTrigger value="inactive" className="text-[10px] h-6 gap-1">
                 <PowerOff className="w-3 h-3" /> Inativos
-              </p>
-              {inactiveChannels.map(renderChannelButton)}
-            </div>
-          )}
+                {inactiveChannels.length > 0 && <span className="text-[9px] opacity-60">({inactiveChannels.length})</span>}
+              </TabsTrigger>
+              <TabsTrigger value="trash" className="text-[10px] h-6 gap-1">
+                <Trash2 className="w-3 h-3" /> Lixeira
+                {deletedChannels.length > 0 && <span className="text-[9px] opacity-60">({deletedChannels.length})</span>}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="active" className="flex-1 overflow-y-auto mt-0 p-2 space-y-3">
+              {geralChannels.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
+                  {geralChannels.map(ch => renderChannelButton(ch, false, true))}
+                </div>
+              )}
+              {setorChannels.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
+                  {setorChannels.map(ch => renderChannelButton(ch, false, true))}
+                </div>
+              )}
+              {projetoChannels.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
+                  {projetoChannels.map(ch => renderChannelButton(ch, false, true))}
+                </div>
+              )}
+              {activeChannels.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhum canal ativo</p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="inactive" className="flex-1 overflow-y-auto mt-0 p-2 space-y-1">
+              {inactiveChannels.length > 0 ? (
+                inactiveChannels.map(ch => renderChannelButton(ch, true, true))
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhum canal inativo</p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="trash" className="flex-1 overflow-y-auto mt-0 p-2 space-y-1">
+              {deletedChannels.length > 0 ? (
+                deletedChannels.map(ch => renderChannelButton(ch, true, false))
+              ) : (
+                <div className="text-center py-4">
+                  <Trash2 className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Lixeira vazia</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
+      ) : (
+        /* Non-admin: simple channel list */
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-2 space-y-3">
+            {geralChannels.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
+                {geralChannels.map(ch => renderChannelButton(ch))}
+              </div>
+            )}
+            {setorChannels.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
+                {setorChannels.map(ch => renderChannelButton(ch))}
+              </div>
+            )}
+            {projetoChannels.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
+                {projetoChannels.map(ch => renderChannelButton(ch))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -453,11 +636,10 @@ export default function Chat() {
         {/* Chat header */}
         <div className="h-12 border-b flex items-center justify-between px-3 sm:px-4 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 lg:hidden shrink-0"
+              className="h-8 w-8 lg:hidden shrink-0 relative"
               onClick={() => setShowSidebar(true)}
             >
               <Menu className="w-4 h-4" />
@@ -473,8 +655,11 @@ export default function Chat() {
                 {activeChannel.tipo === 'setor' && <Building2 className="w-4 h-4 text-primary shrink-0" />}
                 {activeChannel.tipo === 'projeto' && <Hash className="w-4 h-4 text-primary shrink-0" />}
                 <span className="font-semibold text-sm truncate">{activeChannel.nome}</span>
-                {!isChannelActive && (
+                {channelStatus === 'inactive' && (
                   <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600 shrink-0">Inativo</Badge>
+                )}
+                {channelStatus === 'deleted' && (
+                  <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 shrink-0">Lixeira</Badge>
                 )}
                 {activeChannel.descricao && (
                   <span className="text-xs text-muted-foreground hidden md:inline ml-2 truncate">
@@ -485,6 +670,21 @@ export default function Chat() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {/* Pinned messages button */}
+            {activeChannelId && (pinnedMessages as any[]).length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 ${showPinnedPanel ? 'text-primary' : ''}`}
+                onClick={() => setShowPinnedPanel(!showPinnedPanel)}
+                title={`${(pinnedMessages as any[]).length} mensagem(ns) fixada(s)`}
+              >
+                <Pin className="w-4 h-4" />
+                <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {(pinnedMessages as any[]).length}
+                </span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -501,7 +701,7 @@ export default function Chat() {
                     <Settings2 className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5">
                     <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
                       <ShieldAlert className="w-3 h-3" /> Administração
@@ -527,6 +727,24 @@ export default function Chat() {
                       <><Power className="w-4 h-4 mr-2" /> Reativar canal</>
                     )}
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {channelStatus !== 'deleted' ? (
+                    <DropdownMenuItem
+                      onClick={() => setConfirmDeleteChannel(activeChannelId)}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Mover para lixeira
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setConfirmRestoreChannel(activeChannelId)}
+                      className="text-green-600 focus:text-green-600"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Restaurar canal
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -550,7 +768,48 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Messages area - FIXED SCROLLING */}
+        {/* Pinned messages panel */}
+        {showPinnedPanel && (pinnedMessages as any[]).length > 0 && (
+          <div className="border-b bg-amber-50/50 dark:bg-amber-900/10 px-3 sm:px-4 py-2 shrink-0 max-h-[200px] overflow-y-auto">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <Pin className="w-3.5 h-3.5" /> Mensagens Fixadas ({(pinnedMessages as any[]).length})
+              </p>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPinnedPanel(false)}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <div className="space-y-1.5">
+              {(pinnedMessages as any[]).map((pm: any) => (
+                <div key={pm.id} className="flex items-start gap-2 py-1.5 px-2 rounded-md bg-background/80 border border-amber-200/50">
+                  <Pin className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold">{pm.userName}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(pm.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-foreground/80 truncate">{pm.content}</p>
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 text-muted-foreground hover:text-red-500 shrink-0"
+                      onClick={() => unpinMessageMut.mutate({ messageId: pm.id })}
+                      title="Desfixar"
+                    >
+                      <PinOff className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Messages area */}
         <div
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-4 py-4 space-y-1"
@@ -583,17 +842,19 @@ export default function Chat() {
                 {group.messages.map((msg: any, mi: number) => {
                   const isOwn = msg.userId === currentUser?.id;
                   const isDeleted = !!msg.deletedAt;
+                  const isPinned = !!msg.pinned;
                   const prevMsg = mi > 0 ? group.messages[mi - 1] : null;
                   const isSameUser = prevMsg && prevMsg.userId === msg.userId;
                   const timeDiff = prevMsg
                     ? (new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) / 60000
                     : 999;
                   const showHeader = !isSameUser || timeDiff > 5;
+                  const msgReactions = getMessageReactions(msg.id);
 
                   return (
                     <div
                       key={msg.id}
-                      className={`group flex gap-2.5 px-2 py-0.5 hover:bg-muted/30 rounded-lg transition-colors ${showHeader ? 'mt-3' : 'mt-0'} ${isDeleted ? 'opacity-50' : ''}`}
+                      className={`group flex gap-2.5 px-2 py-0.5 hover:bg-muted/30 rounded-lg transition-colors ${showHeader ? 'mt-3' : 'mt-0'} ${isDeleted ? 'opacity-50' : ''} ${isPinned ? 'border-l-2 border-amber-400 pl-3' : ''}`}
                     >
                       {/* Avatar */}
                       <div className="w-8 shrink-0">
@@ -617,6 +878,11 @@ export default function Chat() {
                             <span className="text-[10px] text-muted-foreground">
                               {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
+                            {isPinned && (
+                              <Badge variant="outline" className="text-[9px] border-amber-300 text-amber-600 py-0 gap-0.5">
+                                <Pin className="w-2.5 h-2.5" /> Fixada
+                              </Badge>
+                            )}
                             {isDeleted && (
                               <Badge variant="outline" className="text-[9px] border-red-200 text-red-500 py-0">excluída</Badge>
                             )}
@@ -625,20 +891,87 @@ export default function Chat() {
                         <div className={`text-sm leading-relaxed break-words ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground/90'}`}>
                           {isDeleted ? msg.content : renderContent(msg.content, msg.mentions)}
                         </div>
+
+                        {/* Reactions display */}
+                        {!isDeleted && msgReactions.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {msgReactions.map((r) => {
+                              const hasReacted = currentUser && r.userIds.includes(currentUser.id);
+                              return (
+                                <button
+                                  key={r.emoji}
+                                  onClick={() => handleToggleReaction(msg.id, r.emoji)}
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+                                    hasReacted
+                                      ? 'bg-primary/10 border-primary/30 text-primary'
+                                      : 'bg-muted/50 border-border hover:bg-muted'
+                                  }`}
+                                  title={r.users.join(', ')}
+                                >
+                                  <span>{r.emoji}</span>
+                                  <span className="font-medium">{r.count}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Admin delete button - appears on hover */}
-                      {isAdmin && !isDeleted && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-red-500"
-                            onClick={() => setConfirmDeleteMsg(msg.id)}
-                            title="Excluir mensagem"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                      {/* Action buttons - appears on hover */}
+                      {!isDeleted && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-1 flex items-center gap-0.5">
+                          {/* Emoji reaction picker */}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                title="Reagir"
+                              >
+                                <Smile className="w-3.5 h-3.5" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2" side="top" align="end">
+                              <div className="grid grid-cols-6 gap-1">
+                                {QUICK_EMOJIS.map((emoji) => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleToggleReaction(msg.id, emoji)}
+                                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+
+                          {/* Admin: Pin/Unpin */}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`h-6 w-6 ${isPinned ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500'}`}
+                              onClick={() => isPinned ? unpinMessageMut.mutate({ messageId: msg.id }) : pinMessageMut.mutate({ messageId: msg.id })}
+                              title={isPinned ? 'Desfixar mensagem' : 'Fixar mensagem'}
+                            >
+                              {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                            </Button>
+                          )}
+
+                          {/* Admin: Delete */}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                              onClick={() => setConfirmDeleteMsg(msg.id)}
+                              title="Excluir mensagem"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -651,7 +984,7 @@ export default function Chat() {
         </div>
 
         {/* Input area */}
-        {activeChannelId && isChannelActive && (
+        {activeChannelId && isChannelActive && channelStatus !== 'deleted' && (
           <div className="border-t p-2 sm:p-3 relative shrink-0">
             {/* Mention suggestions dropdown */}
             {showMentions && suggestions && suggestions.length > 0 && (
@@ -751,12 +1084,15 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Inactive channel message */}
-        {activeChannelId && !isChannelActive && (
+        {/* Inactive/deleted channel message */}
+        {activeChannelId && (!isChannelActive || channelStatus === 'deleted') && (
           <div className="border-t p-3 shrink-0 bg-muted/30 text-center">
             <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-              <PowerOff className="w-4 h-4" />
-              Este canal está inativo. Apenas administradores podem reativá-lo.
+              {channelStatus === 'deleted' ? (
+                <><Trash2 className="w-4 h-4" /> Este canal está na lixeira. Apenas administradores podem restaurá-lo.</>
+              ) : (
+                <><PowerOff className="w-4 h-4" /> Este canal está inativo. Apenas administradores podem reativá-lo.</>
+              )}
             </p>
           </div>
         )}
@@ -883,6 +1219,50 @@ export default function Chat() {
             >
               {toggleChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
               {confirmToggle?.ativo ? 'Reativar' : 'Desativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Delete Channel Dialog */}
+      <AlertDialog open={!!confirmDeleteChannel} onOpenChange={(open) => !open && setConfirmDeleteChannel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mover Canal para Lixeira</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja mover este canal para a lixeira? O canal ficará oculto para os usuários comuns, mas poderá ser restaurado por um administrador.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmDeleteChannel && deleteChannelMut.mutate({ channelId: confirmDeleteChannel })}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteChannelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
+              Mover para Lixeira
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Restore Channel Dialog */}
+      <AlertDialog open={!!confirmRestoreChannel} onOpenChange={(open) => !open && setConfirmRestoreChannel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar Canal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja restaurar este canal? Ele voltará a ficar visível e ativo para todos os usuários.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmRestoreChannel && restoreChannelMut.mutate({ channelId: confirmRestoreChannel })}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {restoreChannelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />}
+              Restaurar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

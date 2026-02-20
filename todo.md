@@ -940,3 +940,30 @@
 - [x] Confirmado aniversariantes do mês e contratos vencendo
 - [x] Confirmado links rápidos para módulos do GEG
 - [x] Verificado renderização correta no navegador — todos indicadores visíveis
+
+## CRM v29 — Melhorias no Chat
+
+### Polling mais rápido / WebSocket
+- [x] Reduzido intervalo de polling de 5s para 1.5s (mensagens) e 2s (notificações)
+- [x] Mensagens aparecem quase instantaneamente sem espera perceptível
+
+### Reações com Emojis
+- [x] Criada tabela chat_reactions no schema com índices
+- [x] Rotas backend addReaction, removeReaction, reactions (toggle)
+- [x] UI de reações: picker com 12 emojis rápidos, contagem, toggle, tooltips com nomes
+- [x] 3 testes vitest passando (add, remove, fetch reactions)
+
+### Mensagens Fixadas (Pin)
+- [x] Adicionados campos pinned, pinnedBy, pinnedByName, pinnedAt na tabela chat_messages
+- [x] Rotas backend pinMessage, unpinMessage, pinnedMessages (admin only)
+- [x] Painel de mensagens fixadas no topo do canal com botão de desfixar
+- [x] Badge "Fixada" nas mensagens e borda lateral amarela
+- [x] 3 testes vitest passando (pin, list, unpin)
+
+### Gestão de Grupos (Exclusão/Inativação)
+- [x] Adicionado campo status (active/inactive/deleted) na tabela chat_channels
+- [x] Rotas backend deleteChannel (soft delete), restoreChannel, toggleChannel
+- [x] 3 abas na sidebar do chat (admin): Ativos, Inativos, Lixeira
+- [x] Apenas admin pode excluir/inativar/restaurar grupos
+- [x] Botões rápidos de restaurar/excluir ao passar o mouse nos canais
+- [x] 4 testes vitest passando (delete, restore, toggle, channels list)

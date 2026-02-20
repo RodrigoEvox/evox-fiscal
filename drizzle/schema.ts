@@ -602,6 +602,7 @@ export const chatChannels = mysqlTable("chat_channels", {
   icone: varchar("icone", { length: 50 }).default("MessageCircle"),
   criadoPorId: int("criadoPorId"),
   criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  status: mysqlEnum("status", ["active", "inactive", "deleted"]).default("active").notNull(),
   ativo: boolean("ativo").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -619,6 +620,10 @@ export const chatMessages = mysqlTable("chat_messages", {
   userAvatar: varchar("userAvatar", { length: 500 }),
   content: text("content").notNull(),
   mentions: json("mentions").$type<{type: 'user' | 'client'; id: number; name: string}[]>(),
+  pinned: boolean("pinned").default(false).notNull(),
+  pinnedBy: int("pinnedBy"),
+  pinnedByName: varchar("pinnedByName", { length: 255 }),
+  pinnedAt: timestamp("pinnedAt"),
   deletedAt: timestamp("deletedAt"),
   deletedBy: int("deletedBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -642,6 +647,19 @@ export const chatNotifications = mysqlTable("chat_notifications", {
 
 export type ChatNotification = typeof chatNotifications.$inferSelect;
 export type InsertChatNotification = typeof chatNotifications.$inferInsert;
+
+// ---- CHAT: REAÇÕES ----
+export const chatReactions = mysqlTable("chat_reactions", {
+  id: int("id").autoincrement().primaryKey(),
+  messageId: int("messageId").notNull(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  emoji: varchar("emoji", { length: 20 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatReaction = typeof chatReactions.$inferSelect;
+export type InsertChatReaction = typeof chatReactions.$inferInsert;
 
 // ============================================================
 // MÓDULO RH — GENTE & GESTÃO
