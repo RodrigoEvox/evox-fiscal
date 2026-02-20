@@ -83,6 +83,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'avaliacao-desempenho': Target,
   'documentos': FolderOpen,
   'relatorios-rh': FileBarChart,
+  'metas': TrendingUp,
 };
 
 interface SetorConfigItem {

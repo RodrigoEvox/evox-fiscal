@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingDown, Clock, DollarSign, Building2, BarChart3, AlertTriangle, UserMinus, UserPlus, Activity, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, TrendingDown, Clock, DollarSign, Building2, BarChart3, AlertTriangle, UserMinus, UserPlus, Activity, Calendar, FileDown, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area,
@@ -154,11 +156,41 @@ export default function RelatoriosRH() {
     return porNivel.map(item => ({ name: item.nivel, value: item.count }));
   }, [porNivel]);
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch('/api/relatorios-rh/pdf');
+      if (!response.ok) throw new Error('Erro ao gerar relatório');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-rh-${new Date().toISOString().slice(0,10)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('Relatório exportado com sucesso!');
+    } catch (err: any) {
+      toast.error('Erro ao exportar relatório: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Relatórios RH</h1>
-        <p className="text-muted-foreground">Dashboard consolidado — Gente & Gestão</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Relatórios RH</h1>
+          <p className="text-muted-foreground">Dashboard consolidado — Gente & Gestão</p>
+        </div>
+        <Button onClick={handleExportPDF} disabled={exporting} variant="outline" className="gap-2">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          {exporting ? 'Exportando...' : 'Exportar Relatório'}
+        </Button>
       </div>
 
       {/* KPI Cards */}

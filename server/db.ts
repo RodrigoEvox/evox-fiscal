@@ -1600,3 +1600,74 @@ export async function deleteColaboradorDocumento(id: number) {
   if (!db) return;
   await db.delete(colaboradorDocumentos).where(eq(colaboradorDocumentos.id, id));
 }
+
+import { metasIndividuais, InsertMetaIndividual } from "../drizzle/schema";
+
+// ---- METAS INDIVIDUAIS (KPIs) ----
+export async function listMetasIndividuais(colaboradorId?: number, cicloId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId && cicloId) {
+    return db.select().from(metasIndividuais).where(and(eq(metasIndividuais.colaboradorId, colaboradorId), eq(metasIndividuais.cicloId, cicloId))).orderBy(desc(metasIndividuais.createdAt));
+  }
+  if (colaboradorId) {
+    return db.select().from(metasIndividuais).where(eq(metasIndividuais.colaboradorId, colaboradorId)).orderBy(desc(metasIndividuais.createdAt));
+  }
+  if (cicloId) {
+    return db.select().from(metasIndividuais).where(eq(metasIndividuais.cicloId, cicloId)).orderBy(desc(metasIndividuais.createdAt));
+  }
+  return db.select().from(metasIndividuais).orderBy(desc(metasIndividuais.createdAt));
+}
+
+export async function getMetaIndividualById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(metasIndividuais).where(eq(metasIndividuais.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createMetaIndividual(data: InsertMetaIndividual) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(metasIndividuais).values(data);
+  return result[0].insertId;
+}
+
+export async function updateMetaIndividual(id: number, data: Partial<InsertMetaIndividual>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(metasIndividuais).set(data).where(eq(metasIndividuais.id, id));
+}
+
+export async function deleteMetaIndividual(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(metasIndividuais).where(eq(metasIndividuais.id, id));
+}
+
+// ---- NOTIFICAÇÕES DE AVALIAÇÃO ----
+export async function notificarCicloAberto(cicloTitulo: string, cicloId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Get all active users to notify
+  const allUsers = await db.select({ id: users.id }).from(users).where(eq(users.ativo, true));
+  for (const u of allUsers) {
+    await db.insert(notificacoes).values({
+      tipo: 'avaliacao_ciclo_aberto' as any,
+      titulo: 'Novo Ciclo de Avaliação Aberto',
+      mensagem: `O ciclo de avaliação "${cicloTitulo}" foi aberto. Acesse o módulo de Avaliação 360° para participar.`,
+      usuarioId: u.id,
+    });
+  }
+}
+
+export async function notificarAvaliacaoPendente(colaboradorNome: string, avaliadorUserId: number | null, cicloTitulo: string) {
+  const db = await getDb();
+  if (!db || !avaliadorUserId) return;
+  await db.insert(notificacoes).values({
+    tipo: 'avaliacao_pendente' as any,
+    titulo: 'Avaliação Pendente',
+    mensagem: `Você tem uma avaliação pendente para ${colaboradorNome} no ciclo "${cicloTitulo}". Acesse o módulo de Avaliação 360° para completar.`,
+    usuarioId: avaliadorUserId,
+  });
+}

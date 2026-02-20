@@ -248,7 +248,7 @@ export type InsertRelatorio = typeof relatorios.$inferInsert;
 // ---- NOTIFICAÇÕES ----
 export const notificacoes = mysqlTable("notificacoes", {
   id: int("id").autoincrement().primaryKey(),
-  tipo: mysqlEnum("tipo", ["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "tarefa_atribuida", "tarefa_sla_vencendo", "tarefa_comentario", "geral"]).notNull(),
+  tipo: mysqlEnum("tipo", ["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "tarefa_atribuida", "tarefa_sla_vencendo", "tarefa_comentario", "geral", "avaliacao_ciclo_aberto", "avaliacao_pendente"]).notNull(),
   titulo: varchar("titulo", { length: 500 }).notNull(),
   mensagem: text("mensagem").notNull(),
   lida: boolean("lida").default(false).notNull(),
@@ -931,3 +931,29 @@ export const colaboradorDocumentos = mysqlTable("colaborador_documentos", {
 
 export type ColaboradorDocumento = typeof colaboradorDocumentos.$inferSelect;
 export type InsertColaboradorDocumento = typeof colaboradorDocumentos.$inferInsert;
+
+// ---- METAS INDIVIDUAIS (KPIs) ----
+export const metasIndividuais = mysqlTable("metas_individuais", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }),
+  cicloId: int("cicloId"), // vínculo com ciclo de avaliação
+  titulo: varchar("titulo", { length: 500 }).notNull(),
+  descricao: text("descricao"),
+  categoria: mysqlEnum("categoria", ["produtividade", "qualidade", "financeiro", "desenvolvimento", "cliente", "processo", "outro"]).default("outro").notNull(),
+  unidadeMedida: varchar("unidadeMedida", { length: 50 }), // %, R$, unidades, etc.
+  valorMeta: decimal("valorMeta", { precision: 12, scale: 2 }).notNull(), // meta alvo
+  valorAtual: decimal("valorAtual", { precision: 12, scale: 2 }).default("0"), // progresso atual
+  peso: int("peso").default(1), // peso da meta no cálculo geral
+  dataInicio: varchar("dataInicio", { length: 10 }),
+  dataFim: varchar("dataFim", { length: 10 }),
+  status: mysqlEnum("status", ["nao_iniciada", "em_andamento", "concluida", "cancelada"]).default("nao_iniciada").notNull(),
+  observacao: text("observacao"),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MetaIndividual = typeof metasIndividuais.$inferSelect;
+export type InsertMetaIndividual = typeof metasIndividuais.$inferInsert;

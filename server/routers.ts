@@ -758,7 +758,7 @@ export const appRouter = router({
     }),
     create: protectedProcedure
       .input(z.object({
-        tipo: z.enum(["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "tarefa_atribuida", "tarefa_sla_vencendo", "tarefa_comentario", "geral"]),
+        tipo: z.enum(["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "tarefa_atribuida", "tarefa_sla_vencendo", "tarefa_comentario", "geral", "avaliacao_ciclo_aberto", "avaliacao_pendente"]),
         titulo: z.string(),
         mensagem: z.string(),
         usuarioId: z.number().optional(),
@@ -2106,12 +2106,23 @@ export const appRouter = router({
         criadoPorNome: ctx.user?.name || 'Sistema',
       } as any);
       await logAudit('criacao', 'ciclo_avaliacao', id, input.titulo, ctx);
+      // Notificar se ciclo criado como em_andamento
+      if (input.status === 'em_andamento' && id) {
+        await db.notificarCicloAberto(input.titulo, id);
+      }
       return { id };
     }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
       data: z.record(z.string(), z.any()),
     })).mutation(async ({ input, ctx }) => {
+      // Check if status is changing to em_andamento
+      if (input.data.status === 'em_andamento') {
+        const ciclo = await db.getCicloAvaliacaoById(input.id);
+        if (ciclo && ciclo.status !== 'em_andamento') {
+          await db.notificarCicloAberto(ciclo.titulo, input.id);
+        }
+      }
       await db.updateCicloAvaliacao(input.id, input.data as any);
       await logAudit('edicao', 'ciclo_avaliacao', input.id, null, ctx, input.data);
       return { success: true };
@@ -2145,6 +2156,20 @@ export const appRouter = router({
     })).mutation(async ({ input, ctx }) => {
       const id = await db.createAvaliacao(input as any);
       await logAudit('criacao', 'avaliacao', id, null, ctx);
+      // Notificar avaliador sobre avaliação pendente
+      if (input.status === 'pendente' || !input.status) {
+        const ciclo = await db.getCicloAvaliacaoById(input.cicloId);
+        // Find the user linked to the avaliador colaborador
+        const allColabs = await db.listColaboradores();
+        const avaliadorColab = (allColabs as any[]).find((c: any) => c.id === input.avaliadorId);
+        if (avaliadorColab?.userId && ciclo) {
+          await db.notificarAvaliacaoPendente(
+            input.colaboradorNome || 'colaborador',
+            avaliadorColab.userId,
+            ciclo.titulo
+          );
+        }
+      }
       return { id };
     }),
     update: protectedProcedure.input(z.object({
@@ -2277,6 +2302,53 @@ export const appRouter = router({
         totalFerias: (allFerias as any[]).filter(f => f.status === 'em_gozo').length,
         totalAtestados: (allAtestados as any[]).length,
       };
+    }),
+  }),
+
+  // ---- METAS INDIVIDUAIS (KPIs) ----
+  metasIndividuais: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional(), cicloId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listMetasIndividuais(input?.colaboradorId, input?.cicloId);
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return db.getMetaIndividualById(input.id);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string().optional(),
+      cicloId: z.number().optional(),
+      titulo: z.string().min(1),
+      descricao: z.string().optional(),
+      categoria: z.enum(['produtividade','qualidade','financeiro','desenvolvimento','cliente','processo','outro']).optional(),
+      unidadeMedida: z.string().optional(),
+      valorMeta: z.string(),
+      valorAtual: z.string().optional(),
+      peso: z.number().optional(),
+      dataInicio: z.string().optional(),
+      dataFim: z.string().optional(),
+      status: z.enum(['nao_iniciada','em_andamento','concluida','cancelada']).optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createMetaIndividual({
+        ...input,
+        criadoPorId: ctx.user?.id,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'meta_individual', id, input.titulo, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateMetaIndividual(input.id, input.data as any);
+      await logAudit('edicao', 'meta_individual', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteMetaIndividual(input.id);
+      await logAudit('exclusao', 'meta_individual', input.id, null, ctx);
+      return { success: true };
     }),
   }),
 });

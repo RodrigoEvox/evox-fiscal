@@ -731,3 +731,23 @@
 - [x] Upload de CTPS digitalizado
 - [x] Upload de ASO digitalizado
 - [x] Armazenamento via S3 com referência no banco
+
+## CRM v20 — Avaliação Avançada, PDF e KPIs
+
+### Notificações Automáticas de Avaliação
+- [x] Notificar colaboradores quando novo ciclo de avaliação for aberto
+- [x] Notificar colaboradores quando houver avaliações pendentes
+- [x] Integrar com sistema de notificações existente (notificacoes table)
+- [x] Disparar notificações ao criar/ativar ciclo e ao registrar avaliação
+
+### Exportação de Relatórios RH em PDF
+- [x] Botão de exportação PDF no dashboard de Relatórios RH
+- [x] Gerar PDF formatado com KPIs, tabelas e gráficos
+- [x] Endpoint backend para geração do PDF server-side
+
+### Painel de Metas Individuais (KPIs)
+- [x] Schema para metas individuais vinculadas a ciclos de avaliação
+- [x] CRUD de metas com título, descrição, meta numérica e progresso
+- [x] Interface para gerenciar metas por colaborador
+- [x] Vincular metas às avaliações 360° para medir evolução
+- [x] Rota e submenu no Gente & Gestão
