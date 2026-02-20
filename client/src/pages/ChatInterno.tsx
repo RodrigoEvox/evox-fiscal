@@ -5,13 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import {
   MessageCircle, Send, Loader2, Users, Building2, Hash, Plus,
-  CheckCheck, AtSign, Search, X,
+  AtSign, Search, X, Trash2, MoreVertical, Power, PowerOff,
+  Eraser, Settings2, ShieldAlert, Menu,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
@@ -30,6 +39,7 @@ interface MentionSuggestion {
 
 export default function Chat() {
   const { user: currentUser } = useAuth();
+  const isAdmin = (currentUser as any)?.role === 'admin';
   const utils = trpc.useUtils();
 
   // State
@@ -46,8 +56,13 @@ export default function Chat() {
   const [newChannelTipo, setNewChannelTipo] = useState<'projeto' | 'setor'>('projeto');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmToggle, setConfirmToggle] = useState<{ channelId: number; ativo: boolean } | null>(null);
+  const [confirmDeleteMsg, setConfirmDeleteMsg] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Queries
   const { data: channels = [], isLoading: loadingChannels } = trpc.chat.channels.useQuery(
@@ -104,6 +119,33 @@ export default function Chat() {
     onSuccess: () => utils.chat.unreadCount.invalidate(),
   });
 
+  const deleteMessage = trpc.chat.deleteMessage.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      toast.success('Mensagem excluída');
+      setConfirmDeleteMsg(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const clearChannel = trpc.chat.clearChannel.useMutation({
+    onSuccess: () => {
+      utils.chat.list.invalidate();
+      toast.success('Todas as mensagens foram excluídas');
+      setConfirmClear(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const toggleChannel = trpc.chat.toggleChannel.useMutation({
+    onSuccess: () => {
+      utils.chat.channels.invalidate();
+      toast.success('Canal atualizado');
+      setConfirmToggle(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   // Auto-select first channel
   useEffect(() => {
     if (channels.length > 0 && !activeChannelId) {
@@ -119,10 +161,10 @@ export default function Chat() {
     }
   }, [activeChannelId]);
 
-  // Auto-scroll
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -133,7 +175,7 @@ export default function Chat() {
     return ch?.count || 0;
   }, [unreadData]);
 
-  // Handle input change with dual mention detection (@ for users, # for clients)
+  // Handle input change with dual mention detection
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
@@ -141,11 +183,9 @@ export default function Chat() {
     const cursorPos = e.target.selectionStart || 0;
     const textBeforeCursor = value.slice(0, cursorPos);
 
-    // Check for @ (user mention)
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     const lastHashIndex = textBeforeCursor.lastIndexOf('#');
 
-    // Determine which trigger is more recent
     if (lastAtIndex > lastHashIndex && lastAtIndex >= 0) {
       const textAfterTrigger = textBeforeCursor.slice(lastAtIndex + 1);
       if (!textAfterTrigger.includes(' ') || textAfterTrigger.length <= 1) {
@@ -171,7 +211,7 @@ export default function Chat() {
   const handleSelectMention = (suggestion: MentionSuggestion) => {
     const triggerChar = suggestion.type === 'user' ? '@' : '#';
     const before = inputValue.slice(0, mentionCursorPos);
-    const after = inputValue.slice(mentionCursorPos + mentionQuery.length + 1); // +1 for trigger char
+    const after = inputValue.slice(mentionCursorPos + mentionQuery.length + 1);
     const newValue = `${before}${triggerChar}${suggestion.name} ${after}`;
     setInputValue(newValue);
     setMentions(prev => [...prev, { type: suggestion.type, id: suggestion.id, name: suggestion.name }]);
@@ -219,13 +259,17 @@ export default function Chat() {
           continue;
         }
         if (idx > 0) newResult.push(part.slice(0, idx));
+        const isCurrentUser = mention.type === 'user' &&
+          mention.name.toLowerCase() === ((currentUser as any)?.apelido || currentUser?.name || '').toLowerCase();
         newResult.push(
           <span
             key={`${mention.id}-${idx}-${Math.random()}`}
             className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-semibold ${
-              mention.type === 'user'
-                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+              isCurrentUser
+                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200 ring-1 ring-yellow-300'
+                : mention.type === 'user'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
             }`}
           >
             {mention.type === 'user' ? <AtSign className="w-3 h-3" /> : <Hash className="w-3 h-3" />}
@@ -239,7 +283,7 @@ export default function Chat() {
       result = newResult;
     }
     return result;
-  }, []);
+  }, [currentUser]);
 
   // Group messages by date
   const groupedMessages = useMemo(() => {
@@ -261,26 +305,74 @@ export default function Chat() {
     return groups;
   }, [messages]);
 
+  // Filter messages by search
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return groupedMessages;
+    const q = searchQuery.toLowerCase();
+    return groupedMessages.map(g => ({
+      ...g,
+      messages: g.messages.filter((m: any) => m.content.toLowerCase().includes(q)),
+    })).filter(g => g.messages.length > 0);
+  }, [groupedMessages, searchQuery]);
+
   const activeChannel = channels.find((c: any) => c.id === activeChannelId);
+  const isChannelActive = activeChannel ? (activeChannel as any).ativo !== false : true;
 
   // Separate channels by type
-  const geralChannels = channels.filter((c: any) => c.tipo === 'geral');
-  const setorChannels = channels.filter((c: any) => c.tipo === 'setor');
-  const projetoChannels = channels.filter((c: any) => c.tipo === 'projeto');
+  const activeChannels = channels.filter((c: any) => c.ativo !== false);
+  const inactiveChannels = channels.filter((c: any) => c.ativo === false);
+  const geralChannels = activeChannels.filter((c: any) => c.tipo === 'geral');
+  const setorChannels = activeChannels.filter((c: any) => c.tipo === 'setor');
+  const projetoChannels = activeChannels.filter((c: any) => c.tipo === 'projeto');
+
+  const totalUnread = unreadData?.total || 0;
 
   if (loadingChannels) {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  return (
-    <div className="flex h-[calc(100vh-6rem)] gap-0 rounded-xl border overflow-hidden bg-background">
-      {/* Channel sidebar */}
-      <div className="w-64 shrink-0 border-r bg-muted/30 flex flex-col">
-        {/* Sidebar header */}
-        <div className="p-3 border-b flex items-center justify-between">
-          <h2 className="text-sm font-bold flex items-center gap-1.5">
-            <MessageCircle className="w-4 h-4" /> Chat
-          </h2>
+  const renderChannelButton = (ch: any) => {
+    const unread = getChannelUnread(ch.id);
+    const isInactive = ch.ativo === false;
+    const icon = ch.tipo === 'geral' ? <MessageCircle className="w-4 h-4 shrink-0" />
+      : ch.tipo === 'setor' ? <Building2 className="w-3.5 h-3.5 shrink-0" />
+      : <Hash className="w-3.5 h-3.5 shrink-0" />;
+
+    return (
+      <button
+        key={ch.id}
+        onClick={() => { setActiveChannelId(ch.id); setShowSidebar(false); }}
+        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-colors ${
+          activeChannelId === ch.id
+            ? 'bg-primary/10 text-primary font-medium'
+            : 'hover:bg-muted text-foreground/80'
+        } ${isInactive ? 'opacity-50' : ''}`}
+      >
+        {icon}
+        <span className="truncate flex-1">{ch.nome}</span>
+        {isInactive && <PowerOff className="w-3 h-3 text-muted-foreground shrink-0" />}
+        {unread > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const sidebarContent = (
+    <>
+      {/* Sidebar header */}
+      <div className="p-3 border-b flex items-center justify-between shrink-0">
+        <h2 className="text-sm font-bold flex items-center gap-1.5">
+          <MessageCircle className="w-4 h-4" /> Chat
+          {totalUnread > 0 && (
+            <Badge variant="destructive" className="text-[10px] h-5 px-1.5 ml-1">
+              {totalUnread > 99 ? '99+' : totalUnread}
+            </Badge>
+          )}
+        </h2>
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -290,121 +382,109 @@ export default function Chat() {
           >
             <Plus className="w-4 h-4" />
           </Button>
+          {/* Close sidebar on mobile */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 lg:hidden"
+            onClick={() => setShowSidebar(false)}
+          >
+            <X className="w-4 h-4" />
+          </Button>
         </div>
+      </div>
 
-        {/* Channel list */}
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-3">
-            {/* Geral */}
-            {geralChannels.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
-                {geralChannels.map((ch: any) => {
-                  const unread = getChannelUnread(ch.id);
-                  return (
-                    <button
-                      key={ch.id}
-                      onClick={() => setActiveChannelId(ch.id)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-colors ${
-                        activeChannelId === ch.id
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'hover:bg-muted text-foreground/80'
-                      }`}
-                    >
-                      <MessageCircle className="w-4 h-4 shrink-0" />
-                      <span className="truncate flex-1">{ch.nome}</span>
-                      {unread > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                          {unread}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+      {/* Channel list - scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-2 space-y-3">
+          {geralChannels.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Geral</p>
+              {geralChannels.map(renderChannelButton)}
+            </div>
+          )}
+          {setorChannels.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
+              {setorChannels.map(renderChannelButton)}
+            </div>
+          )}
+          {projetoChannels.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
+              {projetoChannels.map(renderChannelButton)}
+            </div>
+          )}
+          {/* Inactive channels (admin only) */}
+          {isAdmin && inactiveChannels.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1 flex items-center gap-1">
+                <PowerOff className="w-3 h-3" /> Inativos
+              </p>
+              {inactiveChannels.map(renderChannelButton)}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 
-            {/* Setores */}
-            {setorChannels.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Setores</p>
-                {setorChannels.map((ch: any) => {
-                  const unread = getChannelUnread(ch.id);
-                  return (
-                    <button
-                      key={ch.id}
-                      onClick={() => setActiveChannelId(ch.id)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-colors ${
-                        activeChannelId === ch.id
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'hover:bg-muted text-foreground/80'
-                      }`}
-                    >
-                      <Building2 className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate flex-1">{ch.nome}</span>
-                      {unread > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                          {unread}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+  return (
+    <div className="flex h-[calc(100vh-6rem)] gap-0 rounded-xl border overflow-hidden bg-background">
+      {/* Mobile sidebar overlay */}
+      {showSidebar && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
 
-            {/* Projetos */}
-            {projetoChannels.length > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Projetos</p>
-                {projetoChannels.map((ch: any) => {
-                  const unread = getChannelUnread(ch.id);
-                  return (
-                    <button
-                      key={ch.id}
-                      onClick={() => setActiveChannelId(ch.id)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-sm transition-colors ${
-                        activeChannelId === ch.id
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'hover:bg-muted text-foreground/80'
-                      }`}
-                    >
-                      <Hash className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate flex-1">{ch.nome}</span>
-                      {unread > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                          {unread}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+      {/* Channel sidebar - responsive */}
+      <div className={`
+        ${showSidebar ? 'fixed inset-y-0 left-0 z-50 w-72' : 'hidden'}
+        lg:relative lg:block lg:w-64 lg:z-auto
+        shrink-0 border-r bg-muted/30 flex flex-col
+      `}>
+        {sidebarContent}
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Chat header */}
-        <div className="h-12 border-b flex items-center justify-between px-4 shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="h-12 border-b flex items-center justify-between px-3 sm:px-4 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 lg:hidden shrink-0"
+              onClick={() => setShowSidebar(true)}
+            >
+              <Menu className="w-4 h-4" />
+              {totalUnread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              )}
+            </Button>
             {activeChannel && (
               <>
-                {activeChannel.tipo === 'geral' && <MessageCircle className="w-4 h-4 text-primary" />}
-                {activeChannel.tipo === 'setor' && <Building2 className="w-4 h-4 text-primary" />}
-                {activeChannel.tipo === 'projeto' && <Hash className="w-4 h-4 text-primary" />}
-                <span className="font-semibold text-sm">{activeChannel.nome}</span>
+                {activeChannel.tipo === 'geral' && <MessageCircle className="w-4 h-4 text-primary shrink-0" />}
+                {activeChannel.tipo === 'setor' && <Building2 className="w-4 h-4 text-primary shrink-0" />}
+                {activeChannel.tipo === 'projeto' && <Hash className="w-4 h-4 text-primary shrink-0" />}
+                <span className="font-semibold text-sm truncate">{activeChannel.nome}</span>
+                {!isChannelActive && (
+                  <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600 shrink-0">Inativo</Badge>
+                )}
                 {activeChannel.descricao && (
-                  <span className="text-xs text-muted-foreground hidden sm:inline ml-2">
+                  <span className="text-xs text-muted-foreground hidden md:inline ml-2 truncate">
                     — {activeChannel.descricao}
                   </span>
                 )}
               </>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -413,27 +493,69 @@ export default function Chat() {
             >
               <Search className="w-4 h-4" />
             </Button>
+            {/* Admin channel controls */}
+            {isAdmin && activeChannelId && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings2 className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                      <ShieldAlert className="w-3 h-3" /> Administração
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setConfirmClear(true)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Eraser className="w-4 h-4 mr-2" />
+                    Limpar todas as mensagens
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setConfirmToggle({
+                      channelId: activeChannelId,
+                      ativo: !isChannelActive,
+                    })}
+                  >
+                    {isChannelActive ? (
+                      <><PowerOff className="w-4 h-4 mr-2" /> Desativar canal</>
+                    ) : (
+                      <><Power className="w-4 h-4 mr-2" /> Reativar canal</>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
         {/* Search bar */}
         {showSearch && (
-          <div className="px-4 py-2 border-b flex items-center gap-2 bg-muted/20">
-            <Search className="w-4 h-4 text-muted-foreground" />
+          <div className="px-3 sm:px-4 py-2 border-b flex items-center gap-2 bg-muted/20 shrink-0">
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar mensagens..."
               className="h-8 text-sm"
+              autoFocus
             />
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowSearch(false); setSearchQuery(''); }}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setShowSearch(false); setSearchQuery(''); }}>
               <X className="w-4 h-4" />
             </Button>
           </div>
         )}
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        {/* Messages area - FIXED SCROLLING */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-4 py-4 space-y-1"
+          style={{ minHeight: 0 }}
+        >
           {!activeChannelId ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageCircle className="w-16 h-16 opacity-20 mb-4" />
@@ -442,24 +564,25 @@ export default function Chat() {
             </div>
           ) : loadingMessages ? (
             <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-          ) : groupedMessages.length === 0 ? (
+          ) : filteredGroups.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageCircle className="w-16 h-16 opacity-20 mb-4" />
-              <p className="text-lg font-medium">Nenhuma mensagem</p>
-              <p className="text-sm">Envie a primeira mensagem neste canal!</p>
+              <p className="text-lg font-medium">{searchQuery ? 'Nenhum resultado' : 'Nenhuma mensagem'}</p>
+              <p className="text-sm">{searchQuery ? 'Tente outra busca' : 'Envie a primeira mensagem neste canal!'}</p>
             </div>
           ) : (
-            groupedMessages.map((group, gi) => (
+            filteredGroups.map((group, gi) => (
               <div key={gi}>
                 {/* Date separator */}
                 <div className="flex items-center gap-3 py-3">
                   <div className="flex-1 h-px bg-border" />
-                  <span className="text-[11px] text-muted-foreground font-medium capitalize">{group.date}</span>
+                  <span className="text-[11px] text-muted-foreground font-medium capitalize whitespace-nowrap">{group.date}</span>
                   <div className="flex-1 h-px bg-border" />
                 </div>
 
                 {group.messages.map((msg: any, mi: number) => {
                   const isOwn = msg.userId === currentUser?.id;
+                  const isDeleted = !!msg.deletedAt;
                   const prevMsg = mi > 0 ? group.messages[mi - 1] : null;
                   const isSameUser = prevMsg && prevMsg.userId === msg.userId;
                   const timeDiff = prevMsg
@@ -468,7 +591,10 @@ export default function Chat() {
                   const showHeader = !isSameUser || timeDiff > 5;
 
                   return (
-                    <div key={msg.id} className={`flex gap-2.5 px-2 py-0.5 hover:bg-muted/30 rounded-lg transition-colors ${showHeader ? 'mt-3' : 'mt-0'}`}>
+                    <div
+                      key={msg.id}
+                      className={`group flex gap-2.5 px-2 py-0.5 hover:bg-muted/30 rounded-lg transition-colors ${showHeader ? 'mt-3' : 'mt-0'} ${isDeleted ? 'opacity-50' : ''}`}
+                    >
                       {/* Avatar */}
                       <div className="w-8 shrink-0">
                         {showHeader && (
@@ -491,12 +617,30 @@ export default function Chat() {
                             <span className="text-[10px] text-muted-foreground">
                               {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
+                            {isDeleted && (
+                              <Badge variant="outline" className="text-[9px] border-red-200 text-red-500 py-0">excluída</Badge>
+                            )}
                           </div>
                         )}
-                        <div className="text-sm text-foreground/90 leading-relaxed break-words">
-                          {renderContent(msg.content, msg.mentions)}
+                        <div className={`text-sm leading-relaxed break-words ${isDeleted ? 'italic text-muted-foreground' : 'text-foreground/90'}`}>
+                          {isDeleted ? msg.content : renderContent(msg.content, msg.mentions)}
                         </div>
                       </div>
+
+                      {/* Admin delete button - appears on hover */}
+                      {isAdmin && !isDeleted && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                            onClick={() => setConfirmDeleteMsg(msg.id)}
+                            title="Excluir mensagem"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -507,11 +651,11 @@ export default function Chat() {
         </div>
 
         {/* Input area */}
-        {activeChannelId && (
-          <div className="border-t p-3 relative">
+        {activeChannelId && isChannelActive && (
+          <div className="border-t p-2 sm:p-3 relative shrink-0">
             {/* Mention suggestions dropdown */}
             {showMentions && suggestions && suggestions.length > 0 && (
-              <div className="absolute bottom-full mb-1 left-3 right-3 bg-popover text-popover-foreground border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+              <div className="absolute bottom-full mb-1 left-2 right-2 sm:left-3 sm:right-3 bg-popover text-popover-foreground border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
                 <div className="px-3 py-1.5 border-b">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase">
                     {mentionType === 'user' ? '@ Usuários' : '# Clientes'}
@@ -523,7 +667,7 @@ export default function Chat() {
                     className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-accent transition-colors text-left"
                     onClick={() => handleSelectMention(s)}
                   >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
                       s.type === 'user' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
                     }`}>
                       {s.type === 'user' ? <Users className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
@@ -538,14 +682,14 @@ export default function Chat() {
             )}
 
             <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <Input
                   ref={inputRef}
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Mensagem... @ para usuários, # para clientes"
-                  className="pr-20"
+                  className="pr-16 sm:pr-20 text-sm"
                   disabled={sendMessage.isPending}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
@@ -583,7 +727,7 @@ export default function Chat() {
                 onClick={handleSend}
                 disabled={!inputValue.trim() || sendMessage.isPending}
                 size="sm"
-                className="gap-1.5 px-4"
+                className="gap-1.5 px-3 sm:px-4 shrink-0"
               >
                 {sendMessage.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -606,6 +750,16 @@ export default function Chat() {
             )}
           </div>
         )}
+
+        {/* Inactive channel message */}
+        {activeChannelId && !isChannelActive && (
+          <div className="border-t p-3 shrink-0 bg-muted/30 text-center">
+            <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <PowerOff className="w-4 h-4" />
+              Este canal está inativo. Apenas administradores podem reativá-lo.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* New Channel Dialog */}
@@ -613,6 +767,7 @@ export default function Chat() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Novo Canal</DialogTitle>
+            <DialogDescription>Crie um novo canal de comunicação para a equipe.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -663,6 +818,75 @@ export default function Chat() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Delete Message Dialog */}
+      <AlertDialog open={!!confirmDeleteMsg} onOpenChange={(open) => !open && setConfirmDeleteMsg(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Mensagem</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta mensagem? A mensagem será marcada como excluída e o conteúdo original não poderá ser recuperado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmDeleteMsg && deleteMessage.mutate({ messageId: confirmDeleteMsg })}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteMessage.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Clear Channel Dialog */}
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar Canal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir TODAS as mensagens deste canal? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => activeChannelId && clearChannel.mutate({ channelId: activeChannelId })}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {clearChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Eraser className="w-4 h-4 mr-1" />}
+              Limpar Tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Toggle Channel Dialog */}
+      <AlertDialog open={!!confirmToggle} onOpenChange={(open) => !open && setConfirmToggle(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmToggle?.ativo ? 'Reativar Canal' : 'Desativar Canal'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmToggle?.ativo
+                ? 'Deseja reativar este canal? Os usuários poderão enviar mensagens novamente.'
+                : 'Deseja desativar este canal? Os usuários não poderão enviar novas mensagens, mas o histórico será mantido.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmToggle && toggleChannel.mutate(confirmToggle)}
+            >
+              {toggleChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              {confirmToggle?.ativo ? 'Reativar' : 'Desativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

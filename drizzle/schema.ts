@@ -619,6 +619,8 @@ export const chatMessages = mysqlTable("chat_messages", {
   userAvatar: varchar("userAvatar", { length: 500 }),
   content: text("content").notNull(),
   mentions: json("mentions").$type<{type: 'user' | 'client'; id: number; name: string}[]>(),
+  deletedAt: timestamp("deletedAt"),
+  deletedBy: int("deletedBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

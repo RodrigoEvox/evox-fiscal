@@ -766,3 +766,21 @@
 - [x] Exibir status na listagem de colaboradores com badges visuais
 - [x] Atualizar Relatórios RH para refletir os novos status
 - [x] Atualizar dashboard de headcount para considerar os novos status
+
+## CRM v22 — Melhorias no Chat
+
+### Correção de Rolagem
+- [x] Habilitar rolagem no chat em telas menores
+- [x] Garantir layout responsivo funcional em mobile/tablet
+
+### Controles Administrativos do Chat
+- [x] Excluir mensagens individuais (admin)
+- [x] Limpar todo o histórico de um chat (admin)
+- [x] Ativar/inativar canais de chat (admin)
+- [x] Indicação visual de mensagens excluídas
+
+### Notificações do Chat
+- [x] Notificar usuário sobre novas mensagens em chats que participa
+- [x] Notificar quando o usuário for mencionado (@nome) em uma mensagem
+- [x] Badge de contagem de mensagens não lidas
+- [x] Integrar com sistema de notificações existente

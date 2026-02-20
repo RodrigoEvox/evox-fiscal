@@ -1582,15 +1582,19 @@ export const appRouter = router({
           content: input.content,
           mentions: input.mentions || [],
         } as any);
-        // Create notifications for mentioned users
+        // Create notifications for ALL users in the system (except sender) about new message
+        const allUsers = await db.listUsers();
+        const mentionedUserIds = new Set<number>();
+        
+        // First, handle @mentions specifically
         if (input.mentions && input.mentions.length > 0) {
           const userMentions = input.mentions.filter(m => m.type === 'user');
-          const allUsers = await db.listUsers();
           for (const mention of userMentions) {
             const mentionedUser = allUsers.find((u: any) =>
               (u.apelido || u.name || '').toLowerCase() === mention.name.toLowerCase()
             );
             if (mentionedUser && mentionedUser.id !== ctx.user.id) {
+              mentionedUserIds.add(mentionedUser.id);
               await db.createChatNotification({
                 userId: mentionedUser.id,
                 messageId: id!,
@@ -1601,6 +1605,21 @@ export const appRouter = router({
               } as any);
             }
           }
+        }
+        
+        // Then, notify all other active users about the new message (except sender and already-mentioned)
+        for (const u of allUsers) {
+          if (u.id === ctx.user.id) continue; // skip sender
+          if (mentionedUserIds.has(u.id)) continue; // already notified as mention
+          if (!(u as any).ativo) continue; // skip inactive users
+          await db.createChatNotification({
+            userId: u.id,
+            messageId: id!,
+            channelId: input.channelId,
+            tipo: 'mensagem',
+            remetenteNome: senderName,
+            preview: input.content.slice(0, 200),
+          } as any);
         }
         return { id };
       }),
@@ -1626,6 +1645,30 @@ export const appRouter = router({
       await db.markAllNotificationsRead(ctx.user.id);
       return { success: true };
     }),
+    // Admin: excluir mensagem
+    deleteMessage: protectedProcedure
+      .input(z.object({ messageId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem excluir mensagens');
+        await db.deleteChatMessage(input.messageId, ctx.user.id);
+        return { success: true };
+      }),
+    // Admin: limpar todas as mensagens de um canal
+    clearChannel: protectedProcedure
+      .input(z.object({ channelId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem limpar canais');
+        await db.clearChatChannel(input.channelId, ctx.user.id);
+        return { success: true };
+      }),
+    // Admin: ativar/inativar canal
+    toggleChannel: protectedProcedure
+      .input(z.object({ channelId: z.number(), ativo: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        if ((ctx.user as any).role !== 'admin') throw new Error('Apenas administradores podem alterar canais');
+        await db.toggleChatChannel(input.channelId, input.ativo);
+        return { success: true };
+      }),
     // Sugestões de menção (@ para usuários, # para clientes)
     userSuggestions: protectedProcedure
       .input(z.object({ query: z.string() }))

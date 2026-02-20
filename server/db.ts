@@ -1238,18 +1238,57 @@ export async function listChatMessages(channelId: number, limit = 100, beforeId?
     .limit(limit);
 }
 
+// Admin: soft-delete a message
+export async function deleteChatMessage(messageId: number, deletedByUserId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_messages SET deletedAt = NOW(), deletedBy = ${deletedByUserId}, content = '[Mensagem excluída pelo administrador]' WHERE id = ${messageId}`
+  );
+}
+
+// Admin: clear all messages in a channel
+export async function clearChatChannel(channelId: number, deletedByUserId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_messages SET deletedAt = NOW(), deletedBy = ${deletedByUserId}, content = '[Mensagem excluída pelo administrador]' WHERE channelId = ${channelId} AND deletedAt IS NULL`
+  );
+}
+
+// Admin: toggle channel active/inactive
+export async function toggleChatChannel(channelId: number, ativo: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_channels SET ativo = ${ativo} WHERE id = ${channelId}`
+  );
+}
+
+// Admin: update channel info
+export async function updateChatChannel(channelId: number, data: { nome?: string; descricao?: string }) {
+  const db = await getDb();
+  if (!db) return;
+  const sets: string[] = [];
+  if (data.nome) sets.push(`nome = '${data.nome.replace(/'/g, "''")}'`);
+  if (data.descricao !== undefined) sets.push(`descricao = '${(data.descricao || '').replace(/'/g, "''")}'`);
+  if (sets.length > 0) {
+    await db.execute(sql.raw(`UPDATE chat_channels SET ${sets.join(', ')} WHERE id = ${channelId}`));
+  }
+}
+
 export async function searchChatMessages(query: string, channelId?: number) {
   const db = await getDb();
   if (!db) return [];
   const like = `%${query}%`;
   if (channelId) {
     return db.select().from(chatMessages)
-      .where(sql`${chatMessages.content} LIKE ${like} AND ${chatMessages.channelId} = ${channelId}`)
+      .where(sql`${chatMessages.content} LIKE ${like} AND ${chatMessages.channelId} = ${channelId} AND ${chatMessages.deletedAt} IS NULL`)
       .orderBy(desc(chatMessages.id))
       .limit(50);
   }
   return db.select().from(chatMessages)
-    .where(sql`${chatMessages.content} LIKE ${like}`)
+    .where(sql`${chatMessages.content} LIKE ${like} AND ${chatMessages.deletedAt} IS NULL`)
     .orderBy(desc(chatMessages.id))
     .limit(50);
 }
