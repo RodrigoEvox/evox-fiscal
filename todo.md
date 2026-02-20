@@ -1092,3 +1092,20 @@
 - [x] Botão "PDF" gera relatório via jsPDF com KPIs, ranking e evolução mensal
 - [x] Relatório inclui filtros aplicados, indicadores gerais, ranking completo e evolução mensal
 - [x] Paginação automática no PDF para rankings longos
+
+## CRM v35 — Comparativo de Períodos e Metas de Comissões
+
+### Comparativo de Períodos no Dashboard
+- [x] Seletor de dois períodos (Período A e Período B) com date pickers
+- [x] Rota backend para buscar dados de comissões para dois períodos distintos
+- [x] Gráfico comparativo lado a lado (barras agrupadas) mostrando evolução dos dois períodos
+- [x] KPIs comparativos com variação percentual (↑/↓) entre períodos
+- [x] Tabela de ranking comparativo com colunas de ambos os períodos
+
+### Meta de Comissões por Parceiro
+- [x] Criar tabela metas_comissoes no schema (parceiro, período, valor meta, tipo: mensal/trimestral)
+- [x] Rotas backend CRUD para metas de comissões
+- [x] Rota backend para calcular progresso (realizado vs meta)
+- [x] UI para definir metas por parceiro (dialog de cadastro)
+- [x] Barra de progresso de atingimento no dashboard e no ranking
+- [x] Indicadores visuais: verde (≥100%), amarelo (50-99%), vermelho (<50%)

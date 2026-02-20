@@ -575,6 +575,24 @@ export const aprovacaoComissao = mysqlTable("aprovacao_comissao", {
 export type AprovacaoComissao = typeof aprovacaoComissao.$inferSelect;
 export type InsertAprovacaoComissao = typeof aprovacaoComissao.$inferInsert;
 
+// ---- METAS DE COMISSÕES POR PARCEIRO ----
+export const metasComissoes = mysqlTable("metas_comissoes", {
+  id: int("id").autoincrement().primaryKey(),
+  parceiroId: int("parceiroId").notNull(),
+  tipo: mysqlEnum("tipo", ["mensal", "trimestral", "semestral", "anual"]).notNull().default("mensal"),
+  ano: int("ano").notNull(),
+  mes: int("mes"), // 1-12 for mensal, null for trimestral/semestral/anual
+  trimestre: int("trimestre"), // 1-4 for trimestral
+  valorMeta: decimal("valorMeta", { precision: 12, scale: 2 }).notNull(),
+  observacao: text("observacao"),
+  criadoPor: int("criadoPor"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MetaComissao = typeof metasComissoes.$inferSelect;
+export type InsertMetaComissao = typeof metasComissoes.$inferInsert;
+
 // ---- HISTÓRICO DE USUÁRIOS ----
 export const userHistory = mysqlTable("user_history", {
   id: int("id").autoincrement().primaryKey(),

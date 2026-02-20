@@ -1954,6 +1954,91 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getConsolidatedCommissionsDashboard(input);
       }),
+
+    // Comparativo de períodos
+    comparativo: protectedProcedure
+      .input(z.object({
+        periodoA: z.object({ dataInicio: z.string(), dataFim: z.string() }),
+        periodoB: z.object({ dataInicio: z.string(), dataFim: z.string() }),
+        tipoParceiro: z.enum(['pf', 'pj']).optional(),
+        modeloParceriaId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.getComparativoPeriodos(
+          input.periodoA,
+          input.periodoB,
+          input.tipoParceiro,
+          input.modeloParceriaId
+        );
+      }),
+
+    // Metas de comissões
+    listMetas: protectedProcedure
+      .input(z.object({ parceiroId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listMetasComissoes(input?.parceiroId);
+      }),
+
+    createMeta: protectedProcedure
+      .input(z.object({
+        parceiroId: z.number(),
+        tipo: z.enum(['mensal', 'trimestral', 'semestral', 'anual']),
+        ano: z.number(),
+        mes: z.number().optional(),
+        trimestre: z.number().optional(),
+        valorMeta: z.string(),
+        observacao: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createMetaComissao({
+          ...input,
+          criadoPor: ctx.user.id,
+        } as any);
+        return { id };
+      }),
+
+    updateMeta: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        valorMeta: z.string().optional(),
+        observacao: z.string().optional(),
+        tipo: z.enum(['mensal', 'trimestral', 'semestral', 'anual']).optional(),
+        mes: z.number().optional(),
+        trimestre: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateMetaComissao(id, data as any);
+        return { success: true };
+      }),
+
+    deleteMeta: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteMetaComissao(input.id);
+        return { success: true };
+      }),
+
+    // Progresso de metas (todos os parceiros)
+    metasProgresso: protectedProcedure
+      .input(z.object({
+        ano: z.number(),
+        mes: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.getAllMetasProgresso(input.ano, input.mes);
+      }),
+
+    // Progresso de meta individual
+    metaProgressoParceiro: protectedProcedure
+      .input(z.object({
+        parceiroId: z.number(),
+        ano: z.number(),
+        mes: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.getMetaProgressoParceiro(input.parceiroId, input.ano, input.mes);
+      }),
   }),
 
   // ---- PARTNER COMMISSIONS DASHBOARD ----

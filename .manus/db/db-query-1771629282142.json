@@ -1,0 +1,52 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'aprovacao_comissao' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'aprovacao_comissao' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "parceiroId"
+    },
+    {
+      "COLUMN_NAME": "servicoId"
+    },
+    {
+      "COLUMN_NAME": "percentualSolicitado"
+    },
+    {
+      "COLUMN_NAME": "percentualPadrao"
+    },
+    {
+      "COLUMN_NAME": "modeloParceriaId"
+    },
+    {
+      "COLUMN_NAME": "solicitadoPorId"
+    },
+    {
+      "COLUMN_NAME": "solicitadoEm"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "aprovadoPorId"
+    },
+    {
+      "COLUMN_NAME": "aprovadoEm"
+    },
+    {
+      "COLUMN_NAME": "observacao"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nparceiroId\nservicoId\npercentualSolicitado\npercentualPadrao\nmodeloParceriaId\nsolicitadoPorId\nsolicitadoEm\nstatus\naprovadoPorId\naprovadoEm\nobservacao\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

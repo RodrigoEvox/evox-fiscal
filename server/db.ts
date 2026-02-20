@@ -2856,3 +2856,282 @@ export async function getConsolidatedCommissionsDashboard(filters?: {
     modelos: allModelos.map((m: any) => ({ id: m.id, nome: m.nome })),
   };
 }
+
+
+// ============================================================
+// METAS DE COMISSÕES POR PARCEIRO
+// ============================================================
+
+import { metasComissoes, InsertMetaComissao } from "../drizzle/schema";
+
+export async function listMetasComissoes(parceiroId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (parceiroId) {
+    return db.select().from(metasComissoes)
+      .where(eq(metasComissoes.parceiroId, parceiroId))
+      .orderBy(desc(metasComissoes.ano), desc(metasComissoes.mes));
+  }
+  return db.select().from(metasComissoes)
+    .orderBy(desc(metasComissoes.ano), desc(metasComissoes.mes));
+}
+
+export async function getMetaComissao(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(metasComissoes).where(eq(metasComissoes.id, id)).limit(1);
+  return rows[0] || null;
+}
+
+export async function createMetaComissao(data: InsertMetaComissao) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(metasComissoes).values(data);
+  return result.insertId;
+}
+
+export async function updateMetaComissao(id: number, data: Partial<InsertMetaComissao>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(metasComissoes).set(data).where(eq(metasComissoes.id, id));
+}
+
+export async function deleteMetaComissao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(metasComissoes).where(eq(metasComissoes.id, id));
+}
+
+// Get all metas for a specific year/month for all partners
+export async function getMetasComissoesByPeriod(ano: number, mes?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (mes) {
+    return db.select().from(metasComissoes)
+      .where(and(eq(metasComissoes.ano, ano), eq(metasComissoes.mes, mes)));
+  }
+  return db.select().from(metasComissoes)
+    .where(eq(metasComissoes.ano, ano));
+}
+
+// Get partner goal progress: meta vs realizado
+export async function getMetaProgressoParceiro(parceiroId: number, ano: number, mes?: number) {
+  const db = await getDb();
+  if (!db) return { meta: null, realizado: 0 };
+
+  // Get the meta
+  const conditions = [eq(metasComissoes.parceiroId, parceiroId), eq(metasComissoes.ano, ano)];
+  if (mes) conditions.push(eq(metasComissoes.mes, mes));
+  const metas = await db.select().from(metasComissoes).where(and(...conditions)).limit(1);
+  const meta = metas[0] || null;
+
+  // Get realized commissions (approved) for the period using Drizzle ORM
+  // Note: aprovacao_comissao uses 'aprovado' status, not 'aprovada'
+  // The table doesn't have a valorComissao column, so we count approved commissions
+  // and use percentualSolicitado as a proxy for value calculation
+  const allAprovacoes = await db.select().from(aprovacaoComissao)
+    .where(and(
+      eq(aprovacaoComissao.parceiroId, parceiroId),
+      eq(aprovacaoComissao.status, 'aprovado')
+    ));
+
+  // Filter by year and optionally month
+  const filtered = allAprovacoes.filter((a: any) => {
+    const d = new Date(a.createdAt);
+    if (d.getFullYear() !== ano) return false;
+    if (mes && (d.getMonth() + 1) !== mes) return false;
+    return true;
+  });
+
+  // Calculate realized value using percentualSolicitado as proxy
+  const realizado = filtered.reduce((sum: number, a: any) => sum + Number(a.percentualSolicitado || 0), 0);
+
+  return { meta, realizado };
+}
+
+// Get all partners' goal progress for dashboard
+export async function getAllMetasProgresso(ano: number, mes?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all metas for the period
+  const conditions: any[] = [eq(metasComissoes.ano, ano)];
+  if (mes) conditions.push(eq(metasComissoes.mes, mes));
+  const metas = await db.select().from(metasComissoes).where(and(...conditions));
+
+  if (metas.length === 0) return [];
+
+  // Get all approved commissions for the period using Drizzle ORM
+  const allAprovacoes = await db.select().from(aprovacaoComissao)
+    .where(eq(aprovacaoComissao.status, 'aprovado'));
+
+  // Filter by year and optionally month, then group by parceiroId
+  const realizadoMap: Record<number, number> = {};
+  for (const a of allAprovacoes) {
+    const d = new Date(a.createdAt);
+    if (d.getFullYear() !== ano) continue;
+    if (mes && (d.getMonth() + 1) !== mes) continue;
+    if (!realizadoMap[a.parceiroId]) realizadoMap[a.parceiroId] = 0;
+    realizadoMap[a.parceiroId] += Number(a.percentualSolicitado || 0);
+  }
+
+  // Get parceiro names
+  const allParceiros = await db.select({ id: parceiros.id, nome: parceiros.nomeCompleto, apelido: parceiros.apelido }).from(parceiros);
+  const parceiroMap: Record<number, string> = {};
+  for (const p of allParceiros) {
+    parceiroMap[p.id] = p.apelido || p.nome;
+  }
+
+  return metas.map(m => {
+    const realizado = realizadoMap[m.parceiroId] || 0;
+    const valorMeta = Number(m.valorMeta || 0);
+    const percentual = valorMeta > 0 ? (realizado / valorMeta) * 100 : 0;
+    return {
+      id: m.id,
+      parceiroId: m.parceiroId,
+      parceiroNome: parceiroMap[m.parceiroId] || `Parceiro #${m.parceiroId}`,
+      tipo: m.tipo,
+      ano: m.ano,
+      mes: m.mes,
+      trimestre: m.trimestre,
+      valorMeta,
+      realizado,
+      percentual: Math.round(percentual * 100) / 100,
+      status: percentual >= 100 ? 'atingida' : percentual >= 50 ? 'em_progresso' : 'abaixo',
+      observacao: m.observacao,
+    };
+  });
+}
+
+// ============================================================
+// COMPARATIVO DE PERÍODOS
+// ============================================================
+
+export async function getComparativoPeriodos(
+  periodoA: { dataInicio: string; dataFim: string },
+  periodoB: { dataInicio: string; dataFim: string },
+  tipoParceiro?: 'pf' | 'pj',
+  modeloParceriaId?: number
+) {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Get all parceiros
+  let allParceiros = await db.select().from(parceiros).orderBy(desc(parceiros.createdAt));
+  if (tipoParceiro) allParceiros = allParceiros.filter((p: any) => p.tipoPessoa === tipoParceiro);
+  if (modeloParceriaId) allParceiros = allParceiros.filter((p: any) => p.modeloParceriaId === modeloParceriaId);
+  const parceiroIds = new Set(allParceiros.map(p => p.id));
+
+  // Get all aprovacoes
+  const allAprovacoes = await db.select().from(aprovacaoComissao).orderBy(desc(aprovacaoComissao.createdAt));
+
+  // Filter for each period
+  const filterByPeriod = (aprovacoes: any[], periodo: { dataInicio: string; dataFim: string }) => {
+    const startDate = new Date(periodo.dataInicio);
+    const endDate = new Date(periodo.dataFim + 'T23:59:59');
+    return aprovacoes.filter((a: any) => {
+      if (!parceiroIds.has(a.parceiroId)) return false;
+      const d = new Date(a.createdAt);
+      return d >= startDate && d <= endDate;
+    });
+  };
+
+  const aprovA = filterByPeriod(allAprovacoes, periodoA);
+  const aprovB = filterByPeriod(allAprovacoes, periodoB);
+
+  const calcKpis = (aprovs: any[]) => {
+    const aprovadas = aprovs.filter((a: any) => a.status === 'aprovada');
+    const pendentes = aprovs.filter((a: any) => a.status === 'pendente');
+    return {
+      totalComissoes: aprovs.length,
+      totalAprovadas: aprovadas.length,
+      totalPendentes: pendentes.length,
+      valorTotalAprovado: aprovadas.reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0),
+      valorTotalPendente: pendentes.reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0),
+    };
+  };
+
+  const kpisA = calcKpis(aprovA);
+  const kpisB = calcKpis(aprovB);
+
+  // Calculate deltas
+  const calcDelta = (a: number, b: number) => {
+    if (b === 0) return a > 0 ? 100 : 0;
+    return Math.round(((a - b) / b) * 10000) / 100;
+  };
+
+  const deltas = {
+    totalComissoes: calcDelta(kpisA.totalComissoes, kpisB.totalComissoes),
+    totalAprovadas: calcDelta(kpisA.totalAprovadas, kpisB.totalAprovadas),
+    valorTotalAprovado: calcDelta(kpisA.valorTotalAprovado, kpisB.valorTotalAprovado),
+    valorTotalPendente: calcDelta(kpisA.valorTotalPendente, kpisB.valorTotalPendente),
+  };
+
+  // Monthly evolution for each period
+  const getMonthlyEvolution = (aprovs: any[], periodo: { dataInicio: string; dataFim: string }) => {
+    const start = new Date(periodo.dataInicio);
+    const end = new Date(periodo.dataFim);
+    const months: { month: string; valor: number; quantidade: number }[] = [];
+    const current = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (current <= end) {
+      const monthLabel = current.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      const y = current.getFullYear();
+      const m = current.getMonth();
+      const monthAprovs = aprovs.filter((a: any) => {
+        if (a.status !== 'aprovada') return false;
+        const d = new Date(a.createdAt);
+        return d.getFullYear() === y && d.getMonth() === m;
+      });
+      months.push({
+        month: monthLabel,
+        valor: monthAprovs.reduce((sum: number, a: any) => sum + Number(a.valorComissao || 0), 0),
+        quantidade: monthAprovs.length,
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+    return months;
+  };
+
+  const evolucaoA = getMonthlyEvolution(aprovA, periodoA);
+  const evolucaoB = getMonthlyEvolution(aprovB, periodoB);
+
+  // Ranking comparison per partner
+  const calcRankingPeriod = (aprovs: any[]) => {
+    const map: Record<number, { total: number; aprovadas: number; valor: number }> = {};
+    for (const a of aprovs) {
+      if (!map[a.parceiroId]) map[a.parceiroId] = { total: 0, aprovadas: 0, valor: 0 };
+      map[a.parceiroId].total++;
+      if (a.status === 'aprovada') {
+        map[a.parceiroId].aprovadas++;
+        map[a.parceiroId].valor += Number(a.valorComissao || 0);
+      }
+    }
+    return map;
+  };
+
+  const rankA = calcRankingPeriod(aprovA);
+  const rankB = calcRankingPeriod(aprovB);
+
+  // Merge rankings
+  const allParceiroIds = new Set([...Object.keys(rankA), ...Object.keys(rankB)].map(Number));
+  const rankingComparativo = Array.from(allParceiroIds).map(pid => {
+    const p = allParceiros.find(pp => pp.id === pid);
+    const a = rankA[pid] || { total: 0, aprovadas: 0, valor: 0 };
+    const b = rankB[pid] || { total: 0, aprovadas: 0, valor: 0 };
+    return {
+      parceiroId: pid,
+      nome: p ? (p.apelido || p.nomeCompleto) : `Parceiro #${pid}`,
+      periodoA: a,
+      periodoB: b,
+      deltaValor: a.valor - b.valor,
+      deltaPercentual: calcDelta(a.valor, b.valor),
+    };
+  }).sort((a, b) => b.periodoA.valor - a.periodoA.valor);
+
+  return {
+    periodoA: { ...periodoA, kpis: kpisA, evolucao: evolucaoA },
+    periodoB: { ...periodoB, kpis: kpisB, evolucao: evolucaoB },
+    deltas,
+    rankingComparativo: rankingComparativo.slice(0, 20),
+  };
+}
