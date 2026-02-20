@@ -10,7 +10,7 @@ import {
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu,
-  MessageCircle, Target, FolderOpen, FileCheck, Mail,
+  MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -88,6 +88,9 @@ const SUBMENU_ICONS: Record<string, any> = {
   'email-aniversario': Mail,
   'metas': TrendingUp,
   'dashboard': LayoutDashboard,
+  'onboarding': UserPlus,
+  'pesquisa-clima': ClipboardCheck,
+  'banco-horas': Clock,
 };
 
 interface SetorConfigItem {

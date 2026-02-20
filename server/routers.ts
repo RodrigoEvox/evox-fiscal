@@ -2665,6 +2665,281 @@ export const appRouter = router({
       return { criados, total: contratos.length };
     }),
   }),
+
+  // ---- ONBOARDING DIGITAL ----
+  onboarding: router({
+    templates: router({
+      list: protectedProcedure.query(async () => {
+        return db.listOnboardingTemplates();
+      }),
+      create: protectedProcedure.input(z.object({
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        etapas: z.array(z.object({
+          titulo: z.string().min(1),
+          descricao: z.string().optional(),
+          categoria: z.enum(["documentos", "treinamentos", "acessos", "equipamentos", "integracao", "outros"]).optional(),
+          ordem: z.number().optional(),
+          obrigatoria: z.boolean().optional(),
+          prazoEmDias: z.number().optional(),
+        })).optional(),
+      })).mutation(async ({ input, ctx }) => {
+        const templateId = await db.createOnboardingTemplate({
+          nome: input.nome,
+          descricao: input.descricao,
+          criadoPorId: ctx.user.id,
+          criadoPorNome: ctx.user.name || "Sistema",
+        });
+        if (templateId && input.etapas) {
+          for (let i = 0; i < input.etapas.length; i++) {
+            const et = input.etapas[i];
+            await db.createEtapaTemplate({
+              templateId,
+              titulo: et.titulo,
+              descricao: et.descricao,
+              categoria: et.categoria || "outros",
+              ordem: et.ordem ?? i,
+              obrigatoria: et.obrigatoria ?? true,
+              prazoEmDias: et.prazoEmDias ?? 7,
+            });
+          }
+        }
+        return templateId;
+      }),
+      update: protectedProcedure.input(z.object({
+        id: z.number(),
+        nome: z.string().optional(),
+        descricao: z.string().optional(),
+        ativo: z.boolean().optional(),
+      })).mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateOnboardingTemplate(id, data);
+        return { success: true };
+      }),
+      delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+        await db.deleteOnboardingTemplate(input.id);
+        return { success: true };
+      }),
+      etapas: protectedProcedure.input(z.object({ templateId: z.number() })).query(async ({ input }) => {
+        return db.listEtapasTemplate(input.templateId);
+      }),
+      addEtapa: protectedProcedure.input(z.object({
+        templateId: z.number(),
+        titulo: z.string().min(1),
+        descricao: z.string().optional(),
+        categoria: z.enum(["documentos", "treinamentos", "acessos", "equipamentos", "integracao", "outros"]).optional(),
+        ordem: z.number().optional(),
+        obrigatoria: z.boolean().optional(),
+        prazoEmDias: z.number().optional(),
+      })).mutation(async ({ input }) => {
+        return db.createEtapaTemplate(input);
+      }),
+      removeEtapa: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+        await db.deleteEtapaTemplate(input.id);
+        return { success: true };
+      }),
+    }),
+    list: protectedProcedure.input(z.object({
+      colaboradorId: z.number().optional(),
+    }).optional()).query(async ({ input }) => {
+      return db.listOnboardingColaborador(input?.colaboradorId);
+    }),
+    iniciar: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      templateId: z.number(),
+      templateNome: z.string(),
+    })).mutation(async ({ input, ctx }) => {
+      return db.iniciarOnboardingFromTemplate(
+        input.colaboradorId, input.colaboradorNome,
+        input.templateId, input.templateNome,
+        ctx.user.id, ctx.user.name || "Sistema"
+      );
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      status: z.enum(["pendente", "em_andamento", "concluido", "cancelado"]).optional(),
+      dataConclusao: z.string().optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateOnboardingColaborador(id, data);
+      return { success: true };
+    }),
+    etapas: protectedProcedure.input(z.object({ onboardingId: z.number() })).query(async ({ input }) => {
+      return db.listOnboardingEtapas(input.onboardingId);
+    }),
+    updateEtapa: protectedProcedure.input(z.object({
+      id: z.number(),
+      status: z.enum(["pendente", "em_andamento", "concluida", "nao_aplicavel"]).optional(),
+      dataConclusao: z.string().optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      if (data.status === "concluida") {
+        (data as any).concluidoPorId = ctx.user.id;
+        (data as any).concluidoPorNome = ctx.user.name || "Sistema";
+        if (!data.dataConclusao) data.dataConclusao = new Date().toISOString().split("T")[0];
+      }
+      await db.updateOnboardingEtapa(id, data);
+      return { success: true };
+    }),
+  }),
+
+  // ---- PESQUISA DE CLIMA ----
+  pesquisaClima: router({
+    list: protectedProcedure.query(async () => {
+      return db.listPesquisasClima();
+    }),
+    create: protectedProcedure.input(z.object({
+      titulo: z.string().min(1),
+      descricao: z.string().optional(),
+      anonima: z.boolean().optional(),
+      dataInicio: z.string().optional(),
+      dataFim: z.string().optional(),
+      perguntas: z.array(z.object({
+        texto: z.string().min(1),
+        tipo: z.enum(["escala", "multipla_escolha", "texto_livre", "sim_nao"]).optional(),
+        opcoes: z.any().optional(),
+        ordem: z.number().optional(),
+        obrigatoria: z.boolean().optional(),
+        categoria: z.string().optional(),
+      })).optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const pesquisaId = await db.createPesquisaClima({
+        titulo: input.titulo,
+        descricao: input.descricao,
+        anonima: input.anonima ?? true,
+        dataInicio: input.dataInicio,
+        dataFim: input.dataFim,
+        criadoPorId: ctx.user.id,
+        criadoPorNome: ctx.user.name || "Sistema",
+      });
+      if (pesquisaId && input.perguntas) {
+        for (let i = 0; i < input.perguntas.length; i++) {
+          const p = input.perguntas[i];
+          await db.createPerguntaClima({
+            pesquisaId,
+            texto: p.texto,
+            tipo: p.tipo || "escala",
+            opcoes: p.opcoes,
+            ordem: p.ordem ?? i,
+            obrigatoria: p.obrigatoria ?? true,
+            categoria: p.categoria,
+          });
+        }
+      }
+      return pesquisaId;
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      titulo: z.string().optional(),
+      descricao: z.string().optional(),
+      status: z.enum(["rascunho", "ativa", "encerrada", "cancelada"]).optional(),
+      dataInicio: z.string().optional(),
+      dataFim: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updatePesquisaClima(id, data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deletePesquisaClima(input.id);
+      return { success: true };
+    }),
+    perguntas: protectedProcedure.input(z.object({ pesquisaId: z.number() })).query(async ({ input }) => {
+      return db.listPerguntasClima(input.pesquisaId);
+    }),
+    addPergunta: protectedProcedure.input(z.object({
+      pesquisaId: z.number(),
+      texto: z.string().min(1),
+      tipo: z.enum(["escala", "multipla_escolha", "texto_livre", "sim_nao"]).optional(),
+      opcoes: z.any().optional(),
+      ordem: z.number().optional(),
+      obrigatoria: z.boolean().optional(),
+      categoria: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      return db.createPerguntaClima(input);
+    }),
+    removePergunta: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deletePerguntaClima(input.id);
+      return { success: true };
+    }),
+    responder: protectedProcedure.input(z.object({
+      pesquisaId: z.number(),
+      respostas: z.array(z.object({
+        perguntaId: z.number(),
+        valorEscala: z.number().optional(),
+        valorTexto: z.string().optional(),
+        valorOpcao: z.string().optional(),
+      })),
+    })).mutation(async ({ input, ctx }) => {
+      const respostas = input.respostas.map(r => ({
+        pesquisaId: input.pesquisaId,
+        perguntaId: r.perguntaId,
+        respondentId: ctx.user.id,
+        valorEscala: r.valorEscala,
+        valorTexto: r.valorTexto,
+        valorOpcao: r.valorOpcao,
+      }));
+      await db.submitRespostasClima(input.pesquisaId, respostas);
+      return { success: true };
+    }),
+    resultados: protectedProcedure.input(z.object({ pesquisaId: z.number() })).query(async ({ input }) => {
+      return db.getResultadosClima(input.pesquisaId);
+    }),
+  }),
+
+  // ---- BANCO DE HORAS ----
+  bancoHoras: router({
+    list: protectedProcedure.input(z.object({
+      colaboradorId: z.number().optional(),
+    }).optional()).query(async ({ input }) => {
+      return db.listBancoHoras(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      tipo: z.enum(["extra", "compensacao", "ajuste_positivo", "ajuste_negativo"]),
+      data: z.string(),
+      horas: z.string(),
+      motivo: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      return db.createBancoHoras({
+        ...input,
+        registradoPorId: ctx.user.id,
+        registradoPorNome: ctx.user.name || "Sistema",
+      });
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      tipo: z.enum(["extra", "compensacao", "ajuste_positivo", "ajuste_negativo"]).optional(),
+      data: z.string().optional(),
+      horas: z.string().optional(),
+      motivo: z.string().optional(),
+      aprovado: z.boolean().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      if (data.aprovado === true) {
+        (data as any).aprovadoPorId = ctx.user.id;
+        (data as any).aprovadoPorNome = ctx.user.name || "Sistema";
+      }
+      await db.updateBancoHoras(id, data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteBancoHoras(input.id);
+      return { success: true };
+    }),
+    saldo: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+    })).query(async ({ input }) => {
+      return db.getSaldoBancoHoras(input.colaboradorId);
+    }),
+    saldos: protectedProcedure.query(async () => {
+      return db.getSaldosBancoHorasAll();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -977,3 +977,143 @@ export const historicoStatusColaborador = mysqlTable("historico_status_colaborad
 
 export type HistoricoStatusColaborador = typeof historicoStatusColaborador.$inferSelect;
 export type InsertHistoricoStatusColaborador = typeof historicoStatusColaborador.$inferInsert;
+
+
+// ---- ONBOARDING DIGITAL ----
+export const onboardingTemplates = mysqlTable("onboarding_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  ativo: boolean("ativo").default(true).notNull(),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OnboardingTemplate = typeof onboardingTemplates.$inferSelect;
+export type InsertOnboardingTemplate = typeof onboardingTemplates.$inferInsert;
+
+export const onboardingEtapasTemplate = mysqlTable("onboarding_etapas_template", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").notNull(),
+  titulo: varchar("titulo", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  categoria: mysqlEnum("categoria", ["documentos", "treinamentos", "acessos", "equipamentos", "integracao", "outros"]).default("outros").notNull(),
+  ordem: int("ordem").default(0).notNull(),
+  obrigatoria: boolean("obrigatoria").default(true).notNull(),
+  prazoEmDias: int("prazoEmDias").default(7),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OnboardingEtapaTemplate = typeof onboardingEtapasTemplate.$inferSelect;
+export type InsertOnboardingEtapaTemplate = typeof onboardingEtapasTemplate.$inferInsert;
+
+export const onboardingColaborador = mysqlTable("onboarding_colaborador", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
+  templateId: int("templateId"),
+  templateNome: varchar("templateNome", { length: 255 }),
+  status: mysqlEnum("status", ["pendente", "em_andamento", "concluido", "cancelado"]).default("pendente").notNull(),
+  dataInicio: varchar("dataInicio", { length: 10 }),
+  dataConclusao: varchar("dataConclusao", { length: 10 }),
+  observacao: text("observacao"),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OnboardingColaborador = typeof onboardingColaborador.$inferSelect;
+export type InsertOnboardingColaborador = typeof onboardingColaborador.$inferInsert;
+
+export const onboardingEtapas = mysqlTable("onboarding_etapas", {
+  id: int("id").autoincrement().primaryKey(),
+  onboardingId: int("onboardingId").notNull(),
+  titulo: varchar("titulo", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  categoria: mysqlEnum("categoria", ["documentos", "treinamentos", "acessos", "equipamentos", "integracao", "outros"]).default("outros").notNull(),
+  ordem: int("ordem").default(0).notNull(),
+  obrigatoria: boolean("obrigatoria").default(true).notNull(),
+  prazoEmDias: int("prazoEmDias").default(7),
+  status: mysqlEnum("status", ["pendente", "em_andamento", "concluida", "nao_aplicavel"]).default("pendente").notNull(),
+  dataConclusao: varchar("dataConclusao", { length: 10 }),
+  concluidoPorId: int("concluidoPorId"),
+  concluidoPorNome: varchar("concluidoPorNome", { length: 255 }),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OnboardingEtapa = typeof onboardingEtapas.$inferSelect;
+export type InsertOnboardingEtapa = typeof onboardingEtapas.$inferInsert;
+
+// ---- PESQUISA DE CLIMA ORGANIZACIONAL ----
+export const pesquisasClima = mysqlTable("pesquisas_clima", {
+  id: int("id").autoincrement().primaryKey(),
+  titulo: varchar("titulo", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  status: mysqlEnum("status", ["rascunho", "ativa", "encerrada", "cancelada"]).default("rascunho").notNull(),
+  anonima: boolean("anonima").default(true).notNull(),
+  dataInicio: varchar("dataInicio", { length: 10 }),
+  dataFim: varchar("dataFim", { length: 10 }),
+  totalRespostas: int("totalRespostas").default(0),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PesquisaClima = typeof pesquisasClima.$inferSelect;
+export type InsertPesquisaClima = typeof pesquisasClima.$inferInsert;
+
+export const perguntasClima = mysqlTable("perguntas_clima", {
+  id: int("id").autoincrement().primaryKey(),
+  pesquisaId: int("pesquisaId").notNull(),
+  texto: text("texto").notNull(),
+  tipo: mysqlEnum("tipo", ["escala", "multipla_escolha", "texto_livre", "sim_nao"]).default("escala").notNull(),
+  opcoes: json("opcoes"), // array of options for multipla_escolha
+  ordem: int("ordem").default(0).notNull(),
+  obrigatoria: boolean("obrigatoria").default(true).notNull(),
+  categoria: varchar("categoria", { length: 100 }), // liderança, ambiente, benefícios, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PerguntaClima = typeof perguntasClima.$inferSelect;
+export type InsertPerguntaClima = typeof perguntasClima.$inferInsert;
+
+export const respostasClima = mysqlTable("respostas_clima", {
+  id: int("id").autoincrement().primaryKey(),
+  pesquisaId: int("pesquisaId").notNull(),
+  perguntaId: int("perguntaId").notNull(),
+  respondentId: int("respondentId"), // null if anonymous
+  valorEscala: int("valorEscala"), // 1-5 for escala type
+  valorTexto: text("valorTexto"), // for texto_livre
+  valorOpcao: varchar("valorOpcao", { length: 255 }), // for multipla_escolha or sim_nao
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RespostaClima = typeof respostasClima.$inferSelect;
+export type InsertRespostaClima = typeof respostasClima.$inferInsert;
+
+// ---- BANCO DE HORAS ----
+export const bancoHoras = mysqlTable("banco_horas", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
+  tipo: mysqlEnum("tipo", ["extra", "compensacao", "ajuste_positivo", "ajuste_negativo"]).default("extra").notNull(),
+  data: varchar("data", { length: 10 }).notNull(),
+  horas: decimal("horas", { precision: 6, scale: 2 }).notNull(), // always positive, tipo determines sign
+  motivo: text("motivo"),
+  aprovado: boolean("aprovado").default(false).notNull(),
+  aprovadoPorId: int("aprovadoPorId"),
+  aprovadoPorNome: varchar("aprovadoPorNome", { length: 255 }),
+  registradoPorId: int("registradoPorId"),
+  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BancoHoras = typeof bancoHoras.$inferSelect;
+export type InsertBancoHoras = typeof bancoHoras.$inferInsert;

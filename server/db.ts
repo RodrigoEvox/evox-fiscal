@@ -38,6 +38,14 @@ import {
   atestadosLicencas, InsertAtestadoLicenca,
   planosCarreira, InsertPlanoCarreira,
   historicoStatusColaborador, InsertHistoricoStatusColaborador,
+  onboardingTemplates, InsertOnboardingTemplate,
+  onboardingEtapasTemplate, InsertOnboardingEtapaTemplate,
+  onboardingColaborador, InsertOnboardingColaborador,
+  onboardingEtapas, InsertOnboardingEtapa,
+  pesquisasClima, InsertPesquisaClima,
+  perguntasClima, InsertPerguntaClima,
+  respostasClima, InsertRespostaClima,
+  bancoHoras, InsertBancoHoras,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1932,4 +1940,266 @@ export async function listWorkflowsRenovacao(status?: string) {
     sql`SELECT * FROM workflow_renovacao_contrato ORDER BY createdAt DESC`
   );
   return (rows as any)[0] || [];
+}
+
+// =============================================
+// ---- ONBOARDING DIGITAL ----
+// =============================================
+
+export async function listOnboardingTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(onboardingTemplates).orderBy(desc(onboardingTemplates.createdAt));
+}
+
+export async function createOnboardingTemplate(data: InsertOnboardingTemplate) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(onboardingTemplates).values(data);
+  return result.insertId;
+}
+
+export async function updateOnboardingTemplate(id: number, data: Partial<InsertOnboardingTemplate>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(onboardingTemplates).set(data).where(eq(onboardingTemplates.id, id));
+}
+
+export async function deleteOnboardingTemplate(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(onboardingEtapasTemplate).where(eq(onboardingEtapasTemplate.templateId, id));
+  await db.delete(onboardingTemplates).where(eq(onboardingTemplates.id, id));
+}
+
+export async function listEtapasTemplate(templateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(onboardingEtapasTemplate)
+    .where(eq(onboardingEtapasTemplate.templateId, templateId))
+    .orderBy(onboardingEtapasTemplate.ordem);
+}
+
+export async function createEtapaTemplate(data: InsertOnboardingEtapaTemplate) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(onboardingEtapasTemplate).values(data);
+  return result.insertId;
+}
+
+export async function deleteEtapaTemplate(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(onboardingEtapasTemplate).where(eq(onboardingEtapasTemplate.id, id));
+}
+
+export async function listOnboardingColaborador(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(onboardingColaborador)
+      .where(eq(onboardingColaborador.colaboradorId, colaboradorId))
+      .orderBy(desc(onboardingColaborador.createdAt));
+  }
+  return db.select().from(onboardingColaborador).orderBy(desc(onboardingColaborador.createdAt));
+}
+
+export async function createOnboardingColaborador(data: InsertOnboardingColaborador) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(onboardingColaborador).values(data);
+  return result.insertId;
+}
+
+export async function updateOnboardingColaborador(id: number, data: Partial<InsertOnboardingColaborador>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(onboardingColaborador).set(data).where(eq(onboardingColaborador.id, id));
+}
+
+export async function listOnboardingEtapas(onboardingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(onboardingEtapas)
+    .where(eq(onboardingEtapas.onboardingId, onboardingId))
+    .orderBy(onboardingEtapas.ordem);
+}
+
+export async function createOnboardingEtapa(data: InsertOnboardingEtapa) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(onboardingEtapas).values(data);
+  return result.insertId;
+}
+
+export async function updateOnboardingEtapa(id: number, data: Partial<InsertOnboardingEtapa>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(onboardingEtapas).set(data).where(eq(onboardingEtapas.id, id));
+}
+
+export async function iniciarOnboardingFromTemplate(
+  colaboradorId: number, colaboradorNome: string,
+  templateId: number, templateNome: string,
+  criadoPorId: number, criadoPorNome: string
+) {
+  const db = await getDb();
+  if (!db) return null;
+  const etapasTemplate = await listEtapasTemplate(templateId);
+  const today = new Date().toISOString().split("T")[0];
+  const [result] = await db.insert(onboardingColaborador).values({
+    colaboradorId, colaboradorNome, templateId, templateNome,
+    status: "em_andamento", dataInicio: today,
+    criadoPorId, criadoPorNome,
+  });
+  const onboardingId = result.insertId;
+  for (const et of etapasTemplate) {
+    await db.insert(onboardingEtapas).values({
+      onboardingId, titulo: et.titulo, descricao: et.descricao,
+      categoria: et.categoria, ordem: et.ordem, obrigatoria: et.obrigatoria,
+      prazoEmDias: et.prazoEmDias, status: "pendente",
+    });
+  }
+  return onboardingId;
+}
+
+// =============================================
+// ---- PESQUISA DE CLIMA ----
+// =============================================
+
+export async function listPesquisasClima() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pesquisasClima).orderBy(desc(pesquisasClima.createdAt));
+}
+
+export async function createPesquisaClima(data: InsertPesquisaClima) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(pesquisasClima).values(data);
+  return result.insertId;
+}
+
+export async function updatePesquisaClima(id: number, data: Partial<InsertPesquisaClima>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pesquisasClima).set(data).where(eq(pesquisasClima.id, id));
+}
+
+export async function deletePesquisaClima(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(respostasClima).where(eq(respostasClima.pesquisaId, id));
+  await db.delete(perguntasClima).where(eq(perguntasClima.pesquisaId, id));
+  await db.delete(pesquisasClima).where(eq(pesquisasClima.id, id));
+}
+
+export async function listPerguntasClima(pesquisaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(perguntasClima)
+    .where(eq(perguntasClima.pesquisaId, pesquisaId))
+    .orderBy(perguntasClima.ordem);
+}
+
+export async function createPerguntaClima(data: InsertPerguntaClima) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(perguntasClima).values(data);
+  return result.insertId;
+}
+
+export async function deletePerguntaClima(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(respostasClima).where(eq(respostasClima.perguntaId, id));
+  await db.delete(perguntasClima).where(eq(perguntasClima.id, id));
+}
+
+export async function submitRespostasClima(pesquisaId: number, respostas: InsertRespostaClima[]) {
+  const db = await getDb();
+  if (!db) return;
+  if (respostas.length > 0) {
+    await db.insert(respostasClima).values(respostas);
+  }
+  // Increment total responses count
+  await db.execute(
+    sql`UPDATE pesquisas_clima SET totalRespostas = totalRespostas + 1 WHERE id = ${pesquisaId}`
+  );
+}
+
+export async function getResultadosClima(pesquisaId: number) {
+  const db = await getDb();
+  if (!db) return { perguntas: [], respostas: [] };
+  const perguntas = await db.select().from(perguntasClima)
+    .where(eq(perguntasClima.pesquisaId, pesquisaId))
+    .orderBy(perguntasClima.ordem);
+  const respostas = await db.select().from(respostasClima)
+    .where(eq(respostasClima.pesquisaId, pesquisaId));
+  return { perguntas, respostas };
+}
+
+// =============================================
+// ---- BANCO DE HORAS ----
+// =============================================
+
+export async function listBancoHoras(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(bancoHoras)
+      .where(eq(bancoHoras.colaboradorId, colaboradorId))
+      .orderBy(desc(bancoHoras.data));
+  }
+  return db.select().from(bancoHoras).orderBy(desc(bancoHoras.data));
+}
+
+export async function createBancoHoras(data: InsertBancoHoras) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(bancoHoras).values(data);
+  return result.insertId;
+}
+
+export async function updateBancoHoras(id: number, data: Partial<InsertBancoHoras>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bancoHoras).set(data).where(eq(bancoHoras.id, id));
+}
+
+export async function deleteBancoHoras(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(bancoHoras).where(eq(bancoHoras.id, id));
+}
+
+export async function getSaldoBancoHoras(colaboradorId: number) {
+  const db = await getDb();
+  if (!db) return { saldo: 0, extras: 0, compensacoes: 0 };
+  const registros = await db.select().from(bancoHoras)
+    .where(and(eq(bancoHoras.colaboradorId, colaboradorId), eq(bancoHoras.aprovado, true)));
+  let extras = 0;
+  let compensacoes = 0;
+  for (const r of registros) {
+    const h = Number(r.horas);
+    if (r.tipo === "extra" || r.tipo === "ajuste_positivo") extras += h;
+    else compensacoes += h;
+  }
+  return { saldo: extras - compensacoes, extras, compensacoes };
+}
+
+export async function getSaldosBancoHorasAll() {
+  const db = await getDb();
+  if (!db) return [];
+  const registros = await db.select().from(bancoHoras).where(eq(bancoHoras.aprovado, true));
+  const map: Record<number, { colaboradorId: number; colaboradorNome: string; extras: number; compensacoes: number }> = {};
+  for (const r of registros) {
+    if (!map[r.colaboradorId]) {
+      map[r.colaboradorId] = { colaboradorId: r.colaboradorId, colaboradorNome: r.colaboradorNome, extras: 0, compensacoes: 0 };
+    }
+    const h = Number(r.horas);
+    if (r.tipo === "extra" || r.tipo === "ajuste_positivo") map[r.colaboradorId].extras += h;
+    else map[r.colaboradorId].compensacoes += h;
+  }
+  return Object.values(map).map(m => ({ ...m, saldo: m.extras - m.compensacoes }));
 }

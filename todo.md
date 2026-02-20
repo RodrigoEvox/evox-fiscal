@@ -885,3 +885,35 @@
 ### Notificações Push do Workflow
 - [x] Notificação em tempo real ao gestor quando workflow é criado
 - [x] Integrar com sistema de notificações existente
+
+## CRM v27 — Onboarding, Clima e Banco de Horas
+
+### Onboarding Digital de Novos Colaboradores
+- [x] Criar tabelas onboarding_templates, onboarding_etapas_template, onboarding_colaborador, onboarding_etapas no schema
+- [x] Checklist automatizado com etapas de admissão (documentos, treinamentos, acessos, equipamentos, integração)
+- [x] Vincular onboarding ao cadastro do colaborador
+- [x] Interface para gerenciar templates de checklist com etapas configuráveis
+- [x] Interface para acompanhar progresso do onboarding por colaborador (KPIs, tabs Templates/Ativos)
+- [x] Rotas backend CRUD para templates, etapas e onboardings
+- [x] Adicionar rota /rh/onboarding e submenu no GEG
+- [x] Testes vitest para onboarding (4 testes passando)
+
+### Pesquisa de Clima Organizacional
+- [x] Criar tabelas pesquisas_clima, perguntas_clima e respostas_clima no schema
+- [x] Módulo para criar pesquisas com 4 tipos de perguntas (escala, sim/não, múltipla escolha, texto livre)
+- [x] Respostas anônimas dos colaboradores com indicador visual
+- [x] Resultados consolidados com gráficos (BarChart, PieChart) no painel de resultados
+- [x] Interface completa: criar, ativar, responder, encerrar e visualizar resultados
+- [x] Rotas backend CRUD para pesquisas, perguntas e respostas
+- [x] Adicionar rota /rh/pesquisa-clima e submenu no GEG
+- [x] Testes vitest para pesquisa de clima (5 testes passando)
+
+### Banco de Horas
+- [x] Criar tabela banco_horas no schema
+- [x] Controle de horas extras e compensações por colaborador (4 tipos: extra, compensação, ajuste+, ajuste-)
+- [x] Cálculo automático de saldo (extras - compensações) por colaborador e geral
+- [x] Interface com 3 tabs: Registros, Saldos por Colaborador, Gráfico
+- [x] Filtro por colaborador, aprovação de registros, KPIs de saldo
+- [x] Rotas backend CRUD para banco de horas com saldo individual e geral
+- [x] Adicionar rota /rh/banco-horas e submenu no GEG
+- [x] Testes vitest para banco de horas (7 testes passando)

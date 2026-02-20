@@ -53,6 +53,9 @@ const BiRH = lazy(() => import("./pages/rh/BiRH"));
 const WorkflowRenovacao = lazy(() => import("./pages/rh/WorkflowRenovacao"));
 const EmailAniversariante = lazy(() => import("./pages/rh/EmailAniversariante"));
 const DashboardGEG = lazy(() => import("./pages/rh/DashboardGEG"));
+const OnboardingDigital = lazy(() => import("./pages/rh/OnboardingDigital"));
+const PesquisaClima = lazy(() => import("./pages/rh/PesquisaClima"));
+const BancoHoras = lazy(() => import("./pages/rh/BancoHoras"));
 
 function LazyFallback() {
   return (
@@ -107,6 +110,9 @@ function Router() {
         <Route path="/rh/bi" component={BiRH} />
         <Route path="/rh/workflow-renovacao" component={WorkflowRenovacao} />
         <Route path="/rh/email-aniversariante" component={EmailAniversariante} />
+        <Route path="/rh/onboarding" component={OnboardingDigital} />
+        <Route path="/rh/pesquisa-clima" component={PesquisaClima} />
+        <Route path="/rh/banco-horas" component={BancoHoras} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />
