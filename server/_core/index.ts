@@ -8,6 +8,9 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { apiRouter } from "../publicApi";
+import multer from "multer";
+import { storagePut } from "../storage";
+import { nanoid } from "nanoid";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,6 +39,22 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // File upload endpoint for collaborator documents
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  app.post('/api/upload-colaborador-doc', upload.single('file'), async (req: any, res: any) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      const { colaboradorId, tipo } = req.body;
+      const ext = req.file.originalname.split('.').pop() || 'bin';
+      const fileKey = `colaborador-docs/${colaboradorId}/${tipo}-${nanoid(8)}.${ext}`;
+      const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
+      res.json({ url, fileKey });
+    } catch (err: any) {
+      console.error('[Upload Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
   // Public REST API v1
   app.use("/api/v1", apiRouter);
   // tRPC API

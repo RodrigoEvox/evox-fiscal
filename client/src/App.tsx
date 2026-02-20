@@ -45,6 +45,9 @@ const AcoesBeneficios = lazy(() => import("./pages/rh/AcoesBeneficios"));
 const AtestadosLicencas = lazy(() => import("./pages/rh/AtestadosLicencas"));
 const CargosSalarios = lazy(() => import("./pages/rh/CargosSalarios"));
 const CarreiraDesenvolvimento = lazy(() => import("./pages/rh/CarreiraDesenvolvimento"));
+const AvaliacaoDesempenho = lazy(() => import("./pages/rh/AvaliacaoDesempenho"));
+const DocumentosColaborador = lazy(() => import("./pages/rh/DocumentosColaborador"));
+const RelatoriosRH = lazy(() => import("./pages/rh/RelatoriosRH"));
 
 function LazyFallback() {
   return (
@@ -91,6 +94,9 @@ function Router() {
         <Route path="/rh/atestados-licencas" component={AtestadosLicencas} />
         <Route path="/rh/cargos-salarios" component={CargosSalarios} />
         <Route path="/rh/carreira-desenvolvimento" component={CarreiraDesenvolvimento} />
+        <Route path="/rh/avaliacao-desempenho" component={AvaliacaoDesempenho} />
+        <Route path="/rh/documentos" component={DocumentosColaborador} />
+        <Route path="/rh/relatorios" component={RelatoriosRH} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />

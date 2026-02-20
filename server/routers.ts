@@ -2083,6 +2083,202 @@ export const appRouter = router({
       return { success: true };
     }),
   }),
+
+  // ---- CICLOS DE AVALIAÇÃO 360° ----
+  ciclosAvaliacao: router({
+    list: protectedProcedure.query(async () => {
+      return db.listCiclosAvaliacao();
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return db.getCicloAvaliacaoById(input.id);
+    }),
+    create: protectedProcedure.input(z.object({
+      titulo: z.string().min(1),
+      descricao: z.string().optional(),
+      dataInicio: z.string(),
+      dataFim: z.string(),
+      status: z.enum(['rascunho','em_andamento','encerrado']).optional(),
+      criterios: z.array(z.object({ nome: z.string(), peso: z.number(), descricao: z.string().optional() })).optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createCicloAvaliacao({
+        ...input,
+        criadoPorId: ctx.user?.id,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'ciclo_avaliacao', id, input.titulo, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateCicloAvaliacao(input.id, input.data as any);
+      await logAudit('edicao', 'ciclo_avaliacao', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteCicloAvaliacao(input.id);
+      await logAudit('exclusao', 'ciclo_avaliacao', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
+
+  // ---- AVALIAÇÕES ----
+  avaliacoes: router({
+    list: protectedProcedure.input(z.object({ cicloId: z.number().optional(), colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listAvaliacoes(input?.cicloId, input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      cicloId: z.number(),
+      colaboradorId: z.number(),
+      colaboradorNome: z.string().optional(),
+      avaliadorId: z.number(),
+      avaliadorNome: z.string().optional(),
+      tipoAvaliador: z.enum(['gestor','par','autoavaliacao','subordinado']),
+      notas: z.array(z.object({ criterio: z.string(), nota: z.number(), comentario: z.string().optional() })).optional(),
+      notaGeral: z.string().optional(),
+      comentarioGeral: z.string().optional(),
+      pontosFortes: z.string().optional(),
+      pontosDesenvolvimento: z.string().optional(),
+      status: z.enum(['pendente','em_andamento','concluida']).optional(),
+      planoCarreiraId: z.number().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createAvaliacao(input as any);
+      await logAudit('criacao', 'avaliacao', id, null, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateAvaliacao(input.id, input.data as any);
+      await logAudit('edicao', 'avaliacao', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteAvaliacao(input.id);
+      await logAudit('exclusao', 'avaliacao', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
+
+  // ---- DOCUMENTOS DO COLABORADOR ----
+  colaboradorDocumentos: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listColaboradorDocumentos(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      tipo: z.enum(['foto','rg','ctps','aso','contrato','comprovante_residencia','outro']),
+      nomeArquivo: z.string(),
+      url: z.string(),
+      fileKey: z.string(),
+      mimeType: z.string().optional(),
+      tamanho: z.number().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createColaboradorDocumento({
+        ...input,
+        enviadoPorId: ctx.user?.id,
+        enviadoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'colaborador_documento', id, input.nomeArquivo, ctx);
+      return { id };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteColaboradorDocumento(input.id);
+      await logAudit('exclusao', 'colaborador_documento', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
+
+  // ---- RELATÓRIOS RH ----
+  relatoriosRH: router({
+    dashboard: protectedProcedure.query(async () => {
+      const allColabs = await db.listColaboradores();
+      const allFerias = await db.listFerias();
+      const allAtestados = await db.listAtestadosLicencas();
+
+      const ativos = (allColabs as any[]).filter(c => c.ativo !== false);
+      const inativos = (allColabs as any[]).filter(c => c.ativo === false);
+
+      // Headcount por setor
+      const headcountPorSetor: Record<string, number> = {};
+      ativos.forEach((c: any) => {
+        const setor = c.setorNome || c.localTrabalho || 'Sem Setor';
+        headcountPorSetor[setor] = (headcountPorSetor[setor] || 0) + 1;
+      });
+
+      // Headcount por nível hierárquico
+      const headcountPorNivel: Record<string, number> = {};
+      ativos.forEach((c: any) => {
+        const nivel = c.nivelHierarquico || 'nao_definido';
+        headcountPorNivel[nivel] = (headcountPorNivel[nivel] || 0) + 1;
+      });
+
+      // Custo salarial total e por setor
+      let custoSalarialTotal = 0;
+      const custoPorSetor: Record<string, number> = {};
+      ativos.forEach((c: any) => {
+        const salario = parseFloat(c.salarioBase || '0');
+        custoSalarialTotal += salario;
+        const setor = c.setorNome || c.localTrabalho || 'Sem Setor';
+        custoPorSetor[setor] = (custoPorSetor[setor] || 0) + salario;
+      });
+
+      // Turnover (admissões e desligamentos por mês nos últimos 12 meses)
+      const agora = new Date();
+      const turnoverMensal: { mes: string; admissoes: number; desligamentos: number }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+        const mesStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const admissoes = ativos.filter((c: any) => c.dataAdmissao?.startsWith(mesStr)).length;
+        const desligamentos = inativos.filter((c: any) => {
+          const updated = c.updatedAt ? new Date(c.updatedAt) : null;
+          return updated && `${updated.getFullYear()}-${String(updated.getMonth()+1).padStart(2,'0')}` === mesStr;
+        }).length;
+        turnoverMensal.push({ mes: mesStr, admissoes, desligamentos });
+      }
+
+      // Absenteísmo (atestados por mês nos últimos 12 meses)
+      const absenteismoMensal: { mes: string; atestados: number; diasAfastamento: number }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+        const mesStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const atestadosMes = (allAtestados as any[]).filter((a: any) => a.dataInicio?.startsWith(mesStr));
+        const diasTotal = atestadosMes.reduce((sum: number, a: any) => sum + (a.diasAfastamento || 0), 0);
+        absenteismoMensal.push({ mes: mesStr, atestados: atestadosMes.length, diasAfastamento: diasTotal });
+      }
+
+      // Distribuição por tipo de contrato
+      const porContrato: Record<string, number> = {};
+      ativos.forEach((c: any) => {
+        const tipo = c.tipoContrato || 'clt';
+        porContrato[tipo] = (porContrato[tipo] || 0) + 1;
+      });
+
+      // Distribuição por sexo
+      const porSexo: Record<string, number> = {};
+      ativos.forEach((c: any) => {
+        const sexo = c.sexo || 'nao_informado';
+        porSexo[sexo] = (porSexo[sexo] || 0) + 1;
+      });
+
+      return {
+        totalAtivos: ativos.length,
+        totalInativos: inativos.length,
+        custoSalarialTotal,
+        headcountPorSetor,
+        headcountPorNivel,
+        custoPorSetor,
+        turnoverMensal,
+        absenteismoMensal,
+        porContrato,
+        porSexo,
+        totalFerias: (allFerias as any[]).filter(f => f.status === 'em_gozo').length,
+        totalAtestados: (allAtestados as any[]).length,
+      };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

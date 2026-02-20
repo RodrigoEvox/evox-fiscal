@@ -698,3 +698,36 @@
 
 ### Dados de Teste
 - [x] Inserir 5 colaboradores de teste para refletir em todos os ambientes do sistema
+
+## CRM v19 — Integração RH Avançada
+
+### Integração Colaboradores + Férias
+- [x] Selecionar colaborador do cadastro ao registrar férias
+- [x] Pré-preencher dados do colaborador automaticamente
+- [x] Gestão de saldo de dias de férias por período aquisitivo
+- [x] Controle de fracionamento (máx 3 períodos, mín 14 dias no primeiro)
+- [x] Exibir saldo restante ao registrar nova férias
+
+### Integração Colaboradores + Atestados
+- [x] Selecionar colaborador do cadastro ao registrar atestado
+- [x] Pré-preencher dados do colaborador automaticamente
+
+### Relatórios RH (submenu)
+- [x] Dashboard de headcount por setor com gráficos
+- [x] Dashboard de turnover (admissões vs desligamentos)
+- [x] Dashboard de absenteísmo (atestados e licenças)
+- [x] Dashboard de custo salarial por período e setor
+- [x] Adicionar submenu "Relatórios" na sidebar do Gente & Gestão
+
+### Avaliação de Desempenho 360°
+- [x] Schema para ciclos de avaliação
+- [x] Avaliação por múltiplas perspectivas (gestor, pares, autoavaliação)
+- [x] Vincular avaliações aos planos de carreira
+- [x] Interface para criar e gerenciar ciclos de avaliação
+
+### Upload de Documentos do Colaborador
+- [x] Upload de foto do colaborador
+- [x] Upload de RG digitalizado
+- [x] Upload de CTPS digitalizado
+- [x] Upload de ASO digitalizado
+- [x] Armazenamento via S3 com referência no banco

@@ -871,3 +871,63 @@ export const planosCarreira = mysqlTable("planos_carreira", {
 
 export type PlanoCarreira = typeof planosCarreira.$inferSelect;
 export type InsertPlanoCarreira = typeof planosCarreira.$inferInsert;
+
+
+// ---- AVALIAÇÃO DE DESEMPENHO 360° ----
+export const ciclosAvaliacao = mysqlTable("ciclos_avaliacao", {
+  id: int("id").autoincrement().primaryKey(),
+  titulo: varchar("titulo", { length: 500 }).notNull(),
+  descricao: text("descricao"),
+  dataInicio: varchar("dataInicio", { length: 10 }).notNull(),
+  dataFim: varchar("dataFim", { length: 10 }).notNull(),
+  status: mysqlEnum("status", ["rascunho", "em_andamento", "encerrado"]).default("rascunho").notNull(),
+  criterios: json("criterios").$type<{nome: string; peso: number; descricao?: string}[]>(),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CicloAvaliacao = typeof ciclosAvaliacao.$inferSelect;
+export type InsertCicloAvaliacao = typeof ciclosAvaliacao.$inferInsert;
+
+export const avaliacoes = mysqlTable("avaliacoes", {
+  id: int("id").autoincrement().primaryKey(),
+  cicloId: int("cicloId").notNull(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }),
+  avaliadorId: int("avaliadorId").notNull(),
+  avaliadorNome: varchar("avaliadorNome", { length: 500 }),
+  tipoAvaliador: mysqlEnum("tipoAvaliador", ["gestor", "par", "autoavaliacao", "subordinado"]).notNull(),
+  notas: json("notas").$type<{criterio: string; nota: number; comentario?: string}[]>(),
+  notaGeral: decimal("notaGeral", { precision: 4, scale: 2 }),
+  comentarioGeral: text("comentarioGeral"),
+  pontosFortes: text("pontosFortes"),
+  pontosDesenvolvimento: text("pontosDesenvolvimento"),
+  status: mysqlEnum("status", ["pendente", "em_andamento", "concluida"]).default("pendente").notNull(),
+  planoCarreiraId: int("planoCarreiraId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Avaliacao = typeof avaliacoes.$inferSelect;
+export type InsertAvaliacao = typeof avaliacoes.$inferInsert;
+
+// ---- DOCUMENTOS DO COLABORADOR ----
+export const colaboradorDocumentos = mysqlTable("colaborador_documentos", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  tipo: mysqlEnum("tipo", ["foto", "rg", "ctps", "aso", "contrato", "comprovante_residencia", "outro"]).notNull(),
+  nomeArquivo: varchar("nomeArquivo", { length: 500 }).notNull(),
+  url: varchar("url", { length: 1000 }).notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  tamanho: int("tamanho"), // bytes
+  enviadoPorId: int("enviadoPorId"),
+  enviadoPorNome: varchar("enviadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ColaboradorDocumento = typeof colaboradorDocumentos.$inferSelect;
+export type InsertColaboradorDocumento = typeof colaboradorDocumentos.$inferInsert;

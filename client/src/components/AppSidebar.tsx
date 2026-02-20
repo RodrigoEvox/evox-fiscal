@@ -10,7 +10,7 @@ import {
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu,
-  MessageCircle,
+  MessageCircle, Target, FolderOpen,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -80,6 +80,9 @@ const SUBMENU_ICONS: Record<string, any> = {
   'cargos-salarios': BarChart3,
   'carreira-desenvolvimento': GraduationCap,
   'solicitacoes-folga': Calendar,
+  'avaliacao-desempenho': Target,
+  'documentos': FolderOpen,
+  'relatorios-rh': FileBarChart,
 };
 
 interface SetorConfigItem {

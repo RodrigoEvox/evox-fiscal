@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, setorId, sigla, submenus FROM setor_config WHERE sigla = 'GEG'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, setorId, sigla, submenus FROM setor_config WHERE sigla = 'GEG'",
+  "rows": [
+    {
+      "id": "9",
+      "setorId": "9",
+      "sigla": "GEG",
+      "submenus": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/rh/nova-tarefa\"}, {\"key\": \"colaboradores\", \"label\": \"Colaboradores\", \"rota\": \"/rh/colaboradores\"}, {\"key\": \"ferias\", \"label\": \"Férias\", \"rota\": \"/rh/ferias\"}, {\"key\": \"acoes-beneficios\", \"label\": \"Ações e Benefícios\", \"rota\": \"/rh/acoes-beneficios\"}, {\"key\": \"atestados-licencas\", \"label\": \"Atestados e Licenças\", \"rota\": \"/rh/atestados-licencas\"}, {\"key\": \"cargos-salarios\", \"label\": \"Cargos e Salários\", \"rota\": \"/rh/cargos-salarios\"}, {\"key\": \"carreira-desenvolvimento\", \"label\": \"Carreira & Desenvolvimento\", \"rota\": \"/rh/carreira-desenvolvimento\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsetorId\tsigla\tsubmenus\n9\t9\tGEG\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/rh/nova-tarefa\"}, {\"key\": \"colaboradores\", \"label\": \"Colaboradores\", \"rota\": \"/rh/colaboradores\"}, {\"key\": \"ferias\", \"label\": \"Férias\", \"rota\": \"/rh/ferias\"}, {\"key\": \"acoes-beneficios\", \"label\": \"Ações e Benefícios\", \"rota\": \"/rh/acoes-beneficios\"}, {\"key\": \"atestados-licencas\", \"label\": \"Atestados e Licenças\", \"rota\": \"/rh/atestados-licencas\"}, {\"key\": \"cargos-salarios\", \"label\": \"Cargos e Salários\", \"rota\": \"/rh/cargos-salarios\"}, {\"key\": \"carreira-desenvolvimento\", \"label\": \"Carreira & Desenvolvimento\", \"rota\": \"/rh/carreira-desenvolvimento\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 401
+}

@@ -1506,3 +1506,97 @@ export async function deletePlanoCarreira(id: number) {
   if (!db) return;
   await db.delete(planosCarreira).where(eq(planosCarreira.id, id));
 }
+
+
+// ---- CICLOS DE AVALIAÇÃO ----
+import { ciclosAvaliacao, InsertCicloAvaliacao, avaliacoes, InsertAvaliacao, colaboradorDocumentos, InsertColaboradorDocumento } from "../drizzle/schema";
+
+export async function listCiclosAvaliacao() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ciclosAvaliacao).orderBy(desc(ciclosAvaliacao.createdAt));
+}
+
+export async function getCicloAvaliacaoById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(ciclosAvaliacao).where(eq(ciclosAvaliacao.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createCicloAvaliacao(data: InsertCicloAvaliacao) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(ciclosAvaliacao).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCicloAvaliacao(id: number, data: Partial<InsertCicloAvaliacao>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(ciclosAvaliacao).set(data).where(eq(ciclosAvaliacao.id, id));
+}
+
+export async function deleteCicloAvaliacao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(ciclosAvaliacao).where(eq(ciclosAvaliacao.id, id));
+}
+
+// ---- AVALIAÇÕES ----
+export async function listAvaliacoes(cicloId?: number, colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (cicloId && colaboradorId) {
+    return db.select().from(avaliacoes).where(and(eq(avaliacoes.cicloId, cicloId), eq(avaliacoes.colaboradorId, colaboradorId))).orderBy(desc(avaliacoes.createdAt));
+  }
+  if (cicloId) {
+    return db.select().from(avaliacoes).where(eq(avaliacoes.cicloId, cicloId)).orderBy(desc(avaliacoes.createdAt));
+  }
+  if (colaboradorId) {
+    return db.select().from(avaliacoes).where(eq(avaliacoes.colaboradorId, colaboradorId)).orderBy(desc(avaliacoes.createdAt));
+  }
+  return db.select().from(avaliacoes).orderBy(desc(avaliacoes.createdAt));
+}
+
+export async function createAvaliacao(data: InsertAvaliacao) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(avaliacoes).values(data);
+  return result[0].insertId;
+}
+
+export async function updateAvaliacao(id: number, data: Partial<InsertAvaliacao>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(avaliacoes).set(data).where(eq(avaliacoes.id, id));
+}
+
+export async function deleteAvaliacao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(avaliacoes).where(eq(avaliacoes.id, id));
+}
+
+// ---- DOCUMENTOS DO COLABORADOR ----
+export async function listColaboradorDocumentos(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(colaboradorDocumentos).where(eq(colaboradorDocumentos.colaboradorId, colaboradorId)).orderBy(desc(colaboradorDocumentos.createdAt));
+  }
+  return db.select().from(colaboradorDocumentos).orderBy(desc(colaboradorDocumentos.createdAt));
+}
+
+export async function createColaboradorDocumento(data: InsertColaboradorDocumento) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(colaboradorDocumentos).values(data);
+  return result[0].insertId;
+}
+
+export async function deleteColaboradorDocumento(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(colaboradorDocumentos).where(eq(colaboradorDocumentos.id, id));
+}
