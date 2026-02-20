@@ -1530,18 +1530,41 @@ export const appRouter = router({
     }),
   }),
 
-  // ---- CHAT INTERNO ----
+  // ---- CHAT ----
   chat: router({
+    // Canais
+    channels: protectedProcedure.query(async () => {
+      return db.listChatChannels();
+    }),
+    createChannel: protectedProcedure
+      .input(z.object({
+        nome: z.string().min(1),
+        descricao: z.string().optional(),
+        tipo: z.enum(['geral', 'setor', 'projeto']).default('projeto'),
+        setorId: z.number().optional(),
+        cor: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createChatChannel({
+          ...input,
+          criadoPorId: ctx.user.id,
+          criadoPorNome: (ctx.user as any).apelido || ctx.user.name || 'Usuário',
+        } as any);
+        return { id };
+      }),
+    // Mensagens
     list: protectedProcedure
       .input(z.object({
+        channelId: z.number(),
         limit: z.number().optional(),
         beforeId: z.number().optional(),
-      }).optional())
+      }))
       .query(async ({ input }) => {
-        return db.listChatMessages(input?.limit || 100, input?.beforeId);
+        return db.listChatMessages(input.channelId, input.limit || 100, input.beforeId);
       }),
     send: protectedProcedure
       .input(z.object({
+        channelId: z.number(),
         content: z.string().min(1),
         mentions: z.array(z.object({
           type: z.enum(['user', 'client']),
@@ -1550,36 +1573,79 @@ export const appRouter = router({
         })).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const senderName = (ctx.user as any).apelido || ctx.user.name || 'Usuário';
         const id = await db.createChatMessage({
+          channelId: input.channelId,
           userId: ctx.user.id,
-          userName: (ctx.user as any).apelido || ctx.user.name || 'Usuário',
+          userName: senderName,
           userAvatar: (ctx.user as any).avatar || null,
           content: input.content,
           mentions: input.mentions || [],
         } as any);
+        // Create notifications for mentioned users
+        if (input.mentions && input.mentions.length > 0) {
+          const userMentions = input.mentions.filter(m => m.type === 'user');
+          const allUsers = await db.listUsers();
+          for (const mention of userMentions) {
+            const mentionedUser = allUsers.find((u: any) =>
+              (u.apelido || u.name || '').toLowerCase() === mention.name.toLowerCase()
+            );
+            if (mentionedUser && mentionedUser.id !== ctx.user.id) {
+              await db.createChatNotification({
+                userId: mentionedUser.id,
+                messageId: id!,
+                channelId: input.channelId,
+                tipo: 'mencao',
+                remetenteNome: senderName,
+                preview: input.content.slice(0, 200),
+              } as any);
+            }
+          }
+        }
         return { id };
       }),
     search: protectedProcedure
-      .input(z.object({ query: z.string().min(2) }))
+      .input(z.object({ query: z.string().min(2), channelId: z.number().optional() }))
       .query(async ({ input }) => {
-        return db.searchChatMessages(input.query);
+        return db.searchChatMessages(input.query, input.channelId);
       }),
-    // List users and clients for mentions
-    mentionSuggestions: protectedProcedure
+    // Notificações
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return db.countUnreadNotifications(ctx.user.id);
+    }),
+    unreadList: protectedProcedure.query(async ({ ctx }) => {
+      return db.listUnreadNotifications(ctx.user.id);
+    }),
+    markRead: protectedProcedure
+      .input(z.object({ channelId: z.number().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.markNotificationsRead(ctx.user.id, input.channelId);
+        return { success: true };
+      }),
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.markAllNotificationsRead(ctx.user.id);
+      return { success: true };
+    }),
+    // Sugestões de menção (@ para usuários, # para clientes)
+    userSuggestions: protectedProcedure
       .input(z.object({ query: z.string() }))
       .query(async ({ input }) => {
         const allUsers = await db.listUsers();
-        const allClientes = await db.listClientes();
         const q = input.query.toLowerCase();
-        const matchedUsers = allUsers
+        return allUsers
           .filter((u: any) => u.ativo && ((u.apelido || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q)))
           .slice(0, 10)
           .map((u: any) => ({ type: 'user' as const, id: u.id, name: u.apelido || u.name || 'Usuário', avatar: u.avatar }));
-        const matchedClientes = allClientes
+      }),
+    clientSuggestions: protectedProcedure
+      .input(z.object({ query: z.string() }))
+      .query(async ({ input }) => {
+        const allClientes = await db.listClientes();
+        const q = input.query.toLowerCase();
+        return allClientes
           .filter((c: any) => (c.nomeFantasia || '').toLowerCase().includes(q) || (c.razaoSocial || '').toLowerCase().includes(q))
           .slice(0, 10)
           .map((c: any) => ({ type: 'client' as const, id: c.id, name: c.nomeFantasia || c.razaoSocial || 'Cliente' }));
-        return [...matchedUsers, ...matchedClientes];
       }),
   }),
 

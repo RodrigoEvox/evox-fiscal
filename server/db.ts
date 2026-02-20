@@ -28,6 +28,8 @@ import {
   aprovacaoComissao, InsertAprovacaoComissao,
   userHistory, InsertUserHistory,
   chatMessages, InsertChatMessage,
+  chatChannels, InsertChatChannel,
+  chatNotifications, InsertChatNotification,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1179,7 +1181,32 @@ export async function listAllUserHistory() {
 }
 
 // =============================================
-// ---- CHAT INTERNO ----
+// ---- CHAT: CANAIS ----
+// =============================================
+
+export async function listChatChannels() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatChannels)
+    .where(sql`${chatChannels.ativo} = true`)
+    .orderBy(chatChannels.tipo, chatChannels.nome);
+}
+
+export async function getChatChannel(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(chatChannels).where(sql`${chatChannels.id} = ${id}`);
+  return rows[0] || null;
+}
+
+export async function createChatChannel(data: InsertChatChannel) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(chatChannels).values(data).$returningId();
+  return result[0]?.id;
+}
+
+// ---- CHAT: MENSAGENS ----
 // =============================================
 
 export async function createChatMessage(data: InsertChatMessage) {
@@ -1189,26 +1216,88 @@ export async function createChatMessage(data: InsertChatMessage) {
   return result[0]?.id;
 }
 
-export async function listChatMessages(limit = 100, beforeId?: number) {
+export async function listChatMessages(channelId: number, limit = 100, beforeId?: number) {
   const db = await getDb();
   if (!db) return [];
   if (beforeId) {
     return db.select().from(chatMessages)
-      .where(sql`${chatMessages.id} < ${beforeId}`)
+      .where(sql`${chatMessages.channelId} = ${channelId} AND ${chatMessages.id} < ${beforeId}`)
       .orderBy(desc(chatMessages.id))
       .limit(limit);
   }
   return db.select().from(chatMessages)
+    .where(sql`${chatMessages.channelId} = ${channelId}`)
     .orderBy(desc(chatMessages.id))
     .limit(limit);
 }
 
-export async function searchChatMessages(query: string) {
+export async function searchChatMessages(query: string, channelId?: number) {
   const db = await getDb();
   if (!db) return [];
   const like = `%${query}%`;
+  if (channelId) {
+    return db.select().from(chatMessages)
+      .where(sql`${chatMessages.content} LIKE ${like} AND ${chatMessages.channelId} = ${channelId}`)
+      .orderBy(desc(chatMessages.id))
+      .limit(50);
+  }
   return db.select().from(chatMessages)
     .where(sql`${chatMessages.content} LIKE ${like}`)
     .orderBy(desc(chatMessages.id))
     .limit(50);
+}
+
+// ---- CHAT: NOTIFICAÇÕES ----
+// =============================================
+
+export async function createChatNotification(data: InsertChatNotification) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(chatNotifications).values(data).$returningId();
+  return result[0]?.id;
+}
+
+export async function listUnreadNotifications(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatNotifications)
+    .where(sql`${chatNotifications.userId} = ${userId} AND ${chatNotifications.lida} = false`)
+    .orderBy(desc(chatNotifications.createdAt))
+    .limit(50);
+}
+
+export async function countUnreadNotifications(userId: number) {
+  const db = await getDb();
+  if (!db) return { total: 0, byChannel: [] as {channelId: number; count: number}[] };
+  const [totalRows] = await db.execute(
+    sql`SELECT COUNT(*) as cnt FROM chat_notifications WHERE userId = ${userId} AND lida = false`
+  );
+  const total = (totalRows as any)[0]?.cnt || 0;
+  const byChannelRows = await db.execute(
+    sql`SELECT channelId, COUNT(*) as cnt FROM chat_notifications WHERE userId = ${userId} AND lida = false GROUP BY channelId`
+  );
+  const byChannel = ((byChannelRows as any)[0] || []).map((r: any) => ({ channelId: r.channelId, count: Number(r.cnt) }));
+  return { total: Number(total), byChannel };
+}
+
+export async function markNotificationsRead(userId: number, channelId?: number) {
+  const db = await getDb();
+  if (!db) return;
+  if (channelId) {
+    await db.execute(
+      sql`UPDATE chat_notifications SET lida = true WHERE userId = ${userId} AND channelId = ${channelId}`
+    );
+  } else {
+    await db.execute(
+      sql`UPDATE chat_notifications SET lida = true WHERE userId = ${userId}`
+    );
+  }
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`UPDATE chat_notifications SET lida = true WHERE userId = ${userId}`
+  );
 }

@@ -591,9 +591,29 @@ export const userHistory = mysqlTable("user_history", {
 export type UserHistory = typeof userHistory.$inferSelect;
 export type InsertUserHistory = typeof userHistory.$inferInsert;
 
-// ---- CHAT INTERNO ----
+// ---- CHAT: CANAIS ----
+export const chatChannels = mysqlTable("chat_channels", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  tipo: mysqlEnum("tipo", ["geral", "setor", "projeto"]).default("setor").notNull(),
+  setorId: int("setorId"),
+  cor: varchar("cor", { length: 7 }).default("#3B82F6"),
+  icone: varchar("icone", { length: 50 }).default("MessageCircle"),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChatChannel = typeof chatChannels.$inferSelect;
+export type InsertChatChannel = typeof chatChannels.$inferInsert;
+
+// ---- CHAT: MENSAGENS ----
 export const chatMessages = mysqlTable("chat_messages", {
   id: int("id").autoincrement().primaryKey(),
+  channelId: int("channelId").notNull(),
   userId: int("userId").notNull(),
   userName: varchar("userName", { length: 255 }).notNull(),
   userAvatar: varchar("userAvatar", { length: 500 }),
@@ -604,3 +624,19 @@ export const chatMessages = mysqlTable("chat_messages", {
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+// ---- CHAT: NOTIFICAÇÕES ----
+export const chatNotifications = mysqlTable("chat_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  messageId: int("messageId").notNull(),
+  channelId: int("channelId").notNull(),
+  tipo: mysqlEnum("tipo", ["mencao", "mensagem"]).default("mencao").notNull(),
+  remetenteNome: varchar("remetenteNome", { length: 255 }).notNull(),
+  preview: varchar("preview", { length: 500 }),
+  lida: boolean("lida").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatNotification = typeof chatNotifications.$inferSelect;
+export type InsertChatNotification = typeof chatNotifications.$inferInsert;

@@ -601,3 +601,25 @@
 - [x] Frontend com interface de chat em tempo real
 - [x] Menções a @usuários dentro do chat
 - [x] Menções a @clientes dentro do chat
+
+## CRM v17.1 — Chat: Canais, Notificações e Menções
+
+### Renomear e Reorganizar
+- [x] Renomear "Chat Interno" para apenas "Chat" em toda a aplicação
+
+### Menções
+- [x] Usar @ apenas para mencionar usuários
+- [x] Usar # para mencionar clientes (código diferente do @)
+- [x] Atualizar frontend para suportar ambos os códigos de menção
+
+### Canais/Salas
+- [x] Schema de banco de dados para canais (por setor ou projeto)
+- [x] Backend para criar, listar e gerenciar canais
+- [x] Frontend com lista de canais na sidebar do chat
+- [x] Canal "Geral" padrão para todos os usuários
+
+### Notificações de Menção
+- [x] Schema de banco de dados para notificações de menção
+- [x] Backend para criar e marcar notificações como lidas
+- [x] Badge/balão no ícone do Chat na sidebar com contagem de não lidas
+- [x] Badge/balão nas conversas/canais com menções não lidas

@@ -164,6 +164,14 @@ export default function AppSidebar() {
 
   const displayName = (user as any)?.apelido || user?.name || 'Usuário';
 
+  // Chat unread badge
+  const chatUnread = trpc.chat.unreadCount.useQuery(undefined, { refetchInterval: 5000, enabled: !!user });
+  const chatBadgeCount = chatUnread.data?.total || 0;
+
+  const ChatNavLink = () => (
+    <NavLink path="/chat" icon={MessageCircle} label="Chat" badge={chatBadgeCount > 0 ? chatBadgeCount : undefined} />
+  );
+
   const NavLink = ({ path, icon: Icon, label, color, badge }: { path: string; icon: any; label: string; color?: string; badge?: number }) => {
     const isActive = location === path || (path !== '/' && location.startsWith(path));
 
@@ -292,8 +300,8 @@ export default function AppSidebar() {
         {/* Minhas Tarefas */}
         <NavLink path="/minhas-tarefas" icon={ClipboardList} label="Minhas Tarefas" />
 
-        {/* Chat Interno */}
-        <NavLink path="/chat" icon={MessageCircle} label="Chat Interno" />
+        {/* Chat */}
+        <ChatNavLink />
 
         {/* ===== EQUIPES (menu colapsável) ===== */}
         {collapsed ? (
