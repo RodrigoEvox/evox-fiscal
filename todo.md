@@ -578,3 +578,26 @@
 - [x] Se soma dos rateios > padrão: alerta "acima do padrão" com opções Usar Padrão / Solicitar Aprovação
 - [x] Se soma dos rateios < padrão: alerta "abaixo do padrão" com opção Confirmar Valor
 - [x] Aumentar suavemente o tamanho da fonte de todos os menus e submenus da sidebar
+
+## CRM v17 — Novo Setor, Gestão de Usuários, Histórico e Chat Interno
+
+### Novo Setor
+- [x] Criar setor "IA e Tecnologia" dentro de Equipes com submenu "Nova Tarefa"
+
+### Gestão de Usuários (melhorias)
+- [x] Dropdown obrigatório para associar usuário a um setor no cadastro de novo usuário
+- [x] Adicionar nível de acesso "Supervisor"
+- [x] Remover nível de acesso "Suporte Comercial"
+
+### Histórico de Usuários
+- [x] Histórico completo de todos os usuários (ativos e inativos)
+- [x] Registrar criação, alterações e inativação com data/hora e quem realizou
+- [x] Exibir histórico na tela de gestão de usuários
+
+### Chat Interno
+- [x] Chat geral para comunicação interna entre usuários do sistema
+- [x] Schema de banco de dados para mensagens do chat
+- [x] Backend (tRPC procedures) para enviar, listar e buscar mensagens
+- [x] Frontend com interface de chat em tempo real
+- [x] Menções a @usuários dentro do chat
+- [x] Menções a @clientes dentro do chat

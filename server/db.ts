@@ -26,6 +26,8 @@ import {
   executivosComerciais, InsertExecutivoComercial,
   rateioComissao, InsertRateioComissao,
   aprovacaoComissao, InsertAprovacaoComissao,
+  userHistory, InsertUserHistory,
+  chatMessages, InsertChatMessage,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1147,4 +1149,66 @@ export async function updateAprovacaoStatus(id: number, status: 'aprovado' | 're
     aprovadoEm: new Date(),
     observacao: observacao || null,
   }).where(eq(aprovacaoComissao.id, id));
+}
+
+// =============================================
+// ---- HISTÓRICO DE USUÁRIOS ----
+// =============================================
+
+export async function createUserHistoryEntry(data: InsertUserHistory) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(userHistory).values(data).$returningId();
+  return result[0]?.id;
+}
+
+export async function listUserHistory(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userHistory)
+    .where(eq(userHistory.userId, userId))
+    .orderBy(desc(userHistory.createdAt));
+}
+
+export async function listAllUserHistory() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userHistory)
+    .orderBy(desc(userHistory.createdAt))
+    .limit(500);
+}
+
+// =============================================
+// ---- CHAT INTERNO ----
+// =============================================
+
+export async function createChatMessage(data: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(chatMessages).values(data).$returningId();
+  return result[0]?.id;
+}
+
+export async function listChatMessages(limit = 100, beforeId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (beforeId) {
+    return db.select().from(chatMessages)
+      .where(sql`${chatMessages.id} < ${beforeId}`)
+      .orderBy(desc(chatMessages.id))
+      .limit(limit);
+  }
+  return db.select().from(chatMessages)
+    .orderBy(desc(chatMessages.id))
+    .limit(limit);
+}
+
+export async function searchChatMessages(query: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const like = `%${query}%`;
+  return db.select().from(chatMessages)
+    .where(sql`${chatMessages.content} LIKE ${like}`)
+    .orderBy(desc(chatMessages.id))
+    .limit(50);
 }

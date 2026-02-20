@@ -30,6 +30,12 @@ vi.mock("./db", () => ({
   markNotificacaoRead: vi.fn().mockResolvedValue(undefined),
   getAnalyticData: vi.fn().mockResolvedValue({ clientes: [], relatorios: [], fila: [] }),
   seedTeses: vi.fn().mockResolvedValue(undefined),
+  createUserHistoryEntry: vi.fn().mockResolvedValue(1),
+  listUserHistory: vi.fn().mockResolvedValue([]),
+  listAllUserHistory: vi.fn().mockResolvedValue([]),
+  createChatMessage: vi.fn().mockResolvedValue(1),
+  listChatMessages: vi.fn().mockResolvedValue([]),
+  searchChatMessages: vi.fn().mockResolvedValue([]),
 }));
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;

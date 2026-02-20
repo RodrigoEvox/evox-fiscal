@@ -29,7 +29,7 @@ export const users = mysqlTable("users", {
   cpf: varchar("cpf", { length: 14 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  nivelAcesso: mysqlEnum("nivelAcesso", ["diretor", "gerente", "coordenador", "analista_fiscal", "suporte_comercial"]).default("analista_fiscal").notNull(),
+  nivelAcesso: mysqlEnum("nivelAcesso", ["diretor", "gerente", "coordenador", "supervisor", "analista_fiscal"]).default("analista_fiscal").notNull(),
   cargo: varchar("cargo", { length: 255 }),
   telefone: varchar("telefone", { length: 20 }),
   avatar: varchar("avatar", { length: 500 }),
@@ -574,3 +574,33 @@ export const aprovacaoComissao = mysqlTable("aprovacao_comissao", {
 
 export type AprovacaoComissao = typeof aprovacaoComissao.$inferSelect;
 export type InsertAprovacaoComissao = typeof aprovacaoComissao.$inferInsert;
+
+// ---- HISTÓRICO DE USUÁRIOS ----
+export const userHistory = mysqlTable("user_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  acao: mysqlEnum("acao", ["criacao", "edicao", "ativacao", "inativacao", "exclusao"]).notNull(),
+  campo: varchar("campo", { length: 255 }),
+  valorAnterior: text("valorAnterior"),
+  valorNovo: text("valorNovo"),
+  realizadoPorId: int("realizadoPorId"),
+  realizadoPorNome: varchar("realizadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserHistory = typeof userHistory.$inferSelect;
+export type InsertUserHistory = typeof userHistory.$inferInsert;
+
+// ---- CHAT INTERNO ----
+export const chatMessages = mysqlTable("chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  userAvatar: varchar("userAvatar", { length: 500 }),
+  content: text("content").notNull(),
+  mentions: json("mentions").$type<{type: 'user' | 'client'; id: number; name: string}[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;

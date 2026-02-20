@@ -9,7 +9,8 @@ import {
   Headphones, Podcast, Gift, Calendar, Building2,
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
-  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck,
+  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu,
+  MessageCircle,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -23,9 +24,8 @@ const SYMBOL_URL = 'https://files.manuscdn.com/user_upload_by_module/session_fil
 const ICON_MAP: Record<string, any> = {
   Handshake, BadgeDollarSign, ArrowLeftRight, Scale, Landmark,
   FileText, Wallet, Megaphone, Users, Building2, Shield,
-  ShoppingCart, Banknote, GraduationCap, MonitorCheck, Gavel,
+  ShoppingCart, Banknote, GraduationCap, MonitorCheck, Gavel, Cpu,
 };
-
 // Mapeamento de siglas para nomes de exibição (sem siglas)
 const SIGLA_TO_NOME: Record<string, string> = {
   'COM': 'Comercial',
@@ -42,6 +42,7 @@ const SIGLA_TO_NOME: Record<string, string> = {
   'SUP': 'Suporte',
   'TRA': 'Transação',
   'UNI': 'Universidade Evox',
+  'IAT': 'IA e Tecnologia',
 };
 
 // Sigla da Universidade Evox (fica fora do grupo Equipes)
@@ -156,7 +157,7 @@ export default function AppSidebar() {
   const nivelLabel = (nivel: string | undefined) => {
     const map: Record<string, string> = {
       diretor: 'Diretor', gerente: 'Gerente', coordenador: 'Coordenador',
-      analista_fiscal: 'Analista Fiscal', suporte_comercial: 'Suporte Comercial',
+      supervisor: 'Supervisor', analista_fiscal: 'Analista Fiscal',
     };
     return map[nivel || ''] || (user?.role === 'admin' ? 'Administrador' : 'Analista');
   };
@@ -290,6 +291,9 @@ export default function AppSidebar() {
 
         {/* Minhas Tarefas */}
         <NavLink path="/minhas-tarefas" icon={ClipboardList} label="Minhas Tarefas" />
+
+        {/* Chat Interno */}
+        <NavLink path="/chat" icon={MessageCircle} label="Chat Interno" />
 
         {/* ===== EQUIPES (menu colapsável) ===== */}
         {collapsed ? (

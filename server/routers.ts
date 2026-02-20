@@ -62,7 +62,7 @@ export const appRouter = router({
         telefone: z.string().optional(),
         cargo: z.string().optional(),
         role: z.enum(['user', 'admin']).default('user'),
-        nivelAcesso: z.enum(['diretor', 'gerente', 'coordenador', 'analista_fiscal', 'suporte_comercial']).default('analista_fiscal'),
+        nivelAcesso: z.enum(['diretor', 'gerente', 'coordenador', 'supervisor', 'analista_fiscal']).default('analista_fiscal'),
         setorPrincipalId: z.number().nullable().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -81,13 +81,30 @@ export const appRouter = router({
           loginMethod: 'manual',
         } as any);
         await logAudit('criar', 'usuario', id, input.name, ctx, { email: input.email, apelido: input.apelido });
+        // Log user history
+        await db.createUserHistoryEntry({
+          userId: id,
+          acao: 'criacao',
+          realizadoPorId: ctx.user.id,
+          realizadoPorNome: ctx.user.name || 'Admin',
+        } as any);
         return { id };
       }),
     updateRole: adminProcedure
       .input(z.object({ id: z.number(), role: z.string(), nivelAcesso: z.string() }))
       .mutation(async ({ input, ctx }) => {
+        // Get old values for history
+        const oldUserRole = (await db.listUsers()).find((u: any) => u.id === input.id);
         await db.updateUserRole(input.id, input.role, input.nivelAcesso);
         await logAudit('editar', 'usuario', input.id, null, ctx, { role: input.role, nivelAcesso: input.nivelAcesso });
+        if (oldUserRole) {
+          if (oldUserRole.role !== input.role) {
+            await db.createUserHistoryEntry({ userId: input.id, acao: 'edicao', campo: 'role', valorAnterior: oldUserRole.role, valorNovo: input.role, realizadoPorId: ctx.user.id, realizadoPorNome: ctx.user.name || 'Admin' } as any);
+          }
+          if (oldUserRole.nivelAcesso !== input.nivelAcesso) {
+            await db.createUserHistoryEntry({ userId: input.id, acao: 'edicao', campo: 'nivelAcesso', valorAnterior: oldUserRole.nivelAcesso, valorNovo: input.nivelAcesso, realizadoPorId: ctx.user.id, realizadoPorNome: ctx.user.name || 'Admin' } as any);
+          }
+        }
         return { success: true };
       }),
     update: adminProcedure
@@ -106,8 +123,18 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
+        // Get old values for history
+        const oldUser = (await db.listUsers()).find((u: any) => u.id === id);
         await db.updateUser(id, data as any);
         await logAudit('editar', 'usuario', id, null, ctx, data);
+        // Log each changed field
+        if (oldUser) {
+          for (const [campo, valorNovo] of Object.entries(data)) {
+            if (valorNovo !== undefined && (oldUser as any)[campo] !== valorNovo) {
+              await db.createUserHistoryEntry({ userId: id, acao: 'edicao', campo, valorAnterior: String((oldUser as any)[campo] ?? ''), valorNovo: String(valorNovo ?? ''), realizadoPorId: ctx.user.id, realizadoPorNome: ctx.user.name || 'Admin' } as any);
+            }
+          }
+        }
         return { success: true };
       }),
     delete: adminProcedure
@@ -116,6 +143,7 @@ export const appRouter = router({
         // Soft delete — just deactivate
         await db.toggleUserActive(input.id, false);
         await logAudit('excluir', 'usuario', input.id, null, ctx);
+        await db.createUserHistoryEntry({ userId: input.id, acao: 'inativacao', realizadoPorId: ctx.user.id, realizadoPorNome: ctx.user.name || 'Admin' } as any);
         return { success: true };
       }),
     toggleActive: adminProcedure
@@ -123,6 +151,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         await db.toggleUserActive(input.id, input.ativo);
         await logAudit(input.ativo ? 'ativar' : 'inativar', 'usuario', input.id, null, ctx);
+        await db.createUserHistoryEntry({ userId: input.id, acao: input.ativo ? 'ativacao' : 'inativacao', realizadoPorId: ctx.user.id, realizadoPorNome: ctx.user.name || 'Admin' } as any);
         return { success: true };
       }),
   }),
@@ -1486,6 +1515,71 @@ export const appRouter = router({
         await db.updateAprovacaoStatus(input.id, 'rejeitado', ctx.user.id, input.observacao);
         await logAudit('rejeitar', 'aprovacao_comissao', input.id, null, ctx);
         return { success: true };
+      }),
+  }),
+
+  // ---- HISTÓRICO DE USUÁRIOS ----
+  userHistory: router({
+    byUser: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return db.listUserHistory(input.userId);
+      }),
+    listAll: adminProcedure.query(async () => {
+      return db.listAllUserHistory();
+    }),
+  }),
+
+  // ---- CHAT INTERNO ----
+  chat: router({
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().optional(),
+        beforeId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.listChatMessages(input?.limit || 100, input?.beforeId);
+      }),
+    send: protectedProcedure
+      .input(z.object({
+        content: z.string().min(1),
+        mentions: z.array(z.object({
+          type: z.enum(['user', 'client']),
+          id: z.number(),
+          name: z.string(),
+        })).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createChatMessage({
+          userId: ctx.user.id,
+          userName: (ctx.user as any).apelido || ctx.user.name || 'Usuário',
+          userAvatar: (ctx.user as any).avatar || null,
+          content: input.content,
+          mentions: input.mentions || [],
+        } as any);
+        return { id };
+      }),
+    search: protectedProcedure
+      .input(z.object({ query: z.string().min(2) }))
+      .query(async ({ input }) => {
+        return db.searchChatMessages(input.query);
+      }),
+    // List users and clients for mentions
+    mentionSuggestions: protectedProcedure
+      .input(z.object({ query: z.string() }))
+      .query(async ({ input }) => {
+        const allUsers = await db.listUsers();
+        const allClientes = await db.listClientes();
+        const q = input.query.toLowerCase();
+        const matchedUsers = allUsers
+          .filter((u: any) => u.ativo && ((u.apelido || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q)))
+          .slice(0, 10)
+          .map((u: any) => ({ type: 'user' as const, id: u.id, name: u.apelido || u.name || 'Usuário', avatar: u.avatar }));
+        const matchedClientes = allClientes
+          .filter((c: any) => (c.nomeFantasia || '').toLowerCase().includes(q) || (c.razaoSocial || '').toLowerCase().includes(q))
+          .slice(0, 10)
+          .map((c: any) => ({ type: 'client' as const, id: c.id, name: c.nomeFantasia || c.razaoSocial || 'Cliente' }));
+        return [...matchedUsers, ...matchedClientes];
       }),
   }),
 

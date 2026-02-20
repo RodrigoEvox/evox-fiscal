@@ -11,21 +11,45 @@ import { toast } from 'sonner';
 import {
   Users, Shield, ShieldCheck, ShieldAlert, UserCog, Loader2,
   Plus, Pencil, Trash2, Search, Phone, Mail, IdCard, UserCircle,
+  History, Building2, Eye,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const nivelLabels: Record<string, string> = {
   diretor: 'Diretor',
   gerente: 'Gerente',
   coordenador: 'Coordenador',
+  supervisor: 'Supervisor',
   analista_fiscal: 'Analista Fiscal',
-  suporte_comercial: 'Suporte Comercial',
 };
 
 const roleLabels: Record<string, string> = {
   admin: 'Administrador',
   user: 'Usuário',
+};
+
+const acaoLabels: Record<string, string> = {
+  criacao: 'Criação',
+  edicao: 'Edição',
+  ativacao: 'Ativação',
+  inativacao: 'Inativação',
+  exclusao: 'Exclusão',
+};
+
+const campoLabels: Record<string, string> = {
+  name: 'Nome',
+  apelido: 'Apelido',
+  email: 'Email',
+  cpf: 'CPF',
+  telefone: 'Telefone',
+  cargo: 'Cargo',
+  role: 'Papel',
+  nivelAcesso: 'Nível de Acesso',
+  setorPrincipalId: 'Setor',
+  supervisorId: 'Supervisor',
+  ativo: 'Status',
 };
 
 function cpfMask(value: string): string {
@@ -52,23 +76,29 @@ interface UserForm {
   cargo: string;
   role: string;
   nivelAcesso: string;
+  setorPrincipalId: number | null;
 }
 
 const emptyForm: UserForm = {
   name: '', apelido: '', email: '', cpf: '', telefone: '',
   cargo: '', role: 'user', nivelAcesso: 'analista_fiscal',
+  setorPrincipalId: null,
 };
 
 export default function Usuarios() {
   const { user: currentUser } = useAuth();
   const utils = trpc.useUtils();
   const { data: users = [], isLoading } = trpc.users.list.useQuery();
+  const { data: setores = [] } = trpc.setores.list.useQuery();
 
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<UserForm>({ ...emptyForm });
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [historyUserId, setHistoryUserId] = useState<number | null>(null);
+  const [historyUserName, setHistoryUserName] = useState('');
+  const [showInactive, setShowInactive] = useState(true);
 
   const createUser = trpc.users.create.useMutation({
     onSuccess: () => { utils.users.list.invalidate(); toast.success('Usuário criado com sucesso!'); setDialogOpen(false); },
@@ -90,18 +120,38 @@ export default function Usuarios() {
     onError: (err) => toast.error(err.message),
   });
 
+  const userHistory = trpc.userHistory.byUser.useQuery(
+    { userId: historyUserId! },
+    { enabled: historyUserId !== null }
+  );
+
   const isAdmin = currentUser?.role === 'admin';
 
+  // Build setor name lookup
+  const setorNameMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    (setores as any[]).forEach((s: any) => {
+      // Remove sigla prefix if present
+      const cleanName = s.nome?.replace(/^[A-Z]+\s*[–-]\s*/, '') || s.nome;
+      map[s.id] = cleanName;
+    });
+    return map;
+  }, [setores]);
+
   const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users;
+    let list = users as any[];
+    if (!showInactive) {
+      list = list.filter((u: any) => u.ativo);
+    }
+    if (!search.trim()) return list;
     const term = search.toLowerCase();
-    return users.filter((u: any) =>
+    return list.filter((u: any) =>
       (u.name || '').toLowerCase().includes(term) ||
       (u.apelido || '').toLowerCase().includes(term) ||
       (u.email || '').toLowerCase().includes(term) ||
       (u.cpf || '').toLowerCase().includes(term)
     );
-  }, [users, search]);
+  }, [users, search, showInactive]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -120,14 +170,21 @@ export default function Usuarios() {
       cargo: u.cargo || '',
       role: u.role || 'user',
       nivelAcesso: u.nivelAcesso || 'analista_fiscal',
+      setorPrincipalId: u.setorPrincipalId || null,
     });
     setDialogOpen(true);
+  };
+
+  const openHistory = (u: any) => {
+    setHistoryUserId(u.id);
+    setHistoryUserName(u.apelido || u.name || 'Usuário');
   };
 
   const handleSave = () => {
     if (!form.name.trim()) { toast.error('Nome completo é obrigatório'); return; }
     if (!form.apelido.trim()) { toast.error('Apelido é obrigatório'); return; }
     if (!form.email.trim()) { toast.error('Email é obrigatório'); return; }
+    if (!form.setorPrincipalId) { toast.error('Setor é obrigatório'); return; }
 
     if (editingId) {
       updateUser.mutate({
@@ -140,6 +197,7 @@ export default function Usuarios() {
         cargo: form.cargo || undefined,
         role: form.role,
         nivelAcesso: form.nivelAcesso,
+        setorPrincipalId: form.setorPrincipalId,
       });
     } else {
       createUser.mutate({
@@ -151,6 +209,7 @@ export default function Usuarios() {
         cargo: form.cargo || undefined,
         role: form.role as any,
         nivelAcesso: form.nivelAcesso as any,
+        setorPrincipalId: form.setorPrincipalId,
       });
     }
   };
@@ -177,11 +236,29 @@ export default function Usuarios() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <UserCog className="w-6 h-6" /> Gestão de Usuários
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{users.length} usuários cadastrados</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {users.length} usuários cadastrados
+            {(users as any[]).filter((u: any) => !u.ativo).length > 0 && (
+              <span className="ml-2 text-orange-500">
+                ({(users as any[]).filter((u: any) => !u.ativo).length} inativos)
+              </span>
+            )}
+          </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" /> Novo Usuário
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showInactive ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowInactive(!showInactive)}
+            className="gap-1 text-xs"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            {showInactive ? 'Ocultar Inativos' : 'Mostrar Inativos'}
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="w-4 h-4" /> Novo Usuário
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -201,7 +278,7 @@ export default function Usuarios() {
           <thead>
             <tr className="bg-gray-50 border-b">
               <th className="text-left py-3 px-4 font-medium text-gray-600">Usuário</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 hidden md:table-cell">CPF</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600 hidden md:table-cell">Setor</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600 hidden md:table-cell">Telefone</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Papel / Nível</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600 hidden lg:table-cell">Status</th>
@@ -232,7 +309,10 @@ export default function Usuarios() {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-gray-600 hidden md:table-cell">
-                    {u.cpf || <span className="text-gray-300">—</span>}
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="text-xs">{u.setorPrincipalId ? (setorNameMap[u.setorPrincipalId] || '—') : <span className="text-gray-300">Não definido</span>}</span>
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-gray-600 hidden md:table-cell">
                     {u.telefone || <span className="text-gray-300">—</span>}
@@ -252,6 +332,9 @@ export default function Usuarios() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openHistory(u)} className="h-8 w-8 p-0" title="Histórico">
+                        <History className="w-3.5 h-3.5 text-blue-500" />
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(u)} className="h-8 w-8 p-0" title="Editar">
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
@@ -367,6 +450,34 @@ export default function Usuarios() {
               </div>
             </div>
 
+            {/* Setor obrigatório */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1">
+                <Building2 className="w-3 h-3" /> Setor *
+              </Label>
+              <Select
+                value={form.setorPrincipalId ? String(form.setorPrincipalId) : ''}
+                onValueChange={(val) => setForm({ ...form, setorPrincipalId: val ? Number(val) : null })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o setor do usuário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(setores as any[])
+                    .filter((s: any) => s.ativo)
+                    .sort((a: any, b: any) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))
+                    .map((s: any) => {
+                      const cleanName = s.nome?.replace(/^[A-Z]+\s*[–-]\s*/, '') || s.nome;
+                      return (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {cleanName}
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Papel no Sistema</Label>
@@ -386,8 +497,8 @@ export default function Usuarios() {
                     <SelectItem value="diretor">Diretor</SelectItem>
                     <SelectItem value="gerente">Gerente</SelectItem>
                     <SelectItem value="coordenador">Coordenador</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="analista_fiscal">Analista Fiscal</SelectItem>
-                    <SelectItem value="suporte_comercial">Suporte Comercial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -426,6 +537,81 @@ export default function Usuarios() {
               {deleteUser.isPending ? 'Desativando...' : 'Desativar Usuário'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User History Dialog */}
+      <Dialog open={historyUserId !== null} onOpenChange={() => setHistoryUserId(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-blue-500" />
+              Histórico — {historyUserName}
+            </DialogTitle>
+            <DialogDescription>
+              Registro completo de criação, alterações e mudanças de status deste usuário.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2">
+            {userHistory.isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !userHistory.data || userHistory.data.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>Nenhum registro de histórico encontrado.</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {(userHistory.data as any[]).map((h: any, idx: number) => (
+                  <div key={h.id || idx} className={`flex gap-3 py-3 ${idx > 0 ? 'border-t' : ''}`}>
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        h.acao === 'criacao' ? 'bg-green-100 text-green-600' :
+                        h.acao === 'edicao' ? 'bg-blue-100 text-blue-600' :
+                        h.acao === 'ativacao' ? 'bg-emerald-100 text-emerald-600' :
+                        h.acao === 'inativacao' ? 'bg-orange-100 text-orange-600' :
+                        'bg-red-100 text-red-600'
+                      }`}>
+                        {h.acao === 'criacao' ? <Plus className="w-4 h-4" /> :
+                         h.acao === 'edicao' ? <Pencil className="w-4 h-4" /> :
+                         <Shield className="w-4 h-4" />}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[10px]">
+                          {acaoLabels[h.acao] || h.acao}
+                        </Badge>
+                        {h.campo && (
+                          <span className="text-xs text-gray-500">
+                            Campo: <strong>{campoLabels[h.campo] || h.campo}</strong>
+                          </span>
+                        )}
+                      </div>
+                      {h.campo && (h.valorAnterior || h.valorNovo) && (
+                        <div className="mt-1 text-xs">
+                          {h.valorAnterior && (
+                            <span className="text-red-500 line-through mr-2">{h.valorAnterior}</span>
+                          )}
+                          {h.valorNovo && (
+                            <span className="text-green-600">{h.valorNovo}</span>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400">
+                        <span>por {h.realizadoPorNome || 'Sistema'}</span>
+                        <span>•</span>
+                        <span>{new Date(h.createdAt).toLocaleString('pt-BR')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
