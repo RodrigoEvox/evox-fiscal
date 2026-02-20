@@ -710,6 +710,7 @@ export const colaboradores = mysqlTable("colaboradores", {
   // Vínculo com user (opcional)
   userId: int("userId"),
   foto: varchar("foto", { length: 500 }),
+  statusColaborador: mysqlEnum("statusColaborador", ["ativo", "inativo", "afastado", "licenca", "atestado", "desligado", "ferias", "experiencia", "aviso_previo"]).default("ativo").notNull(),
   ativo: boolean("ativo").default(true).notNull(),
   dataDesligamento: varchar("dataDesligamento", { length: 10 }),
   motivoDesligamento: text("motivoDesligamento"),

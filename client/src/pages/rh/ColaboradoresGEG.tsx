@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Plus, Search, User, Edit2, Eye, X, AlertTriangle, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Plus, Search, User, Edit2, Eye, X, AlertTriangle, Loader2,
+  CheckCircle2, XCircle, UserCheck, UserX, Clock, Briefcase,
+  HeartPulse, Palmtree, ShieldAlert, FileWarning
+} from 'lucide-react';
 
 // ---- Helpers ----
 function validarCPF(cpf: string): boolean {
@@ -61,12 +64,9 @@ function calcIdade(dataNasc: string): string {
 }
 
 const DIAS_SEMANA = [
-  { key: 'seg', label: 'Seg' },
-  { key: 'ter', label: 'Ter' },
-  { key: 'qua', label: 'Qua' },
-  { key: 'qui', label: 'Qui' },
-  { key: 'sex', label: 'Sex' },
-  { key: 'sab', label: 'Sáb' },
+  { key: 'seg', label: 'Seg' }, { key: 'ter', label: 'Ter' },
+  { key: 'qua', label: 'Qua' }, { key: 'qui', label: 'Qui' },
+  { key: 'sex', label: 'Sex' }, { key: 'sab', label: 'Sáb' },
   { key: 'dom', label: 'Dom' },
 ];
 
@@ -75,6 +75,18 @@ const PARENTESCOS = [
   'Pai', 'Mãe', 'Irmão(ã)', 'Avô(ó)', 'Neto(a)',
   'Tutelado(a)', 'Menor sob guarda',
 ];
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; bgCard: string }> = {
+  ativo: { label: 'Ativo', color: 'bg-green-100 text-green-700 border-green-200', icon: UserCheck, bgCard: 'border-l-green-500' },
+  inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: UserX, bgCard: 'border-l-gray-400' },
+  afastado: { label: 'Afastado', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: ShieldAlert, bgCard: 'border-l-orange-500' },
+  licenca: { label: 'Licença', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: FileWarning, bgCard: 'border-l-purple-500' },
+  atestado: { label: 'Atestado', color: 'bg-red-100 text-red-700 border-red-200', icon: HeartPulse, bgCard: 'border-l-red-500' },
+  desligado: { label: 'Desligado', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: XCircle, bgCard: 'border-l-slate-500' },
+  ferias: { label: 'Férias', color: 'bg-cyan-100 text-cyan-700 border-cyan-200', icon: Palmtree, bgCard: 'border-l-cyan-500' },
+  experiencia: { label: 'Experiência', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock, bgCard: 'border-l-yellow-500' },
+  aviso_previo: { label: 'Aviso Prévio', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Briefcase, bgCard: 'border-l-amber-500' },
+};
 
 type Dependente = { nome: string; cpf: string; dataNascimento: string; parentesco: string };
 
@@ -92,6 +104,7 @@ const EMPTY_FORM = {
   asoAdmissionalApto: false, asoAdmissionalData: '',
   dependentes: [] as Dependente[],
   setorId: 0, nivelHierarquico: '' as string,
+  statusColaborador: 'ativo' as string,
 };
 
 export default function ColaboradoresGEG() {
@@ -101,6 +114,7 @@ export default function ColaboradoresGEG() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [admissaoAlert, setAdmissaoAlert] = useState(false);
   const [exitAlert, setExitAlert] = useState(false);
   const [cpfValid, setCpfValid] = useState<boolean | null>(null);
@@ -138,26 +152,19 @@ export default function ColaboradoresGEG() {
 
   const markDirty = () => { formDirtyRef.current = true; };
 
-  // CPF handler
   const handleCpfChange = (raw: string) => {
     const masked = maskCPF(raw);
     setForm(f => ({ ...f, cpf: masked }));
     markDirty();
     const nums = masked.replace(/\D/g, '');
-    if (nums.length === 11) {
-      setCpfValid(validarCPF(nums));
-    } else {
-      setCpfValid(null);
-    }
+    setCpfValid(nums.length === 11 ? validarCPF(nums) : null);
   };
 
-  // Phone handler
   const handlePhoneChange = (raw: string) => {
     setForm(f => ({ ...f, telefone: maskPhone(raw) }));
     markDirty();
   };
 
-  // CEP handler
   const handleCepChange = async (raw: string) => {
     const masked = maskCEP(raw);
     setForm(f => ({ ...f, cep: masked }));
@@ -183,7 +190,6 @@ export default function ColaboradoresGEG() {
     }
   };
 
-  // Jornada dias toggle
   const toggleDia = (dia: string) => {
     setForm(f => {
       const dias = f.jornadaDias.includes(dia)
@@ -218,6 +224,7 @@ export default function ColaboradoresGEG() {
       localTrabalho: (form.localTrabalho || undefined) as any,
       tipoConta: (form.tipoConta || undefined) as any,
       nivelHierarquico: (form.nivelHierarquico || undefined) as any,
+      statusColaborador: (form.statusColaborador || 'ativo') as any,
     };
 
     if (editId) {
@@ -233,6 +240,7 @@ export default function ColaboradoresGEG() {
       jornadaDias: c.jornadaDias ? (typeof c.jornadaDias === 'string' ? JSON.parse(c.jornadaDias) : c.jornadaDias) : ['seg', 'ter', 'qua', 'qui', 'sex'],
       dependentes: c.dependentes ? (typeof c.dependentes === 'string' ? JSON.parse(c.dependentes) : c.dependentes) : [],
       chavePix: c.chavePix || '',
+      statusColaborador: c.statusColaborador || 'ativo',
     });
     setEditId(c.id);
     setViewMode(false);
@@ -248,6 +256,7 @@ export default function ColaboradoresGEG() {
       jornadaDias: c.jornadaDias ? (typeof c.jornadaDias === 'string' ? JSON.parse(c.jornadaDias) : c.jornadaDias) : ['seg', 'ter', 'qua', 'qui', 'sex'],
       dependentes: c.dependentes ? (typeof c.dependentes === 'string' ? JSON.parse(c.dependentes) : c.dependentes) : [],
       chavePix: c.chavePix || '',
+      statusColaborador: c.statusColaborador || 'ativo',
     });
     setEditId(c.id);
     setViewMode(true);
@@ -268,21 +277,56 @@ export default function ColaboradoresGEG() {
     markDirty();
   };
 
-  const filtered = useMemo(() => {
-    const list = (colaboradores.data || []) as any[];
-    if (!search.trim()) return list;
-    const s = search.toLowerCase();
-    return list.filter((c: any) =>
-      c.nomeCompleto?.toLowerCase().includes(s) || c.cpf?.includes(s) || c.cargo?.toLowerCase().includes(s)
-    );
-  }, [colaboradores.data, search]);
+  const allColabs = (colaboradores.data || []) as any[];
 
-  const ativos = filtered.filter((c: any) => c.ativo !== false);
-  const inativos = filtered.filter((c: any) => c.ativo === false);
+  const filtered = useMemo(() => {
+    let list = [...allColabs];
+    if (filterStatus !== 'todos') {
+      list = list.filter((c: any) => (c.statusColaborador || 'ativo') === filterStatus);
+    }
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      list = list.filter((c: any) =>
+        c.nomeCompleto?.toLowerCase().includes(s) || c.cpf?.includes(s) || c.cargo?.toLowerCase().includes(s)
+      );
+    }
+    return list;
+  }, [allColabs, search, filterStatus]);
+
+  // Status summary counts
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allColabs.forEach((c: any) => {
+      const st = c.statusColaborador || 'ativo';
+      counts[st] = (counts[st] || 0) + 1;
+    });
+    return counts;
+  }, [allColabs]);
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h4 className="font-semibold text-sm text-primary border-b pb-1 mt-6 mb-3">{children}</h4>
+    <div className="border-b border-primary/20 pb-1.5 mt-8 mb-4 first:mt-0">
+      <h4 className="font-semibold text-sm text-primary tracking-wide uppercase">{children}</h4>
+    </div>
   );
+
+  const Field = ({ label, children, span = 1, required = false }: { label: string; children: React.ReactNode; span?: number; required?: boolean }) => (
+    <div className={span === 2 ? 'md:col-span-2' : span === 3 ? 'md:col-span-3' : ''}>
+      <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </Label>
+      {children}
+    </div>
+  );
+
+  const getStatusBadge = (status: string) => {
+    const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
+    const Icon = cfg.icon;
+    return (
+      <Badge className={`${cfg.color} border text-[10px] gap-1`} variant="secondary">
+        <Icon className="w-3 h-3" /> {cfg.label}
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -294,57 +338,78 @@ export default function ColaboradoresGEG() {
         <Button onClick={() => { closeFormClean(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Colaborador</Button>
       </div>
 
+      {/* Status Summary Cards */}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setFilterStatus('todos')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            filterStatus === 'todos' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+          }`}
+        >
+          Todos ({allColabs.length})
+        </button>
+        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+          const count = statusCounts[key] || 0;
+          if (count === 0 && key !== 'ativo') return null;
+          const Icon = cfg.icon;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterStatus(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 ${
+                filterStatus === key ? `${cfg.color} border-current` : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {cfg.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input placeholder="Buscar por nome, CPF ou cargo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
 
+      {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ativos.map((c: any) => (
-          <Card key={c.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => openView(c)}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary" />
+        {filtered.map((c: any) => {
+          const status = c.statusColaborador || 'ativo';
+          const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
+          return (
+            <Card key={c.id} className={`hover:shadow-md transition-shadow cursor-pointer border-l-4 ${cfg.bgCard}`} onClick={() => openView(c)}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-medium text-sm truncate">{c.nomeCompleto}</h4>
+                      <p className="text-xs text-muted-foreground truncate">{c.cargo}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-sm">{c.nomeCompleto}</h4>
-                    <p className="text-xs text-muted-foreground">{c.cargo}</p>
-                  </div>
+                  {getStatusBadge(status)}
                 </div>
-                <Badge variant="outline" className="text-[10px]">{c.tipoContrato?.toUpperCase() || 'CLT'}</Badge>
-              </div>
-              <div className="mt-3 flex gap-2 flex-wrap">
-                {c.localTrabalho && <Badge variant="secondary" className="text-[10px]">{c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : 'Uberaba'}</Badge>}
-                {c.dataAdmissao && <span className="text-[10px] text-muted-foreground">Admissão: {c.dataAdmissao}</span>}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {c.tipoContrato && <Badge variant="outline" className="text-[10px]">{c.tipoContrato.toUpperCase()}</Badge>}
+                  {c.localTrabalho && <Badge variant="secondary" className="text-[10px]">{c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : 'Uberaba'}</Badge>}
+                  {c.dataAdmissao && <span className="text-[10px] text-muted-foreground">Admissão: {c.dataAdmissao}</span>}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {inativos.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Inativos ({inativos.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
-            {inativos.map((c: any) => (
-              <Card key={c.id} className="cursor-pointer" onClick={() => openView(c)}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <User className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm">{c.nomeCompleto}</h4>
-                      <p className="text-xs text-muted-foreground">{c.cargo}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+      {filtered.length === 0 && (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <User className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">Nenhum colaborador encontrado</p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Exit Alert */}
@@ -379,27 +444,50 @@ export default function ColaboradoresGEG() {
         </DialogContent>
       </Dialog>
 
-      {/* Main Form Dialog — Single scrollable page */}
+      {/* ===== MAIN FORM DIALOG ===== */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) tryCloseForm(); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-2 border-b shrink-0">
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-lg">
               {viewMode ? <Eye className="w-5 h-5" /> : editId ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
               {viewMode ? 'Visualizar Colaborador' : editId ? 'Editar Colaborador' : 'Novo Colaborador'}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="overflow-y-auto flex-1 px-6 py-4 space-y-2">
+          <div className="overflow-y-auto flex-1 px-6 py-4">
+
+            {/* ===== STATUS DO COLABORADOR ===== */}
+            <SectionTitle>Status do Colaborador</SectionTitle>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                const Icon = cfg.icon;
+                const selected = form.statusColaborador === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={viewMode}
+                    onClick={() => { setForm(f => ({ ...f, statusColaborador: key })); markDirty(); }}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-xs font-medium ${
+                      selected
+                        ? `${cfg.color} border-current shadow-sm`
+                        : 'border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60'
+                    } ${viewMode ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* ===== DADOS PESSOAIS ===== */}
             <SectionTitle>Dados Pessoais</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label>Nome Completo *</Label>
-                <Input value={form.nomeCompleto} onChange={e => { setForm(f => ({ ...f, nomeCompleto: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </div>
-              <div>
-                <Label>CPF *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="Nome Completo" span={3} required>
+                <Input value={form.nomeCompleto} onChange={e => { setForm(f => ({ ...f, nomeCompleto: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Nome completo do colaborador" />
+              </Field>
+              <Field label="CPF" required>
                 <div className="relative">
                   <Input
                     value={form.cpf}
@@ -412,13 +500,12 @@ export default function ColaboradoresGEG() {
                   {cpfValid === false && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />}
                 </div>
                 {cpfValid === false && <p className="text-xs text-red-500 mt-1">CPF inválido</p>}
-              </div>
-              <div>
-                <Label>Data de Nascimento</Label>
+              </Field>
+              <Field label="Data de Nascimento">
                 <Input type="date" value={form.dataNascimento} onChange={e => { setForm(f => ({ ...f, dataNascimento: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </div>
-              <div>
-                <Label>Sexo</Label>
+                {form.dataNascimento && <p className="text-xs text-muted-foreground mt-0.5">{calcIdade(form.dataNascimento)}</p>}
+              </Field>
+              <Field label="Sexo">
                 <Select value={form.sexo} onValueChange={v => { setForm(f => ({ ...f, sexo: v })); markDirty(); }} disabled={viewMode}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
@@ -427,9 +514,8 @@ export default function ColaboradoresGEG() {
                     <SelectItem value="outro">Outro</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>Estado Civil</Label>
+              </Field>
+              <Field label="Estado Civil">
                 <Select value={form.estadoCivil} onValueChange={v => { setForm(f => ({ ...f, estadoCivil: v })); markDirty(); }} disabled={viewMode}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
@@ -440,67 +526,101 @@ export default function ColaboradoresGEG() {
                     <SelectItem value="uniao_estavel">União Estável</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
+              <Field label="Nacionalidade">
+                <Input value={form.nacionalidade} onChange={e => { setForm(f => ({ ...f, nacionalidade: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Naturalidade">
+                <Input value={form.naturalidade} onChange={e => { setForm(f => ({ ...f, naturalidade: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Cidade/Estado" />
+              </Field>
             </div>
 
-            {/* Documentos */}
+            {/* ===== DOCUMENTOS ===== */}
             <SectionTitle>Documentos</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div><Label>RG Número</Label><Input value={form.rgNumero} onChange={e => { setForm(f => ({ ...f, rgNumero: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Órgão Emissor</Label><Input value={form.rgOrgaoEmissor} onChange={e => { setForm(f => ({ ...f, rgOrgaoEmissor: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Data Emissão</Label><Input type="date" value={form.rgDataEmissao} onChange={e => { setForm(f => ({ ...f, rgDataEmissao: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>CTPS (Número/Série)</Label><Input value={form.ctpsNumero} onChange={e => { setForm(f => ({ ...f, ctpsNumero: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>PIS/PASEP</Label><Input value={form.pisPasep} onChange={e => { setForm(f => ({ ...f, pisPasep: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Título de Eleitor</Label><Input value={form.tituloEleitor} onChange={e => { setForm(f => ({ ...f, tituloEleitor: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Certificado Reservista</Label><Input value={form.certificadoReservista} onChange={e => { setForm(f => ({ ...f, certificadoReservista: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="RG Número">
+                <Input value={form.rgNumero} onChange={e => { setForm(f => ({ ...f, rgNumero: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Órgão Emissor">
+                <Input value={form.rgOrgaoEmissor} onChange={e => { setForm(f => ({ ...f, rgOrgaoEmissor: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Ex: SSP/SP" />
+              </Field>
+              <Field label="Data de Emissão">
+                <Input type="date" value={form.rgDataEmissao} onChange={e => { setForm(f => ({ ...f, rgDataEmissao: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="CTPS (Número/Série)">
+                <Input value={form.ctpsNumero} onChange={e => { setForm(f => ({ ...f, ctpsNumero: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Número e série" />
+              </Field>
+              <Field label="PIS/PASEP">
+                <Input value={form.pisPasep} onChange={e => { setForm(f => ({ ...f, pisPasep: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Título de Eleitor">
+                <Input value={form.tituloEleitor} onChange={e => { setForm(f => ({ ...f, tituloEleitor: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Certificado Reservista">
+                <Input value={form.certificadoReservista} onChange={e => { setForm(f => ({ ...f, certificadoReservista: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
             </div>
 
-            {/* Filiação */}
+            {/* ===== FILIAÇÃO ===== */}
             <SectionTitle>Filiação</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><Label>Nome da Mãe</Label><Input value={form.nomeMae} onChange={e => { setForm(f => ({ ...f, nomeMae: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Nome do Pai</Label><Input value={form.nomePai} onChange={e => { setForm(f => ({ ...f, nomePai: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Nacionalidade</Label><Input value={form.nacionalidade} onChange={e => { setForm(f => ({ ...f, nacionalidade: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Naturalidade</Label><Input value={form.naturalidade} onChange={e => { setForm(f => ({ ...f, naturalidade: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Cidade/Estado" /></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+              <Field label="Nome da Mãe">
+                <Input value={form.nomeMae} onChange={e => { setForm(f => ({ ...f, nomeMae: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Nome do Pai">
+                <Input value={form.nomePai} onChange={e => { setForm(f => ({ ...f, nomePai: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
             </div>
 
-            {/* Endereço */}
+            {/* ===== ENDEREÇO ===== */}
             <SectionTitle>Endereço</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>CEP</Label>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3">
+              <Field label="CEP">
                 <div className="relative">
                   <Input value={form.cep} onChange={e => handleCepChange(e.target.value)} disabled={viewMode} placeholder="00000-000" />
                   {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
                 </div>
-              </div>
-              <div className="md:col-span-2"><Label>Logradouro</Label><Input value={form.logradouro} onChange={e => { setForm(f => ({ ...f, logradouro: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Número</Label><Input value={form.numero} onChange={e => { setForm(f => ({ ...f, numero: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Complemento</Label><Input value={form.complemento} onChange={e => { setForm(f => ({ ...f, complemento: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Bairro</Label><Input value={form.bairro} onChange={e => { setForm(f => ({ ...f, bairro: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Cidade</Label><Input value={form.cidade} onChange={e => { setForm(f => ({ ...f, cidade: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Estado</Label><Input value={form.estado} onChange={e => { setForm(f => ({ ...f, estado: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
+              </Field>
+              <Field label="Logradouro" span={3}>
+                <Input value={form.logradouro} onChange={e => { setForm(f => ({ ...f, logradouro: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Número">
+                <Input value={form.numero} onChange={e => { setForm(f => ({ ...f, numero: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Complemento">
+                <Input value={form.complemento} onChange={e => { setForm(f => ({ ...f, complemento: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Bairro">
+                <Input value={form.bairro} onChange={e => { setForm(f => ({ ...f, bairro: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Cidade">
+                <Input value={form.cidade} onChange={e => { setForm(f => ({ ...f, cidade: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3 mt-3">
+              <Field label="Estado">
+                <Input value={form.estado} onChange={e => { setForm(f => ({ ...f, estado: e.target.value })); markDirty(); }} disabled={viewMode} maxLength={2} placeholder="UF" />
+              </Field>
             </div>
 
-            {/* Contato */}
+            {/* ===== CONTATO ===== */}
             <SectionTitle>Contato</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Telefone</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+              <Field label="Telefone">
                 <Input value={form.telefone} onChange={e => handlePhoneChange(e.target.value)} disabled={viewMode} placeholder="(00) 00000-0000" />
-              </div>
-              <div><Label>E-mail</Label><Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
+              </Field>
+              <Field label="E-mail">
+                <Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="email@exemplo.com" />
+              </Field>
             </div>
 
             {/* ===== DADOS PROFISSIONAIS ===== */}
             <SectionTitle>Dados Profissionais</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Data de Admissão *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="Data de Admissão" required>
                 <Input type="date" value={form.dataAdmissao} onChange={e => { setForm(f => ({ ...f, dataAdmissao: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </div>
-              <div>
-                <Label>Tipo de Contrato</Label>
+              </Field>
+              <Field label="Tipo de Contrato">
                 <Select value={form.tipoContrato} onValueChange={v => { setForm(f => ({ ...f, tipoContrato: v })); markDirty(); }} disabled={viewMode}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -509,11 +629,17 @@ export default function ColaboradoresGEG() {
                     <SelectItem value="contrato_trabalho">Contrato de Trabalho</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div><Label>Cargo *</Label><Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Função</Label><Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div>
-                <Label>Nível Hierárquico</Label>
+              </Field>
+              <Field label="Período de Experiência (dias)">
+                <Input type="number" value={form.periodoExperiencia} onChange={e => { setForm(f => ({ ...f, periodoExperiencia: Number(e.target.value) })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Cargo" required>
+                <Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Função">
+                <Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Nível Hierárquico">
                 <Select value={form.nivelHierarquico} onValueChange={v => { setForm(f => ({ ...f, nivelHierarquico: v })); markDirty(); }} disabled={viewMode}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
@@ -529,9 +655,8 @@ export default function ColaboradoresGEG() {
                     <SelectItem value="diretor">Diretor</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>Setor</Label>
+              </Field>
+              <Field label="Setor">
                 <Select value={form.setorId ? String(form.setorId) : ''} onValueChange={v => { setForm(f => ({ ...f, setorId: Number(v) })); markDirty(); }} disabled={viewMode}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
@@ -540,27 +665,51 @@ export default function ColaboradoresGEG() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
+              <Field label="Local de Trabalho">
+                <Select value={form.localTrabalho} onValueChange={v => { setForm(f => ({ ...f, localTrabalho: v })); markDirty(); }} disabled={viewMode}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="home_office">Home Office</SelectItem>
+                    <SelectItem value="barueri">Unidade Barueri</SelectItem>
+                    <SelectItem value="uberaba">Unidade Uberaba</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
             </div>
 
-            {/* Remuneração */}
+            {/* ===== REMUNERAÇÃO ===== */}
             <SectionTitle>Remuneração</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div><Label>Salário Base *</Label><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$" /></div>
-              <div><Label>Comissões</Label><Input value={form.comissoes} onChange={e => { setForm(f => ({ ...f, comissoes: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$" /></div>
-              <div><Label>Adicionais</Label><Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$" /></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="Salário Base" required>
+                <Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
+              </Field>
+              <Field label="Comissões">
+                <Input value={form.comissoes} onChange={e => { setForm(f => ({ ...f, comissoes: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
+              </Field>
+              <Field label="Adicionais">
+                <Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
+              </Field>
             </div>
 
-            {/* Jornada de Trabalho */}
+            {/* ===== JORNADA DE TRABALHO ===== */}
             <SectionTitle>Jornada de Trabalho</SectionTitle>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div><Label>Entrada</Label><Input type="time" value={form.jornadaEntrada} onChange={e => { setForm(f => ({ ...f, jornadaEntrada: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Saída</Label><Input type="time" value={form.jornadaSaida} onChange={e => { setForm(f => ({ ...f, jornadaSaida: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Intervalo</Label><Input type="time" value={form.jornadaIntervalo} onChange={e => { setForm(f => ({ ...f, jornadaIntervalo: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Carga Horária (h/sem)</Label><Input value={form.cargaHoraria} onChange={e => { setForm(f => ({ ...f, cargaHoraria: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3">
+              <Field label="Entrada">
+                <Input type="time" value={form.jornadaEntrada} onChange={e => { setForm(f => ({ ...f, jornadaEntrada: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Saída">
+                <Input type="time" value={form.jornadaSaida} onChange={e => { setForm(f => ({ ...f, jornadaSaida: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Intervalo">
+                <Input type="time" value={form.jornadaIntervalo} onChange={e => { setForm(f => ({ ...f, jornadaIntervalo: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Carga Horária (h/sem)">
+                <Input value={form.cargaHoraria} onChange={e => { setForm(f => ({ ...f, cargaHoraria: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
             </div>
-            <div className="mt-3">
-              <Label className="mb-2 block">Dias da Semana</Label>
+            <div className="mt-4">
+              <Label className="text-xs font-medium text-muted-foreground mb-2 block">Dias da Semana</Label>
               <div className="flex flex-wrap gap-2">
                 {DIAS_SEMANA.map(d => {
                   const checked = form.jornadaDias.includes(d.key);
@@ -570,7 +719,7 @@ export default function ColaboradoresGEG() {
                       type="button"
                       disabled={viewMode}
                       onClick={() => toggleDia(d.key)}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                      className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
                         checked
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
@@ -583,27 +732,9 @@ export default function ColaboradoresGEG() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-              <div>
-                <Label>Período de Experiência (dias)</Label>
-                <Input type="number" value={form.periodoExperiencia} onChange={e => { setForm(f => ({ ...f, periodoExperiencia: Number(e.target.value) })); markDirty(); }} disabled={viewMode} />
-              </div>
-              <div>
-                <Label>Local de Trabalho</Label>
-                <Select value={form.localTrabalho} onValueChange={v => { setForm(f => ({ ...f, localTrabalho: v })); markDirty(); }} disabled={viewMode}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="home_office">Home Office</SelectItem>
-                    <SelectItem value="barueri">Unidade Barueri</SelectItem>
-                    <SelectItem value="uberaba">Unidade Uberaba</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             {/* Vale Transporte */}
-            <div className="flex items-center gap-3 mt-4">
-              <Label className="text-sm">Vale Transporte</Label>
+            <div className="flex items-center gap-3 mt-5">
+              <Label className="text-xs font-medium text-muted-foreground">Vale Transporte</Label>
               <button
                 type="button"
                 disabled={viewMode}
@@ -620,12 +751,17 @@ export default function ColaboradoresGEG() {
 
             {/* ===== DADOS BANCÁRIOS ===== */}
             <SectionTitle>Dados Bancários</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div><Label>Banco</Label><Input value={form.banco} onChange={e => { setForm(f => ({ ...f, banco: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Agência</Label><Input value={form.agencia} onChange={e => { setForm(f => ({ ...f, agencia: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div><Label>Conta</Label><Input value={form.conta} onChange={e => { setForm(f => ({ ...f, conta: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
-              <div>
-                <Label>Tipo de Conta</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="Banco">
+                <Input value={form.banco} onChange={e => { setForm(f => ({ ...f, banco: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Ex: Itaú, Bradesco..." />
+              </Field>
+              <Field label="Agência">
+                <Input value={form.agencia} onChange={e => { setForm(f => ({ ...f, agencia: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Conta">
+                <Input value={form.conta} onChange={e => { setForm(f => ({ ...f, conta: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+              <Field label="Tipo de Conta">
                 <Select value={form.tipoConta} onValueChange={v => { setForm(f => ({ ...f, tipoConta: v })); markDirty(); }} disabled={viewMode}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
@@ -633,15 +769,17 @@ export default function ColaboradoresGEG() {
                     <SelectItem value="poupanca">Poupança</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="md:col-span-2"><Label>Chave PIX</Label><Input value={form.chavePix} onChange={e => { setForm(f => ({ ...f, chavePix: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="CPF, e-mail, telefone ou chave aleatória" /></div>
+              </Field>
+              <Field label="Chave PIX" span={2}>
+                <Input value={form.chavePix} onChange={e => { setForm(f => ({ ...f, chavePix: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="CPF, e-mail, telefone ou chave aleatória" />
+              </Field>
             </div>
 
             {/* ===== SAÚDE ===== */}
             <SectionTitle>Saúde — ASO Admissional</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 items-end">
               <div>
-                <Label className="mb-2 block">Apto</Label>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Apto</Label>
                 <button
                   type="button"
                   disabled={viewMode}
@@ -655,25 +793,39 @@ export default function ColaboradoresGEG() {
                   {form.asoAdmissionalApto ? 'Sim' : 'Não'}
                 </button>
               </div>
-              <div><Label>Data do Exame</Label><Input type="date" value={form.asoAdmissionalData} onChange={e => { setForm(f => ({ ...f, asoAdmissionalData: e.target.value })); markDirty(); }} disabled={viewMode} /></div>
+              <Field label="Data do Exame">
+                <Input type="date" value={form.asoAdmissionalData} onChange={e => { setForm(f => ({ ...f, asoAdmissionalData: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
             </div>
 
             {/* ===== DEPENDENTES ===== */}
             <SectionTitle>Dependentes</SectionTitle>
-            <p className="text-xs text-muted-foreground mb-2">Dependentes para IRRF / Salário-Família</p>
+            <p className="text-xs text-muted-foreground mb-3">Dependentes para IRRF / Salário-Família</p>
+
             {form.dependentes.length > 0 && (
-              <div className="space-y-2 mb-3">
+              <div className="space-y-2 mb-4">
                 {form.dependentes.map((d, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                      <span className="font-medium">{d.nome}</span>
-                      <span>{d.parentesco}</span>
-                      <span>{d.cpf}</span>
-                      <span>{d.dataNascimento}</span>
-                      <span className="text-muted-foreground">{calcIdade(d.dataNascimento)}</span>
+                  <div key={i} className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-border/50">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground uppercase block">Nome</span>
+                        <span className="text-sm font-medium">{d.nome}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground uppercase block">Parentesco</span>
+                        <span className="text-sm">{d.parentesco}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground uppercase block">CPF</span>
+                        <span className="text-sm">{d.cpf || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground uppercase block">Nascimento</span>
+                        <span className="text-sm">{d.dataNascimento || '—'} {d.dataNascimento && <span className="text-muted-foreground">({calcIdade(d.dataNascimento)})</span>}</span>
+                      </div>
                     </div>
                     {!viewMode && (
-                      <button onClick={() => removeDependente(i)} className="p-1 hover:bg-muted rounded">
+                      <button onClick={() => removeDependente(i)} className="p-1.5 hover:bg-red-50 rounded-md transition-colors shrink-0">
                         <X className="w-4 h-4 text-red-400" />
                       </button>
                     )}
@@ -681,36 +833,35 @@ export default function ColaboradoresGEG() {
                 ))}
               </div>
             )}
+
             {!viewMode && (
-              <div className="border rounded-lg p-4 space-y-3">
-                <h5 className="text-sm font-medium">Adicionar Dependente</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div>
-                    <Label className="text-xs">Nome Completo *</Label>
-                    <Input placeholder="Nome completo" value={depForm.nome} onChange={e => setDepForm(f => ({ ...f, nome: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Parentesco *</Label>
+              <div className="border-2 border-dashed border-border/60 rounded-lg p-5 space-y-4 bg-muted/10">
+                <h5 className="text-sm font-semibold text-foreground">Adicionar Dependente</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                  <Field label="Nome Completo" required>
+                    <Input placeholder="Nome completo do dependente" value={depForm.nome} onChange={e => setDepForm(f => ({ ...f, nome: e.target.value }))} />
+                  </Field>
+                  <Field label="Parentesco" required>
                     <Select value={depForm.parentesco} onValueChange={v => setDepForm(f => ({ ...f, parentesco: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecionar parentesco" /></SelectTrigger>
                       <SelectContent>
                         {PARENTESCOS.map(p => (
                           <SelectItem key={p} value={p}>{p}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">CPF</Label>
+                  </Field>
+                  <Field label="CPF">
                     <Input placeholder="000.000.000-00" value={depForm.cpf} onChange={e => setDepForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Data de Nascimento</Label>
+                  </Field>
+                  <Field label="Data de Nascimento">
                     <Input type="date" value={depForm.dataNascimento} onChange={e => setDepForm(f => ({ ...f, dataNascimento: e.target.value }))} />
-                    {depForm.dataNascimento && <p className="text-xs text-muted-foreground mt-1">{calcIdade(depForm.dataNascimento)}</p>}
-                  </div>
+                    {depForm.dataNascimento && <p className="text-xs text-muted-foreground mt-0.5">{calcIdade(depForm.dataNascimento)}</p>}
+                  </Field>
                 </div>
-                <Button size="sm" variant="outline" onClick={addDependente}><Plus className="w-3.5 h-3.5 mr-1" /> Adicionar</Button>
+                <Button size="sm" variant="outline" onClick={addDependente} className="gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar Dependente
+                </Button>
               </div>
             )}
           </div>

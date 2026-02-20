@@ -751,3 +751,18 @@
 - [x] Interface para gerenciar metas por colaborador
 - [x] Vincular metas às avaliações 360° para medir evolução
 - [x] Rota e submenu no Gente & Gestão
+
+## CRM v21 — Ajustes Formulário Colaboradores e Status
+
+### Correção de Layout do Formulário
+- [x] Corrigir textos sobrepostos nos campos do formulário de cadastro
+- [x] Aumentar campos pequenos (especialmente dependentes)
+- [x] Melhorar espaçamento geral entre campos e seções
+- [x] Garantir que labels não sobreponham inputs
+
+### Campo de Status do Colaborador
+- [x] Adicionar campo statusColaborador ao schema (ativo, inativo, afastado, licença, atestado, desligado, férias)
+- [x] Adicionar campo ao formulário de cadastro/edição
+- [x] Exibir status na listagem de colaboradores com badges visuais
+- [x] Atualizar Relatórios RH para refletir os novos status
+- [x] Atualizar dashboard de headcount para considerar os novos status

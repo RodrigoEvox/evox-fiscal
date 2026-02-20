@@ -1839,6 +1839,7 @@ export const appRouter = router({
       dependentes: z.array(z.object({ nome: z.string(), cpf: z.string(), dataNascimento: z.string(), parentesco: z.string() })).optional(),
       setorId: z.number().optional(),
       nivelHierarquico: z.enum(['estagiario','auxiliar','assistente','analista_jr','analista_pl','analista_sr','coordenador','supervisor','gerente','diretor']).optional(),
+      statusColaborador: z.enum(['ativo','inativo','afastado','licenca','atestado','desligado','ferias','experiencia','aviso_previo']).default('ativo'),
     })).mutation(async ({ input, ctx }) => {
       const id = await db.createColaborador(input as any);
       await logAudit('criacao', 'colaborador', id, input.nomeCompleto, ctx);

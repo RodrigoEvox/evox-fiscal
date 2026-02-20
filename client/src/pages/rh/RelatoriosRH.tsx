@@ -3,7 +3,12 @@ import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, TrendingDown, Clock, DollarSign, Building2, BarChart3, AlertTriangle, UserMinus, UserPlus, Activity, Calendar, FileDown, Loader2 } from 'lucide-react';
+import {
+  Users, TrendingDown, Clock, DollarSign, Building2, BarChart3,
+  AlertTriangle, UserMinus, UserPlus, Activity, Calendar, FileDown,
+  Loader2, UserCheck, UserX, ShieldAlert, HeartPulse, Palmtree,
+  Briefcase, FileWarning
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,6 +16,23 @@ import {
 } from 'recharts';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; chartColor: string }> = {
+  ativo: { label: 'Ativo', color: 'bg-green-100 text-green-700 border-green-200', icon: UserCheck, chartColor: '#10B981' },
+  inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: UserX, chartColor: '#6B7280' },
+  afastado: { label: 'Afastado', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: ShieldAlert, chartColor: '#F97316' },
+  licenca: { label: 'Licença', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: FileWarning, chartColor: '#8B5CF6' },
+  atestado: { label: 'Atestado', color: 'bg-red-100 text-red-700 border-red-200', icon: HeartPulse, chartColor: '#EF4444' },
+  desligado: { label: 'Desligado', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: XCircle, chartColor: '#475569' },
+  ferias: { label: 'Férias', color: 'bg-cyan-100 text-cyan-700 border-cyan-200', icon: Palmtree, chartColor: '#06B6D4' },
+  experiencia: { label: 'Experiência', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock, chartColor: '#EAB308' },
+  aviso_previo: { label: 'Aviso Prévio', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Briefcase, chartColor: '#D97706' },
+};
+
+// Lucide doesn't export XCircle from the same import, use a simple fallback
+function XCircle(props: any) {
+  return <UserX {...props} />;
+}
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -31,16 +53,32 @@ export default function RelatoriosRH() {
   const atestadosList = (atestados.data || []) as any[];
   const setoresList = (setores.data || []) as any[];
 
-  // Headcount
-  const ativos = colabList.filter(c => c.ativo !== false);
-  const inativos = colabList.filter(c => c.ativo === false);
-  const totalHeadcount = ativos.length;
+  // Status-based classification
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    colabList.forEach(c => {
+      const st = c.statusColaborador || (c.ativo === false ? 'desligado' : 'ativo');
+      counts[st] = (counts[st] || 0) + 1;
+    });
+    return counts;
+  }, [colabList]);
+
+  // "Efetivos" = todos que NÃO são desligados ou inativos (ou seja, estão na folha)
+  const efetivos = colabList.filter(c => {
+    const st = c.statusColaborador || (c.ativo === false ? 'desligado' : 'ativo');
+    return st !== 'desligado' && st !== 'inativo';
+  });
+  const desligados = colabList.filter(c => {
+    const st = c.statusColaborador || (c.ativo === false ? 'desligado' : 'ativo');
+    return st === 'desligado' || st === 'inativo';
+  });
+  const totalHeadcount = efetivos.length;
 
   // Turnover (últimos 12 meses)
   const hoje = new Date();
   const umAnoAtras = new Date(hoje);
   umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
-  const desligados12m = inativos.filter(c => {
+  const desligados12m = desligados.filter(c => {
     if (!c.dataDesligamento) return false;
     const d = new Date(c.dataDesligamento + 'T12:00:00');
     return d >= umAnoAtras;
@@ -56,8 +94,8 @@ export default function RelatoriosRH() {
   const diasUteisMes = 22;
   const absenteeismRate = totalHeadcount > 0 ? ((totalDiasAfastamento / (totalHeadcount * diasUteisMes * 12)) * 100).toFixed(2) : '0.00';
 
-  // Salary cost
-  const custoSalarialTotal = ativos.reduce((sum: number, c: any) => {
+  // Salary cost (only efetivos)
+  const custoSalarialTotal = efetivos.reduce((sum: number, c: any) => {
     return sum + Number(c.salarioBase || 0) + Number(c.comissoes || 0) + Number(c.adicionais || 0);
   }, 0);
   const salarioMedio = totalHeadcount > 0 ? custoSalarialTotal / totalHeadcount : 0;
@@ -65,7 +103,7 @@ export default function RelatoriosRH() {
   // By sector
   const porSetor = useMemo(() => {
     const map = new Map<number, { nome: string; count: number; custo: number; atestados: number }>();
-    ativos.forEach(c => {
+    efetivos.forEach(c => {
       const setorId = c.setorId || 0;
       const setor = setoresList.find(s => s.id === setorId);
       const existing = map.get(setorId) || { nome: setor?.nome || 'Sem Setor', count: 0, custo: 0, atestados: 0 };
@@ -82,7 +120,7 @@ export default function RelatoriosRH() {
       }
     });
     return Array.from(map.entries()).sort((a, b) => b[1].count - a[1].count);
-  }, [ativos, atestadosList, setoresList, colabList]);
+  }, [efetivos, atestadosList, setoresList, colabList]);
 
   // By level
   const porNivel = useMemo(() => {
@@ -92,7 +130,7 @@ export default function RelatoriosRH() {
       analista_jr: 'Analista Jr', analista_pl: 'Analista Pl', analista_sr: 'Analista Sr',
       coordenador: 'Coordenador', supervisor: 'Supervisor', gerente: 'Gerente', diretor: 'Diretor',
     };
-    ativos.forEach(c => {
+    efetivos.forEach(c => {
       const nivel = c.nivelHierarquico || 'sem_nivel';
       const existing = map.get(nivel) || { count: 0, custo: 0 };
       existing.count += 1;
@@ -100,17 +138,28 @@ export default function RelatoriosRH() {
       map.set(nivel, existing);
     });
     return Array.from(map.entries()).map(([k, v]) => ({ nivel: nivelLabels[k] || k, ...v })).sort((a, b) => b.custo - a.custo);
-  }, [ativos]);
+  }, [efetivos]);
 
   // By contract type
   const porContrato = useMemo(() => {
     const map = new Map<string, number>();
-    ativos.forEach(c => {
+    efetivos.forEach(c => {
       const tipo = c.tipoContrato || 'clt';
       map.set(tipo, (map.get(tipo) || 0) + 1);
     });
     return Array.from(map.entries());
-  }, [ativos]);
+  }, [efetivos]);
+
+  // Status distribution for pie chart
+  const statusChartData = useMemo(() => {
+    return Object.entries(statusCounts)
+      .filter(([_, count]) => count > 0)
+      .map(([status, count]) => ({
+        name: STATUS_CONFIG[status]?.label || status,
+        value: count,
+        color: STATUS_CONFIG[status]?.chartColor || '#6B7280',
+      }));
+  }, [statusCounts]);
 
   // Recent admissions and terminations
   const recentAdmissoes = [...admitidos12m].sort((a, b) => b.dataAdmissao?.localeCompare(a.dataAdmissao || '') || 0).slice(0, 5);
@@ -125,11 +174,11 @@ export default function RelatoriosRH() {
       const mesStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
       const label = `${meses[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
       const adm = colabList.filter(c => c.dataAdmissao?.startsWith(mesStr)).length;
-      const desl = inativos.filter(c => c.dataDesligamento?.startsWith(mesStr)).length;
+      const desl = desligados.filter(c => c.dataDesligamento?.startsWith(mesStr)).length;
       result.push({ mes: label, admissoes: adm, desligamentos: desl });
     }
     return result;
-  }, [colabList, inativos, hoje]);
+  }, [colabList, desligados, hoje]);
 
   // Chart data: Absenteísmo mensal
   const absenteismoMensal = useMemo(() => {
@@ -148,7 +197,7 @@ export default function RelatoriosRH() {
 
   // Chart data: Headcount por setor (for bar chart)
   const setorChartData = useMemo(() => {
-    return porSetor.map(([id, data]) => ({ name: data.nome, headcount: data.count, custo: data.custo }));
+    return porSetor.map(([_, data]) => ({ name: data.nome, headcount: data.count, custo: data.custo }));
   }, [porSetor]);
 
   // Chart data: Nível hierárquico (for pie chart)
@@ -194,14 +243,14 @@ export default function RelatoriosRH() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Headcount</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Headcount Efetivo</p>
                 <p className="text-3xl font-bold">{totalHeadcount}</p>
-                <p className="text-xs text-muted-foreground">{inativos.length} inativos</p>
+                <p className="text-xs text-muted-foreground">{desligados.length} desligados/inativos</p>
               </div>
               <Users className="w-8 h-8 text-blue-500 opacity-50" />
             </div>
@@ -248,8 +297,34 @@ export default function RelatoriosRH() {
         </Card>
       </div>
 
-      {/* Charts: Turnover + Absenteísmo */}
-      <div className="grid grid-cols-2 gap-6">
+      {/* Status Distribution Cards */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" /> Distribuição por Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+              const count = statusCounts[key] || 0;
+              const Icon = cfg.icon;
+              const pct = colabList.length > 0 ? ((count / colabList.length) * 100).toFixed(0) : '0';
+              return (
+                <div key={key} className={`flex flex-col items-center p-3 rounded-lg border ${cfg.color} text-center`}>
+                  <Icon className="w-5 h-5 mb-1" />
+                  <span className="text-lg font-bold">{count}</span>
+                  <span className="text-[10px] font-medium">{cfg.label}</span>
+                  <span className="text-[9px] opacity-70">{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Charts: Turnover + Status Pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><UserPlus className="w-4 h-4 text-green-500" /> Turnover Mensal (12 meses)</CardTitle></CardHeader>
           <CardContent>
@@ -270,6 +345,27 @@ export default function RelatoriosRH() {
         </Card>
 
         <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Activity className="w-4 h-4 text-primary" /> Distribuição por Status</CardTitle></CardHeader>
+          <CardContent>
+            {statusChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={statusChartData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                    {statusChartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts: Absenteísmo + Headcount por Setor */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4 text-red-500" /> Absenteísmo Mensal (12 meses)</CardTitle></CardHeader>
           <CardContent>
             {absenteismoMensal.length > 0 ? (
@@ -287,15 +383,12 @@ export default function RelatoriosRH() {
             ) : <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Charts: Headcount por Setor + Nível Hierárquico */}
-      <div className="grid grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-500" /> Headcount por Setor</CardTitle></CardHeader>
           <CardContent>
             {setorChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={setorChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
@@ -307,7 +400,10 @@ export default function RelatoriosRH() {
             ) : <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>}
           </CardContent>
         </Card>
+      </div>
 
+      {/* Nível Hierárquico Pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Activity className="w-4 h-4 text-purple-500" /> Distribuição por Nível</CardTitle></CardHeader>
           <CardContent>
@@ -323,6 +419,29 @@ export default function RelatoriosRH() {
                 </PieChart>
               </ResponsiveContainer>
             ) : <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>}
+          </CardContent>
+        </Card>
+
+        {/* Contract types */}
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Contrato</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {porContrato.map(([tipo, count]) => {
+                const pct = totalHeadcount > 0 ? ((count / totalHeadcount) * 100).toFixed(0) : '0';
+                return (
+                  <div key={tipo}>
+                    <div className="flex items-center justify-between mb-1">
+                      <Badge variant="outline" className="text-xs">{tipo === 'clt' ? 'CLT' : tipo === 'pj' ? 'PJ' : 'Contrato'}</Badge>
+                      <span className="font-bold text-lg">{count} <span className="text-xs text-muted-foreground font-normal">({pct}%)</span></span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -371,30 +490,16 @@ export default function RelatoriosRH() {
         </CardContent>
       </Card>
 
-      {/* Contract types and recent movements */}
-      <div className="grid grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Contrato</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {porContrato.map(([tipo, count]) => (
-                <div key={tipo} className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-xs">{tipo === 'clt' ? 'CLT' : tipo === 'pj' ? 'PJ' : 'Contrato'}</Badge>
-                  <span className="font-bold text-lg">{count}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Recent movements */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><UserPlus className="w-4 h-4 text-green-500" /> Admissões Recentes</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {recentAdmissoes.map(c => (
                 <div key={c.id} className="flex items-center justify-between text-sm">
-                  <span>{c.nomeCompleto}</span>
-                  <span className="text-xs text-muted-foreground">{formatDateBR(c.dataAdmissao)}</span>
+                  <span className="truncate">{c.nomeCompleto}</span>
+                  <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDateBR(c.dataAdmissao)}</span>
                 </div>
               ))}
               {recentAdmissoes.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma admissão recente</p>}
@@ -408,8 +513,8 @@ export default function RelatoriosRH() {
             <div className="space-y-2">
               {recentDesligamentos.map(c => (
                 <div key={c.id} className="flex items-center justify-between text-sm">
-                  <span>{c.nomeCompleto}</span>
-                  <span className="text-xs text-muted-foreground">{formatDateBR(c.dataDesligamento)}</span>
+                  <span className="truncate">{c.nomeCompleto}</span>
+                  <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDateBR(c.dataDesligamento)}</span>
                 </div>
               ))}
               {recentDesligamentos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum desligamento recente</p>}
