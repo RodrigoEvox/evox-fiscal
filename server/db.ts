@@ -2723,15 +2723,45 @@ export async function getChatHistoryForExport(channelId: number) {
 }
 
 // ---- CONSOLIDATED COMMISSIONS DASHBOARD ----
-export async function getConsolidatedCommissionsDashboard() {
+export async function getConsolidatedCommissionsDashboard(filters?: {
+  dataInicio?: string;
+  dataFim?: string;
+  tipoParceiro?: 'pf' | 'pj';
+  modeloParceriaId?: number;
+}) {
   const db = await getDb();
   if (!db) return null;
 
   // All parceiros
-  const allParceiros = await db.select().from(parceiros).orderBy(desc(parceiros.createdAt));
+  let allParceiros = await db.select().from(parceiros).orderBy(desc(parceiros.createdAt));
+
+  // Apply tipoParceiro filter
+  if (filters?.tipoParceiro) {
+    allParceiros = allParceiros.filter((p: any) => p.tipoPessoa === filters.tipoParceiro);
+  }
+
+  // Apply modeloParceriaId filter
+  if (filters?.modeloParceriaId) {
+    allParceiros = allParceiros.filter((p: any) => p.modeloParceriaId === filters.modeloParceriaId);
+  }
+
+  const parceiroIds = new Set(allParceiros.map(p => p.id));
 
   // All aprovacoes
-  const allAprovacoes = await db.select().from(aprovacaoComissao).orderBy(desc(aprovacaoComissao.createdAt));
+  let allAprovacoes = await db.select().from(aprovacaoComissao).orderBy(desc(aprovacaoComissao.createdAt));
+
+  // Filter aprovacoes by parceiro ids
+  allAprovacoes = allAprovacoes.filter((a: any) => parceiroIds.has(a.parceiroId));
+
+  // Apply date range filter on aprovacoes
+  if (filters?.dataInicio) {
+    const startDate = new Date(filters.dataInicio);
+    allAprovacoes = allAprovacoes.filter((a: any) => new Date(a.createdAt) >= startDate);
+  }
+  if (filters?.dataFim) {
+    const endDate = new Date(filters.dataFim + 'T23:59:59');
+    allAprovacoes = allAprovacoes.filter((a: any) => new Date(a.createdAt) <= endDate);
+  }
 
   // All comissoes por servico
   const allComissoes = await db.select().from(comissoesServico);
@@ -2823,5 +2853,6 @@ export async function getConsolidatedCommissionsDashboard() {
       .slice(0, 20),
     evolucaoMensal: monthlyData,
     parceiros: parceiroStats,
+    modelos: allModelos.map((m: any) => ({ id: m.id, nome: m.nome })),
   };
 }

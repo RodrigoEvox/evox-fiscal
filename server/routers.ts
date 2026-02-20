@@ -1945,8 +1945,14 @@ export const appRouter = router({
   // ---- CONSOLIDATED COMMISSIONS DASHBOARD ----
   comissoesDashboard: router({
     consolidated: protectedProcedure
-      .query(async () => {
-        return db.getConsolidatedCommissionsDashboard();
+      .input(z.object({
+        dataInicio: z.string().optional(),
+        dataFim: z.string().optional(),
+        tipoParceiro: z.enum(['pf', 'pj']).optional(),
+        modeloParceriaId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getConsolidatedCommissionsDashboard(input);
       }),
   }),
 

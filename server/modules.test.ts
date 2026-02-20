@@ -808,4 +808,82 @@ describe("Consolidated Commissions Dashboard", () => {
       expect(first).toHaveProperty("quantidade");
     }
   });
+
+  it("should return modelos list for filter dropdown", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated();
+    expect(result).toHaveProperty("modelos");
+    expect(Array.isArray(result.modelos)).toBe(true);
+    if (result.modelos.length > 0) {
+      expect(result.modelos[0]).toHaveProperty("id");
+      expect(result.modelos[0]).toHaveProperty("nome");
+    }
+  });
+
+  it("should accept tipoParceiro filter (pf)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated({ tipoParceiro: 'pf' });
+    expect(result).toHaveProperty("kpis");
+    expect(result).toHaveProperty("ranking");
+    // All parceiros in ranking should be PF type
+    if (result.ranking.length > 0) {
+      result.ranking.forEach((p: any) => {
+        expect(p.tipo).toBe('pf');
+      });
+    }
+  });
+
+  it("should accept tipoParceiro filter (pj)", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated({ tipoParceiro: 'pj' });
+    expect(result).toHaveProperty("kpis");
+    expect(result).toHaveProperty("ranking");
+    if (result.ranking.length > 0) {
+      result.ranking.forEach((p: any) => {
+        expect(p.tipo).toBe('pj');
+      });
+    }
+  });
+
+  it("should accept date range filter", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated({
+      dataInicio: '2025-01-01',
+      dataFim: '2025-12-31',
+    });
+    expect(result).toHaveProperty("kpis");
+    expect(result).toHaveProperty("ranking");
+    expect(result).toHaveProperty("evolucaoMensal");
+  });
+
+  it("should accept modeloParceriaId filter", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated({ modeloParceriaId: 999 });
+    expect(result).toHaveProperty("kpis");
+    // With non-existent model, should return empty
+    expect(result.ranking.length).toBe(0);
+    expect(result.kpis.totalParceiros).toBe(0);
+  });
+
+  it("should accept combined filters", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result: any = await caller.comissoesDashboard.consolidated({
+      tipoParceiro: 'pj',
+      dataInicio: '2024-01-01',
+      dataFim: '2026-12-31',
+    });
+    expect(result).toHaveProperty("kpis");
+    expect(result).toHaveProperty("ranking");
+    if (result.ranking.length > 0) {
+      result.ranking.forEach((p: any) => {
+        expect(p.tipo).toBe('pj');
+      });
+    }
+  });
 });

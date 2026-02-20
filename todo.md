@@ -1076,3 +1076,19 @@
 - [x] KPIs: valor total aprovado, valor pendente, aprovações/pendentes/rejeitadas, parceiros ativos
 - [x] Rota registrada no App.tsx e link adicionado ao sidebar
 - [x] 3 testes vitest passando (dados consolidados, ranking, evolução mensal)
+
+## CRM v34 — Filtros Avançados e Exportação no Dashboard de Comissões
+
+### Filtros Avançados no Dashboard de Comissões
+- [x] Filtro por período (data início e data fim) com inputs date
+- [x] Filtro por tipo de parceiro (PF/PJ) com Select dropdown
+- [x] Filtro por modelo de parceria com Select dinâmico (lista de modelos do backend)
+- [x] Rota backend atualizada para aceitar parâmetros: dataInicio, dataFim, tipoParceiro, modeloParceriaId
+- [x] UI de filtros com painel colapsável, botões Aplicar/Limpar, badges de filtros ativos
+- [x] 6 testes vitest passando (modelos list, filtro PF, filtro PJ, date range, modeloParceriaId, filtros combinados)
+
+### Exportação do Ranking em Excel/PDF
+- [x] Botão "Excel" exporta CSV compatível com Excel (UTF-8 BOM, separador ;)
+- [x] Botão "PDF" gera relatório via jsPDF com KPIs, ranking e evolução mensal
+- [x] Relatório inclui filtros aplicados, indicadores gerais, ranking completo e evolução mensal
+- [x] Paginação automática no PDF para rankings longos
