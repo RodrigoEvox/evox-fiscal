@@ -214,6 +214,7 @@ export default function Parceiros() {
     setFormDirty(false);
     setPendingClose(false);
     setComissaoStatus({});
+    rateioManualEditsRef.current = {};
   }, []);
 
   const tryCloseForm = useCallback(() => {
@@ -424,40 +425,83 @@ export default function Parceiros() {
     return c ? c.percentualComissao : null;
   }, [comissoesByModelo.data]);
 
-  // Handle comissão change — inline validation, no modal alerts
-  const handleComissaoChange = useCallback((servicoId: number, value: string) => {
-    updateForm(f => ({
-      ...f,
-      comissoesCustom: { ...f.comissoesCustom, [servicoId]: value },
-    }));
-    // Determine status relative to standard
-    const padrao = getComissaoPadrao(servicoId);
-    if (!padrao || !value) {
-      setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
-      return;
-    }
-    const customNum = parseFloat(value);
-    const padraoNum = parseFloat(padrao);
-    if (isNaN(customNum) || customNum === padraoNum) {
-      setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
-    } else if (customNum < padraoNum) {
-      setComissaoStatus(prev => ({ ...prev, [servicoId]: 'menor' }));
-    } else {
-      setComissaoStatus(prev => ({ ...prev, [servicoId]: 'maior' }));
-    }
+  // Track which rateio fields have been manually edited (use ref to avoid stale closure)
+  const rateioManualEditsRef = useRef<Record<number, { parceiro?: boolean; subparceiro?: boolean }>>({}); 
+
+  // Handle rateio field change with auto-calculation of the other field
+  // Auto-calc only happens when the OTHER field has NOT been manually edited yet
+  const handleRateioFieldChange = useCallback((servicoId: number, field: 'parceiro' | 'subparceiro', value: string) => {
+    // Mark this field as manually edited (ref — always current)
+    rateioManualEditsRef.current = {
+      ...rateioManualEditsRef.current,
+      [servicoId]: { ...rateioManualEditsRef.current[servicoId], [field]: true },
+    };
+
+    updateForm(f => {
+      const current = f.rateio[servicoId] || { parceiro: '', subparceiro: '' };
+      const padrao = getComissaoPadrao(servicoId);
+      const padraoNum = padrao ? parseFloat(padrao) : 0;
+      const val = parseFloat(value);
+      const otherField = field === 'parceiro' ? 'subparceiro' : 'parceiro';
+      const otherManuallyEdited = rateioManualEditsRef.current[servicoId]?.[otherField] === true;
+      let updated: { parceiro: string; subparceiro: string };
+
+      if (!isNaN(val) && !otherManuallyEdited) {
+        // Auto-calc the other field only if it hasn't been manually touched
+        const remaining = Math.max(0, padraoNum - val);
+        if (field === 'parceiro') {
+          updated = { parceiro: value, subparceiro: remaining.toFixed(1) };
+        } else {
+          updated = { parceiro: remaining.toFixed(1), subparceiro: value };
+        }
+      } else {
+        // Other field was manually edited — don't auto-calc, just update this field
+        updated = { ...current, [field]: value };
+      }
+
+      // Update comissoesCustom with the total
+      const total = parseFloat(updated.parceiro || '0') + parseFloat(updated.subparceiro || '0');
+      const newCustom = { ...f.comissoesCustom, [servicoId]: total.toFixed(1) };
+      return { ...f, rateio: { ...f.rateio, [servicoId]: updated }, comissoesCustom: newCustom };
+    });
+    // Update commission status based on total
+    setTimeout(() => {
+      setForm(prev => {
+        const r = prev.rateio[servicoId];
+        if (!r) return prev;
+        const total = parseFloat(r.parceiro || '0') + parseFloat(r.subparceiro || '0');
+        const padrao = getComissaoPadrao(servicoId);
+        const padraoNum = padrao ? parseFloat(padrao) : 0;
+        if (Math.abs(total - padraoNum) < 0.01) {
+          setComissaoStatus(p => ({ ...p, [servicoId]: null }));
+        } else if (total < padraoNum) {
+          setComissaoStatus(p => ({ ...p, [servicoId]: 'menor' }));
+        } else {
+          setComissaoStatus(p => ({ ...p, [servicoId]: 'maior' }));
+        }
+        return prev;
+      });
+    }, 0);
   }, [updateForm, getComissaoPadrao]);
 
-  // Reset commission to standard value
+  // Reset rateio to standard value (split evenly or full to parceiro)
   const handleComissaoReset = useCallback((servicoId: number) => {
+    const padrao = getComissaoPadrao(servicoId);
+    const padraoVal = padrao || '0';
     updateForm(f => {
+      const newRateio = { ...f.rateio, [servicoId]: { parceiro: padraoVal, subparceiro: '0.0' } };
       const newCustom = { ...f.comissoesCustom };
       delete newCustom[servicoId];
       const newPendentes = { ...f.comissoesPendentes };
       delete newPendentes[servicoId];
-      return { ...f, comissoesCustom: newCustom, comissoesPendentes: newPendentes };
+      return { ...f, rateio: newRateio, comissoesCustom: newCustom, comissoesPendentes: newPendentes };
     });
     setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
-  }, [updateForm]);
+    // Reset manual edits tracking so auto-calc works again
+    const edits = { ...rateioManualEditsRef.current };
+    delete edits[servicoId];
+    rateioManualEditsRef.current = edits;
+  }, [updateForm, getComissaoPadrao]);
 
   // Confirm above-standard commission (mark as pending approval)
   const handleComissaoConfirmAbove = useCallback((servicoId: number) => {
@@ -465,34 +509,16 @@ export default function Parceiros() {
       ...f,
       comissoesPendentes: { ...f.comissoesPendentes, [servicoId]: true },
     }));
+    setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
     toast.info('Comissão será enviada para aprovação do Diretor ao salvar o parceiro.');
   }, [updateForm]);
 
   // Confirm below-standard commission (just acknowledge)
   const handleComissaoConfirmBelow = useCallback((servicoId: number) => {
-    // Just clear the status indicator — user confirmed they want the lower value
     setComissaoStatus(prev => ({ ...prev, [servicoId]: null }));
   }, []);
 
-  // Handle rateio change with validation
-  const handleRateioChange = useCallback((servicoId: number, field: 'parceiro' | 'subparceiro', value: string) => {
-    updateForm(f => {
-      const current = f.rateio[servicoId] || { parceiro: '', subparceiro: '' };
-      const updated = { ...current, [field]: value };
-      // Auto-calculate the other field
-      const padrao = getComissaoPadrao(servicoId);
-      const maxComissao = padrao ? parseFloat(padrao) : 100;
-      const val = parseFloat(value);
-      if (!isNaN(val) && field === 'parceiro') {
-        const remaining = Math.max(0, maxComissao - val);
-        updated.subparceiro = remaining.toFixed(1);
-      } else if (!isNaN(val) && field === 'subparceiro') {
-        const remaining = Math.max(0, maxComissao - val);
-        updated.parceiro = remaining.toFixed(1);
-      }
-      return { ...f, rateio: { ...f.rateio, [servicoId]: updated } };
-    });
-  }, [updateForm, getComissaoPadrao]);
+
 
   // Auto-set executivo when selecting parceiro pai for subparceiro
   useEffect(() => {
@@ -1280,7 +1306,7 @@ export default function Parceiros() {
 
             {/* === SEÇÃO: SERVIÇOS E COMISSÕES === */}
             <FormSection title="Serviços e Comissões" icon={CreditCard}>
-              <p className="text-xs text-muted-foreground">Selecione os serviços que este parceiro está autorizado a trabalhar com a Evox. {form.modeloParceriaId ? 'As comissões padrão do modelo selecionado são exibidas e podem ser editadas.' : 'Selecione um modelo de parceria para ver as comissões padrão.'}</p>
+              <p className="text-xs text-muted-foreground">Selecione os serviços que este parceiro está autorizado a trabalhar com a Evox. {form.modeloParceriaId ? 'A comissão padrão do modelo é exibida como referência. Preencha os campos de rateio para definir a distribuição.' : 'Selecione um modelo de parceria para ver as comissões padrão.'}</p>
               {(servicos as any[]).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">Nenhum serviço cadastrado no sistema.</p>
               ) : (
@@ -1288,39 +1314,42 @@ export default function Parceiros() {
                   {(servicos as any[]).filter((s: any) => s.ativo !== false).map((s: any) => {
                     const isSelected = form.servicoIds.includes(s.id);
                     const comissaoPadrao = getComissaoPadrao(s.id);
-                    const comissaoCustom = form.comissoesCustom[s.id];
                     const rateio = form.rateio[s.id];
+                    const rateioTotal = rateio ? parseFloat(rateio.parceiro || '0') + parseFloat(rateio.subparceiro || '0') : 0;
+                    const padraoNum = comissaoPadrao ? parseFloat(comissaoPadrao) : 0;
                     return (
                       <div key={s.id} className={`rounded-lg border transition-colors ${isSelected ? 'border-[#0A2540]/30 bg-[#0A2540]/5' : 'hover:bg-muted/30'}`}>
+                        {/* Service header with checkbox */}
                         <div className="flex items-center gap-3 p-3">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={(checked) => {
-                              updateForm(f => ({
-                                ...f,
-                                servicoIds: checked
+                              updateForm(f => {
+                                const newIds = checked
                                   ? [...f.servicoIds, s.id]
-                                  : f.servicoIds.filter((id: number) => id !== s.id),
-                              }));
+                                  : f.servicoIds.filter((id: number) => id !== s.id);
+                                // Initialize rateio when selecting with default values
+                                let newRateio = { ...f.rateio };
+                                if (checked && comissaoPadrao) {
+                                  newRateio[s.id] = { parceiro: comissaoPadrao, subparceiro: '0.0' };
+                                } else if (!checked) {
+                                  delete newRateio[s.id];
+                                }
+                                return { ...f, servicoIds: newIds, rateio: newRateio };
+                              });
                             }}
                           />
                           <div className="flex-1">
                             <p className="text-sm font-medium">{s.nome}</p>
                             {s.descricao && <p className="text-xs text-muted-foreground">{s.descricao}</p>}
                           </div>
+                          {/* Read-only standard commission badge */}
                           {isSelected && comissaoPadrao && (
-                            <div className="flex items-center gap-2">
-                              <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Comissão ({comissaoPadrao}% padrão):</Label>
-                              <Input
-                                value={comissaoCustom ?? comissaoPadrao}
-                                onChange={e => handleComissaoChange(s.id, e.target.value)}
-                                className={`w-20 h-7 text-xs text-center ${comissaoStatus[s.id] === 'maior' && !form.comissoesPendentes[s.id] ? 'border-red-400 ring-1 ring-red-200' : comissaoStatus[s.id] === 'menor' ? 'border-amber-400 ring-1 ring-amber-200' : form.comissoesPendentes[s.id] ? 'border-blue-400 ring-1 ring-blue-200' : ''}`}
-                                type="number"
-                                min={0}
-                                max={100}
-                                step={0.1}
-                              />
-                              <span className="text-xs text-muted-foreground">%</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-muted-foreground">Padrão:</span>
+                              <Badge variant="outline" className="text-xs font-semibold bg-slate-50 border-slate-200 text-slate-700">
+                                {comissaoPadrao}%
+                              </Badge>
                               {form.comissoesPendentes[s.id] && (
                                 <Badge variant="outline" className="text-[9px] h-5 border-blue-300 text-blue-600 bg-blue-50 whitespace-nowrap">
                                   <ShieldCheck className="w-3 h-3 mr-0.5" /> Pendente
@@ -1328,73 +1357,75 @@ export default function Parceiros() {
                               )}
                             </div>
                           )}
-                          {/* Inline commission alert — below standard */}
-                          {isSelected && comissaoStatus[s.id] === 'menor' && (
-                            <div className="mx-3 mt-1 p-2 bg-amber-50 rounded-md border border-amber-200">
-                              <div className="flex items-start gap-2">
-                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-                                <div className="flex-1">
-                                  <p className="text-[10px] text-amber-800">Comissão abaixo do padrão ({comissaoPadrao}%). Confirme ou use o padrão.</p>
-                                  <div className="flex gap-2 mt-1.5">
-                                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleComissaoReset(s.id)}>Usar Padrão</Button>
-                                    <Button size="sm" className="h-6 text-[10px] px-2 bg-amber-600 hover:bg-amber-700" onClick={() => handleComissaoConfirmBelow(s.id)}>Confirmar Valor</Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          {/* Inline commission alert — above standard */}
-                          {isSelected && comissaoStatus[s.id] === 'maior' && !form.comissoesPendentes[s.id] && (
-                            <div className="mx-3 mt-1 p-2 bg-red-50 rounded-md border border-red-200">
-                              <div className="flex items-start gap-2">
-                                <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                                <div className="flex-1">
-                                  <p className="text-[10px] text-red-800">Comissão acima do padrão ({comissaoPadrao}%). Será enviada para aprovação do Diretor.</p>
-                                  <div className="flex gap-2 mt-1.5">
-                                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleComissaoReset(s.id)}>Usar Padrão</Button>
-                                    <Button size="sm" className="h-6 text-[10px] px-2 bg-red-600 hover:bg-red-700" onClick={() => handleComissaoConfirmAbove(s.id)}>Solicitar Aprovação</Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
                         </div>
 
-                        {/* Rateio for subparceiro */}
-                        {isSelected && form.ehSubparceiro && form.parceiroPaiId && comissaoPadrao && (
+                        {/* Rateio fields — always shown when service is selected and has standard commission */}
+                        {isSelected && comissaoPadrao && (
                           <div className="px-3 pb-3 pt-0">
-                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 space-y-2">
-                              <Label className="text-[10px] font-semibold text-blue-800 flex items-center gap-1">
-                                <Users className="w-3 h-3" /> Rateio de Comissão (máx: {comissaoCustom || comissaoPadrao}%)
+                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                              <Label className="text-[10px] font-semibold text-slate-700 flex items-center gap-1">
+                                <Users className="w-3 h-3" /> Rateio de Comissão
                               </Label>
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <Label className="text-[10px] text-blue-700">% Parceiro Principal</Label>
+                                  <Label className="text-[10px] text-slate-600">% Parceiro Principal</Label>
                                   <Input
-                                    value={rateio?.parceiro ?? ''}
-                                    onChange={e => handleRateioChange(s.id, 'parceiro', e.target.value)}
-                                    className="h-7 text-xs"
-                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.1}
+                                    value={rateio?.parceiro ?? comissaoPadrao}
+                                    onChange={e => handleRateioFieldChange(s.id, 'parceiro', e.target.value)}
+                                    className="h-8 text-xs"
+                                    type="number" min={0} max={100} step={0.1}
                                     placeholder="0.0"
                                   />
                                 </div>
                                 <div>
-                                  <Label className="text-[10px] text-blue-700">% Subparceiro</Label>
+                                  <Label className="text-[10px] text-slate-600">% Subparceiro</Label>
                                   <Input
-                                    value={rateio?.subparceiro ?? ''}
-                                    onChange={e => handleRateioChange(s.id, 'subparceiro', e.target.value)}
-                                    className="h-7 text-xs"
-                                    type="number" min={0} max={parseFloat(comissaoCustom || comissaoPadrao)} step={0.1}
+                                    value={rateio?.subparceiro ?? '0.0'}
+                                    onChange={e => handleRateioFieldChange(s.id, 'subparceiro', e.target.value)}
+                                    className="h-8 text-xs"
+                                    type="number" min={0} max={100} step={0.1}
                                     placeholder="0.0"
                                   />
                                 </div>
                               </div>
-                              {rateio && (parseFloat(rateio.parceiro || '0') + parseFloat(rateio.subparceiro || '0')) > parseFloat(comissaoCustom || comissaoPadrao) && (
-                                <p className="text-[10px] text-red-600 flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3" /> Soma do rateio excede o máximo permitido!
-                                </p>
-                              )}
+                              {/* Total display */}
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                                <span className="text-[10px] text-slate-500">Total do rateio:</span>
+                                <span className={`text-xs font-semibold ${Math.abs(rateioTotal - padraoNum) < 0.01 ? 'text-green-600' : rateioTotal > padraoNum ? 'text-red-600' : 'text-amber-600'}`}>
+                                  {rateioTotal.toFixed(1)}% {Math.abs(rateioTotal - padraoNum) < 0.01 ? '' : rateioTotal > padraoNum ? `(+${(rateioTotal - padraoNum).toFixed(1)}%)` : `(${(rateioTotal - padraoNum).toFixed(1)}%)`}
+                                </span>
+                              </div>
                             </div>
+
+                            {/* Alert BELOW the rateio fields — does not overlap anything */}
+                            {comissaoStatus[s.id] === 'menor' && (
+                              <div className="mt-2 p-2.5 bg-amber-50 rounded-md border border-amber-200">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs text-amber-800">Soma do rateio ({rateioTotal.toFixed(1)}%) está abaixo do padrão ({comissaoPadrao}%).</p>
+                                    <div className="flex gap-2 mt-2">
+                                      <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => handleComissaoReset(s.id)}>Usar Padrão</Button>
+                                      <Button size="sm" className="h-7 text-xs px-3 bg-amber-600 hover:bg-amber-700 text-white" onClick={() => handleComissaoConfirmBelow(s.id)}>Confirmar Valor</Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {comissaoStatus[s.id] === 'maior' && !form.comissoesPendentes[s.id] && (
+                              <div className="mt-2 p-2.5 bg-red-50 rounded-md border border-red-200">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs text-red-800">Soma do rateio ({rateioTotal.toFixed(1)}%) está acima do padrão ({comissaoPadrao}%). Será enviada para aprovação do Diretor.</p>
+                                    <div className="flex gap-2 mt-2">
+                                      <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => handleComissaoReset(s.id)}>Usar Padrão</Button>
+                                      <Button size="sm" className="h-7 text-xs px-3 bg-red-600 hover:bg-red-700 text-white" onClick={() => handleComissaoConfirmAbove(s.id)}>Solicitar Aprovação</Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

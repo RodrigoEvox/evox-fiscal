@@ -570,3 +570,11 @@
 - [x] "Solicitar Aprovação": manter percentual solicitado, criar tarefa de aprovação para Diretor, marcar como pendente no parceiro, retornar ao formulário
 - [x] Garantir que o usuário sempre consiga voltar ao formulário de edição após interagir com o alerta
 - [x] Comissão abaixo do padrão: "Continuar" mantém o valor e volta ao formulário
+
+## CRM v16.4 — Refatoração Comissão + Fonte Menus
+- [x] Campo de comissão padrão somente leitura (não editável)
+- [x] Campos de rateio (% Parceiro Principal e % Subparceiro) editáveis com auto-cálculo da diferença
+- [x] Alerta de comissão abaixo dos campos de rateio sem sobrepor campos
+- [x] Se soma dos rateios > padrão: alerta "acima do padrão" com opções Usar Padrão / Solicitar Aprovação
+- [x] Se soma dos rateios < padrão: alerta "abaixo do padrão" com opção Confirmar Valor
+- [x] Aumentar suavemente o tamanho da fonte de todos os menus e submenus da sidebar

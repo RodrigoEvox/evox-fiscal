@@ -194,7 +194,7 @@ export default function AppSidebar() {
     return (
       <Link href={path}>
         <div className={cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-[15px] font-medium',
           isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
         )}>
           <Icon className="w-[18px] h-[18px] shrink-0" style={color ? { color } : undefined} />
@@ -218,7 +218,7 @@ export default function AppSidebar() {
         <button
           onClick={() => toggleSection(setor.sigla)}
           className={cn(
-            'flex items-center gap-2.5 w-full px-3 py-1.5 rounded-lg transition-all duration-150 text-[13px] font-medium',
+            'flex items-center gap-2.5 w-full px-3 py-1.5 rounded-lg transition-all duration-150 text-[14px] font-medium',
             isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
           )}
         >
@@ -238,7 +238,7 @@ export default function AppSidebar() {
               return (
                 <Link key={sub.key} href={sub.rota}>
                   <div className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[12px]',
+                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
                     subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
                   )}>
                     <SubIcon className="w-3.5 h-3.5 shrink-0" />
@@ -250,7 +250,7 @@ export default function AppSidebar() {
             {/* Relatórios - disponível em todos os setores */}
             <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
               <div className={cn(
-                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[12px]',
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
                 location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
                   ? 'bg-white/10 text-white'
                   : 'text-white/40 hover:text-white/70 hover:bg-white/5',
@@ -327,7 +327,7 @@ export default function AppSidebar() {
               <button
                 onClick={() => setEquipesOpen(!effectiveEquipesOpen)}
                 className={cn(
-                  'flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
+                  'flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all duration-150 text-[15px] font-medium',
                   isAnyEquipeActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
                 )}
               >
@@ -381,7 +381,7 @@ export default function AppSidebar() {
                     <button
                       onClick={() => toggleSection(universidadeEvox.sigla)}
                       className={cn(
-                        'flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium',
+                        'flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-all duration-150 text-[15px] font-medium',
                         isUevoxActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',
                       )}
                     >
@@ -403,7 +403,7 @@ export default function AppSidebar() {
                           return (
                             <Link key={sub.key} href={sub.rota}>
                               <div className={cn(
-                                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[14px]',
                                 subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
                               )}>
                                 <SubIcon className="w-4 h-4 shrink-0" />
@@ -414,7 +414,7 @@ export default function AppSidebar() {
                         })}
                         <Link href={`/setor/${universidadeEvox.sigla.toLowerCase()}/relatorio`}>
                           <div className={cn(
-                            'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                            'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[14px]',
                             location === `/setor/${universidadeEvox.sigla.toLowerCase()}/relatorio`
                               ? 'bg-white/10 text-white'
                               : 'text-white/40 hover:text-white/70 hover:bg-white/5',
