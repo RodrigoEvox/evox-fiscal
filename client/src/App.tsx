@@ -52,6 +52,7 @@ const MetasIndividuais = lazy(() => import("./pages/rh/MetasIndividuais"));
 const BiRH = lazy(() => import("./pages/rh/BiRH"));
 const WorkflowRenovacao = lazy(() => import("./pages/rh/WorkflowRenovacao"));
 const EmailAniversariante = lazy(() => import("./pages/rh/EmailAniversariante"));
+const DashboardGEG = lazy(() => import("./pages/rh/DashboardGEG"));
 
 function LazyFallback() {
   return (
@@ -91,6 +92,7 @@ function Router() {
         <Route path="/sla-config" component={SlaConfig} />
         <Route path="/chat" component={ChatInterno} />
         {/* Gente & Gestão (RH) */}
+        <Route path="/rh/dashboard" component={DashboardGEG} />
         <Route path="/rh/nova-tarefa" component={NovaTarefaGEG} />
         <Route path="/rh/colaboradores" component={ColaboradoresGEG} />
         <Route path="/rh/ferias" component={FeriasGEG} />

@@ -858,3 +858,30 @@
 - [x] Tarefa com dados do colaborador e opções (renovar/desligar)
 - [x] Notificar gestor sobre a tarefa criada
 - [x] Evitar criação de tarefas duplicadas para o mesmo contrato
+
+## CRM v26 — Dashboard GEG Dedicado e Melhorias
+
+### Dashboard Gente & Gestão
+- [x] Criar página de Dashboard exclusivo para o setor Gente & Gestão
+- [x] Incluir KPIs: headcount, turnover, absenteísmo, custo salarial
+- [x] Incluir card de aniversariantes do mês
+- [x] Incluir card de contratos vencendo
+- [x] Incluir distribuição por status dos colaboradores
+- [x] Incluir distribuição por setor/cargo
+- [x] Adicionar rota e submenu no GEG
+
+### Remover Cards do Dashboard Macro
+- [x] Remover card de Aniversariantes do Dashboard principal
+- [x] Remover card de Contratos Vencendo do Dashboard principal
+
+### Agendamento Automático de E-mails
+- [x] Configurar envio diário automático dos e-mails de aniversário
+- [x] Sem necessidade de clique manual (scheduler/cron)
+
+### Exportação do BI em PDF/Excel
+- [x] Botão de exportação nos gráficos do painel de BI
+- [x] Gerar PDF ou Excel com dados dos gráficos
+
+### Notificações Push do Workflow
+- [x] Notificação em tempo real ao gestor quando workflow é criado
+- [x] Integrar com sistema de notificações existente

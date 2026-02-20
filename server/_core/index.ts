@@ -31,6 +31,130 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// ---- SCHEDULED JOBS ----
+async function runDailyBirthdayEmails() {
+  try {
+    const db = await import('../db');
+    const config = await db.getEmailAniversarianteConfig();
+    if (!config || !config.ativo) return;
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth() + 1;
+    const diaAtual = hoje.getDate();
+    const anoAtual = hoje.getFullYear();
+
+    const aniversariantes = await db.getAniversariantesMes(mesAtual);
+    const jaEnviados = await db.getEmailsAniversarianteEnviados(anoAtual);
+    const jaEnviadosSet = new Set(jaEnviados);
+
+    const diaStr = String(diaAtual).padStart(2, '0');
+    const paraEnviar = (aniversariantes as any[]).filter((c: any) => {
+      const diaNasc = c.dataNascimento?.substring(8, 10);
+      return diaNasc === diaStr && !jaEnviadosSet.has(c.id);
+    });
+
+    let enviados = 0;
+    for (const colab of paraEnviar) {
+      try {
+        const mensagemPersonalizada = config.mensagem.replace(/{nome}/g, colab.nomeCompleto?.split(' ')[0] || 'Colaborador');
+        // Get all users to notify them about the birthday
+        const allUsers = await db.listUsers();
+        for (const u of allUsers) {
+          await db.createNotificacao({
+            usuarioId: u.id,
+            tipo: 'geral' as any,
+            titulo: config.assunto,
+            mensagem: `${mensagemPersonalizada}\n\n${config.assinatura}`,
+            lida: false,
+          });
+        }
+        await db.registrarEmailAniversarianteEnviado(colab.id, anoAtual);
+        enviados++;
+      } catch (e) { /* ignora erros individuais */ }
+    }
+    if (enviados > 0) {
+      console.log(`[Birthday Scheduler] Sent ${enviados} birthday email(s)`);
+    }
+  } catch (err) {
+    console.error('[Birthday Scheduler Error]', err);
+  }
+}
+
+async function runContractExpirationCheck() {
+  try {
+    const db = await import('../db');
+    const contratos = await db.getContratosVencendo(30);
+    let criados = 0;
+    for (const c of contratos) {
+      const existing = await db.getWorkflowContratoCriado(c.id);
+      if (!existing) {
+        // Get owner user to create workflow
+        const allUsers = await db.listUsers();
+        const owner = allUsers[0]; // First user as owner
+        if (owner) {
+          await db.criarWorkflowRenovacao({
+            colaboradorId: c.id,
+            colaboradorNome: c.nomeCompleto,
+            cargo: c.cargo,
+            dataVencimento: c.dataVencimento,
+            diasRestantes: c.diasRestantes,
+            tarefaId: null,
+            criadoPorId: owner.id,
+          });
+          // Push notification to all users
+          for (const u of allUsers) {
+            await db.createNotificacao({
+              usuarioId: u.id,
+              tipo: 'geral' as any,
+              titulo: `Contrato Vencendo: ${c.nomeCompleto}`,
+              mensagem: `O contrato de ${c.nomeCompleto} (${c.cargo}) vence em ${c.diasRestantes} dia(s). Um workflow de renovação foi criado automaticamente.`,
+              lida: false,
+            });
+          }
+          criados++;
+        }
+      }
+    }
+    if (criados > 0) {
+      console.log(`[Contract Scheduler] Created ${criados} renewal workflow(s)`);
+    }
+  } catch (err) {
+    console.error('[Contract Scheduler Error]', err);
+  }
+}
+
+function startScheduledJobs() {
+  // Run birthday emails daily at 8:00 AM (check every hour)
+  const HOUR_MS = 60 * 60 * 1000;
+  let lastBirthdayRun = '';
+  let lastContractRun = '';
+
+  setInterval(async () => {
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+    // Run birthday emails once per day (after 8 AM)
+    if (now.getHours() >= 8 && lastBirthdayRun !== todayKey) {
+      lastBirthdayRun = todayKey;
+      await runDailyBirthdayEmails();
+    }
+
+    // Run contract check once per day (after 9 AM)
+    if (now.getHours() >= 9 && lastContractRun !== todayKey) {
+      lastContractRun = todayKey;
+      await runContractExpirationCheck();
+    }
+  }, HOUR_MS);
+
+  // Also run once on startup after a short delay
+  setTimeout(async () => {
+    await runDailyBirthdayEmails();
+    await runContractExpirationCheck();
+  }, 10000);
+
+  console.log('[Scheduler] Birthday emails and contract checks scheduled');
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -218,6 +342,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Start scheduled jobs after server is running
+    startScheduledJobs();
   });
 }
 

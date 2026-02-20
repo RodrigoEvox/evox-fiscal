@@ -1,16 +1,13 @@
 import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
-import { useMemo } from 'react';
 import {
   Users, BookOpen, ListOrdered, Handshake, AlertTriangle, TrendingUp,
   CheckCircle, Clock, Loader2, Flag, ArrowRight, Play,
-  Cake, PartyPopper, FileWarning, CalendarClock, User, Briefcase,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -18,8 +15,6 @@ export default function Dashboard() {
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: clientes } = trpc.clientes.list.useQuery();
   const { data: filaItems } = trpc.fila.list.useQuery();
-  const { data: aniversariantes } = trpc.aniversariantes.mes.useQuery();
-  const { data: contratosVencendo } = trpc.contratosVencendo.list.useQuery({ diasAntecedencia: 30 });
   const seedTeses = trpc.seed.teses.useMutation({
     onSuccess: () => {
       trpc.useUtils().dashboard.stats.invalidate();
@@ -33,23 +28,6 @@ export default function Dashboard() {
       onSuccess: () => utils.dashboard.stats.invalidate(),
     });
   }
-
-  const hoje = useMemo(() => {
-    const d = new Date();
-    return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
-
-  const meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  const mesAtual = new Date().getMonth() + 1;
-
-  const aniversariantesHoje = useMemo(() => {
-    if (!aniversariantes) return [];
-    return aniversariantes.filter((a: any) => {
-      if (!a.dataNascimento) return false;
-      const parts = a.dataNascimento.substring(5); // MM-DD
-      return parts === hoje;
-    });
-  }, [aniversariantes, hoje]);
 
   if (isLoading || !stats) {
     return (
@@ -108,149 +86,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {/* Birthday + Contract Alerts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Aniversariantes do Mês */}
-        <Card className="border-l-4" style={{ borderLeftColor: '#EC4899' }}>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Cake className="w-4 h-4 text-pink-500" /> Aniversariantes — {meses[mesAtual]}
-            </CardTitle>
-            <Badge className="bg-pink-50 text-pink-700 border-pink-200 text-[10px]">
-              {(aniversariantes || []).length} neste mês
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            {!aniversariantes || aniversariantes.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum aniversariante neste mês.</p>
-            ) : (
-              <div className="space-y-1.5 max-h-[260px] overflow-y-auto">
-                {/* Aniversariantes de hoje primeiro */}
-                {aniversariantesHoje.length > 0 && (
-                  <>
-                    <div className="flex items-center gap-2 mb-2">
-                      <PartyPopper className="w-4 h-4 text-amber-500" />
-                      <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Hoje!</span>
-                    </div>
-                    {aniversariantesHoje.map((a: any) => (
-                      <div key={`hoje-${a.id}`} className="flex items-center justify-between py-2 px-3 rounded-lg bg-gradient-to-r from-pink-50 to-amber-50 border border-pink-200">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                            <PartyPopper className="w-4 h-4 text-pink-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">{a.nomeCompleto}</p>
-                            <p className="text-[10px] text-muted-foreground">{a.cargo}</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] animate-pulse">
-                          Parabéns!
-                        </Badge>
-                      </div>
-                    ))}
-                    <Separator className="my-2" />
-                  </>
-                )}
-                {/* Demais aniversariantes do mês */}
-                {(aniversariantes || []).filter((a: any) => {
-                  if (!a.dataNascimento) return false;
-                  return a.dataNascimento.substring(5) !== hoje;
-                }).map((a: any) => {
-                  const dia = a.dataNascimento ? a.dataNascimento.substring(8, 10) : '??';
-                  return (
-                    <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center">
-                          <User className="w-4 h-4 text-pink-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{a.nomeCompleto}</p>
-                          <p className="text-[10px] text-muted-foreground">{a.cargo}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] bg-pink-50/50 text-pink-600 border-pink-200">
-                        Dia {dia}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Contratos Próximos do Vencimento */}
-        <Card className="border-l-4" style={{ borderLeftColor: '#F59E0B' }}>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-amber-500" /> Contratos Vencendo
-            </CardTitle>
-            <Badge className={`text-[10px] ${(contratosVencendo || []).length > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-              {(contratosVencendo || []).length > 0 ? `${(contratosVencendo || []).length} alerta(s)` : 'Sem alertas'}
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            {!contratosVencendo || contratosVencendo.length === 0 ? (
-              <div className="text-center py-6">
-                <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Nenhum contrato próximo do vencimento nos próximos 30 dias.</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-[260px] overflow-y-auto">
-                {contratosVencendo.map((c: any) => {
-                  const urgente = c.diasRestantes <= 7;
-                  const atencao = c.diasRestantes <= 15;
-                  return (
-                    <div
-                      key={c.id}
-                      className={`flex items-center justify-between py-2.5 px-3 rounded-lg border transition-colors ${
-                        urgente ? 'bg-red-50/80 border-red-200' :
-                        atencao ? 'bg-amber-50/80 border-amber-200' :
-                        'bg-slate-50/80 border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          urgente ? 'bg-red-100' : atencao ? 'bg-amber-100' : 'bg-slate-100'
-                        }`}>
-                          <FileWarning className={`w-4 h-4 ${
-                            urgente ? 'text-red-600' : atencao ? 'text-amber-600' : 'text-slate-500'
-                          }`} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{c.nomeCompleto}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-[10px] text-muted-foreground">{c.cargo}</p>
-                            <span className="text-[10px] text-muted-foreground">•</span>
-                            <p className="text-[10px] text-muted-foreground">
-                              {c.tipoContrato === 'clt' ? 'CLT' : c.tipoContrato === 'pj' ? 'PJ' : 'Contrato'} — {c.periodoExperiencia} dias
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={`text-[10px] ${
-                          urgente ? 'bg-red-100 text-red-700 border-red-300' :
-                          atencao ? 'bg-amber-100 text-amber-700 border-amber-300' :
-                          'bg-slate-100 text-slate-600 border-slate-300'
-                        }`}>
-                          {c.diasRestantes === 0 ? 'Vence hoje!' :
-                           c.diasRestantes === 1 ? 'Amanhã' :
-                           `${c.diasRestantes} dias`}
-                        </Badge>
-                        <p className="text-[9px] text-muted-foreground mt-0.5">
-                          Venc: {c.dataVencimento ? new Date(c.dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR') : ''}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Fila de Apuração */}

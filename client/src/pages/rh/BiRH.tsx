@@ -12,8 +12,10 @@ import {
 } from "recharts";
 import {
   Users, TrendingUp, TrendingDown, DollarSign, Calendar, AlertTriangle,
-  Target, Activity, BarChart3, PieChart as PieChartIcon, Download,
+  Target, Activity, BarChart3, PieChart as PieChartIcon, Download, FileSpreadsheet, FileText,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#14b8a6", "#a855f7"];
 
@@ -32,6 +34,97 @@ const NIVEL_LABELS: Record<string, string> = {
 export default function BiRH() {
   const [periodo, setPeriodo] = useState("12");
   const [tab, setTab] = useState("visao-geral");
+  const [exporting, setExporting] = useState(false);
+
+  const exportToPDF = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch('/api/relatorios-rh/pdf');
+      if (!response.ok) throw new Error('Erro ao gerar PDF');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-bi-rh-${new Date().toISOString().slice(0, 10)}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Relatório exportado com sucesso!');
+    } catch (err) {
+      toast.error('Erro ao exportar relatório');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportToExcel = () => {
+    if (!dashboard || !colabs) return;
+    const d = dashboard as any;
+    const colabList = colabs as any[];
+    
+    // Build CSV content
+    const lines: string[] = [];
+    lines.push('RELATÓRIO BI - INDICADORES DE RH');
+    lines.push(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`);
+    lines.push('');
+    
+    // KPIs
+    lines.push('=== INDICADORES PRINCIPAIS ===');
+    lines.push(`Colaboradores Ativos;${d.totalAtivos}`);
+    lines.push(`Colaboradores Inativos;${d.totalInativos}`);
+    lines.push(`Taxa Turnover;${metricas?.taxaTurnover}%`);
+    lines.push(`Dias Absenteísmo;${metricas?.totalAbsenteismo}`);
+    lines.push(`Custo Salarial Total;${d.custoSalarialTotal}`);
+    lines.push(`Custo Médio/Colaborador;${metricas?.custoMedio?.toFixed(2)}`);
+    lines.push('');
+    
+    // Headcount por Setor
+    lines.push('=== HEADCOUNT POR SETOR ===');
+    lines.push('Setor;Quantidade');
+    headcountSetorData.forEach(s => lines.push(`${s.setorFull};${s.quantidade}`));
+    lines.push('');
+    
+    // Custo por Setor
+    lines.push('=== CUSTO SALARIAL POR SETOR ===');
+    lines.push('Setor;Valor (R$)');
+    custoSetorData.forEach(s => lines.push(`${s.setorFull};${s.valor.toFixed(2)}`));
+    lines.push('');
+    
+    // Turnover Mensal
+    lines.push('=== TURNOVER MENSAL ===');
+    lines.push('Mês;Admissões;Desligamentos;Saldo');
+    evolucaoTurnover.forEach((t: any) => lines.push(`${t.mesLabel};${t.admissoes};${t.desligamentos};${t.saldo}`));
+    lines.push('');
+    
+    // Absenteísmo
+    lines.push('=== ABSENTEÍSMO MENSAL ===');
+    lines.push('Mês;Atestados;Dias Afastamento');
+    evolucaoAbsenteismo.forEach((a: any) => lines.push(`${a.mesLabel};${a.atestados};${a.diasAfastamento}`));
+    lines.push('');
+    
+    // Status
+    lines.push('=== DISTRIBUIÇÃO POR STATUS ===');
+    lines.push('Status;Quantidade');
+    statusData.forEach(s => lines.push(`${s.name};${s.value}`));
+    lines.push('');
+    
+    // Metas
+    lines.push('=== METAS & KPIs ===');
+    lines.push(`Total de Metas;${metasResumo.total}`);
+    lines.push(`Concluídas;${metasResumo.concluidas}`);
+    lines.push(`Em Andamento;${metasResumo.emAndamento}`);
+    lines.push(`Atrasadas;${metasResumo.atrasadas}`);
+    lines.push(`Taxa de Conclusão;${metasResumo.taxa}%`);
+    
+    const csvContent = '\uFEFF' + lines.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bi-rh-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Dados exportados em CSV!');
+  };
 
   const { data: dashboard, isLoading } = trpc.relatoriosRH.dashboard.useQuery();
   const { data: colabs } = trpc.colaboradores.list.useQuery();
@@ -202,6 +295,24 @@ export default function BiRH() {
               <SelectItem value="12">Últimos 12 meses</SelectItem>
             </SelectContent>
           </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={exporting}>
+                <Download className="w-4 h-4 mr-2" />
+                {exporting ? 'Exportando...' : 'Exportar'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToPDF}>
+                <FileText className="w-4 h-4 mr-2" />
+                Exportar PDF (HTML)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Exportar Excel (CSV)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

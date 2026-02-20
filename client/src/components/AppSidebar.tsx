@@ -87,6 +87,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'workflow-renovacao': FileCheck,
   'email-aniversario': Mail,
   'metas': TrendingUp,
+  'dashboard': LayoutDashboard,
 };
 
 interface SetorConfigItem {
