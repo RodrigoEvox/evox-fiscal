@@ -34,7 +34,7 @@ const SIGLA_TO_NOME: Record<string, string> = {
   'CRE': 'Crédito',
   'MON': 'Evox Monitor',
   'FIN': 'Financeiro',
-  'GEG': 'Gente e Gestão',
+  'GEG': 'Gente & Gestão',
   'JUR': 'Jurídico',
   'MKT': 'Marketing',
   'REF': 'Reforma',
@@ -75,6 +75,11 @@ const SUBMENU_ICONS: Record<string, any> = {
   'monitoramento': MonitorCheck,
   'busca': Search,
   'executivos-comerciais': Briefcase,
+  'acoes-beneficios': Gift,
+  'atestados-licencas': FileText,
+  'cargos-salarios': BarChart3,
+  'carreira-desenvolvimento': GraduationCap,
+  'solicitacoes-folga': Calendar,
 };
 
 interface SetorConfigItem {
@@ -143,7 +148,8 @@ export default function AppSidebar() {
   // Check if any equipe route is active
   const isAnyEquipeActive = useMemo(() => {
     return equipesNav.some((setor: any) =>
-      location.startsWith(`/setor/${setor.sigla.toLowerCase()}`)
+      location.startsWith(`/setor/${setor.sigla.toLowerCase()}`) ||
+      setor.submenus?.some((sub: any) => location === sub.rota || location.startsWith(sub.rota + '/'))
     );
   }, [equipesNav, location]);
 
@@ -220,7 +226,8 @@ export default function AppSidebar() {
   const renderSetorItem = (setor: any) => {
     const IconComp = ICON_MAP[setor.icone] || Building2;
     const isOpen = openSections[setor.sigla] || false;
-    const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`);
+    const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`) ||
+      setor.submenus?.some((sub: any) => location === sub.rota || location.startsWith(sub.rota + '/'));
 
     return (
       <div key={setor.sigla}>
@@ -310,7 +317,8 @@ export default function AppSidebar() {
             <div className="pt-2 border-t border-white/5 mt-2" />
             {equipesNav.map((setor: any) => {
               const IconComp = ICON_MAP[setor.icone] || Building2;
-              const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`);
+              const isActive = location.startsWith(`/setor/${setor.sigla.toLowerCase()}`) ||
+      setor.submenus?.some((sub: any) => location === sub.rota || location.startsWith(sub.rota + '/'));
               return (
                 <TooltipProvider key={setor.sigla} delayDuration={0}>
                   <Tooltip>

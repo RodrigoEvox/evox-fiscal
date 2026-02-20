@@ -1777,6 +1777,312 @@ export const appRouter = router({
       };
     }),
   }),
+
+  // ============================================================
+  // MÓDULO RH — GENTE & GESTÃO
+  // ============================================================
+
+  // ---- COLABORADORES ----
+  colaboradores: router({
+    list: protectedProcedure.query(async () => {
+      return db.listColaboradores();
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return db.getColaboradorById(input.id);
+    }),
+    create: protectedProcedure.input(z.object({
+      nomeCompleto: z.string().min(1),
+      cpf: z.string().min(1),
+      dataNascimento: z.string().optional(),
+      rgNumero: z.string().optional(),
+      rgOrgaoEmissor: z.string().optional(),
+      rgDataEmissao: z.string().optional(),
+      ctpsNumero: z.string().optional(),
+      pisPasep: z.string().optional(),
+      nomeMae: z.string().optional(),
+      nomePai: z.string().optional(),
+      nacionalidade: z.string().optional(),
+      naturalidade: z.string().optional(),
+      estadoCivil: z.enum(['solteiro','casado','divorciado','viuvo','uniao_estavel']).optional(),
+      tituloEleitor: z.string().optional(),
+      certificadoReservista: z.string().optional(),
+      sexo: z.enum(['masculino','feminino','outro']).optional(),
+      cep: z.string().optional(),
+      logradouro: z.string().optional(),
+      numero: z.string().optional(),
+      complemento: z.string().optional(),
+      bairro: z.string().optional(),
+      cidade: z.string().optional(),
+      estado: z.string().optional(),
+      telefone: z.string().optional(),
+      email: z.string().optional(),
+      dataAdmissao: z.string().min(1),
+      cargo: z.string().min(1),
+      funcao: z.string().optional(),
+      salarioBase: z.string().min(1),
+      comissoes: z.string().optional(),
+      adicionais: z.string().optional(),
+      jornadaEntrada: z.string().optional(),
+      jornadaSaida: z.string().optional(),
+      jornadaIntervalo: z.string().optional(),
+      cargaHoraria: z.string().optional(),
+      tipoContrato: z.enum(['clt','pj','contrato_trabalho']).default('clt'),
+      periodoExperiencia: z.number().optional(),
+      localTrabalho: z.enum(['home_office','barueri','uberaba']).optional(),
+      valeTransporte: z.boolean().optional(),
+      banco: z.string().optional(),
+      agencia: z.string().optional(),
+      conta: z.string().optional(),
+      tipoConta: z.enum(['corrente','poupanca']).optional(),
+      asoAdmissionalApto: z.boolean().optional(),
+      asoAdmissionalData: z.string().optional(),
+      dependentes: z.array(z.object({ nome: z.string(), cpf: z.string(), dataNascimento: z.string(), parentesco: z.string() })).optional(),
+      setorId: z.number().optional(),
+      nivelHierarquico: z.enum(['estagiario','auxiliar','assistente','analista_jr','analista_pl','analista_sr','coordenador','supervisor','gerente','diretor']).optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createColaborador(input as any);
+      await logAudit('criacao', 'colaborador', id, input.nomeCompleto, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateColaborador(input.id, input.data as any);
+      await logAudit('edicao', 'colaborador', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteColaborador(input.id);
+      await logAudit('exclusao', 'colaborador', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
+
+  // ---- FÉRIAS ----
+  ferias: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listFerias(input?.colaboradorId);
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return db.getFeriasById(input.id);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      periodoAquisitivoInicio: z.string(),
+      periodoAquisitivoFim: z.string(),
+      periodoConcessivoFim: z.string(),
+      periodo1Inicio: z.string().optional(),
+      periodo1Fim: z.string().optional(),
+      periodo1Dias: z.number().optional(),
+      periodo2Inicio: z.string().optional(),
+      periodo2Fim: z.string().optional(),
+      periodo2Dias: z.number().optional(),
+      periodo3Inicio: z.string().optional(),
+      periodo3Fim: z.string().optional(),
+      periodo3Dias: z.number().optional(),
+      diasTotais: z.number().optional(),
+      faltasInjustificadas: z.number().optional(),
+      diasDireito: z.number().optional(),
+      status: z.enum(['pendente','programada','em_gozo','concluida','vencida']).optional(),
+      avisoPrevioData: z.string().optional(),
+      alertas: z.array(z.object({ tipo: z.string(), mensagem: z.string(), gravidade: z.string() })).optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createFerias(input as any);
+      await logAudit('criacao', 'ferias', id, null, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateFerias(input.id, input.data as any);
+      await logAudit('edicao', 'ferias', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+  }),
+
+  // ---- SOLICITAÇÕES DE FOLGA ----
+  solicitacoesFolga: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listSolicitacoesFolga(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      tipo: z.enum(['ferias','folga','abono','compensacao']),
+      dataInicio: z.string(),
+      dataFim: z.string(),
+      diasSolicitados: z.number(),
+      motivo: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createSolicitacaoFolga(input as any);
+      await logAudit('criacao', 'solicitacao_folga', id, null, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateSolicitacaoFolga(input.id, input.data as any);
+      await logAudit('edicao', 'solicitacao_folga', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+  }),
+
+  // ---- TAREFAS DO SETOR ----
+  tarefasSetor: router({
+    list: protectedProcedure.input(z.object({ setorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listTarefasSetor(input?.setorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      setorId: z.number(),
+      titulo: z.string().min(1),
+      descricao: z.string().optional(),
+      responsavelId: z.number().optional(),
+      responsavelNome: z.string().optional(),
+      prioridade: z.enum(['baixa','media','alta','urgente']).optional(),
+      dataInicio: z.string().optional(),
+      dataFim: z.string().optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createTarefaSetor({
+        ...input,
+        criadoPorId: ctx.user?.id,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'tarefa_setor', id, input.titulo, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateTarefaSetor(input.id, input.data as any);
+      await logAudit('edicao', 'tarefa_setor', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteTarefaSetor(input.id);
+      await logAudit('exclusao', 'tarefa_setor', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
+
+  // ---- AÇÕES E BENEFÍCIOS ----
+  acoesBeneficios: router({
+    list: protectedProcedure.query(async () => {
+      return db.listAcoesBeneficios();
+    }),
+    create: protectedProcedure.input(z.object({
+      titulo: z.string().min(1),
+      tipo: z.enum(['fit','solidaria','campanha_doacao','sustentabilidade','engajamento','beneficio','outro']),
+      descricao: z.string().optional(),
+      dataInicio: z.string().optional(),
+      dataFim: z.string().optional(),
+      status: z.enum(['planejada','ativa','concluida','cancelada']).optional(),
+      participantes: z.array(z.object({ colaboradorId: z.number(), nome: z.string(), confirmado: z.boolean() })).optional(),
+      metaParticipacao: z.number().optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createAcaoBeneficio({
+        ...input,
+        criadoPorId: ctx.user?.id,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'acao_beneficio', id, input.titulo, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateAcaoBeneficio(input.id, input.data as any);
+      await logAudit('edicao', 'acao_beneficio', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deleteAcaoBeneficio(input.id);
+      await logAudit('exclusao', 'acao_beneficio', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
+
+  // ---- ATESTADOS E LICENÇAS ----
+  atestadosLicencas: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listAtestadosLicencas(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      tipo: z.enum(['atestado_medico','licenca_maternidade','licenca_paternidade','licenca_casamento','licenca_obito','licenca_medica','outro']),
+      dataInicio: z.string(),
+      dataFim: z.string(),
+      diasAfastamento: z.number(),
+      cid: z.string().optional(),
+      medico: z.string().optional(),
+      crm: z.string().optional(),
+      observacao: z.string().optional(),
+      documentoUrl: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createAtestadoLicenca({
+        ...input,
+        registradoPorId: ctx.user?.id,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'atestado_licenca', id, null, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updateAtestadoLicenca(input.id, input.data as any);
+      await logAudit('edicao', 'atestado_licenca', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+  }),
+
+  // ---- PLANOS DE CARREIRA ----
+  planosCarreira: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listPlanosCarreira(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      titulo: z.string().min(1),
+      descricao: z.string().optional(),
+      colaboradorId: z.number().optional(),
+      setorId: z.number().optional(),
+      nivelAtual: z.string().optional(),
+      nivelAlvo: z.string().optional(),
+      prazoMeses: z.number().optional(),
+      metas: z.array(z.object({ descricao: z.string(), concluida: z.boolean(), prazo: z.string().optional() })).optional(),
+      competencias: z.array(z.object({ nome: z.string(), nivelAtual: z.number(), nivelAlvo: z.number() })).optional(),
+      treinamentos: z.array(z.object({ nome: z.string(), concluido: z.boolean(), data: z.string().optional() })).optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createPlanoCarreira({
+        ...input,
+        criadoPorId: ctx.user?.id,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      await logAudit('criacao', 'plano_carreira', id, input.titulo, ctx);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input, ctx }) => {
+      await db.updatePlanoCarreira(input.id, input.data as any);
+      await logAudit('edicao', 'plano_carreira', input.id, null, ctx, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await db.deletePlanoCarreira(input.id);
+      await logAudit('exclusao', 'plano_carreira', input.id, null, ctx);
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

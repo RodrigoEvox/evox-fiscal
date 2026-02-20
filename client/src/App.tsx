@@ -38,6 +38,13 @@ const ExecutivosComerciais = lazy(() => import("./pages/ExecutivosComerciais"));
 const AprovacoesComissao = lazy(() => import("./pages/AprovacoesComissao"));
 const RelatorioComissoes = lazy(() => import("./pages/RelatorioComissoes"));
 const ChatInterno = lazy(() => import("./pages/ChatInterno"));
+const NovaTarefaGEG = lazy(() => import("./pages/rh/NovaTarefaGEG"));
+const ColaboradoresGEG = lazy(() => import("./pages/rh/ColaboradoresGEG"));
+const FeriasGEG = lazy(() => import("./pages/rh/FeriasGEG"));
+const AcoesBeneficios = lazy(() => import("./pages/rh/AcoesBeneficios"));
+const AtestadosLicencas = lazy(() => import("./pages/rh/AtestadosLicencas"));
+const CargosSalarios = lazy(() => import("./pages/rh/CargosSalarios"));
+const CarreiraDesenvolvimento = lazy(() => import("./pages/rh/CarreiraDesenvolvimento"));
 
 function LazyFallback() {
   return (
@@ -76,6 +83,14 @@ function Router() {
         <Route path="/relatorio-comissoes" component={RelatorioComissoes} />
         <Route path="/sla-config" component={SlaConfig} />
         <Route path="/chat" component={ChatInterno} />
+        {/* Gente & Gestão (RH) */}
+        <Route path="/rh/nova-tarefa" component={NovaTarefaGEG} />
+        <Route path="/rh/colaboradores" component={ColaboradoresGEG} />
+        <Route path="/rh/ferias" component={FeriasGEG} />
+        <Route path="/rh/acoes-beneficios" component={AcoesBeneficios} />
+        <Route path="/rh/atestados-licencas" component={AtestadosLicencas} />
+        <Route path="/rh/cargos-salarios" component={CargosSalarios} />
+        <Route path="/rh/carreira-desenvolvimento" component={CarreiraDesenvolvimento} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />

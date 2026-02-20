@@ -623,3 +623,50 @@
 - [x] Backend para criar e marcar notificações como lidas
 - [x] Badge/balão no ícone do Chat na sidebar com contagem de não lidas
 - [x] Badge/balão nas conversas/canais com menções não lidas
+
+## CRM v18 — Módulo RH: Gente & Gestão
+
+### Renomear Setor
+- [x] Renomear "Gente e Gestão" para "Gente & Gestão"
+
+### 1. Nova Tarefa (submenu)
+- [x] Interface para criar tarefas rápidas do setor
+- [x] Atribuir usuários do setor como responsáveis
+- [x] Nome da tarefa, prazo de início e fim, status
+
+### 2. Colaboradores (submenu)
+- [x] Cadastro com dados pessoais (nome, CPF, RG, CTPS, PIS/PASEP, etc.)
+- [x] Dados profissionais (admissão, cargo, remuneração, jornada, tipo contrato)
+- [x] Dados de saúde (ASO admissional)
+- [x] Dados bancários e dependentes
+- [x] Alerta para data de admissão retroativa
+- [x] Listagem e busca de colaboradores
+
+### 3. Férias (submenu)
+- [x] Gestão de férias conforme regras CLT
+- [x] Cálculo automático de período aquisitivo e concessivo
+- [x] Alertas de férias em dobro, fracionamento, início proibido
+- [x] Fluxo de solicitação de folgas/férias com aprovação hierárquica
+- [x] Justificativa obrigatória em caso de recusa
+
+### 4. Ações e Benefícios (submenu)
+- [x] Interface para cadastro e gestão de ações (fit, solidárias, campanhas)
+- [x] Medição de engajamento da equipe
+
+### 5. Atestados e Licenças (submenu)
+- [x] Gestão de atestados médicos dos colaboradores
+- [x] Gestão de licenças (maternidade, paternidade, etc.)
+
+### 6. Cargos e Salários (submenu)
+- [x] Visão analítica por setor, nível e custo salarial
+- [x] Dashboard para diretoria com dados consolidados
+
+### 7. Carreira & Desenvolvimento (submenu)
+- [x] Planos de carreira e desenvolvimento para a equipe
+- [x] Gestão de trilhas de desenvolvimento
+
+### Infraestrutura
+- [x] Schema de banco de dados para todas as tabelas do módulo RH
+- [x] Rotas backend (tRPC) para CRUD de todas as entidades
+- [x] Atualizar sidebar com os 7 submenus
+- [x] Testes unitários para as rotas do módulo RH

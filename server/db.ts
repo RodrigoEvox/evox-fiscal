@@ -30,6 +30,13 @@ import {
   chatMessages, InsertChatMessage,
   chatChannels, InsertChatChannel,
   chatNotifications, InsertChatNotification,
+  colaboradores, InsertColaborador,
+  ferias, InsertFerias,
+  solicitacoesFolga, InsertSolicitacaoFolga,
+  tarefasSetor, InsertTarefaSetor,
+  acoesBeneficios, InsertAcaoBeneficio,
+  atestadosLicencas, InsertAtestadoLicenca,
+  planosCarreira, InsertPlanoCarreira,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1300,4 +1307,202 @@ export async function markAllNotificationsRead(userId: number) {
   await db.execute(
     sql`UPDATE chat_notifications SET lida = true WHERE userId = ${userId}`
   );
+}
+
+
+// ============================================================
+// MÓDULO RH — GENTE & GESTÃO
+// ============================================================
+
+// ---- COLABORADORES ----
+export async function listColaboradores() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(colaboradores).orderBy(desc(colaboradores.createdAt));
+}
+
+export async function getColaboradorById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(colaboradores).where(eq(colaboradores.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createColaborador(data: InsertColaborador) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(colaboradores).values(data);
+  return result[0].insertId;
+}
+
+export async function updateColaborador(id: number, data: Partial<InsertColaborador>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(colaboradores).set(data).where(eq(colaboradores.id, id));
+}
+
+export async function deleteColaborador(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(colaboradores).set({ ativo: false }).where(eq(colaboradores.id, id));
+}
+
+// ---- FÉRIAS ----
+export async function listFerias(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(ferias).where(eq(ferias.colaboradorId, colaboradorId)).orderBy(desc(ferias.createdAt));
+  }
+  return db.select().from(ferias).orderBy(desc(ferias.createdAt));
+}
+
+export async function getFeriasById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(ferias).where(eq(ferias.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createFerias(data: InsertFerias) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(ferias).values(data);
+  return result[0].insertId;
+}
+
+export async function updateFerias(id: number, data: Partial<InsertFerias>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(ferias).set(data).where(eq(ferias.id, id));
+}
+
+// ---- SOLICITAÇÕES DE FOLGA ----
+export async function listSolicitacoesFolga(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(solicitacoesFolga).where(eq(solicitacoesFolga.colaboradorId, colaboradorId)).orderBy(desc(solicitacoesFolga.createdAt));
+  }
+  return db.select().from(solicitacoesFolga).orderBy(desc(solicitacoesFolga.createdAt));
+}
+
+export async function createSolicitacaoFolga(data: InsertSolicitacaoFolga) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(solicitacoesFolga).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSolicitacaoFolga(id: number, data: Partial<InsertSolicitacaoFolga>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(solicitacoesFolga).set(data).where(eq(solicitacoesFolga.id, id));
+}
+
+// ---- TAREFAS DO SETOR ----
+export async function listTarefasSetor(setorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (setorId) {
+    return db.select().from(tarefasSetor).where(eq(tarefasSetor.setorId, setorId)).orderBy(desc(tarefasSetor.createdAt));
+  }
+  return db.select().from(tarefasSetor).orderBy(desc(tarefasSetor.createdAt));
+}
+
+export async function createTarefaSetor(data: InsertTarefaSetor) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(tarefasSetor).values(data);
+  return result[0].insertId;
+}
+
+export async function updateTarefaSetor(id: number, data: Partial<InsertTarefaSetor>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(tarefasSetor).set(data).where(eq(tarefasSetor.id, id));
+}
+
+export async function deleteTarefaSetor(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(tarefasSetor).where(eq(tarefasSetor.id, id));
+}
+
+// ---- AÇÕES E BENEFÍCIOS ----
+export async function listAcoesBeneficios() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(acoesBeneficios).orderBy(desc(acoesBeneficios.createdAt));
+}
+
+export async function createAcaoBeneficio(data: InsertAcaoBeneficio) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(acoesBeneficios).values(data);
+  return result[0].insertId;
+}
+
+export async function updateAcaoBeneficio(id: number, data: Partial<InsertAcaoBeneficio>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(acoesBeneficios).set(data).where(eq(acoesBeneficios.id, id));
+}
+
+export async function deleteAcaoBeneficio(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(acoesBeneficios).where(eq(acoesBeneficios.id, id));
+}
+
+// ---- ATESTADOS E LICENÇAS ----
+export async function listAtestadosLicencas(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(atestadosLicencas).where(eq(atestadosLicencas.colaboradorId, colaboradorId)).orderBy(desc(atestadosLicencas.createdAt));
+  }
+  return db.select().from(atestadosLicencas).orderBy(desc(atestadosLicencas.createdAt));
+}
+
+export async function createAtestadoLicenca(data: InsertAtestadoLicenca) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(atestadosLicencas).values(data);
+  return result[0].insertId;
+}
+
+export async function updateAtestadoLicenca(id: number, data: Partial<InsertAtestadoLicenca>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(atestadosLicencas).set(data).where(eq(atestadosLicencas.id, id));
+}
+
+// ---- PLANOS DE CARREIRA ----
+export async function listPlanosCarreira(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(planosCarreira).where(eq(planosCarreira.colaboradorId, colaboradorId)).orderBy(desc(planosCarreira.createdAt));
+  }
+  return db.select().from(planosCarreira).orderBy(desc(planosCarreira.createdAt));
+}
+
+export async function createPlanoCarreira(data: InsertPlanoCarreira) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(planosCarreira).values(data);
+  return result[0].insertId;
+}
+
+export async function updatePlanoCarreira(id: number, data: Partial<InsertPlanoCarreira>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(planosCarreira).set(data).where(eq(planosCarreira.id, id));
+}
+
+export async function deletePlanoCarreira(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(planosCarreira).where(eq(planosCarreira.id, id));
 }
