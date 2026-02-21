@@ -1,0 +1,19 @@
+{
+  "query": "SELECT * FROM setor_config LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT * FROM setor_config LIMIT 1",
+  "rows": [
+    {
+      "id": "1",
+      "setorId": "1",
+      "sigla": "SUP",
+      "submenus": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/suporte/nova-tarefa\"}, {\"key\": \"clientes\", \"label\": \"Clientes\", \"rota\": \"/clientes\"}, {\"key\": \"parceiros\", \"label\": \"Parceiros\", \"rota\": \"/parceiros\"}, {\"key\": \"gestao-parcerias\", \"label\": \"Gestão de Parcerias\", \"rota\": \"/setor/suporte/gestao-parcerias\"}]",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]",
+      "createdAt": "2026-02-14 03:57:48",
+      "updatedAt": "2026-02-18 15:03:56"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsetorId\tsigla\tsubmenus\tworkflowStatuses\tcreatedAt\tupdatedAt\n1\t1\tSUP\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/suporte/nova-tarefa\"}, {\"key\": \"clientes\", \"label\": \"Clientes\", \"rota\": \"/clientes\"}, {\"key\": \"parceiros\", \"label\": \"Parceiros\", \"rota\": \"/parceiros\"}, {\"key\": \"gestao-parcerias\", \"label\": \"Gestão de Parcerias\", \"rota\": \"/setor/suporte/gestao-parcerias\"}]\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\t2026-02-14 03:57:48\t2026-02-18 15:03:56\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

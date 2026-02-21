@@ -56,6 +56,14 @@ const DashboardGEG = lazy(() => import("./pages/rh/DashboardGEG"));
 const OnboardingDigital = lazy(() => import("./pages/rh/OnboardingDigital"));
 const PesquisaClima = lazy(() => import("./pages/rh/PesquisaClima"));
 const BancoHoras = lazy(() => import("./pages/rh/BancoHoras"));
+const ValeTransporteGEG = lazy(() => import("./pages/rh/ValeTransporteGEG"));
+const AcademiaGEG = lazy(() => import("./pages/rh/AcademiaGEG"));
+const ComissaoRhGEG = lazy(() => import("./pages/rh/ComissaoRhGEG"));
+const DayOffGEG = lazy(() => import("./pages/rh/DayOffGEG"));
+const DoacaoSangueGEG = lazy(() => import("./pages/rh/DoacaoSangueGEG"));
+const ReajustesGEG = lazy(() => import("./pages/rh/ReajustesGEG"));
+const ApontamentosFolhaGEG = lazy(() => import("./pages/rh/ApontamentosFolhaGEG"));
+const NiveisCargoGEG = lazy(() => import("./pages/rh/NiveisCargoGEG"));
 const DashboardComissoes = lazy(() => import("./pages/DashboardComissoes"));
 
 function LazyFallback() {
@@ -115,6 +123,14 @@ function Router() {
         <Route path="/rh/onboarding" component={OnboardingDigital} />
         <Route path="/rh/pesquisa-clima" component={PesquisaClima} />
         <Route path="/rh/banco-horas" component={BancoHoras} />
+        <Route path="/rh/vale-transporte" component={ValeTransporteGEG} />
+        <Route path="/rh/academia" component={AcademiaGEG} />
+        <Route path="/rh/comissao-rh" component={ComissaoRhGEG} />
+        <Route path="/rh/day-off" component={DayOffGEG} />
+        <Route path="/rh/doacao-sangue" component={DoacaoSangueGEG} />
+        <Route path="/rh/reajustes" component={ReajustesGEG} />
+        <Route path="/rh/apontamentos-folha" component={ApontamentosFolhaGEG} />
+        <Route path="/rh/niveis-cargo" component={NiveisCargoGEG} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />

@@ -1127,11 +1127,11 @@
 - [x] Fluxo de aprovação: gestor e diretoria (campos aprovadorGestorId, aprovadorDiretoriaId)
 
 ### Bloco C: Benefícios — VT, Academia, Comissão
-- [ ] Vale Transporte: cálculo automático (dias úteis × 2 passagens × valor unitário)
-- [ ] Vale Transporte: valor unitário por cidade (SP e Barueri)
-- [ ] Vale Transporte: valor total a pagar por colaborador
-- [ ] Academia: cadastro (qual academia, plano, valor, desconto folha, data entrada, fidelidade)
-- [ ] Comissão RH: tipo (Evox Monitor, DPT, Crédito), cálculo, total a pagar
+- [x] Vale Transporte: cálculo automático (dias úteis × 2 passagens × valor unitário)
+- [x] Vale Transporte: valor unitário por cidade (SP e Barueri)
+- [x] Vale Transporte: valor total a pagar por colaborador
+- [x] Academia: cadastro (qual academia, plano, valor, desconto folha, data entrada, fidelidade)
+- [x] Comissão RH: tipo (Evox Monitor, DPT, Crédito), cálculo, total a pagar
 
 ### Bloco D: Licenças Expandidas
 - [x] Day Off aniversário: listar todas datas, campo alteração, motivo, aprovação
@@ -1156,5 +1156,19 @@
 - [x] Pré-requisitos de formação para promoção
 
 ### Bloco H: Ações e Eventos
-- [ ] Ação FIT Mensal: campos (o quê, data, horário, onde, arte/convite)
-- [ ] Ação Solidária Mensal: campos (descrição, data, horário, onde, arte/convite)
+- [x] Ação FIT Mensal: campos (o quê, data, horário, onde, arte/convite) — adicionados campos horário/local/arteConviteUrl na tabela acoes_beneficios
+- [x] Ação Solidária Mensal: campos (descrição, data, horário, onde, arte/convite) — mesmos campos
+
+### Frontend — Novas Páginas GEG
+- [x] ValeTransporteGEG.tsx — CRUD com cálculo automático
+- [x] AcademiaGEG.tsx — CRUD com fidelidade e desconto
+- [x] ComissaoRhGEG.tsx — CRUD por tipo
+- [x] DayOffGEG.tsx — CRUD com aprovação
+- [x] DoacaoSangueGEG.tsx — CRUD com comprovante e aprovação
+- [x] ReajustesGEG.tsx — CRUD + detecção 2 anos + sindical
+- [x] ApontamentosFolhaGEG.tsx — Geração e listagem
+- [x] NiveisCargoGEG.tsx — CRUD com requisitos
+- [x] Submenus GEG atualizados no sidebar
+- [x] Ícones de submenu adicionados
+- [x] 25 testes vitest para rotas GEG v36
+- [ ] Exportar apontamentos para contabilidade (Excel/PDF) — futuro

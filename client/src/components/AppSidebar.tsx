@@ -11,6 +11,7 @@ import {
   Banknote, GraduationCap, MonitorCheck, Gavel,
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu,
   MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
+  Bus, Dumbbell, DollarSign, Cake, Heart, Layers,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,15 @@ const SUBMENU_ICONS: Record<string, any> = {
   'onboarding': UserPlus,
   'pesquisa-clima': ClipboardCheck,
   'banco-horas': Clock,
+  'vale-transporte': Bus,
+  'academia': Dumbbell,
+  'comissao-rh': DollarSign,
+  'day-off': Cake,
+  'doacao-sangue': Heart,
+  'reajustes': TrendingUp,
+  'apontamentos-folha': FileBarChart,
+  'niveis-cargo': Layers,
+  'gestao-parcerias': Handshake,
 };
 
 interface SetorConfigItem {

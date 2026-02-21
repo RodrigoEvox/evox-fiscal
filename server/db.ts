@@ -834,6 +834,14 @@ export async function seedSetoresEvox() {
         { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/rh/nova-tarefa" },
         { key: "colaboradores", label: "Colaboradores", rota: "/setor/rh/colaboradores" },
         { key: "ferias", label: "Férias", rota: "/setor/rh/ferias" },
+        { key: "vale-transporte", label: "Vale Transporte", rota: "/setor/rh/vale-transporte" },
+        { key: "academia", label: "Academia", rota: "/setor/rh/academia" },
+        { key: "comissao-rh", label: "Comissão RH", rota: "/setor/rh/comissao-rh" },
+        { key: "day-off", label: "Day Off", rota: "/setor/rh/day-off" },
+        { key: "doacao-sangue", label: "Doação de Sangue", rota: "/setor/rh/doacao-sangue" },
+        { key: "reajustes", label: "Reajustes Salariais", rota: "/setor/rh/reajustes" },
+        { key: "apontamentos-folha", label: "Apontamentos Folha", rota: "/setor/rh/apontamentos-folha" },
+        { key: "niveis-cargo", label: "Níveis de Cargo", rota: "/setor/rh/niveis-cargo" },
       ] },
   ];
 
