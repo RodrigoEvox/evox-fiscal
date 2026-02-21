@@ -14,13 +14,12 @@ import { toast } from 'sonner';
 import { Plus, Heart, Droplets, Leaf, BarChart3, Trophy, Search, Edit2, Trash2 } from 'lucide-react';
 
 const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> = {
-  acao_fit: { label: 'Ação Fit', icon: Heart, color: 'bg-green-100 text-green-800' },
-  solidaria: { label: 'Solidária', icon: Droplets, color: 'bg-blue-100 text-blue-800' },
+  fit: { label: 'Ação Fit', icon: Heart, color: 'bg-green-100 text-green-800' },
+  solidaria: { label: 'Ação Solidária', icon: Droplets, color: 'bg-blue-100 text-blue-800' },
+  engajamento: { label: 'Ação de Engajamento', icon: BarChart3, color: 'bg-purple-100 text-purple-800' },
   doacao_sangue: { label: 'Doação de Sangue', icon: Droplets, color: 'bg-red-100 text-red-800' },
-  sustentavel: { label: 'Prática Sustentável', icon: Leaf, color: 'bg-emerald-100 text-emerald-800' },
-  engajamento: { label: 'Engajamento', icon: BarChart3, color: 'bg-purple-100 text-purple-800' },
-  beneficio: { label: 'Benefício', icon: Trophy, color: 'bg-yellow-100 text-yellow-800' },
-  campanha: { label: 'Campanha', icon: Trophy, color: 'bg-orange-100 text-orange-800' },
+  sustentabilidade: { label: 'Sustentabilidade', icon: Leaf, color: 'bg-emerald-100 text-emerald-800' },
+  outro: { label: 'Outro', icon: Trophy, color: 'bg-gray-100 text-gray-800' },
 };
 
 export default function AcoesBeneficios() {
@@ -29,7 +28,7 @@ export default function AcoesBeneficios() {
   const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState('todos');
   const [form, setForm] = useState({
-    titulo: '', tipo: 'acao_fit' as string, descricao: '', dataInicio: '', dataFim: '',
+    titulo: '', tipo: 'fit' as string, descricao: '', dataInicio: '', dataFim: '',
     metaParticipantes: 0, participantesAtuais: 0, responsavel: '', status: 'ativa' as string,
     observacao: '',
   });
@@ -40,7 +39,7 @@ export default function AcoesBeneficios() {
   const deleteMut = trpc.acoesBeneficios.delete.useMutation({ onSuccess: () => { acoes.refetch(); toast.success('Ação excluída!'); } });
 
   const resetForm = () => {
-    setForm({ titulo: '', tipo: 'acao_fit', descricao: '', dataInicio: '', dataFim: '', metaParticipantes: 0, participantesAtuais: 0, responsavel: '', status: 'ativa', observacao: '' });
+    setForm({ titulo: '', tipo: 'fit', descricao: '', dataInicio: '', dataFim: '', metaParticipantes: 0, participantesAtuais: 0, responsavel: '', status: 'ativa', observacao: '' });
     setEditId(null);
   };
 
@@ -55,7 +54,7 @@ export default function AcoesBeneficios() {
   };
 
   const openEdit = (a: any) => {
-    setForm({ titulo: a.titulo || '', tipo: a.tipo || 'acao_fit', descricao: a.descricao || '', dataInicio: a.dataInicio || '', dataFim: a.dataFim || '', metaParticipantes: a.metaParticipantes || 0, participantesAtuais: a.participantesAtuais || 0, responsavel: a.responsavel || '', status: a.status || 'ativa', observacao: a.observacao || '' });
+    setForm({ titulo: a.titulo || '', tipo: a.tipo || 'fit', descricao: a.descricao || '', dataInicio: a.dataInicio || '', dataFim: a.dataFim || '', metaParticipantes: a.metaParticipantes || 0, participantesAtuais: a.participantesAtuais || 0, responsavel: a.responsavel || '', status: a.status || 'ativa', observacao: a.observacao || '' });
     setEditId(a.id);
     setShowForm(true);
   };
@@ -84,7 +83,7 @@ export default function AcoesBeneficios() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Ações e Benefícios</h1>
-          <p className="text-muted-foreground">Gestão de ações fit, solidárias, campanhas e engajamento — Gente & Gestão</p>
+          <p className="text-muted-foreground">Gestão de ações fit, solidárias, engajamento e doação de sangue — Gente & Gestão</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Nova Ação</Button>
       </div>
@@ -116,7 +115,7 @@ export default function AcoesBeneficios() {
       {/* Active Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {ativas.map((a: any) => {
-          const tipoInfo = TIPO_LABELS[a.tipo] || TIPO_LABELS.beneficio;
+          const tipoInfo = TIPO_LABELS[a.tipo] || TIPO_LABELS.outro;
           const Icon = tipoInfo.icon;
           const progress = a.metaParticipantes > 0 ? Math.min(100, Math.round((a.participantesAtuais / a.metaParticipantes) * 100)) : 0;
           return (
@@ -163,7 +162,7 @@ export default function AcoesBeneficios() {
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">Concluídas ({concluidas.length})</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
             {concluidas.map((a: any) => {
-              const tipoInfo = TIPO_LABELS[a.tipo] || TIPO_LABELS.beneficio;
+              const tipoInfo = TIPO_LABELS[a.tipo] || TIPO_LABELS.outro;
               return (
                 <Card key={a.id}>
                   <CardContent className="p-4">

@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM colaboradores LIKE 'recebeComissao';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM colaboradores LIKE 'recebeComissao';",
+  "rows": [
+    {
+      "Field": "recebeComissao",
+      "Type": "tinyint(1)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nrecebeComissao\ttinyint(1)\tYES\t\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

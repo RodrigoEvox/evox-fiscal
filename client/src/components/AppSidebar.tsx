@@ -107,7 +107,7 @@ interface SetorConfigItem {
   id: number;
   setorId: number;
   sigla: string;
-  submenus: { key: string; label: string; rota: string }[] | null;
+  submenus: { key: string; label: string; rota: string; grupo?: string }[] | null;
   workflowStatuses: string[] | null;
 }
 
@@ -152,7 +152,7 @@ export default function AppSidebar() {
           cor: setor.cor || '#3B82F6',
           icone: setor.icone || 'Building2',
           setorId: setor.id,
-          submenus: (cfg.submenus || []) as { key: string; label: string; rota: string }[],
+          submenus: (cfg.submenus || []) as { key: string; label: string; rota: string; grupo?: string }[],
         };
       })
       .filter(Boolean) as any[];
@@ -267,37 +267,83 @@ export default function AppSidebar() {
           )} />
         </button>
 
-        {isOpen && setor.submenus.length > 0 && (
-          <div className="ml-4 pl-3 border-l border-white/5 space-y-0.5 py-0.5">
-            {setor.submenus.map((sub: any) => {
-              const SubIcon = SUBMENU_ICONS[sub.key] || FileText;
-              const subActive = location === sub.rota;
-              return (
-                <Link key={sub.key} href={sub.rota}>
+        {isOpen && setor.submenus.length > 0 && (() => {
+          // Group submenus by grupo field
+          const hasGroups = setor.submenus.some((s: any) => s.grupo);
+          if (!hasGroups) {
+            return (
+              <div className="ml-4 pl-3 border-l border-white/5 space-y-0.5 py-0.5">
+                {setor.submenus.map((sub: any) => {
+                  const SubIcon = SUBMENU_ICONS[sub.key] || FileText;
+                  const subActive = location === sub.rota;
+                  return (
+                    <Link key={sub.key} href={sub.rota}>
+                      <div className={cn(
+                        'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                        subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                      )}>
+                        <SubIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{sub.label}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+                <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
                   <div className={cn(
                     'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
-                    subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                    location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/5',
                   )}>
-                    <SubIcon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{sub.label}</span>
+                    <FileBarChart className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Relatórios</span>
                   </div>
                 </Link>
-              );
-            })}
-            {/* Relatórios - disponível em todos os setores */}
-            <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
-              <div className={cn(
-                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
-                location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-              )}>
-                <FileBarChart className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Relatórios</span>
               </div>
-            </Link>
-          </div>
-        )}
+            );
+          }
+          // Grouped rendering
+          const groups: { name: string; items: any[] }[] = [];
+          const seen = new Set<string>();
+          for (const sub of setor.submenus) {
+            const g = sub.grupo || '_sem_grupo';
+            if (!seen.has(g)) {
+              seen.add(g);
+              groups.push({ name: g, items: [] });
+            }
+            groups.find(gr => gr.name === g)!.items.push(sub);
+          }
+          return (
+            <div className="ml-4 pl-3 border-l border-white/5 py-0.5">
+              {groups.map((group) => (
+                <div key={group.name} className="mb-1">
+                  {group.name !== '_sem_grupo' && (
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-white/25 px-2.5 pt-2 pb-1">
+                      {group.name}
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    {group.items.map((sub: any) => {
+                      const SubIcon = SUBMENU_ICONS[sub.key] || FileText;
+                      const subActive = location === sub.rota;
+                      return (
+                        <Link key={sub.key} href={sub.rota}>
+                          <div className={cn(
+                            'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                            subActive ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                          )}>
+                            <SubIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{sub.label}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     );
   };

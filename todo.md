@@ -1194,3 +1194,24 @@
 - [x] Lista de reajustes pendentes com ação rápida
 - [x] Página frontend DashboardGEG.tsx integrada ao dashboard existente
 - [x] 6 testes vitest para rota dashboardGEG
+
+## GEG v38 — Reestruturação de Submenus e Melhorias
+
+### Campos do Colaborador
+- [x] Dois campos de período de experiência (experiência 1 e experiência 2) para cálculo de rescisão
+- [x] Campo comissão em remuneração (sim/não apenas)
+
+### Férias — CLT/CCT 2026
+- [x] Pesquisar mudanças CLT e CCT 2026 para férias
+- [x] Atualizar validações de férias conforme novas regras (aviso 30 dias, feriados nacionais 2026, pagamento 2 dias antes)
+
+### Reestruturação de Submenus GEG
+- [x] Criar submenu "Gestão RH" contendo: Colaboradores, Onboarding, Comissões, Banco de Horas, Atestados e Licenças, Férias e Folgas, Reajustes Salariais
+- [x] Separar "Ações e Benefícios" em dois: "Ações Evox" e "Benefícios"
+- [x] "Ações Evox" com tipos: Ação Fit, Ação Solidária, Ação de Engajamento, Doação de sangue (excluir benefício e campanha)
+- [x] "Benefícios" contendo: Vale Transporte, Academia, Day Off, opção de incluir novo
+- [x] Criar submenu "Carreira e Desenvolvimento" contendo: Carreira, Metas, Avaliação 360, Pesquisa de Clima, opção de incluir novo
+- [x] Renomear "Cargos e Salários" para "Custo Salarial"
+- [x] Renomear "Níveis de Cargo" para "Cargos e Salários"
+- [x] Renomear "Relatórios RH" para "Visão Analítica"
+- [x] 8 testes vitest para GEG v38

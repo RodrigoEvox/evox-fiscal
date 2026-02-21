@@ -1,0 +1,50 @@
+{
+  "query": "SHOW COLUMNS FROM colaboradores WHERE Field LIKE '%comissao%' OR Field LIKE '%Comissao%' OR Field LIKE '%experiencia%' OR Field LIKE '%Experiencia%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM colaboradores WHERE Field LIKE '%comissao%' OR Field LIKE '%Comissao%' OR Field LIKE '%experiencia%' OR Field LIKE '%Experiencia%';",
+  "rows": [
+    {
+      "Field": "periodoExperiencia1Inicio",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "periodoExperiencia1Fim",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "periodoExperiencia2Inicio",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "periodoExperiencia2Fim",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recebeComissao",
+      "Type": "tinyint(1)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nperiodoExperiencia1Inicio\tvarchar(10)\tYES\t\tNULL\t\nperiodoExperiencia1Fim\tvarchar(10)\tYES\t\tNULL\t\nperiodoExperiencia2Inicio\tvarchar(10)\tYES\t\tNULL\t\nperiodoExperiencia2Fim\tvarchar(10)\tYES\t\tNULL\t\nrecebeComissao\ttinyint(1)\tYES\t\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 47
+}

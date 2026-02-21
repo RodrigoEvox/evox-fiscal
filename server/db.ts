@@ -1901,14 +1901,13 @@ export async function getAniversariantesMes(mes?: number) {
 export async function getContratosVencendo(diasAntecedencia: number = 30) {
   const db = await getDb();
   if (!db) return [];
-  // Buscar colaboradores com periodoExperiencia definido e status ativo/experiencia
+  // Buscar colaboradores com períodos de experiência definidos e status ativo/experiencia
   const rows = await db.select().from(colaboradores)
     .where(
       and(
-        isNotNull(colaboradores.periodoExperiencia),
-        sql`${colaboradores.periodoExperiencia} > 0`,
         sql`${colaboradores.statusColaborador} IN ('ativo', 'experiencia')`,
         isNotNull(colaboradores.dataAdmissao),
+        sql`(${colaboradores.periodoExperiencia1Fim} IS NOT NULL OR ${colaboradores.periodoExperiencia2Fim} IS NOT NULL)`,
       )
     );
   
@@ -1916,19 +1915,24 @@ export async function getContratosVencendo(diasAntecedencia: number = 30) {
   const resultado: any[] = [];
   
   for (const c of rows) {
-    if (!c.dataAdmissao || !c.periodoExperiencia) continue;
-    const admissao = new Date(c.dataAdmissao);
-    const vencimento = new Date(admissao);
-    vencimento.setDate(vencimento.getDate() + c.periodoExperiencia);
-    
-    const diffDias = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDias >= 0 && diffDias <= diasAntecedencia) {
-      resultado.push({
-        ...c,
-        dataVencimento: vencimento.toISOString().split('T')[0],
-        diasRestantes: diffDias,
-      });
+    if (!c.dataAdmissao) continue;
+    // Check both experience periods
+    const periodos = [
+      { inicio: c.periodoExperiencia1Inicio, fim: c.periodoExperiencia1Fim, label: '1º Período' },
+      { inicio: c.periodoExperiencia2Inicio, fim: c.periodoExperiencia2Fim, label: '2º Período' },
+    ];
+    for (const p of periodos) {
+      if (!p.fim) continue;
+      const vencimento = new Date(p.fim);
+      const diffDias = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDias >= 0 && diffDias <= diasAntecedencia) {
+        resultado.push({
+          ...c,
+          periodoLabel: p.label,
+          dataVencimento: p.fim,
+          diasRestantes: diffDias,
+        });
+      }
     }
   }
   

@@ -13,25 +13,99 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search, CalendarDays, User, Briefcase, Info, Edit2, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
 
-// CLT validation helpers
+// Feriados nacionais brasileiros (atualizado 2026)
+function getFeriadosNacionais(ano: number): string[] {
+  const fixos = [
+    `${ano}-01-01`, // Confraternização Universal
+    `${ano}-04-21`, // Tiradentes
+    `${ano}-05-01`, // Dia do Trabalho
+    `${ano}-09-07`, // Independência
+    `${ano}-10-12`, // Nossa Senhora Aparecida
+    `${ano}-11-02`, // Finados
+    `${ano}-11-15`, // Proclamação da República
+    `${ano}-12-25`, // Natal
+  ];
+  // Páscoa (algoritmo de Meeus)
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31);
+  const dia = ((h + l - 7 * m + 114) % 31) + 1;
+  const pascoa = new Date(ano, mes - 1, dia);
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+  fixos.push(
+    fmt(addDays(pascoa, -47)), // Carnaval (terça)
+    fmt(addDays(pascoa, -48)), // Carnaval (segunda)
+    fmt(addDays(pascoa, -2)),  // Sexta-feira Santa
+    fmt(pascoa),               // Páscoa
+    fmt(addDays(pascoa, 60)),  // Corpus Christi
+  );
+  return fixos;
+}
+
+function isFeriado(dataStr: string): boolean {
+  const d = new Date(dataStr + 'T12:00:00');
+  const feriados = getFeriadosNacionais(d.getFullYear());
+  return feriados.includes(dataStr);
+}
+
+// CLT validation helpers (atualizado CLT/CCT 2026)
 function validateFeriasCLT(dataInicio: string, dataFim: string, diasPeriodo: number, periodoNum: number) {
   const alerts: { tipo: 'erro' | 'aviso'; msg: string }[] = [];
   if (!dataInicio || !dataFim) return alerts;
 
   const inicio = new Date(dataInicio + 'T12:00:00');
+  const hoje = new Date();
 
-  // Início não pode ser 2 dias antes de feriado/repouso semanal
+  // Art. 134 §3º: Início não pode coincidir com feriado ou DSR
   const diaSemana = inicio.getDay();
-  if (diaSemana === 5 || diaSemana === 4) {
-    alerts.push({ tipo: 'aviso', msg: 'CLT Art. 134 §3º: É proibido que o início das férias ocorra no período de dois dias que antecede feriado ou repouso semanal remunerado.' });
+  if (diaSemana === 0 || diaSemana === 6) {
+    alerts.push({ tipo: 'erro', msg: 'CLT Art. 134 §3º: O início das férias não pode coincidir com repouso semanal remunerado (sábado/domingo).' });
+  }
+  if (isFeriado(dataInicio)) {
+    alerts.push({ tipo: 'erro', msg: 'CLT Art. 134 §3º: O início das férias não pode coincidir com feriado nacional.' });
   }
 
-  // Fracionamento rules
+  // Início não pode ser nos 2 dias que antecedem feriado ou DSR
+  for (let i = 1; i <= 2; i++) {
+    const proxDia = new Date(inicio);
+    proxDia.setDate(proxDia.getDate() + i);
+    const proxDiaSemana = proxDia.getDay();
+    const proxDiaStr = proxDia.toISOString().split('T')[0];
+    if (proxDiaSemana === 0 || proxDiaSemana === 6 || isFeriado(proxDiaStr)) {
+      alerts.push({ tipo: 'aviso', msg: `CLT Art. 134 §3º: O início das férias está a ${i} dia(s) de feriado/DSR. Recomenda-se evitar.` });
+      break;
+    }
+  }
+
+  // CLT 2026: Aviso prévio de 30 dias (Art. 135)
+  const diasAteInicio = Math.round((inicio.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  if (diasAteInicio < 30) {
+    alerts.push({ tipo: 'aviso', msg: `CLT Art. 135: O aviso de férias deve ser feito com 30 dias de antecedência. Faltam apenas ${diasAteInicio} dias para o início.` });
+  }
+
+  // CLT 2026: Pagamento até 2 dias antes do início (Art. 145)
+  const dataPagamento = new Date(inicio);
+  dataPagamento.setDate(dataPagamento.getDate() - 2);
+  if (dataPagamento < hoje) {
+    alerts.push({ tipo: 'aviso', msg: `CLT Art. 145 (2026): O pagamento das férias deve ocorrer até 2 dias antes do início. Prazo: ${dataPagamento.toLocaleDateString('pt-BR')}. Atraso gera multa de R$ 170,26/colaborador.` });
+  }
+
+  // Fracionamento rules (Art. 134 §1º)
   if (periodoNum === 1 && diasPeriodo < 14) {
     alerts.push({ tipo: 'erro', msg: 'CLT Art. 134 §1º: O primeiro período de férias fracionadas não pode ser inferior a 14 dias corridos.' });
   }
   if (periodoNum > 1 && diasPeriodo < 5) {
     alerts.push({ tipo: 'erro', msg: 'CLT Art. 134 §1º: Nenhum período de férias fracionadas pode ser inferior a 5 dias corridos.' });
+  }
+
+  // Total de períodos não pode exceder 3
+  if (periodoNum > 3) {
+    alerts.push({ tipo: 'erro', msg: 'CLT Art. 134 §1º: As férias podem ser fracionadas em no máximo 3 períodos.' });
   }
 
   return alerts;

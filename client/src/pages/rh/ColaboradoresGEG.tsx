@@ -123,7 +123,11 @@ const EMPTY_FORM = {
   dataAdmissao: '', cargo: '', funcao: '', salarioBase: '', comissoes: '', adicionais: '',
   jornadaEntrada: '08:00', jornadaSaida: '18:00', jornadaIntervalo: '01:00', cargaHoraria: '44',
   jornadaDias: ['seg', 'ter', 'qua', 'qui', 'sex'] as string[],
-  tipoContrato: 'clt' as string, periodoExperiencia: 45, localTrabalho: '' as string,
+  tipoContrato: 'clt' as string,
+  periodoExperiencia1Inicio: '', periodoExperiencia1Fim: '',
+  periodoExperiencia2Inicio: '', periodoExperiencia2Fim: '',
+  recebeComissao: false,
+  localTrabalho: '' as string,
   valeTransporte: false, banco: '', agencia: '', conta: '', tipoConta: '' as string, chavePix: '',
   asoAdmissionalApto: false, asoAdmissionalData: '',
   dependentes: [] as Dependente[],
@@ -251,7 +255,11 @@ export default function ColaboradoresGEG() {
 
     const payload = {
       ...form,
-      periodoExperiencia: form.periodoExperiencia || undefined,
+      periodoExperiencia1Inicio: form.periodoExperiencia1Inicio || undefined,
+      periodoExperiencia1Fim: form.periodoExperiencia1Fim || undefined,
+      periodoExperiencia2Inicio: form.periodoExperiencia2Inicio || undefined,
+      periodoExperiencia2Fim: form.periodoExperiencia2Fim || undefined,
+      recebeComissao: form.recebeComissao,
       setorId: form.setorId || undefined,
       estadoCivil: (form.estadoCivil || undefined) as any,
       sexo: (form.sexo || undefined) as any,
@@ -961,9 +969,28 @@ export default function ColaboradoresGEG() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Período de Experiência (dias)">
-                <Input type="number" value={form.periodoExperiencia} onChange={e => { setForm(f => ({ ...f, periodoExperiencia: Number(e.target.value) })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <div className="col-span-full">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">1º Período de Experiência</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Início">
+                    <Input type="date" value={form.periodoExperiencia1Inicio} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Inicio: e.target.value })); markDirty(); }} disabled={viewMode} />
+                  </Field>
+                  <Field label="Fim">
+                    <Input type="date" value={form.periodoExperiencia1Fim} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Fim: e.target.value })); markDirty(); }} disabled={viewMode} />
+                  </Field>
+                </div>
+              </div>
+              <div className="col-span-full">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">2º Período de Experiência</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Início">
+                    <Input type="date" value={form.periodoExperiencia2Inicio} onChange={e => { setForm(f => ({ ...f, periodoExperiencia2Inicio: e.target.value })); markDirty(); }} disabled={viewMode} />
+                  </Field>
+                  <Field label="Fim">
+                    <Input type="date" value={form.periodoExperiencia2Fim} onChange={e => { setForm(f => ({ ...f, periodoExperiencia2Fim: e.target.value })); markDirty(); }} disabled={viewMode} />
+                  </Field>
+                </div>
+              </div>
               <Field label="Cargo" required>
                 <Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} disabled={viewMode} />
               </Field>
@@ -1015,8 +1042,14 @@ export default function ColaboradoresGEG() {
               <Field label="Salário Base" required>
                 <Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
               </Field>
-              <Field label="Comissões">
+              <Field label="Comissões (valor)">
                 <Input value={form.comissoes} onChange={e => { setForm(f => ({ ...f, comissoes: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
+              </Field>
+              <Field label="Recebe Comissão?">
+                <div className="flex items-center gap-2 h-9">
+                  <input type="checkbox" checked={form.recebeComissao} onChange={e => { setForm(f => ({ ...f, recebeComissao: e.target.checked })); markDirty(); }} disabled={viewMode} className="h-4 w-4 rounded border-gray-300" />
+                  <span className="text-sm">{form.recebeComissao ? 'Sim' : 'Não'}</span>
+                </div>
               </Field>
               <Field label="Adicionais">
                 <Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />

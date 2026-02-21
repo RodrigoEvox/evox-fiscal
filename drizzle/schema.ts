@@ -774,13 +774,17 @@ export const colaboradores = mysqlTable("colaboradores", {
   funcao: varchar("funcao", { length: 255 }),
   salarioBase: decimal("salarioBase", { precision: 12, scale: 2 }).notNull(),
   comissoes: decimal("comissoes", { precision: 12, scale: 2 }).default("0"),
+  recebeComissao: boolean("recebeComissao").default(false),
   adicionais: decimal("adicionais", { precision: 12, scale: 2 }).default("0"),
   jornadaEntrada: varchar("jornadaEntrada", { length: 5 }),
   jornadaSaida: varchar("jornadaSaida", { length: 5 }),
   jornadaIntervalo: varchar("jornadaIntervalo", { length: 20 }),
   cargaHoraria: varchar("cargaHoraria", { length: 10 }),
   tipoContrato: mysqlEnum("tipoContrato", ["clt", "pj", "contrato_trabalho"]).default("clt").notNull(),
-  periodoExperiencia: int("periodoExperiencia"), // dias
+  periodoExperiencia1Inicio: varchar("periodoExperiencia1Inicio", { length: 10 }),
+  periodoExperiencia1Fim: varchar("periodoExperiencia1Fim", { length: 10 }),
+  periodoExperiencia2Inicio: varchar("periodoExperiencia2Inicio", { length: 10 }),
+  periodoExperiencia2Fim: varchar("periodoExperiencia2Fim", { length: 10 }),
   localTrabalho: mysqlEnum("localTrabalho", ["home_office", "barueri", "uberaba"]).default("barueri"),
   valeTransporte: boolean("valeTransporte").default(false).notNull(),
   // Dados Bancários
@@ -908,7 +912,7 @@ export type InsertTarefaSetor = typeof tarefasSetor.$inferInsert;
 export const acoesBeneficios = mysqlTable("acoes_beneficios", {
   id: int("id").autoincrement().primaryKey(),
   titulo: varchar("titulo", { length: 500 }).notNull(),
-  tipo: mysqlEnum("tipo", ["fit", "solidaria", "campanha_doacao", "sustentabilidade", "engajamento", "beneficio", "outro"]).notNull(),
+  tipo: mysqlEnum("tipo", ["fit", "solidaria", "engajamento", "doacao_sangue", "sustentabilidade", "outro"]).notNull(),
   descricao: text("descricao"),
   dataInicio: varchar("dataInicio", { length: 10 }),
   dataFim: varchar("dataFim", { length: 10 }),

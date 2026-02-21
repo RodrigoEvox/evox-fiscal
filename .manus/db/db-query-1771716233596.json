@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE colaboradores \n  ADD COLUMN periodoExperiencia1Inicio VARCHAR(10) NULL,\n  ADD COLUMN periodoExperiencia1Fim VARCHAR(10) NULL,\n  ADD COLUMN periodoExperiencia2Inicio VARCHAR(10) NULL,\n  ADD COLUMN periodoExperiencia2Fim VARCHAR(10) NULL,\n  ADD COLUMN recebeComissao TINYINT(1) DEFAULT 0;\n\n-- Migrate existing periodoExperiencia data if any\nUPDATE colaboradores SET periodoExperiencia1Inicio = dataAdmissao WHERE periodoExperiencia IS NOT NULL;\n\nALTER TABLE colaboradores DROP COLUMN IF EXISTS periodoExperiencia;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE colaboradores \n  ADD COLUMN periodoExperiencia1Inicio VARCHAR(10) NULL,\n  ADD COLUMN periodoExperiencia1Fim VARCHAR(10) NULL,\n  ADD COLUMN periodoExperiencia2Inicio VARCHAR(10) NULL,\n  ADD COLUMN periodoExperiencia2Fim VARCHAR(10) NULL,\n  ADD COLUMN recebeComissao TINYINT(1) DEFAULT 0;\n\n-- Migrate existing periodoExperiencia data if any\nUPDATE colaboradores SET periodoExperiencia1Inicio = dataAdmissao WHERE periodoExperiencia IS NOT NULL;\n\nALTER TABLE colaboradores DROP COLUMN IF EXISTS periodoExperiencia;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 962
+}
