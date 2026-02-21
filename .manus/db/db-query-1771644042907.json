@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `niveis_cargo` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `setorId` int NOT NULL,\n  `cargo` varchar(255) NOT NULL,\n  `nivel` int NOT NULL DEFAULT 1,\n  `descricaoNivel` varchar(255),\n  `salarioMinimo` decimal(12,2),\n  `salarioMaximo` decimal(12,2),\n  `grauInstrucaoMinimo` enum('fundamental_incompleto','fundamental_completo','medio_incompleto','medio_completo','superior_incompleto','superior_completo','pos_graduacao','mestrado','doutorado'),\n  `requisitos` text,\n  `competencias` text,\n  `tempoMinimoMeses` int,\n  `ativo` boolean DEFAULT true NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute CREATE TABLE `niveis_cargo` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `setorId` int NOT NULL,\n  `cargo` varchar(255) NOT NULL,\n  `nivel` int NOT NULL DEFAULT 1,\n  `descricaoNivel` varchar(255),\n  `salarioMinimo` decimal(12,2),\n  `salarioMaximo` decimal(12,2),\n  `grauInstrucaoMinimo` enum('fundamental_incompleto','fundamental_completo','medio_incompleto','medio_completo','superior_incompleto','superior_completo','pos_graduacao','mestrado','doutorado'),\n  `requisitos` text,\n  `competencias` text,\n  `tempoMinimoMeses` int,\n  `ativo` boolean DEFAULT true NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 136
+}

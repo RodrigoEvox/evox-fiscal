@@ -94,12 +94,30 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; b
   aviso_previo: { label: 'Aviso Prévio', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Briefcase, bgCard: 'border-l-amber-500' },
 };
 
-type Dependente = { nome: string; cpf: string; dataNascimento: string; parentesco: string };
+type Dependente = { nome: string; cpf: string; dataNascimento: string; parentesco: string; dependenteIR?: boolean; dependentePlanoSaude?: boolean };
+
+const GRAUS_INSTRUCAO = [
+  { value: 'fundamental_incompleto', label: 'Fundamental Incompleto' },
+  { value: 'fundamental_completo', label: 'Fundamental Completo' },
+  { value: 'medio_incompleto', label: 'Médio Incompleto' },
+  { value: 'medio_completo', label: 'Médio Completo' },
+  { value: 'superior_incompleto', label: 'Superior Incompleto' },
+  { value: 'superior_completo', label: 'Superior Completo' },
+  { value: 'pos_graduacao', label: 'Pós-Graduação' },
+  { value: 'mestrado', label: 'Mestrado' },
+  { value: 'doutorado', label: 'Doutorado' },
+];
+
+const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
 const EMPTY_FORM = {
   nomeCompleto: '', cpf: '', dataNascimento: '', rgNumero: '', rgOrgaoEmissor: '', rgDataEmissao: '',
-  ctpsNumero: '', pisPasep: '', nomeMae: '', nomePai: '', nacionalidade: 'Brasileira', naturalidade: '',
-  estadoCivil: '' as string, tituloEleitor: '', certificadoReservista: '', sexo: '' as string,
+  ctpsNumero: '', ctpsUfEmissao: '' as string, pisPasep: '', nomeMae: '', nomePai: '', nacionalidade: 'Brasileira', naturalidade: '',
+  estadoCivil: '' as string, tituloEleitor: '', tituloEleitorZona: '', tituloEleitorSecao: '', certificadoReservista: '', sexo: '' as string,
+  grauInstrucao: '' as string, formacaoAcademica: '',
+  contatoEmergenciaNome: '', contatoEmergenciaTelefone: '', contatoEmergenciaParentesco: '',
+  pagaPensaoAlimenticia: false, valorPensaoAlimenticia: '',
+  temContribuicaoAssistencial: false, valorContribuicaoAssistencial: '',
   cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
   telefone: '', email: '',
   dataAdmissao: '', cargo: '', funcao: '', salarioBase: '', comissoes: '', adicionais: '',
@@ -132,7 +150,7 @@ export default function ColaboradoresGEG() {
   const [exitAlert, setExitAlert] = useState(false);
   const [cpfValid, setCpfValid] = useState<boolean | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
-  const [depForm, setDepForm] = useState<Dependente>({ nome: '', cpf: '', dataNascimento: '', parentesco: '' });
+  const [depForm, setDepForm] = useState<Dependente>({ nome: '', cpf: '', dataNascimento: '', parentesco: '', dependenteIR: false, dependentePlanoSaude: false });
   const formDirtyRef = useRef(false);
 
   const colaboradores = trpc.colaboradores.list.useQuery();
@@ -242,12 +260,16 @@ export default function ColaboradoresGEG() {
       tipoConta: (form.tipoConta || undefined) as any,
       nivelHierarquico: (form.nivelHierarquico || undefined) as any,
       statusColaborador: (form.statusColaborador || 'ativo') as any,
+      ctpsUfEmissao: form.ctpsUfEmissao || undefined,
+      grauInstrucao: (form.grauInstrucao || undefined) as any,
+      valorPensaoAlimenticia: form.valorPensaoAlimenticia || undefined,
+      valorContribuicaoAssistencial: form.valorContribuicaoAssistencial || undefined,
     };
 
     if (editId) {
       updateMut.mutate({ id: editId, data: payload });
     } else {
-      createMut.mutate(payload);
+      createMut.mutate(payload as any);
     }
   };
 
@@ -285,7 +307,7 @@ export default function ColaboradoresGEG() {
     if (!depForm.nome.trim()) { toast.error('Nome do dependente é obrigatório'); return; }
     if (!depForm.parentesco) { toast.error('Parentesco é obrigatório'); return; }
     setForm(f => ({ ...f, dependentes: [...f.dependentes, { ...depForm }] }));
-    setDepForm({ nome: '', cpf: '', dataNascimento: '', parentesco: '' });
+    setDepForm({ nome: '', cpf: '', dataNascimento: '', parentesco: '', dependenteIR: false, dependentePlanoSaude: false });
     markDirty();
   };
 
@@ -810,14 +832,63 @@ export default function ColaboradoresGEG() {
               <Field label="CTPS (Número/Série)">
                 <Input value={form.ctpsNumero} onChange={e => { setForm(f => ({ ...f, ctpsNumero: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Número e série" />
               </Field>
+              <Field label="CTPS UF Emissão">
+                <Select value={form.ctpsUfEmissao} onValueChange={v => { setForm(f => ({ ...f, ctpsUfEmissao: v })); markDirty(); }} disabled={viewMode}>
+                  <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                  <SelectContent>
+                    {UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
               <Field label="PIS/PASEP">
                 <Input value={form.pisPasep} onChange={e => { setForm(f => ({ ...f, pisPasep: e.target.value })); markDirty(); }} disabled={viewMode} />
               </Field>
               <Field label="Título de Eleitor">
                 <Input value={form.tituloEleitor} onChange={e => { setForm(f => ({ ...f, tituloEleitor: e.target.value })); markDirty(); }} disabled={viewMode} />
               </Field>
+              <Field label="Zona">
+                <Input value={form.tituloEleitorZona} onChange={e => { setForm(f => ({ ...f, tituloEleitorZona: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Zona eleitoral" />
+              </Field>
+              <Field label="Seção">
+                <Input value={form.tituloEleitorSecao} onChange={e => { setForm(f => ({ ...f, tituloEleitorSecao: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Seção eleitoral" />
+              </Field>
               <Field label="Certificado Reservista">
                 <Input value={form.certificadoReservista} onChange={e => { setForm(f => ({ ...f, certificadoReservista: e.target.value })); markDirty(); }} disabled={viewMode} />
+              </Field>
+            </div>
+
+            {/* ===== FORMAÇÃO ===== */}
+            <SectionTitle>Formação Acadêmica</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+              <Field label="Grau de Instrução">
+                <Select value={form.grauInstrucao} onValueChange={v => { setForm(f => ({ ...f, grauInstrucao: v })); markDirty(); }} disabled={viewMode}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    {GRAUS_INSTRUCAO.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Formação / Curso">
+                <Input value={form.formacaoAcademica} onChange={e => { setForm(f => ({ ...f, formacaoAcademica: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Ex: Administração de Empresas" />
+              </Field>
+            </div>
+
+            {/* ===== CONTATO DE EMERGÊNCIA ===== */}
+            <SectionTitle>Contato de Emergência</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="Nome">
+                <Input value={form.contatoEmergenciaNome} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaNome: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Nome do contato" />
+              </Field>
+              <Field label="Telefone">
+                <Input value={form.contatoEmergenciaTelefone} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaTelefone: maskPhone(e.target.value) })); markDirty(); }} disabled={viewMode} placeholder="(00) 00000-0000" />
+              </Field>
+              <Field label="Parentesco">
+                <Select value={form.contatoEmergenciaParentesco} onValueChange={v => { setForm(f => ({ ...f, contatoEmergenciaParentesco: v })); markDirty(); }} disabled={viewMode}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    {PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </Field>
             </div>
 
@@ -1083,6 +1154,11 @@ export default function ColaboradoresGEG() {
                         <span className="text-[10px] text-muted-foreground uppercase block">Nascimento</span>
                         <span className="text-sm">{d.dataNascimento || '—'} {d.dataNascimento && <span className="text-muted-foreground">({calcIdade(d.dataNascimento)})</span>}</span>
                       </div>
+                      <div className="flex gap-2 items-center col-span-full mt-1">
+                        {d.dependenteIR && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Dep. IR</Badge>}
+                        {d.dependentePlanoSaude && <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Plano Saúde</Badge>}
+                        {!d.dependenteIR && !d.dependentePlanoSaude && <span className="text-[10px] text-muted-foreground">—</span>}
+                      </div>
                     </div>
                     {!viewMode && (
                       <button onClick={() => removeDependente(i)} className="p-1.5 hover:bg-red-50 rounded-md transition-colors shrink-0">
@@ -1093,6 +1169,56 @@ export default function ColaboradoresGEG() {
                 ))}
               </div>
             )}
+
+            {/* ===== PENSÃO ALIMENTÍCIA ===== */}
+            <SectionTitle>Pensão Alimentícia</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 items-end">
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Paga Pensão</Label>
+                <button
+                  type="button"
+                  disabled={viewMode}
+                  onClick={() => { setForm(f => ({ ...f, pagaPensaoAlimenticia: !f.pagaPensaoAlimenticia })); markDirty(); }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                    form.pagaPensaoAlimenticia
+                      ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                      : 'bg-gray-100 text-gray-500 border border-gray-300'
+                  } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+                >
+                  {form.pagaPensaoAlimenticia ? 'Sim' : 'Não'}
+                </button>
+              </div>
+              {form.pagaPensaoAlimenticia && (
+                <Field label="Valor da Pensão (R$)">
+                  <Input value={form.valorPensaoAlimenticia} onChange={e => { setForm(f => ({ ...f, valorPensaoAlimenticia: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="0,00" />
+                </Field>
+              )}
+            </div>
+
+            {/* ===== CONTRIBUIÇÃO ASSISTENCIAL ===== */}
+            <SectionTitle>Contribuição Assistencial</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 items-end">
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tem Contribuição</Label>
+                <button
+                  type="button"
+                  disabled={viewMode}
+                  onClick={() => { setForm(f => ({ ...f, temContribuicaoAssistencial: !f.temContribuicaoAssistencial })); markDirty(); }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                    form.temContribuicaoAssistencial
+                      ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                      : 'bg-gray-100 text-gray-500 border border-gray-300'
+                  } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+                >
+                  {form.temContribuicaoAssistencial ? 'Sim' : 'Não'}
+                </button>
+              </div>
+              {form.temContribuicaoAssistencial && (
+                <Field label="Valor (R$)">
+                  <Input value={form.valorContribuicaoAssistencial} onChange={e => { setForm(f => ({ ...f, valorContribuicaoAssistencial: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="0,00" />
+                </Field>
+              )}
+            </div>
 
             {/* ===== HISTÓRICO DE STATUS ===== */}
             {editId && (viewMode || showForm) && (
@@ -1160,6 +1286,16 @@ export default function ColaboradoresGEG() {
                     <Input type="date" value={depForm.dataNascimento} onChange={e => setDepForm(f => ({ ...f, dataNascimento: e.target.value }))} />
                     {depForm.dataNascimento && <p className="text-xs text-muted-foreground mt-0.5">{calcIdade(depForm.dataNascimento)}</p>}
                   </Field>
+                  <div className="flex gap-6 items-center col-span-full">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input type="checkbox" checked={depForm.dependenteIR || false} onChange={e => setDepForm(f => ({ ...f, dependenteIR: e.target.checked }))} className="rounded border-border" />
+                      Dependente para IR
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input type="checkbox" checked={depForm.dependentePlanoSaude || false} onChange={e => setDepForm(f => ({ ...f, dependentePlanoSaude: e.target.checked }))} className="rounded border-border" />
+                      Dependente Plano de Saúde
+                    </label>
+                  </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={addDependente} className="gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> Adicionar Dependente

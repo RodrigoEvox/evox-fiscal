@@ -1109,3 +1109,52 @@
 - [x] UI para definir metas por parceiro (dialog de cadastro)
 - [x] Barra de progresso de atingimento no dashboard e no ranking
 - [x] Indicadores visuais: verde (≥100%), amarelo (50-99%), vermelho (<50%)
+
+## GEG v36 — Gente e Gestão: Requisitos Completos
+
+### Bloco A: Campos Adicionais do Colaborador
+- [x] Título de eleitor: zona e sessão (campos separados)
+- [x] CTPS: UF de emissão
+- [x] Dependentes: campos "Dependente IR?" e "Dependente Plano de Saúde?"
+- [x] Grau de instrução (enum) + campo descrição formação acadêmica/pós/cursos
+- [x] Contato de emergência (nome, telefone, parentesco)
+- [x] Campo: Colaborador paga pensão alimentícia? (boolean + valor)
+- [x] Campo: Colaborador tem contribuição assistencial? (boolean + valor)
+
+### Bloco B: Férias — Melhorias
+- [ ] Validação: proibido iniciar férias 2 dias antes de feriado ou final de semana
+- [ ] Edição e exclusão de períodos programados
+- [ ] Fluxo de aprovação: gestor e diretoria (campos aprovadorGestorId, aprovadorDiretoriaId)
+
+### Bloco C: Benefícios — VT, Academia, Comissão
+- [ ] Vale Transporte: cálculo automático (dias úteis × 2 passagens × valor unitário)
+- [ ] Vale Transporte: valor unitário por cidade (SP e Barueri)
+- [ ] Vale Transporte: valor total a pagar por colaborador
+- [ ] Academia: cadastro (qual academia, plano, valor, desconto folha, data entrada, fidelidade)
+- [ ] Comissão RH: tipo (Evox Monitor, DPT, Crédito), cálculo, total a pagar
+
+### Bloco D: Licenças Expandidas
+- [ ] Day Off aniversário: listar todas datas, campo alteração, motivo, aprovação
+- [ ] Doação de sangue: data doação, prazo folga, data folga, aprovação (gestor/RH/diretoria), comprovante
+- [ ] Licença Maternidade (120 dias), Paternidade (5 dias), Casamento (3 dias), Óbito (2 dias)
+- [ ] Licença Médica (15 dias empresa + INSS), Militar, Vestibular, Mesário, Acompanhamento médico
+- [ ] Expandir enum de tipos na tabela atestados_licencas
+
+### Bloco E: Reajustes Salariais
+- [ ] Reajuste 10% após 2 anos de casa: detecção automática, cálculo, registro
+- [ ] Reajuste sindical anual: campos para percentuais por colaborador, cálculo automático
+- [ ] Tabela de histórico de reajustes
+
+### Bloco F: Relatório de Apontamentos da Folha
+- [ ] Consolidar VT, academia, comissões, reajustes em relatório único
+- [ ] Exportar para contabilidade (Excel/PDF)
+- [ ] Filtros por mês/ano e colaborador
+
+### Bloco G: Cargos e Salários — Melhorias
+- [ ] Níveis de cargo por setor
+- [ ] Requisitos para mudança de nível vinculados a grau de instrução
+- [ ] Pré-requisitos de formação para promoção
+
+### Bloco H: Ações e Eventos
+- [ ] Ação FIT Mensal: campos (o quê, data, horário, onde, arte/convite)
+- [ ] Ação Solidária Mensal: campos (descrição, data, horário, onde, arte/convite)

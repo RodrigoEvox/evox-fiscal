@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `ferias` ADD `aprovadorGestorId` int;\nALTER TABLE `ferias` ADD `aprovadorGestorStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente';\nALTER TABLE `ferias` ADD `aprovadorGestorEm` timestamp NULL;\nALTER TABLE `ferias` ADD `aprovadorDiretoriaId` int;\nALTER TABLE `ferias` ADD `aprovadorDiretoriaStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente';\nALTER TABLE `ferias` ADD `aprovadorDiretoriaEm` timestamp NULL;\nALTER TABLE `ferias` ADD `justificativaRecusa` text",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE `ferias` ADD `aprovadorGestorId` int;\nALTER TABLE `ferias` ADD `aprovadorGestorStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente';\nALTER TABLE `ferias` ADD `aprovadorGestorEm` timestamp NULL;\nALTER TABLE `ferias` ADD `aprovadorDiretoriaId` int;\nALTER TABLE `ferias` ADD `aprovadorDiretoriaStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente';\nALTER TABLE `ferias` ADD `aprovadorDiretoriaEm` timestamp NULL;\nALTER TABLE `ferias` ADD `justificativaRecusa` text",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1686
+}
