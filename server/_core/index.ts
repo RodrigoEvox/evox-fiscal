@@ -123,11 +123,52 @@ async function runContractExpirationCheck() {
   }
 }
 
+async function runReajusteDoisAnosCheck() {
+  try {
+    const db = await import('../db');
+    const { notifyOwner } = await import('./notification');
+    const elegiveis = await db.checkReajusteDoisAnos();
+    if (elegiveis.length === 0) return;
+
+    // Notify all users via in-app notifications
+    const allUsers = await db.listUsers();
+    for (const colab of elegiveis) {
+      const salarioNovo = (colab.salarioAtual * 1.10).toFixed(2);
+      const titulo = `Reajuste 2 Anos: ${colab.nome}`;
+      const mensagem = `${colab.nome} completou ${colab.anosCompletos} anos de casa (admissão: ${colab.dataAdmissao}). ` +
+        `Salário atual: R$ ${colab.salarioAtual.toFixed(2)} → Novo salário estimado (10%): R$ ${salarioNovo}. ` +
+        `Acesse Reajustes Salariais para registrar o reajuste.`;
+
+      for (const u of allUsers) {
+        await db.createNotificacao({
+          usuarioId: u.id,
+          tipo: 'geral' as any,
+          titulo,
+          mensagem,
+          lida: false,
+        });
+      }
+    }
+
+    // Also notify owner via Manus notification
+    const nomes = elegiveis.map(e => `• ${e.nome} (${e.anosCompletos} anos, R$ ${e.salarioAtual.toFixed(2)} → R$ ${(e.salarioAtual * 1.10).toFixed(2)})`).join('\n');
+    await notifyOwner({
+      title: `⚠️ ${elegiveis.length} colaborador(es) elegível(is) para reajuste de 2 anos`,
+      content: `Os seguintes colaboradores completaram múltiplos de 2 anos de casa e são elegíveis para reajuste salarial de 10%:\n\n${nomes}\n\nAcesse o módulo Reajustes Salariais no GEG para registrar os reajustes.`,
+    });
+
+    console.log(`[Reajuste Scheduler] Found ${elegiveis.length} eligible employee(s) for 2-year adjustment`);
+  } catch (err) {
+    console.error('[Reajuste Scheduler Error]', err);
+  }
+}
+
 function startScheduledJobs() {
   // Run birthday emails daily at 8:00 AM (check every hour)
   const HOUR_MS = 60 * 60 * 1000;
   let lastBirthdayRun = '';
   let lastContractRun = '';
+  let lastReajusteRun = '';
 
   setInterval(async () => {
     const now = new Date();
@@ -144,15 +185,22 @@ function startScheduledJobs() {
       lastContractRun = todayKey;
       await runContractExpirationCheck();
     }
+
+    // Run reajuste 2-year check once per day (after 9 AM)
+    if (now.getHours() >= 9 && lastReajusteRun !== todayKey) {
+      lastReajusteRun = todayKey;
+      await runReajusteDoisAnosCheck();
+    }
   }, HOUR_MS);
 
   // Also run once on startup after a short delay
   setTimeout(async () => {
     await runDailyBirthdayEmails();
     await runContractExpirationCheck();
+    await runReajusteDoisAnosCheck();
   }, 10000);
 
-  console.log('[Scheduler] Birthday emails and contract checks scheduled');
+  console.log('[Scheduler] Birthday emails, contract checks, and reajuste alerts scheduled');
 }
 
 async function startServer() {

@@ -1172,3 +1172,25 @@
 - [x] Ícones de submenu adicionados
 - [x] 25 testes vitest para rotas GEG v36
 - [ ] Exportar apontamentos para contabilidade (Excel/PDF) — futuro
+
+## GEG v37 — Alertas de Reajuste + Dashboard GEG Consolidado
+
+### Alertas Automáticos de Reajuste (2 anos)
+- [x] Verificação automática diária de colaboradores que completam 2 anos
+- [x] Notificação ao owner/RH quando colaborador atinge 2 anos de casa
+- [x] Incluir dados do colaborador (nome, cargo, data admissão, salário atual, novo salário estimado)
+- [x] Integrar com scheduler existente (birthday emails)
+
+### Dashboard GEG Consolidado
+- [x] Rota backend para consolidar indicadores GEG do mês
+- [x] KPI: Total VT do mês (valor total a pagar)
+- [x] KPI: Total Academia do mês (valor total desconto)
+- [x] KPI: Reajustes pendentes (colaboradores elegíveis 2 anos)
+- [x] KPI: Day Offs do mês (pendentes/aprovados)
+- [x] KPI: Total colaboradores ativos
+- [x] KPI: Comissões RH do mês
+- [x] Gráfico de evolução mensal de custos (VT + Academia + Comissões)
+- [x] Lista de próximos aniversários (Day Off)
+- [x] Lista de reajustes pendentes com ação rápida
+- [x] Página frontend DashboardGEG.tsx integrada ao dashboard existente
+- [x] 6 testes vitest para rota dashboardGEG

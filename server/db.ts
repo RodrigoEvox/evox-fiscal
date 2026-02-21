@@ -3542,3 +3542,144 @@ export async function checkReajusteDoisAnos() {
   }
   return elegíveis;
 }
+
+
+// ===== DASHBOARD GEG CONSOLIDADO =====
+export async function getDashboardGEG(mes?: number, ano?: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const now = new Date();
+  const mesRef = mes ?? (now.getMonth() + 1);
+  const anoRef = ano ?? now.getFullYear();
+
+  // 1. Total de colaboradores ativos
+  const colabs = await listColaboradores();
+  const ativos = colabs.filter(c => c.statusColaborador === 'ativo');
+  const totalAtivos = ativos.length;
+
+  // 2. Vale Transporte do mês
+  const vts = await db.select().from(valeTransporte)
+    .where(and(eq(valeTransporte.mesReferencia, mesRef), eq(valeTransporte.anoReferencia, anoRef)));
+  const totalVT = vts.reduce((sum, v) => sum + Number(v.valorTotal || 0), 0);
+  const qtdVT = vts.length;
+
+  // 3. Academia do mês
+  const academias = await db.select().from(academiaBeneficio);
+  const totalAcademia = academias.reduce((sum, a) => sum + (a.descontoFolha ? Number(a.valorPlano || 0) : 0), 0);
+  const qtdAcademia = academias.length;
+
+  // 4. Comissões RH do mês
+  const comissoes = await db.select().from(comissaoRh)
+    .where(and(eq(comissaoRh.mesReferencia, mesRef), eq(comissaoRh.anoReferencia, anoRef)));
+  const totalComissoes = comissoes.reduce((sum, c) => sum + Number(c.valorComissao || 0), 0);
+  const qtdComissoes = comissoes.length;
+
+  // 5. Reajustes pendentes (elegíveis 2 anos)
+  const elegiveis = await checkReajusteDoisAnos();
+  const reajustesPendentes = elegiveis.length;
+
+  // 6. Day Offs do mês
+  const dayOffs = await db.select().from(dayOff);
+  const dayOffsDoMes = dayOffs.filter(d => {
+    if (!d.dataEfetiva) return false;
+    const dt = new Date(d.dataEfetiva + 'T12:00:00');
+    return dt.getMonth() + 1 === mesRef && dt.getFullYear() === anoRef;
+  });
+  const dayOffsPendentes = dayOffsDoMes.filter(d => d.status === 'pendente').length;
+  const dayOffsAprovados = dayOffsDoMes.filter(d => d.status === 'aprovado').length;
+
+  // 7. Férias do mês
+  const feriasAll = await listFerias();
+  const feriasDoMes = feriasAll.filter((f: any) => {
+    if (!f.dataInicio) return false;
+    const dt = new Date(f.dataInicio + 'T12:00:00');
+    return dt.getMonth() + 1 === mesRef && dt.getFullYear() === anoRef;
+  });
+
+  // 8. Atestados/licenças do mês
+  const atestados = await listAtestadosLicencas();
+  const atestadosDoMes = atestados.filter((a: any) => {
+    if (!a.dataInicio) return false;
+    const dt = new Date(a.dataInicio + 'T12:00:00');
+    return dt.getMonth() + 1 === mesRef && dt.getFullYear() === anoRef;
+  });
+
+  // 9. Próximos aniversários (próximos 30 dias)
+  const proximosAniversarios: { id: number; nome: string; dataNascimento: string; diasAte: number }[] = [];
+  for (const c of ativos) {
+    if (!c.dataNascimento) continue;
+    const nasc = new Date(c.dataNascimento + 'T12:00:00');
+    const anivEsteAno = new Date(anoRef, nasc.getMonth(), nasc.getDate());
+    if (anivEsteAno < now) {
+      anivEsteAno.setFullYear(anoRef + 1);
+    }
+    const diffDias = Math.ceil((anivEsteAno.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDias >= 0 && diffDias <= 30) {
+      proximosAniversarios.push({
+        id: c.id,
+        nome: c.nomeCompleto,
+        dataNascimento: c.dataNascimento,
+        diasAte: diffDias,
+      });
+    }
+  }
+  proximosAniversarios.sort((a, b) => a.diasAte - b.diasAte);
+
+  // 10. Evolução mensal de custos (últimos 6 meses)
+  const evolucao: { mes: number; ano: number; label: string; vt: number; academia: number; comissoes: number; total: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(anoRef, mesRef - 1 - i, 1);
+    const m = d.getMonth() + 1;
+    const a = d.getFullYear();
+    const mLabel = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+
+    const vtMes = await db.select().from(valeTransporte)
+      .where(and(eq(valeTransporte.mesReferencia, m), eq(valeTransporte.anoReferencia, a)));
+    const vtTotal = vtMes.reduce((s, v) => s + Number(v.valorTotal || 0), 0);
+
+    const comMes = await db.select().from(comissaoRh)
+      .where(and(eq(comissaoRh.mesReferencia, m), eq(comissaoRh.anoReferencia, a)));
+    const comTotal = comMes.reduce((s, c) => s + Number(c.valorComissao || 0), 0);
+
+    // Academia is monthly recurring, so same value each month
+    const acadTotal = totalAcademia;
+
+    evolucao.push({
+      mes: m,
+      ano: a,
+      label: mLabel,
+      vt: vtTotal,
+      academia: acadTotal,
+      comissoes: comTotal,
+      total: vtTotal + acadTotal + comTotal,
+    });
+  }
+
+  // 11. Lista de reajustes pendentes com detalhes
+  const reajustesPendentesLista = elegiveis.map(e => ({
+    colaboradorId: e.colaboradorId,
+    nome: e.nome,
+    dataAdmissao: e.dataAdmissao,
+    anosCompletos: e.anosCompletos,
+    salarioAtual: e.salarioAtual,
+    salarioEstimado: Number((e.salarioAtual * 1.10).toFixed(2)),
+  }));
+
+  return {
+    mesRef,
+    anoRef,
+    totalAtivos,
+    vt: { total: totalVT, qtd: qtdVT },
+    academia: { total: totalAcademia, qtd: qtdAcademia },
+    comissoes: { total: totalComissoes, qtd: qtdComissoes },
+    reajustesPendentes,
+    dayOffs: { pendentes: dayOffsPendentes, aprovados: dayOffsAprovados, total: dayOffsDoMes.length },
+    ferias: { total: feriasDoMes.length },
+    atestados: { total: atestadosDoMes.length },
+    proximosAniversarios,
+    evolucao,
+    reajustesPendentesLista,
+    custoTotalMes: totalVT + totalAcademia + totalComissoes,
+  };
+}

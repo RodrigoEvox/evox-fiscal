@@ -3634,6 +3634,18 @@ export const appRouter = router({
       return { success: true };
     }),
   }),
+
+  // ===== DASHBOARD GEG CONSOLIDADO =====
+  dashboardGEG: router({
+    get: protectedProcedure
+      .input(z.object({
+        mes: z.number().min(1).max(12).optional(),
+        ano: z.number().min(2020).max(2100).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return db.getDashboardGEG(input?.mes, input?.ano);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

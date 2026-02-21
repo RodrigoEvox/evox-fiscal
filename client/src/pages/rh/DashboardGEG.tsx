@@ -13,8 +13,9 @@ import {
   Users, UserCheck, UserX, UserMinus, Briefcase, TrendingDown, TrendingUp,
   DollarSign, Cake, PartyPopper, CalendarClock, FileWarning, CheckCircle,
   AlertTriangle, ArrowRight, Loader2, Activity, Clock, User, Shield,
-  ArrowUpCircle, ArrowDownCircle,
+  ArrowUpCircle, ArrowDownCircle, Bus, Dumbbell, Gift,
 } from "lucide-react";
+import { CardDescription } from "@/components/ui/card";
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#14b8a6"];
 
@@ -53,6 +54,7 @@ export default function DashboardGEG() {
   const { data: aniversariantes } = trpc.aniversariantes.mes.useQuery();
   const { data: contratosVencendo } = trpc.contratosVencendo.list.useQuery({ diasAntecedencia: 30 });
   const { data: saldosBH } = trpc.bancoHoras.saldos.useQuery();
+  const { data: dashGEG } = trpc.dashboardGEG.get.useQuery({});
 
   const hoje = useMemo(() => {
     const d = new Date();
@@ -582,14 +584,222 @@ export default function DashboardGEG() {
         </CardContent>
       </Card>
 
+      {/* ===== SEÇÃO: BENEFÍCIOS E CUSTOS ===== */}
+      <Separator />
+      <div>
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-emerald-500" />
+          Benefícios &amp; Custos do Mês
+        </h2>
+        <p className="text-xs text-muted-foreground">VT, Academia, Comissões RH, Reajustes e Day Offs</p>
+      </div>
+
+      {dashGEG && (
+        <>
+          {/* Benefits KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <Card className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation("/rh/vale-transporte")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Vale Transporte</p>
+                    <p className="text-lg font-bold mt-1">{dashGEG.vt.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                    <p className="text-[10px] text-muted-foreground">{dashGEG.vt.qtd} colab.</p>
+                  </div>
+                  <Bus className="w-5 h-5 text-green-500 opacity-60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation("/rh/academia")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Academia</p>
+                    <p className="text-lg font-bold mt-1">{dashGEG.academia.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                    <p className="text-[10px] text-muted-foreground">{dashGEG.academia.qtd} benef.</p>
+                  </div>
+                  <Dumbbell className="w-5 h-5 text-purple-500 opacity-60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-amber-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation("/rh/comissao-rh")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Comissões RH</p>
+                    <p className="text-lg font-bold mt-1">{dashGEG.comissoes.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                    <p className="text-[10px] text-muted-foreground">{dashGEG.comissoes.qtd} lanç.</p>
+                  </div>
+                  <DollarSign className="w-5 h-5 text-amber-500 opacity-60" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={`border-l-4 ${dashGEG.reajustesPendentes > 0 ? "border-l-red-500" : "border-l-emerald-500"} cursor-pointer hover:shadow-md transition-shadow`} onClick={() => setLocation("/rh/reajustes")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Reajustes Pend.</p>
+                    <p className="text-2xl font-bold mt-1">{dashGEG.reajustesPendentes}</p>
+                    {dashGEG.reajustesPendentes > 0 && <p className="text-[10px] text-red-500 font-medium">Ação necessária</p>}
+                  </div>
+                  <AlertTriangle className={`w-5 h-5 opacity-60 ${dashGEG.reajustesPendentes > 0 ? "text-red-500" : "text-emerald-500"}`} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-pink-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation("/rh/day-off")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Day Offs</p>
+                    <p className="text-2xl font-bold mt-1">{dashGEG.dayOffs.total}</p>
+                    <div className="flex gap-1">
+                      <Badge variant="outline" className="text-[9px] px-1">{dashGEG.dayOffs.aprovados} aprov.</Badge>
+                      {dashGEG.dayOffs.pendentes > 0 && <Badge variant="secondary" className="text-[9px] px-1">{dashGEG.dayOffs.pendentes} pend.</Badge>}
+                    </div>
+                  </div>
+                  <Gift className="w-5 h-5 text-pink-500 opacity-60" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Custo Total Banner */}
+          <Card className="bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-300 uppercase tracking-wide">Custo Total de Benefícios — {meses[mesAtual]}/{new Date().getFullYear()}</p>
+                  <p className="text-3xl font-bold mt-1">{dashGEG.custoTotalMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                  <p className="text-xs text-slate-400">VT + Academia + Comissões RH</p>
+                </div>
+                <div className="text-right space-y-0.5 text-sm">
+                  <div><span className="text-green-400">VT:</span> {dashGEG.vt.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                  <div><span className="text-purple-400">Academia:</span> {dashGEG.academia.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                  <div><span className="text-amber-400">Comissões:</span> {dashGEG.comissoes.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Evolução Mensal + Próximos Aniversários (Day Off) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Evolução Mensal de Custos</CardTitle>
+                <CardDescription className="text-xs">Últimos 6 meses — VT, Academia e Comissões</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dashGEG.evolucao.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <AreaChart data={dashGEG.evolucao}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+                      <Legend />
+                      <Area type="monotone" dataKey="vt" name="VT" stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} strokeWidth={2} />
+                      <Area type="monotone" dataKey="academia" name="Academia" stroke="#a855f7" fill="#a855f7" fillOpacity={0.15} strokeWidth={2} />
+                      <Area type="monotone" dataKey="comissoes" name="Comissões" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">Sem dados para o período.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-pink-500" /> Próximos Aniversários
+                </CardTitle>
+                <CardDescription className="text-xs">Próximos 30 dias (Day Off)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dashGEG.proximosAniversarios.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum aniversário nos próximos 30 dias</p>
+                ) : (
+                  <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                    {dashGEG.proximosAniversarios.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                        <div>
+                          <p className="font-medium text-sm">{a.nome}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(a.dataNascimento + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                          </p>
+                        </div>
+                        <Badge variant={a.diasAte === 0 ? "default" : a.diasAte <= 7 ? "secondary" : "outline"} className="text-xs">
+                          {a.diasAte === 0 ? "Hoje!" : `${a.diasAte}d`}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Reajustes Pendentes Alert */}
+          {dashGEG.reajustesPendentesLista.length > 0 && (
+            <Card className="border-red-200 dark:border-red-900">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500" /> Reajustes Salariais Pendentes (2 anos)
+                  </CardTitle>
+                  <CardDescription className="text-xs">Colaboradores elegíveis para reajuste de 10%</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setLocation("/rh/reajustes")}>
+                  Ir para Reajustes <ArrowRight className="w-3 h-3" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground text-xs">Colaborador</th>
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground text-xs">Admissão</th>
+                        <th className="text-center py-2 px-3 font-medium text-muted-foreground text-xs">Anos</th>
+                        <th className="text-right py-2 px-3 font-medium text-muted-foreground text-xs">Salário Atual</th>
+                        <th className="text-right py-2 px-3 font-medium text-muted-foreground text-xs">Novo (+10%)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dashGEG.reajustesPendentesLista.map((r) => (
+                        <tr key={r.colaboradorId} className="border-b last:border-0 hover:bg-muted/50">
+                          <td className="py-2 px-3 font-medium text-sm">{r.nome}</td>
+                          <td className="py-2 px-3 text-muted-foreground text-sm">
+                            {r.dataAdmissao ? new Date(r.dataAdmissao + "T12:00:00").toLocaleDateString("pt-BR") : "-"}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <Badge variant="destructive" className="text-xs">{r.anosCompletos}a</Badge>
+                          </td>
+                          <td className="py-2 px-3 text-right text-sm">{r.salarioAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                          <td className="py-2 px-3 text-right font-semibold text-green-600 text-sm">{r.salarioEstimado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
       {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: "Colaboradores", path: "/rh/colaboradores", icon: Users, color: "text-blue-600" },
           { label: "Férias", path: "/rh/ferias", icon: Cake, color: "text-cyan-600" },
           { label: "Atestados", path: "/rh/atestados-licencas", icon: FileWarning, color: "text-red-600" },
-          { label: "Avaliações", path: "/rh/avaliacao-desempenho", icon: Activity, color: "text-purple-600" },
-          { label: "Banco de Horas", path: "/rh/banco-horas", icon: Clock, color: "text-indigo-600" },
+          { label: "Vale Transporte", path: "/rh/vale-transporte", icon: Bus, color: "text-green-600" },
+          { label: "Reajustes", path: "/rh/reajustes", icon: TrendingUp, color: "text-indigo-600" },
         ].map((link) => (
           <Card key={link.path} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(link.path)}>
             <CardContent className="p-4 flex items-center gap-3">
