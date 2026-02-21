@@ -1122,9 +1122,9 @@
 - [x] Campo: Colaborador tem contribuição assistencial? (boolean + valor)
 
 ### Bloco B: Férias — Melhorias
-- [ ] Validação: proibido iniciar férias 2 dias antes de feriado ou final de semana
-- [ ] Edição e exclusão de períodos programados
-- [ ] Fluxo de aprovação: gestor e diretoria (campos aprovadorGestorId, aprovadorDiretoriaId)
+- [x] Validação: proibido iniciar férias 2 dias antes de feriado ou final de semana
+- [x] Edição e exclusão de períodos programados
+- [x] Fluxo de aprovação: gestor e diretoria (campos aprovadorGestorId, aprovadorDiretoriaId)
 
 ### Bloco C: Benefícios — VT, Academia, Comissão
 - [ ] Vale Transporte: cálculo automático (dias úteis × 2 passagens × valor unitário)
@@ -1134,26 +1134,26 @@
 - [ ] Comissão RH: tipo (Evox Monitor, DPT, Crédito), cálculo, total a pagar
 
 ### Bloco D: Licenças Expandidas
-- [ ] Day Off aniversário: listar todas datas, campo alteração, motivo, aprovação
-- [ ] Doação de sangue: data doação, prazo folga, data folga, aprovação (gestor/RH/diretoria), comprovante
-- [ ] Licença Maternidade (120 dias), Paternidade (5 dias), Casamento (3 dias), Óbito (2 dias)
-- [ ] Licença Médica (15 dias empresa + INSS), Militar, Vestibular, Mesário, Acompanhamento médico
-- [ ] Expandir enum de tipos na tabela atestados_licencas
+- [x] Day Off aniversário: listar todas datas, campo alteração, motivo, aprovação
+- [x] Doação de sangue: data doação, prazo folga, data folga, aprovação (gestor/RH/diretoria), comprovante
+- [x] Licença Maternidade (120 dias), Paternidade (5 dias), Casamento (3 dias), Óbito (2 dias)
+- [x] Licença Médica (15 dias empresa + INSS), Militar, Vestibular, Mesário, Acompanhamento médico
+- [x] Expandir enum de tipos na tabela atestados_licencas
 
 ### Bloco E: Reajustes Salariais
-- [ ] Reajuste 10% após 2 anos de casa: detecção automática, cálculo, registro
-- [ ] Reajuste sindical anual: campos para percentuais por colaborador, cálculo automático
-- [ ] Tabela de histórico de reajustes
+- [x] Reajuste 10% após 2 anos de casa: detecção automática, cálculo, registro
+- [x] Reajuste sindical anual: campos para percentuais por colaborador, cálculo automático
+- [x] Tabela de histórico de reajustes
 
 ### Bloco F: Relatório de Apontamentos da Folha
-- [ ] Consolidar VT, academia, comissões, reajustes em relatório único
-- [ ] Exportar para contabilidade (Excel/PDF)
-- [ ] Filtros por mês/ano e colaborador
+- [x] Consolidar VT, academia, comissões, reajustes em relatório único
+- [ ] Exportar para contabilidade (Excel/PDF) (frontend)
+- [x] Filtros por mês/ano e colaborador
 
 ### Bloco G: Cargos e Salários — Melhorias
-- [ ] Níveis de cargo por setor
-- [ ] Requisitos para mudança de nível vinculados a grau de instrução
-- [ ] Pré-requisitos de formação para promoção
+- [x] Níveis de cargo por setor
+- [x] Requisitos para mudança de nível vinculados a grau de instrução
+- [x] Pré-requisitos de formação para promoção
 
 ### Bloco H: Ações e Eventos
 - [ ] Ação FIT Mensal: campos (o quê, data, horário, onde, arte/convite)

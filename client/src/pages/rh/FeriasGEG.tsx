@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search, CalendarDays, User, Briefcase, Info } from 'lucide-react';
+import { Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search, CalendarDays, User, Briefcase, Info, Edit2, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 // CLT validation helpers
 function validateFeriasCLT(dataInicio: string, dataFim: string, diasPeriodo: number, periodoNum: number) {
@@ -107,6 +107,9 @@ export default function FeriasGEG() {
   const solicitacoes = trpc.solicitacoesFolga.list.useQuery();
   const createFerias = trpc.ferias.create.useMutation({ onSuccess: () => { ferias.refetch(); setShowForm(false); resetForm(); toast.success('Férias programadas!'); } });
   const updateFerias = trpc.ferias.update.useMutation({ onSuccess: () => { ferias.refetch(); setShowForm(false); resetForm(); toast.success('Férias atualizadas!'); } });
+  const deleteFerias = trpc.ferias.delete.useMutation({ onSuccess: () => { ferias.refetch(); toast.success('Férias excluídas!'); } });
+  const aprovarGestor = trpc.ferias.aprovarGestor.useMutation({ onSuccess: () => { ferias.refetch(); toast.success('Aprovação do gestor registrada!'); } });
+  const aprovarDiretoria = trpc.ferias.aprovarDiretoria.useMutation({ onSuccess: () => { ferias.refetch(); toast.success('Aprovação da diretoria registrada!'); } });
   const createSolicitacao = trpc.solicitacoesFolga.create.useMutation({ onSuccess: () => { solicitacoes.refetch(); setShowSolicitacao(false); toast.success('Solicitação enviada!'); } });
   const updateSolicitacao = trpc.solicitacoesFolga.update.useMutation({ onSuccess: () => { solicitacoes.refetch(); toast.success('Solicitação atualizada!'); } });
 
@@ -329,6 +332,58 @@ export default function FeriasGEG() {
                           <span>{formatDateBR(f.periodo1Inicio || f.dataInicio)} a {formatDateBR(f.periodo1Fim || f.dataFim)}</span>
                           <span className="text-muted-foreground">({f.periodo1Dias || f.diasTotais} dias)</span>
                           <Badge variant="outline" className="text-[10px]">{f.status}</Badge>
+                          {/* Approval badges */}
+                          {f.aprovadorGestorStatus && f.aprovadorGestorStatus !== 'pendente' && (
+                            <Badge variant="outline" className={`text-[10px] ${f.aprovadorGestorStatus === 'aprovado' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                              Gestor: {f.aprovadorGestorStatus === 'aprovado' ? '✓' : '✗'}
+                            </Badge>
+                          )}
+                          {f.aprovadorDiretoriaStatus && f.aprovadorDiretoriaStatus !== 'pendente' && (
+                            <Badge variant="outline" className={`text-[10px] ${f.aprovadorDiretoriaStatus === 'aprovado' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                              Diretoria: {f.aprovadorDiretoriaStatus === 'aprovado' ? '✓' : '✗'}
+                            </Badge>
+                          )}
+                          <div className="ml-auto flex gap-1">
+                            {/* Approval buttons */}
+                            {f.aprovadorGestorStatus === 'pendente' && (
+                              <button onClick={(e) => { e.stopPropagation(); aprovarGestor.mutate({ id: f.id, aprovado: true }); }} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Gestor)">
+                                <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+                              </button>
+                            )}
+                            {f.aprovadorGestorStatus === 'aprovado' && f.aprovadorDiretoriaStatus === 'pendente' && (
+                              <button onClick={(e) => { e.stopPropagation(); aprovarDiretoria.mutate({ id: f.id, aprovado: true }); }} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Diretoria)">
+                                <ShieldAlert className="w-3.5 h-3.5 text-blue-600" />
+                              </button>
+                            )}
+                            {/* Edit button */}
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              setEditId(f.id);
+                              setSelectedColab(c);
+                              setForm({
+                                colaboradorId: c.id,
+                                dataInicio: f.periodo1Inicio || '',
+                                dataFim: f.periodo1Fim || '',
+                                diasPeriodo: f.periodo1Dias || f.diasTotais || 0,
+                                periodoNum: 1,
+                                abonoConvertido: f.abonoConvertido || false,
+                                observacao: f.observacao || '',
+                                status: f.status || 'programada',
+                              });
+                              setShowForm(true);
+                            }} className="p-1 hover:bg-blue-100 rounded" title="Editar">
+                              <Edit2 className="w-3.5 h-3.5 text-blue-600" />
+                            </button>
+                            {/* Delete button */}
+                            {f.status !== 'em_gozo' && (
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Deseja excluir este período de férias?')) deleteFerias.mutate({ id: f.id });
+                              }} className="p-1 hover:bg-red-100 rounded" title="Excluir">
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

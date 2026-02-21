@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { storagePut } from "./storage";
@@ -2344,11 +2345,9 @@ export const appRouter = router({
       id: z.number(),
       data: z.record(z.string(), z.any()),
     })).mutation(async ({ input, ctx }) => {
-      // Get the ferias record to know the colaboradorId
       const feriasRecord = await db.getFeriasById(input.id);
       await db.updateFerias(input.id, input.data as any);
       await logAudit('edicao', 'ferias', input.id, null, ctx, input.data);
-      // Auto status change based on ferias status update
       if (feriasRecord && input.data.status) {
         if (input.data.status === 'em_gozo') {
           await db.changeColaboradorStatus(
@@ -2366,6 +2365,49 @@ export const appRouter = router({
           );
         }
       }
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      const feriasRecord = await db.getFeriasById(input.id);
+      if (!feriasRecord) throw new TRPCError({ code: 'NOT_FOUND', message: 'Férias não encontradas' });
+      if (feriasRecord.status === 'em_gozo') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível excluir férias em gozo' });
+      await db.deleteFerias(input.id);
+      await logAudit('exclusao', 'ferias', input.id, null, ctx);
+      return { success: true };
+    }),
+    aprovarGestor: protectedProcedure.input(z.object({
+      id: z.number(),
+      aprovado: z.boolean(),
+      justificativa: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const status = input.aprovado ? 'aprovado' : 'recusado';
+      await db.updateFerias(input.id, {
+        aprovadorGestorId: ctx.user?.id || null,
+        aprovadorGestorStatus: status,
+        aprovadorGestorEm: new Date(),
+        ...(input.justificativa && !input.aprovado ? { justificativaRecusa: input.justificativa } : {}),
+      } as any);
+      await logAudit('aprovacao_gestor', 'ferias', input.id, null, ctx, { status, justificativa: input.justificativa });
+      return { success: true };
+    }),
+    aprovarDiretoria: protectedProcedure.input(z.object({
+      id: z.number(),
+      aprovado: z.boolean(),
+      justificativa: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const status = input.aprovado ? 'aprovado' : 'recusado';
+      await db.updateFerias(input.id, {
+        aprovadorDiretoriaId: ctx.user?.id || null,
+        aprovadorDiretoriaStatus: status,
+        aprovadorDiretoriaEm: new Date(),
+        ...(input.justificativa && !input.aprovado ? { justificativaRecusa: input.justificativa } : {}),
+      } as any);
+      // If both gestor and diretoria approved, set status to programada
+      const feriasRecord = await db.getFeriasById(input.id);
+      if (feriasRecord && status === 'aprovado' && feriasRecord.aprovadorGestorStatus === 'aprovado') {
+        await db.updateFerias(input.id, { status: 'programada' } as any);
+      }
+      await logAudit('aprovacao_diretoria', 'ferias', input.id, null, ctx, { status, justificativa: input.justificativa });
       return { success: true };
     }),
   }),
@@ -3319,6 +3361,277 @@ export const appRouter = router({
     }),
     saldos: protectedProcedure.query(async () => {
       return db.getSaldosBancoHorasAll();
+    }),
+  }),
+
+  // ---- VALE TRANSPORTE ----
+  valeTransporte: router({
+    list: protectedProcedure.input(z.object({ mesReferencia: z.number().optional(), anoReferencia: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listValeTransporte(input?.mesReferencia, input?.anoReferencia);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      mesReferencia: z.number(),
+      anoReferencia: z.number(),
+      diasUteis: z.number(),
+      passagensPorDia: z.number().default(2),
+      valorPassagem: z.string(),
+      cidadePassagem: z.enum(['sp', 'barueri']).default('sp'),
+      valorTotal: z.string(),
+      descontoFolha: z.string().optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createValeTransporte({
+        ...input,
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateValeTransporte(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteValeTransporte(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- ACADEMIA BENEFÍCIO ----
+  academiaBeneficio: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listAcademiaBeneficio(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      nomeAcademia: z.string(),
+      plano: z.string().optional(),
+      valorPlano: z.string(),
+      descontoFolha: z.boolean().optional(),
+      valorDesconto: z.string().optional(),
+      dataEntrada: z.string().optional(),
+      fidelidade: z.boolean().optional(),
+      fidelidadeMeses: z.number().optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createAcademiaBeneficio({
+        ...input,
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateAcademiaBeneficio(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteAcademiaBeneficio(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- COMISSÃO RH ----
+  comissaoRh: router({
+    list: protectedProcedure.input(z.object({ mesReferencia: z.number().optional(), anoReferencia: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listComissaoRh(input?.mesReferencia, input?.anoReferencia);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      tipo: z.enum(['evox_monitor', 'dpt', 'credito', 'outro']),
+      descricao: z.string().optional(),
+      mesReferencia: z.number(),
+      anoReferencia: z.number(),
+      valorBase: z.string(),
+      percentual: z.string().optional(),
+      valorComissao: z.string(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createComissaoRh({
+        ...input,
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateComissaoRh(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteComissaoRh(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- DAY OFF ----
+  dayOff: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listDayOff(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      dataNascimento: z.string(),
+      dataOriginal: z.string(),
+      dataEfetiva: z.string().optional(),
+      alterado: z.boolean().optional(),
+      motivoAlteracao: z.string().optional(),
+      status: z.enum(['pendente', 'aprovado', 'recusado', 'utilizado']).optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createDayOff({
+        ...input,
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateDayOff(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteDayOff(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- DOAÇÃO DE SANGUE ----
+  doacaoSangue: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listDoacaoSangue(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      dataDoacao: z.string(),
+      prazoFolga: z.string().optional(),
+      dataFolga: z.string().optional(),
+      comprovanteUrl: z.string().optional(),
+      status: z.enum(['pendente', 'aprovado_gestor', 'aprovado_rh', 'aprovado_diretoria', 'recusado']).optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createDoacaoSangue({
+        ...input,
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateDoacaoSangue(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteDoacaoSangue(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- REAJUSTES SALARIAIS ----
+  reajustesSalariais: router({
+    list: protectedProcedure.input(z.object({ colaboradorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listReajustesSalariais(input?.colaboradorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      tipo: z.enum(['dois_anos', 'sindical', 'merito', 'promocao']),
+      percentual: z.string(),
+      salarioAnterior: z.string(),
+      salarioNovo: z.string(),
+      dataAplicacao: z.string().optional(),
+      status: z.enum(['pendente', 'aplicado', 'cancelado']).optional(),
+      observacao: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createReajusteSalarial({
+        ...input,
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      } as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateReajusteSalarial(input.id, input.data as any);
+      return { success: true };
+    }),
+    checkDoisAnos: protectedProcedure.query(async () => {
+      return db.checkReajusteDoisAnos();
+    }),
+  }),
+
+  // ---- APONTAMENTOS FOLHA ----
+  apontamentosFolha: router({
+    list: protectedProcedure.input(z.object({ mesReferencia: z.number().optional(), anoReferencia: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listApontamentosFolha(input?.mesReferencia, input?.anoReferencia);
+    }),
+    gerar: protectedProcedure.input(z.object({
+      mesReferencia: z.number(),
+      anoReferencia: z.number(),
+    })).mutation(async ({ input, ctx }) => {
+      const apontamentos = await db.gerarApontamentosFolha(
+        input.mesReferencia,
+        input.anoReferencia,
+        ctx.user?.id || null,
+        ctx.user?.name || 'Sistema'
+      );
+      return { total: apontamentos.length, apontamentos };
+    }),
+  }),
+
+  // ---- NÍVEIS DE CARGO ----
+  niveisCargo: router({
+    list: protectedProcedure.input(z.object({ setorId: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listNiveisCargo(input?.setorId);
+    }),
+    create: protectedProcedure.input(z.object({
+      setorId: z.number(),
+      setorNome: z.string(),
+      cargo: z.string(),
+      nivel: z.number(),
+      descricao: z.string().optional(),
+      salarioMinimo: z.string().optional(),
+      salarioMaximo: z.string().optional(),
+      requisitosGrauInstrucao: z.string().optional(),
+      requisitosExperiencia: z.string().optional(),
+      requisitosAdicionais: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      const id = await db.createNivelCargo(input as any);
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.record(z.string(), z.any()),
+    })).mutation(async ({ input }) => {
+      await db.updateNivelCargo(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteNivelCargo(input.id);
+      return { success: true };
     }),
   }),
 });

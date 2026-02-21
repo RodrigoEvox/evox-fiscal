@@ -49,6 +49,14 @@ import {
   respostasClima, InsertRespostaClima,
   bancoHoras, InsertBancoHoras,
   userPresence, InsertUserPresence,
+  valeTransporte, InsertValeTransporte,
+  academiaBeneficio, InsertAcademiaBeneficio,
+  comissaoRh, InsertComissaoRh,
+  dayOff, InsertDayOff,
+  doacaoSangue, InsertDoacaoSangue,
+  reajustesSalariais, InsertReajusteSalarial,
+  apontamentosFolha, InsertApontamentoFolha,
+  niveisCargo, InsertNivelCargo,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1507,6 +1515,12 @@ export async function updateFerias(id: number, data: Partial<InsertFerias>) {
   const db = await getDb();
   if (!db) return;
   await db.update(ferias).set(data).where(eq(ferias.id, id));
+}
+
+export async function deleteFerias(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(ferias).where(eq(ferias.id, id));
 }
 
 // ---- SOLICITAÇÕES DE FOLGA ----
@@ -3134,4 +3148,389 @@ export async function getComparativoPeriodos(
     deltas,
     rankingComparativo: rankingComparativo.slice(0, 20),
   };
+}
+
+
+// ---- VALE TRANSPORTE ----
+export async function listValeTransporte(mesRef?: number, anoRef?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (mesRef && anoRef) {
+    return db.select().from(valeTransporte)
+      .where(and(eq(valeTransporte.mesReferencia, mesRef), eq(valeTransporte.anoReferencia, anoRef)))
+      .orderBy(desc(valeTransporte.createdAt));
+  }
+  return db.select().from(valeTransporte).orderBy(desc(valeTransporte.createdAt));
+}
+
+export async function createValeTransporte(data: InsertValeTransporte) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(valeTransporte).values(data);
+  return result[0].insertId;
+}
+
+export async function updateValeTransporte(id: number, data: Partial<InsertValeTransporte>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(valeTransporte).set(data).where(eq(valeTransporte.id, id));
+}
+
+export async function deleteValeTransporte(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(valeTransporte).where(eq(valeTransporte.id, id));
+}
+
+// ---- ACADEMIA BENEFÍCIO ----
+export async function listAcademiaBeneficio(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(academiaBeneficio).where(eq(academiaBeneficio.colaboradorId, colaboradorId)).orderBy(desc(academiaBeneficio.createdAt));
+  }
+  return db.select().from(academiaBeneficio).orderBy(desc(academiaBeneficio.createdAt));
+}
+
+export async function createAcademiaBeneficio(data: InsertAcademiaBeneficio) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(academiaBeneficio).values(data);
+  return result[0].insertId;
+}
+
+export async function updateAcademiaBeneficio(id: number, data: Partial<InsertAcademiaBeneficio>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(academiaBeneficio).set(data).where(eq(academiaBeneficio.id, id));
+}
+
+export async function deleteAcademiaBeneficio(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(academiaBeneficio).where(eq(academiaBeneficio.id, id));
+}
+
+// ---- COMISSÃO RH ----
+export async function listComissaoRh(mesRef?: number, anoRef?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (mesRef && anoRef) {
+    return db.select().from(comissaoRh)
+      .where(and(eq(comissaoRh.mesReferencia, mesRef), eq(comissaoRh.anoReferencia, anoRef)))
+      .orderBy(desc(comissaoRh.createdAt));
+  }
+  return db.select().from(comissaoRh).orderBy(desc(comissaoRh.createdAt));
+}
+
+export async function createComissaoRh(data: InsertComissaoRh) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(comissaoRh).values(data);
+  return result[0].insertId;
+}
+
+export async function updateComissaoRh(id: number, data: Partial<InsertComissaoRh>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(comissaoRh).set(data).where(eq(comissaoRh.id, id));
+}
+
+export async function deleteComissaoRh(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(comissaoRh).where(eq(comissaoRh.id, id));
+}
+
+// ---- DAY OFF ----
+export async function listDayOff(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(dayOff).where(eq(dayOff.colaboradorId, colaboradorId)).orderBy(desc(dayOff.createdAt));
+  }
+  return db.select().from(dayOff).orderBy(desc(dayOff.createdAt));
+}
+
+export async function createDayOff(data: InsertDayOff) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(dayOff).values(data);
+  return result[0].insertId;
+}
+
+export async function updateDayOff(id: number, data: Partial<InsertDayOff>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(dayOff).set(data).where(eq(dayOff.id, id));
+}
+
+export async function deleteDayOff(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(dayOff).where(eq(dayOff.id, id));
+}
+
+// ---- DOAÇÃO DE SANGUE ----
+export async function listDoacaoSangue(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(doacaoSangue).where(eq(doacaoSangue.colaboradorId, colaboradorId)).orderBy(desc(doacaoSangue.createdAt));
+  }
+  return db.select().from(doacaoSangue).orderBy(desc(doacaoSangue.createdAt));
+}
+
+export async function createDoacaoSangue(data: InsertDoacaoSangue) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(doacaoSangue).values(data);
+  return result[0].insertId;
+}
+
+export async function updateDoacaoSangue(id: number, data: Partial<InsertDoacaoSangue>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(doacaoSangue).set(data).where(eq(doacaoSangue.id, id));
+}
+
+export async function deleteDoacaoSangue(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(doacaoSangue).where(eq(doacaoSangue.id, id));
+}
+
+// ---- REAJUSTES SALARIAIS ----
+export async function listReajustesSalariais(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(reajustesSalariais).where(eq(reajustesSalariais.colaboradorId, colaboradorId)).orderBy(desc(reajustesSalariais.createdAt));
+  }
+  return db.select().from(reajustesSalariais).orderBy(desc(reajustesSalariais.createdAt));
+}
+
+export async function createReajusteSalarial(data: InsertReajusteSalarial) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(reajustesSalariais).values(data);
+  return result[0].insertId;
+}
+
+export async function updateReajusteSalarial(id: number, data: Partial<InsertReajusteSalarial>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reajustesSalariais).set(data).where(eq(reajustesSalariais.id, id));
+}
+
+// ---- APONTAMENTOS FOLHA ----
+export async function listApontamentosFolha(mesRef?: number, anoRef?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (mesRef && anoRef) {
+    return db.select().from(apontamentosFolha)
+      .where(and(eq(apontamentosFolha.mesReferencia, mesRef), eq(apontamentosFolha.anoReferencia, anoRef)))
+      .orderBy(desc(apontamentosFolha.createdAt));
+  }
+  return db.select().from(apontamentosFolha).orderBy(desc(apontamentosFolha.createdAt));
+}
+
+export async function createApontamentoFolha(data: InsertApontamentoFolha) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(apontamentosFolha).values(data);
+  return result[0].insertId;
+}
+
+export async function deleteApontamentosFolhaPorReferencia(mesRef: number, anoRef: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(apontamentosFolha).where(and(
+    eq(apontamentosFolha.mesReferencia, mesRef),
+    eq(apontamentosFolha.anoReferencia, anoRef)
+  ));
+}
+
+// ---- NÍVEIS DE CARGO ----
+export async function listNiveisCargo(setorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (setorId) {
+    return db.select().from(niveisCargo).where(eq(niveisCargo.setorId, setorId)).orderBy(niveisCargo.nivel);
+  }
+  return db.select().from(niveisCargo).orderBy(niveisCargo.setorId, niveisCargo.nivel);
+}
+
+export async function createNivelCargo(data: InsertNivelCargo) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(niveisCargo).values(data);
+  return result[0].insertId;
+}
+
+export async function updateNivelCargo(id: number, data: Partial<InsertNivelCargo>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(niveisCargo).set(data).where(eq(niveisCargo.id, id));
+}
+
+export async function deleteNivelCargo(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(niveisCargo).where(eq(niveisCargo.id, id));
+}
+
+// ---- GERAR APONTAMENTOS DA FOLHA (consolidar VT, academia, comissões, reajustes) ----
+export async function gerarApontamentosFolha(mesRef: number, anoRef: number, registradoPorId: number | null, registradoPorNome: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Delete existing apontamentos for this month
+  await deleteApontamentosFolhaPorReferencia(mesRef, anoRef);
+
+  const apontamentos: InsertApontamentoFolha[] = [];
+
+  // 1. VT
+  const vts = await listValeTransporte(mesRef, anoRef);
+  for (const vt of vts) {
+    apontamentos.push({
+      colaboradorId: vt.colaboradorId,
+      colaboradorNome: vt.colaboradorNome,
+      mesReferencia: mesRef,
+      anoReferencia: anoRef,
+      tipo: 'vale_transporte',
+      descricao: `VT ${vt.cidadePassagem?.toUpperCase()} - ${vt.diasUteis} dias × ${vt.passagensPorDia} pass. × R$${vt.valorPassagem}`,
+      valor: String(vt.valorTotal),
+      registradoPorId,
+      registradoPorNome,
+    });
+  }
+
+  // 2. Academia
+  const academias = await listAcademiaBeneficio();
+  for (const ac of academias) {
+    if (!ac.ativo || !ac.descontoFolha) continue;
+    apontamentos.push({
+      colaboradorId: ac.colaboradorId,
+      colaboradorNome: ac.colaboradorNome,
+      mesReferencia: mesRef,
+      anoReferencia: anoRef,
+      tipo: 'academia',
+      descricao: `Academia ${ac.nomeAcademia} - Plano ${ac.plano || 'N/A'}`,
+      valor: String(ac.valorDesconto || ac.valorPlano),
+      registradoPorId,
+      registradoPorNome,
+    });
+  }
+
+  // 3. Comissões RH
+  const comissoes = await listComissaoRh(mesRef, anoRef);
+  for (const c of comissoes) {
+    const tipoLabel = c.tipo === 'evox_monitor' ? 'Evox Monitor' : c.tipo === 'dpt' ? 'DPT' : c.tipo === 'credito' ? 'Crédito' : 'Outro';
+    apontamentos.push({
+      colaboradorId: c.colaboradorId,
+      colaboradorNome: c.colaboradorNome,
+      mesReferencia: mesRef,
+      anoReferencia: anoRef,
+      tipo: 'comissao',
+      descricao: `Comissão ${tipoLabel}${c.descricao ? ' - ' + c.descricao : ''}`,
+      valor: String(c.valorComissao),
+      registradoPorId,
+      registradoPorNome,
+    });
+  }
+
+  // 4. Reajustes
+  const reajustes = await listReajustesSalariais();
+  for (const r of reajustes) {
+    // Check if the reajuste was applied in this month
+    const dataEfetivacao = r.dataEfetivacao ? new Date(r.dataEfetivacao + 'T12:00:00') : null;
+    if (dataEfetivacao && dataEfetivacao.getMonth() + 1 === mesRef && dataEfetivacao.getFullYear() === anoRef) {
+      apontamentos.push({
+        colaboradorId: r.colaboradorId,
+        colaboradorNome: r.colaboradorNome,
+        mesReferencia: mesRef,
+        anoReferencia: anoRef,
+        tipo: r.tipo === 'sindical' ? 'reajuste_sindical' : 'reajuste_dois_anos',
+        descricao: `Reajuste ${r.tipo === 'sindical' ? 'Sindical' : '2 anos'} - ${r.percentual}% sobre R$${r.salarioAnterior}`,
+        valor: String(Number(r.salarioNovo || 0) - Number(r.salarioAnterior || 0)),
+        registradoPorId,
+        registradoPorNome,
+      });
+    }
+  }
+
+  // 5. Pensão alimentícia from colaboradores
+  const colabs = await listColaboradores();
+  for (const c of colabs) {
+    if (c.pagaPensaoAlimenticia && Number(c.valorPensaoAlimenticia || 0) > 0) {
+      apontamentos.push({
+        colaboradorId: c.id,
+        colaboradorNome: c.nomeCompleto,
+        mesReferencia: mesRef,
+        anoReferencia: anoRef,
+        tipo: 'pensao_alimenticia',
+        descricao: 'Pensão alimentícia',
+        valor: String(c.valorPensaoAlimenticia),
+        registradoPorId,
+        registradoPorNome,
+      });
+    }
+    if (c.temContribuicaoAssistencial && Number(c.valorContribuicaoAssistencial || 0) > 0) {
+      apontamentos.push({
+        colaboradorId: c.id,
+        colaboradorNome: c.nomeCompleto,
+        mesReferencia: mesRef,
+        anoReferencia: anoRef,
+        tipo: 'contribuicao_assistencial',
+        descricao: 'Contribuição assistencial',
+        valor: String(c.valorContribuicaoAssistencial),
+        registradoPorId,
+        registradoPorNome,
+      });
+    }
+  }
+
+  // Insert all apontamentos
+  if (apontamentos.length > 0) {
+    for (const ap of apontamentos) {
+      await createApontamentoFolha(ap);
+    }
+  }
+
+  return apontamentos;
+}
+
+// ---- CHECK REAJUSTE 2 ANOS ----
+export async function checkReajusteDoisAnos() {
+  const db = await getDb();
+  if (!db) return [];
+  const colabs = await listColaboradores();
+  const elegíveis: { colaboradorId: number; nome: string; dataAdmissao: string; anosCompletos: number; salarioAtual: number }[] = [];
+  const hoje = new Date();
+
+  for (const c of colabs) {
+    if (!c.dataAdmissao || c.statusColaborador !== 'ativo') continue;
+    const admissao = new Date(c.dataAdmissao + 'T12:00:00');
+    const diffMs = hoje.getTime() - admissao.getTime();
+    const anosCompletos = Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+    if (anosCompletos >= 2 && anosCompletos % 2 === 0) {
+      // Check if reajuste already exists for this period
+      const existingReajustes = await listReajustesSalariais(c.id);
+      const jaTemReajuste = existingReajustes.some(r =>
+        r.tipo === 'dois_anos' &&
+        r.dataEfetivacao && new Date(r.dataEfetivacao + 'T12:00:00').getFullYear() === hoje.getFullYear()
+      );
+      if (!jaTemReajuste) {
+        elegíveis.push({
+          colaboradorId: c.id,
+          nome: c.nomeCompleto,
+          dataAdmissao: c.dataAdmissao,
+          anosCompletos,
+          salarioAtual: Number(c.salarioBase || 0),
+        });
+      }
+    }
+  }
+  return elegíveis;
 }
