@@ -1341,3 +1341,27 @@
 - [x] Seletor de ano dinâmico: ano atual até ano atual + 4
 - [x] Acréscimo automático ao virar o ano (ex: 2026→2030, 2027→2031)
 - [x] 356 testes passando
+
+## GEG v45 — Férias Reestruturado
+
+### Visão Mensal/Anual
+- [x] Calendário mensal e anual com férias e folgas programadas
+- [x] Ano atual e ano seguinte, auto-incremento na virada de ano
+- [x] Ao clicar no mês ou dia, exibir lista de colaboradores com férias/folgas naquele período
+
+### Alertas de Período Concessivo
+- [x] Alertas de períodos concessivos a vencer nos próximos 6 meses
+- [x] Destaque visual para colaboradores com concessivo próximo do vencimento
+
+### Lista Enxuta de Colaboradores
+- [x] Visão inicial compacta: nome, cargo, setor, período concessivo, tempo de casa
+- [x] Ao clicar no colaborador, expandir com todas as informações de férias e folgas
+- [x] Incluir histórico completo de férias e folgas no detalhe expandido
+
+### Alerta de Ruptura de Setor
+- [x] Ao programar férias/folgas de mais de um colaborador do mesmo setor, gerar alerta
+- [x] Alerta também em férias coletivas e folgas
+- [x] Confirmação para seguir com a programação mesmo com sobreposição
+
+- [x] 28 novos testes vitest (ferias-v45.test.ts)
+- [x] 384 testes passando no total
