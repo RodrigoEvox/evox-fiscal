@@ -1215,3 +1215,20 @@
 - [x] Renomear "Níveis de Cargo" para "Cargos e Salários"
 - [x] Renomear "Relatórios RH" para "Visão Analítica"
 - [x] 8 testes vitest para GEG v38
+
+## GEG v39 — Sidebar Limpo com Telas Hub
+
+### Reestruturação do Sidebar GEG
+- [x] Sidebar deve mostrar apenas itens de nível superior: Nova Tarefa, Gestão RH, Ações Evox, Benefícios, Carreira e Desenvolvimento, Administração
+- [x] Ao clicar em cada item, navegar para uma tela hub intermediária
+- [x] Tela hub lista os itens que integram o submenu com cards clicáveis
+- [x] Ao clicar no card, navegar para a tela específica do item
+- [x] Criar página hub GestaoRhHub.tsx
+- [x] Criar página hub AcoesEvoxHub.tsx
+- [x] Criar página hub BeneficiosHub.tsx
+- [x] Criar página hub CarreiraDesenvolvimentoHub.tsx + AdministracaoHub.tsx
+- [x] Atualizar AppSidebar para mostrar apenas os itens de nível superior
+- [x] Registrar rotas hub no App.tsx
+- [x] Atualizar setor_config no banco para 6 itens hub
+- [x] Remover link Relatórios automático para GEG
+- [x] 346 testes passando

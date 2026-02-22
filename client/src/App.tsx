@@ -65,6 +65,11 @@ const ReajustesGEG = lazy(() => import("./pages/rh/ReajustesGEG"));
 const ApontamentosFolhaGEG = lazy(() => import("./pages/rh/ApontamentosFolhaGEG"));
 const NiveisCargoGEG = lazy(() => import("./pages/rh/NiveisCargoGEG"));
 const DashboardComissoes = lazy(() => import("./pages/DashboardComissoes"));
+const GestaoRhHub = lazy(() => import("./pages/rh/GestaoRhHub"));
+const AcoesEvoxHub = lazy(() => import("./pages/rh/AcoesEvoxHub"));
+const BeneficiosHub = lazy(() => import("./pages/rh/BeneficiosHub"));
+const CarreiraHub = lazy(() => import("./pages/rh/CarreiraHub"));
+const AdministracaoHub = lazy(() => import("./pages/rh/AdministracaoHub"));
 
 function LazyFallback() {
   return (
@@ -106,6 +111,11 @@ function Router() {
         <Route path="/chat" component={ChatInterno} />
         {/* Gente & Gestão (RH) */}
         <Route path="/rh/dashboard" component={DashboardGEG} />
+        <Route path="/rh/gestao-rh" component={GestaoRhHub} />
+        <Route path="/rh/acoes-evox" component={AcoesEvoxHub} />
+        <Route path="/rh/beneficios" component={BeneficiosHub} />
+        <Route path="/rh/carreira" component={CarreiraHub} />
+        <Route path="/rh/administracao" component={AdministracaoHub} />
         <Route path="/rh/nova-tarefa" component={NovaTarefaGEG} />
         <Route path="/rh/colaboradores" component={ColaboradoresGEG} />
         <Route path="/rh/ferias" component={FeriasGEG} />

@@ -1,0 +1,8 @@
+Sidebar Status After Hub Changes:
+- Dashboard, Minhas Tarefas, Chat are at top
+- Equipes section with chevron (collapsible) - contains all team setors
+- Universidade Evox with chevron
+- Administração section with admin items
+- The GEG setor is inside "Equipes" - need to check if the 6 hub items show correctly when expanding GEG
+- No TS errors, server running fine
+- Need to verify GEG sidebar shows the 6 hub items correctly

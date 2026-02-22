@@ -101,6 +101,11 @@ const SUBMENU_ICONS: Record<string, any> = {
   'apontamentos-folha': FileBarChart,
   'niveis-cargo': Layers,
   'gestao-parcerias': Handshake,
+  'gestao-rh-hub': Users,
+  'acoes-evox-hub': Gift,
+  'beneficios-hub': Wallet,
+  'carreira-hub': GraduationCap,
+  'admin-hub': Settings,
 };
 
 interface SetorConfigItem {
@@ -288,17 +293,19 @@ export default function AppSidebar() {
                     </Link>
                   );
                 })}
-                <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
-                  <div className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
-                    location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
-                      ? 'bg-white/10 text-white'
-                      : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                  )}>
-                    <FileBarChart className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">Relatórios</span>
-                  </div>
-                </Link>
+                {setor.sigla !== 'GEG' && (
+                  <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
+                    <div className={cn(
+                      'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
+                      location === `/setor/${setor.sigla.toLowerCase()}/relatorio`
+                        ? 'bg-white/10 text-white'
+                        : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                    )}>
+                      <FileBarChart className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Relatórios</span>
+                    </div>
+                  </Link>
+                )}
               </div>
             );
           }
