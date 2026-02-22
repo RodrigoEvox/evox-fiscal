@@ -246,12 +246,12 @@ export default function DashboardGEG() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="value" labelLine={false}>
                     {statusData.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1.5 overflow-y-auto max-h-[220px]">

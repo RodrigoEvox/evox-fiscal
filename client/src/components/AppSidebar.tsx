@@ -248,6 +248,8 @@ export default function AppSidebar() {
     );
   };
 
+  const [, navigate] = useLocation();
+
   // Render a setor item (used inside Equipes group)
   const renderSetorItem = (setor: any) => {
     const IconComp = ICON_MAP[setor.icone] || Building2;
@@ -258,7 +260,13 @@ export default function AppSidebar() {
     return (
       <div key={setor.sigla}>
         <button
-          onClick={() => toggleSection(setor.sigla)}
+          onClick={() => {
+            toggleSection(setor.sigla);
+            // GEG: navigate directly to Dashboard when clicking the section header
+            if (setor.sigla === 'GEG') {
+              navigate('/rh/dashboard');
+            }
+          }}
           className={cn(
             'flex items-center gap-2.5 w-full px-3 py-1.5 rounded-lg transition-all duration-150 text-[14px] font-medium',
             isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5',

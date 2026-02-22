@@ -19,11 +19,14 @@ import {
   Download, FileSpreadsheet, FileText, Cake, CalendarDays,
   ArrowLeft, GraduationCap, TrendingUp, DollarSign, Award,
   FileCheck, AlertCircle, Stethoscope, BookOpen, Wrench,
-  ChevronRight, ArrowUpDown
+  ChevronRight, ArrowUpDown, ChevronLeft as ChevronLeftIcon, ChevronsLeft, ChevronsRight, Printer
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+} from 'recharts';
 
 // ---- Helpers ----
 function validarCPF(cpf: string): boolean {
@@ -279,9 +282,17 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
               </div>
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={() => onEdit(colab)} className="gap-1.5 shrink-0">
-            <Edit2 className="w-3.5 h-3.5" /> Editar
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={() => {
+              // Print the panel as PDF
+              window.print();
+            }} className="gap-1.5">
+              <Printer className="w-3.5 h-3.5" /> Imprimir / PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onEdit(colab)} className="gap-1.5">
+              <Edit2 className="w-3.5 h-3.5" /> Editar
+            </Button>
+          </div>
         </div>
 
         {/* Quick stats */}
@@ -499,6 +510,38 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
                 <InfoItem label="Com 13° + Férias (1/3)" value={formatCurrency(custoMensal * 13 + salarioAtual / 3)} />
               </div>
             </SectionCard>
+
+            {/* Salary Evolution Chart */}
+            {!reajustesQ.isLoading && salaryTimeline.length > 0 && (() => {
+              const chartData = [
+                ...salaryTimeline.map(r => ({
+                  data: formatDateBR(r.data),
+                  salario: parseFloat(r.salarioNovo),
+                })),
+                { data: 'Atual', salario: salarioAtual },
+              ];
+              // Remove duplicates if last reajuste equals current
+              const unique = chartData.filter((d, i, arr) => i === 0 || d.salario !== arr[i-1].salario || d.data !== arr[i-1].data);
+              return (
+                <SectionCard title="Evolução Salarial" icon={TrendingUp}>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={unique} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="salaryGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="data" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `R$ ${(v/1000).toFixed(1)}k`} />
+                      <RechartsTooltip formatter={(v: number) => [formatCurrency(v), 'Salário']} />
+                      <Area type="monotone" dataKey="salario" stroke="#6366f1" fill="url(#salaryGrad)" strokeWidth={2} dot={{ r: 4, fill: '#6366f1' }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </SectionCard>
+              );
+            })()}
 
             <SectionCard title="Histórico de Reajustes" icon={TrendingUp}>
               {reajustesQ.isLoading ? (
@@ -812,6 +855,8 @@ export default function ColaboradoresGEG() {
   const [selectedColab, setSelectedColab] = useState<any | null>(null);
   const [sortField, setSortField] = useState<string>('nomeCompleto');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
 
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
@@ -1094,6 +1139,11 @@ export default function ColaboradoresGEG() {
     return list;
   }, [allColabs, search, filterStatus, filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato, sortField, sortDir, setoresList]);
 
+  // Reset page when filters change
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedList = filtered.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allColabs.forEach((c: any) => {
@@ -1176,7 +1226,7 @@ export default function ColaboradoresGEG() {
       {/* Status Summary */}
       <div className="flex gap-2 flex-wrap">
         <button
-          onClick={() => setFilterStatus('todos')}
+          onClick={() => { setFilterStatus('todos'); setCurrentPage(1); }}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
             filterStatus === 'todos' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
           }`}
@@ -1190,7 +1240,7 @@ export default function ColaboradoresGEG() {
           return (
             <button
               key={key}
-              onClick={() => setFilterStatus(key)}
+              onClick={() => { setFilterStatus(key); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 ${
                 filterStatus === key ? `${cfg.color} border-current` : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
               }`}
@@ -1206,7 +1256,7 @@ export default function ColaboradoresGEG() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar por nome, CPF ou cargo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Buscar por nome, CPF ou cargo..." value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-10" />
         </div>
         <div className="flex gap-2">
           <Button
@@ -1354,7 +1404,7 @@ export default function ColaboradoresGEG() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c: any) => {
+              {paginatedList.map((c: any) => {
                 const status = c.statusColaborador || 'ativo';
                 const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
                 const setorNome = setoresList.find((s: any) => s.id === c.setorId)?.nome || '—';
@@ -1396,6 +1446,29 @@ export default function ColaboradoresGEG() {
           <div className="py-16 text-center">
             <User className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground">Nenhum colaborador encontrado</p>
+          </div>
+        )}
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
+            <p className="text-xs text-muted-foreground">
+              Mostrando {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filtered.length)} de {filtered.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setCurrentPage(1)}>
+                <ChevronsLeft className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>
+                <ChevronLeftIcon className="w-3.5 h-3.5" />
+              </Button>
+              <span className="text-xs font-medium px-2">Página {safePage} de {totalPages}</span>
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setCurrentPage(totalPages)}>
+                <ChevronsRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </div>
         )}
       </Card>

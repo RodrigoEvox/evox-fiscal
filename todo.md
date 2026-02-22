@@ -1389,3 +1389,18 @@
 - [x] Todas as informações em uma única tela
 - [x] 54 novos testes vitest (colaboradores-v46.test.ts)
 - [x] 438 testes passando no total
+
+## GEG v47 — Dashboard direto, gráfico fix, melhorias Colaboradores
+
+### Navegação
+- [x] Menu Gente & Gestão abre direto no Dashboard do setor ao clicar
+
+### Dashboard GEG — Gráfico fix
+- [x] Corrigir labels sobrepostas/ocultas no gráfico de Distribuição por Status
+
+### Colaboradores — Melhorias
+- [x] Adicionar paginação na lista de colaboradores
+- [x] Implementar exportação do Painel individual do colaborador em PDF (botão Imprimir/PDF)
+- [x] Adicionar gráfico de evolução salarial no Histórico Salarial
+- [x] 21 novos testes vitest (colaboradores-v47.test.ts)
+- [x] 459 testes passando no total
