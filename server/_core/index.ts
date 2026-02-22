@@ -80,6 +80,70 @@ async function runDailyBirthdayEmails() {
   }
 }
 
+async function runAdvanceBirthdayNotifications() {
+  try {
+    const db = await import('../db');
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const allUsers = await db.listUsers();
+    if (!allUsers || allUsers.length === 0) return;
+
+    // Check for birthdays 7 days and 3 days from now
+    const diasAntecedencia = [7, 3];
+    let totalEnviados = 0;
+
+    for (const diasAntes of diasAntecedencia) {
+      const dataAlvo = new Date(hoje);
+      dataAlvo.setDate(dataAlvo.getDate() + diasAntes);
+      const mesAlvo = dataAlvo.getMonth() + 1;
+      const diaAlvo = dataAlvo.getDate();
+
+      const aniversariantes = await db.getAniversariantesMes(mesAlvo);
+      const jaEnviados = await db.getNotificacoesAniversarioEnviadas(anoAtual, diasAntes);
+      const jaEnviadosSet = new Set(jaEnviados);
+
+      const diaStr = String(diaAlvo).padStart(2, '0');
+      const paraNotificar = (aniversariantes as any[]).filter((c: any) => {
+        const diaNasc = c.dataNascimento?.substring(8, 10);
+        // Excluir colaboradores desligados
+        const status = c.statusColaborador || 'ativo';
+        return diaNasc === diaStr && !jaEnviadosSet.has(c.id) && status !== 'desligado';
+      });
+
+      for (const colab of paraNotificar) {
+        try {
+          const nome = colab.nomeCompleto?.split(' ')[0] || 'Colaborador';
+          const dataNascFormatada = colab.dataNascimento ? 
+            `${colab.dataNascimento.substring(8, 10)}/${colab.dataNascimento.substring(5, 7)}` : '';
+          const titulo = diasAntes === 7 
+            ? `\u{1F382} Anivers\u00e1rio em 7 dias: ${colab.nomeCompleto}`
+            : `\u{1F382} Anivers\u00e1rio em 3 dias: ${colab.nomeCompleto}`;
+          const mensagem = diasAntes === 7
+            ? `O colaborador ${colab.nomeCompleto} (${colab.cargo || 'N/I'}) far\u00e1 anivers\u00e1rio em 7 dias (${dataNascFormatada}). Considere agendar o Day Off de anivers\u00e1rio.`
+            : `O colaborador ${colab.nomeCompleto} (${colab.cargo || 'N/I'}) far\u00e1 anivers\u00e1rio em 3 dias (${dataNascFormatada}). Lembre-se de agendar o Day Off de anivers\u00e1rio caso ainda n\u00e3o tenha sido feito.`;
+
+          for (const u of allUsers) {
+            await db.createNotificacao({
+              usuarioId: u.id,
+              tipo: 'geral' as any,
+              titulo,
+              mensagem,
+              lida: false,
+            });
+          }
+          await db.registrarNotificacaoAniversarioAntecipada(colab.id, anoAtual, diasAntes);
+          totalEnviados++;
+        } catch (e) { /* ignora erros individuais */ }
+      }
+    }
+    if (totalEnviados > 0) {
+      console.log(`[Birthday Advance Scheduler] Sent ${totalEnviados} advance notification(s)`);
+    }
+  } catch (err) {
+    console.error('[Birthday Advance Scheduler Error]', err);
+  }
+}
+
 async function runContractExpirationCheck() {
   try {
     const db = await import('../db');
@@ -178,6 +242,7 @@ function startScheduledJobs() {
     if (now.getHours() >= 8 && lastBirthdayRun !== todayKey) {
       lastBirthdayRun = todayKey;
       await runDailyBirthdayEmails();
+      await runAdvanceBirthdayNotifications();
     }
 
     // Run contract check once per day (after 9 AM)
@@ -196,6 +261,7 @@ function startScheduledJobs() {
   // Also run once on startup after a short delay
   setTimeout(async () => {
     await runDailyBirthdayEmails();
+    await runAdvanceBirthdayNotifications();
     await runContractExpirationCheck();
     await runReajusteDoisAnosCheck();
   }, 10000);

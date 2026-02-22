@@ -10,13 +10,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Cake, Loader2, CheckCircle2, XCircle, Clock, Edit, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Plus, Cake, Loader2, CheckCircle2, XCircle, Clock, Edit, ChevronLeft, ChevronRight, Calendar, User, CalendarDays, CalendarRange, Eye } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = { pendente: 'Pendente', aprovado: 'Aprovado', recusado: 'Recusado', utilizado: 'Utilizado' };
 const STATUS_COLORS: Record<string, string> = { pendente: 'bg-yellow-100 text-yellow-700', aprovado: 'bg-green-100 text-green-700', recusado: 'bg-red-100 text-red-700', utilizado: 'bg-blue-100 text-blue-700' };
 
+const STATUS_COLAB_COLORS: Record<string, string> = {
+  ativo: 'bg-green-100 text-green-700 border-green-300',
+  inativo: 'bg-gray-100 text-gray-600 border-gray-300',
+  afastado: 'bg-orange-100 text-orange-700 border-orange-300',
+  licenca: 'bg-blue-100 text-blue-700 border-blue-300',
+  'licença': 'bg-blue-100 text-blue-700 border-blue-300',
+  atestado: 'bg-purple-100 text-purple-700 border-purple-300',
+  desligado: 'bg-red-100 text-red-600 border-red-300',
+  'de férias': 'bg-cyan-100 text-cyan-700 border-cyan-300',
+  'de ferias': 'bg-cyan-100 text-cyan-700 border-cyan-300',
+};
+
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+type ViewMode = 'ano' | 'mes' | 'dia';
 
 function formatDateBR(d: string) {
   if (!d) return '';
@@ -32,15 +46,51 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-// Birthday calendar component
-function BirthdayCalendar({ colaboradores }: { colaboradores: any[] }) {
-  const [ano, setAno] = useState(() => new Date().getFullYear());
+function getStatusLabel(s: string) {
+  if (!s) return 'Ativo';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
-  // Build a map: month-day -> list of collaborator names
+interface Colaborador {
+  id: number;
+  nomeCompleto?: string;
+  nome?: string;
+  dataNascimento?: string | null;
+  statusColaborador?: string | null;
+  cargo?: string | null;
+  setor?: string | null;
+}
+
+interface AniversarianteInfo {
+  nome: string;
+  id: number;
+  status: string;
+  dataNascimento: string;
+  cargo?: string;
+}
+
+// ============================================================
+// Birthday Calendar with filters
+// ============================================================
+function BirthdayCalendar({
+  colaboradores,
+  onScheduleDayOff,
+}: {
+  colaboradores: Colaborador[];
+  onScheduleDayOff: (colab: Colaborador) => void;
+}) {
+  const hoje = new Date();
+  const [ano, setAno] = useState(() => hoje.getFullYear());
+  const [mes, setMes] = useState(() => hoje.getMonth());
+  const [viewMode, setViewMode] = useState<ViewMode>('ano');
+
+  // Build map: month-day -> list of collaborator info (exclude desligado)
   const aniversariosMap = useMemo(() => {
-    const map: Record<string, { nome: string; id: number }[]> = {};
-    (colaboradores || []).forEach((c: any) => {
-      if (!c.dataNascimento || c.statusColaborador === 'desligado') return;
+    const map: Record<string, AniversarianteInfo[]> = {};
+    (colaboradores || []).forEach((c) => {
+      const status = (c.statusColaborador || 'ativo').toLowerCase();
+      if (status === 'desligado') return; // não exibir desligados
+      if (!c.dataNascimento) return;
       const parts = c.dataNascimento.split('-');
       if (parts.length < 3) return;
       const m = parseInt(parts[1], 10);
@@ -48,7 +98,13 @@ function BirthdayCalendar({ colaboradores }: { colaboradores: any[] }) {
       if (isNaN(m) || isNaN(d)) return;
       const key = `${m}-${d}`;
       if (!map[key]) map[key] = [];
-      map[key].push({ nome: c.nomeCompleto || c.nome || 'Sem nome', id: c.id });
+      map[key].push({
+        nome: c.nomeCompleto || c.nome || 'Sem nome',
+        id: c.id,
+        status: status,
+        dataNascimento: c.dataNascimento || '',
+        cargo: c.cargo || undefined,
+      });
     });
     return map;
   }, [colaboradores]);
@@ -63,125 +119,344 @@ function BirthdayCalendar({ colaboradores }: { colaboradores: any[] }) {
     return counts;
   }, [aniversariosMap]);
 
-  const hoje = new Date();
+  // Aniversariantes do mês selecionado (sorted by day)
+  const aniversariantesMes = useMemo(() => {
+    const mesNum = viewMode === 'ano' ? hoje.getMonth() + 1 : mes + 1;
+    const list: (AniversarianteInfo & { dia: number })[] = [];
+    Object.entries(aniversariosMap).forEach(([key, people]) => {
+      const [m, d] = key.split('-').map(Number);
+      if (m === mesNum) {
+        people.forEach(p => list.push({ ...p, dia: d }));
+      }
+    });
+    return list.sort((a, b) => a.dia - b.dia);
+  }, [aniversariosMap, mes, viewMode, hoje]);
+
+  // Aniversariantes de hoje
+  const aniversariantesHoje = useMemo(() => {
+    const key = `${hoje.getMonth() + 1}-${hoje.getDate()}`;
+    return aniversariosMap[key] || [];
+  }, [aniversariosMap, hoje]);
+
   const hojeStr = `${hoje.getMonth() + 1}-${hoje.getDate()}`;
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-pink-600" />
-            Cronograma de Aniversários — {ano}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setAno(a => a - 1)}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setAno(new Date().getFullYear())}>
-              Hoje
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setAno(a => a + 1)}>
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+  // Navigation handlers
+  function navPrev() {
+    if (viewMode === 'ano') setAno(a => a - 1);
+    else if (viewMode === 'mes') {
+      if (mes === 0) { setMes(11); setAno(a => a - 1); }
+      else setMes(m => m - 1);
+    } else {
+      // dia: go to previous day (change mes/ano if needed)
+      const d = new Date(ano, mes, hoje.getDate());
+      d.setDate(d.getDate() - 1);
+      setAno(d.getFullYear());
+      setMes(d.getMonth());
+    }
+  }
+
+  function navNext() {
+    if (viewMode === 'ano') setAno(a => a + 1);
+    else if (viewMode === 'mes') {
+      if (mes === 11) { setMes(0); setAno(a => a + 1); }
+      else setMes(m => m + 1);
+    } else {
+      const d = new Date(ano, mes, hoje.getDate());
+      d.setDate(d.getDate() + 1);
+      setAno(d.getFullYear());
+      setMes(d.getMonth());
+    }
+  }
+
+  function goToday() {
+    setAno(hoje.getFullYear());
+    setMes(hoje.getMonth());
+  }
+
+  // Render a single month grid
+  function renderMonthGrid(mesIdx: number, compact = false) {
+    const daysInMonth = getDaysInMonth(ano, mesIdx);
+    const firstDay = getFirstDayOfMonth(ano, mesIdx);
+    const isCurrentMonth = ano === hoje.getFullYear() && mesIdx === hoje.getMonth();
+
+    return (
+      <div key={mesIdx} className={`border rounded-lg p-3 ${isCurrentMonth ? 'border-pink-300 bg-pink-50/30' : 'border-gray-200'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className={`text-sm font-semibold ${isCurrentMonth ? 'text-pink-700' : 'text-gray-700'}`}>
+            {MESES[mesIdx]}
+          </h4>
+          {countPerMonth[mesIdx] > 0 && (
+            <Badge variant="outline" className="text-xs text-pink-600 border-pink-300">
+              <Cake className="w-3 h-3 mr-1" /> {countPerMonth[mesIdx]}
+            </Badge>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {MESES.map((mesNome, mesIdx) => {
-            const daysInMonth = getDaysInMonth(ano, mesIdx);
-            const firstDay = getFirstDayOfMonth(ano, mesIdx);
-            const isCurrentMonth = ano === hoje.getFullYear() && mesIdx === hoje.getMonth();
+        <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
+          {DIAS_SEMANA.map(d => (
+            <div key={d} className="text-[10px] text-muted-foreground font-medium">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-0.5">
+          {Array.from({ length: firstDay }, (_, i) => (
+            <div key={`empty-${i}`} className={compact ? 'h-8' : 'h-7'} />
+          ))}
+          {Array.from({ length: daysInMonth }, (_, i) => {
+            const dia = i + 1;
+            const key = `${mesIdx + 1}-${dia}`;
+            const aniversariantes = aniversariosMap[key] || [];
+            const isToday = ano === hoje.getFullYear() && isCurrentMonth && dia === hoje.getDate();
+            const hasAniversario = aniversariantes.length > 0;
 
             return (
-              <div key={mesIdx} className={`border rounded-lg p-3 ${isCurrentMonth ? 'border-pink-300 bg-pink-50/30' : 'border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className={`text-sm font-semibold ${isCurrentMonth ? 'text-pink-700' : 'text-gray-700'}`}>
-                    {mesNome}
-                  </h4>
-                  {countPerMonth[mesIdx] > 0 && (
-                    <Badge variant="outline" className="text-xs text-pink-600 border-pink-300">
-                      <Cake className="w-3 h-3 mr-1" /> {countPerMonth[mesIdx]}
-                    </Badge>
-                  )}
-                </div>
-                {/* Day headers */}
-                <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
-                  {DIAS_SEMANA.map(d => (
-                    <div key={d} className="text-[10px] text-muted-foreground font-medium">{d}</div>
-                  ))}
-                </div>
-                {/* Calendar grid */}
-                <div className="grid grid-cols-7 gap-0.5">
-                  {/* Empty cells for days before first day of month */}
-                  {Array.from({ length: firstDay }, (_, i) => (
-                    <div key={`empty-${i}`} className="h-7" />
-                  ))}
-                  {/* Day cells */}
-                  {Array.from({ length: daysInMonth }, (_, i) => {
-                    const dia = i + 1;
-                    const key = `${mesIdx + 1}-${dia}`;
-                    const aniversariantes = aniversariosMap[key] || [];
-                    const isToday = isCurrentMonth && dia === hoje.getDate();
-                    const hasAniversario = aniversariantes.length > 0;
-
-                    return (
-                      <div
-                        key={dia}
-                        className={`h-7 flex items-center justify-center text-xs rounded relative group cursor-default
-                          ${isToday ? 'bg-pink-600 text-white font-bold' : ''}
-                          ${hasAniversario && !isToday ? 'bg-pink-100 text-pink-700 font-semibold' : ''}
-                          ${!hasAniversario && !isToday ? 'text-gray-600 hover:bg-gray-100' : ''}
-                        `}
-                        title={hasAniversario ? aniversariantes.map(a => a.nome).join(', ') : ''}
-                      >
-                        {dia}
-                        {hasAniversario && (
-                          <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${isToday ? 'bg-white' : 'bg-pink-500'}`} />
-                        )}
-                        {/* Tooltip on hover */}
-                        {hasAniversario && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
-                            <div className="bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg max-w-[200px]">
-                              {aniversariantes.map(a => (
-                                <div key={a.id} className="flex items-center gap-1">
-                                  <Cake className="w-2.5 h-2.5 text-pink-300 shrink-0" />
-                                  <span className="truncate">{a.nome}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div
+                key={dia}
+                className={`${compact ? 'h-8 w-8' : 'h-7'} flex items-center justify-center text-xs rounded relative group cursor-default
+                  ${isToday ? 'bg-pink-600 text-white font-bold' : ''}
+                  ${hasAniversario && !isToday ? 'bg-pink-100 text-pink-700 font-semibold' : ''}
+                  ${!hasAniversario && !isToday ? 'text-gray-600 hover:bg-gray-100' : ''}
+                `}
+                title={hasAniversario ? aniversariantes.map(a => `${a.nome} (${getStatusLabel(a.status)})`).join(', ') : ''}
+              >
+                {dia}
+                {hasAniversario && (
+                  <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${isToday ? 'bg-white' : 'bg-pink-500'}`} />
+                )}
+                {hasAniversario && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-50 pointer-events-none">
+                    <div className="bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg max-w-[250px]">
+                      {aniversariantes.map(a => (
+                        <div key={a.id} className="flex items-center gap-1">
+                          <Cake className="w-2.5 h-2.5 text-pink-300 shrink-0" />
+                          <span className="truncate">{a.nome}</span>
+                          <span className={`ml-1 px-1 rounded text-[8px] ${STATUS_COLAB_COLORS[a.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {getStatusLabel(a.status)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
+      </div>
+    );
+  }
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-pink-100 border border-pink-300" />
-            <span>Aniversário</span>
+  // Render view for "Dia" (today)
+  function renderDiaView() {
+    const diaAtual = hoje.getDate();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    return (
+      <div className="space-y-4">
+        <Card className="border-pink-200 bg-pink-50/30">
+          <CardContent className="py-6 text-center">
+            <p className="text-lg font-semibold text-pink-700">
+              {diaAtual} de {MESES[mesAtual]} de {anoAtual}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {aniversariantesHoje.length > 0
+                ? `${aniversariantesHoje.length} aniversariante(s) hoje`
+                : 'Nenhum aniversariante hoje'}
+            </p>
+          </CardContent>
+        </Card>
+        {aniversariantesHoje.length > 0 && (
+          <div className="space-y-2">
+            {aniversariantesHoje.map(a => {
+              const colab = (colaboradores || []).find(c => c.id === a.id);
+              return (
+                <Card key={a.id} className="border-pink-200 hover:shadow-md transition-shadow">
+                  <CardContent className="py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+                        <Cake className="w-5 h-5 text-pink-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{a.nome}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {a.cargo && <span className="text-xs text-muted-foreground">{a.cargo}</span>}
+                          <Badge variant="outline" className={`text-[10px] ${STATUS_COLAB_COLORS[a.status] || ''}`}>
+                            {getStatusLabel(a.status)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-pink-600 hover:bg-pink-700"
+                      onClick={() => colab && onScheduleDayOff(colab)}
+                    >
+                      <CalendarDays className="w-4 h-4 mr-1" /> Agendar Day Off
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-pink-600" />
-            <span>Hoje</span>
+        )}
+      </div>
+    );
+  }
+
+  // Title for navigation
+  function getNavTitle() {
+    if (viewMode === 'ano') return `Cronograma de Aniversários — ${ano}`;
+    if (viewMode === 'mes') return `${MESES[mes]} ${ano}`;
+    return `Hoje — ${hoje.getDate()} de ${MESES[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+  }
+
+  // Current month label for the birthday list
+  const mesListaLabel = viewMode === 'ano' ? MESES[hoje.getMonth()] : MESES[mes];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-pink-600" />
+              {getNavTitle()}
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* View mode filter */}
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'dia' ? 'bg-pink-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  onClick={() => setViewMode('dia')}
+                >
+                  Dia
+                </button>
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors border-x ${viewMode === 'mes' ? 'bg-pink-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  onClick={() => setViewMode('mes')}
+                >
+                  Mês
+                </button>
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'ano' ? 'bg-pink-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  onClick={() => setViewMode('ano')}
+                >
+                  Ano
+                </button>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" onClick={navPrev}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToday}>
+                  Hoje
+                </Button>
+                <Button variant="outline" size="sm" onClick={navNext}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-pink-500 inline-block" />
-            <span>Indicador de aniversariante</span>
+        </CardHeader>
+        <CardContent>
+          {/* Calendar grid based on view mode */}
+          {viewMode === 'ano' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {MESES.map((_, mesIdx) => renderMonthGrid(mesIdx))}
+            </div>
+          )}
+
+          {viewMode === 'mes' && (
+            <div className="max-w-lg mx-auto">
+              {renderMonthGrid(mes, true)}
+            </div>
+          )}
+
+          {viewMode === 'dia' && renderDiaView()}
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground flex-wrap">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded bg-pink-100 border border-pink-300" />
+              <span>Aniversário</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded bg-pink-600" />
+              <span>Hoje</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-pink-500 inline-block" />
+              <span>Indicador de aniversariante</span>
+            </div>
+            <div className="flex items-center gap-1 ml-2 border-l pl-2">
+              <Badge variant="outline" className="text-[9px] bg-green-100 text-green-700 border-green-300">Ativo</Badge>
+              <Badge variant="outline" className="text-[9px] bg-orange-100 text-orange-700 border-orange-300">Afastado</Badge>
+              <Badge variant="outline" className="text-[9px] bg-cyan-100 text-cyan-700 border-cyan-300">Férias</Badge>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Lista de aniversariantes do mês */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Cake className="w-5 h-5 text-pink-600" />
+            Aniversariantes de {mesListaLabel}
+            {aniversariantesMes.length > 0 && (
+              <Badge className="bg-pink-100 text-pink-700 ml-2">{aniversariantesMes.length}</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {aniversariantesMes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum aniversariante neste mês</p>
+          ) : (
+            <div className="space-y-2">
+              {aniversariantesMes.map((a) => {
+                const colab = (colaboradores || []).find(c => c.id === a.id);
+                const isToday = a.dia === hoje.getDate() && (viewMode === 'ano' ? hoje.getMonth() + 1 : mes + 1) === parseInt(a.dataNascimento.split('-')[1], 10) && ano === hoje.getFullYear();
+                const mesNum = viewMode === 'ano' ? hoje.getMonth() + 1 : mes + 1;
+
+                return (
+                  <div
+                    key={`${a.id}-${a.dia}`}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all hover:shadow-sm ${isToday ? 'border-pink-300 bg-pink-50/50' : 'border-gray-200 hover:border-pink-200'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isToday ? 'bg-pink-600 text-white' : 'bg-pink-100 text-pink-700'}`}>
+                        {String(a.dia).padStart(2, '0')}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{a.nome}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {a.cargo && <span className="text-xs text-muted-foreground">{a.cargo}</span>}
+                          <Badge variant="outline" className={`text-[10px] py-0 ${STATUS_COLAB_COLORS[a.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {getStatusLabel(a.status)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-pink-600 border-pink-300 hover:bg-pink-50"
+                      onClick={() => colab && onScheduleDayOff(colab)}
+                    >
+                      <CalendarDays className="w-4 h-4 mr-1" /> Agendar Day Off
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
+// ============================================================
+// Main DayOffGEG component
+// ============================================================
 export default function DayOffGEG() {
   const [showDialog, setShowDialog] = useState(false);
   const [form, setForm] = useState({
@@ -205,7 +480,6 @@ export default function DayOffGEG() {
     const colab = (colaboradores || []).find((c: any) => c.id === id);
     if (colab) {
       const dataNasc = colab.dataNascimento || '';
-      // Calculate next birthday
       const hoje = new Date();
       let proxAniv = '';
       if (dataNasc) {
@@ -220,6 +494,33 @@ export default function DayOffGEG() {
       }
       setForm(f => ({ ...f, colaboradorId: id, dataAniversario: dataNasc, dataOriginal: proxAniv, dataEfetiva: proxAniv }));
     }
+  }
+
+  // Quick schedule from birthday list
+  function handleScheduleFromList(colab: Colaborador) {
+    const dataNasc = colab.dataNascimento || '';
+    const hoje = new Date();
+    let proxAniv = '';
+    if (dataNasc) {
+      const [y, m, d] = dataNasc.split('-');
+      const anoAtual = hoje.getFullYear();
+      const anivEsteAno = new Date(anoAtual, Number(m) - 1, Number(d));
+      if (anivEsteAno < hoje) {
+        proxAniv = `${anoAtual + 1}-${m}-${d}`;
+      } else {
+        proxAniv = `${anoAtual}-${m}-${d}`;
+      }
+    }
+    setForm({
+      colaboradorId: colab.id,
+      dataAniversario: dataNasc,
+      dataOriginal: proxAniv,
+      dataEfetiva: proxAniv,
+      alterado: false,
+      motivoAlteracao: '',
+      observacao: '',
+    });
+    setShowDialog(true);
   }
 
   function handleSave() {
@@ -291,8 +592,11 @@ export default function DayOffGEG() {
         </Card>
       </div>
 
-      {/* Calendário de Aniversários */}
-      <BirthdayCalendar colaboradores={colaboradores || []} />
+      {/* Calendário de Aniversários com filtros */}
+      <BirthdayCalendar
+        colaboradores={colaboradores || []}
+        onScheduleDayOff={handleScheduleFromList}
+      />
 
       {/* Tabela de Day Offs */}
       {isLoading ? (
@@ -371,7 +675,7 @@ export default function DayOffGEG() {
               <Select value={form.colaboradorId ? String(form.colaboradorId) : ''} onValueChange={v => handleColabSelect(Number(v))}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {(colaboradores || []).filter((c: any) => c.statusColaborador === 'ativo').map((c: any) => (
+                  {(colaboradores || []).filter((c: any) => (c.statusColaborador || 'ativo').toLowerCase() !== 'desligado').map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.nomeCompleto}</SelectItem>
                   ))}
                 </SelectContent>
@@ -404,6 +708,10 @@ export default function DayOffGEG() {
                 </div>
               </>
             )}
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} rows={2} placeholder="Observações adicionais..." />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>

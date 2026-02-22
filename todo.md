@@ -1276,3 +1276,22 @@
 - [x] Buscar datas de nascimento do cadastro de colaboradores
 - [x] Exibir nomes dos aniversariantes em cada data do calendário (tooltip no hover)
 - [x] 356 testes passando
+
+## GEG v42 — Day Off Avançado, Histórico de Folgas e Notificações
+
+### Calendário Day Off — Melhorias
+- [x] Filtro por visualização: Dia (hoje), Mês ou Ano no calendário
+- [x] Lista de aniversariantes do mês com nome, data e status
+- [x] Ao clicar no aniversariante, opção de agendar Day Off diretamente
+- [x] Aniversários recorrentes todos os anos (até status desligado)
+- [x] Status do colaborador refletido no calendário (badges visuais)
+
+### Histórico de Folgas no Perfil do Colaborador
+- [x] Nova seção no perfil mostrando todas as folgas (Day Off, Doação de Sangue, etc.)
+- [x] Exibir status e datas de cada folga
+
+### Notificação Automática de Aniversariantes
+- [x] Alerta ao gestor 7 dias antes do aniversário
+- [x] Alerta ao gestor 3 dias antes do aniversário
+- [x] Alerta ao gestor no dia do aniversário (já existia, mantido)
+- [x] 356 testes passando

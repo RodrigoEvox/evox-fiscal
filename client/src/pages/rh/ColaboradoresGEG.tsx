@@ -16,7 +16,7 @@ import {
   CheckCircle2, XCircle, UserCheck, UserX, Clock, Briefcase,
   HeartPulse, Palmtree, ShieldAlert, FileWarning, Filter, RotateCcw,
   ChevronDown, ChevronUp, History, MapPin, Bus, Building2,
-  Download, FileSpreadsheet, FileText
+  Download, FileSpreadsheet, FileText, Cake, CalendarDays
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -160,6 +160,14 @@ export default function ColaboradoresGEG() {
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
   const historicoStatus = trpc.historicoStatus.list.useQuery(
+    { colaboradorId: editId || 0 },
+    { enabled: !!editId && (viewMode || showForm) }
+  );
+  const folgasColab = trpc.solicitacoesFolga.list.useQuery(
+    { colaboradorId: editId || 0 },
+    { enabled: !!editId && (viewMode || showForm) }
+  );
+  const dayoffsColab = trpc.dayOff.list.useQuery(
     { colaboradorId: editId || 0 },
     { enabled: !!editId && (viewMode || showForm) }
   );
@@ -1292,6 +1300,97 @@ export default function ColaboradoresGEG() {
                     })}
                   </div>
                 )}
+              </>
+            )}
+
+            {/* ===== HISTÓRICO DE FOLGAS ===== */}
+            {editId && (viewMode || showForm) && (
+              <>
+                <SectionTitle>Histórico de Folgas</SectionTitle>
+                {(folgasColab.isLoading || dayoffsColab.isLoading) ? (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando folgas...
+                  </div>
+                ) : (() => {
+                  const folgas = (folgasColab.data || []).map((f: any) => ({
+                    id: `folga-${f.id}`,
+                    tipo: f.tipo === 'folga' ? 'Folga' : f.tipo === 'ferias' ? 'Férias' : f.tipo === 'abono' ? 'Abono' : f.tipo === 'compensacao' ? 'Compensação' : f.tipo,
+                    motivo: f.motivo || '-',
+                    dataInicio: f.dataInicio,
+                    dataFim: f.dataFim,
+                    status: f.status || 'pendente',
+                    origem: 'Programar Folgas',
+                  }));
+                  const dayoffs = (dayoffsColab.data || []).map((d: any) => ({
+                    id: `dayoff-${d.id}`,
+                    tipo: 'Day Off',
+                    motivo: d.observacao || 'Aniversário',
+                    dataInicio: d.dataEfetiva || d.dataOriginal,
+                    dataFim: d.dataEfetiva || d.dataOriginal,
+                    status: d.status || 'pendente',
+                    origem: 'Day Off',
+                  }));
+                  const todas = [...folgas, ...dayoffs].sort((a, b) => {
+                    const da = a.dataInicio || '';
+                    const db = b.dataInicio || '';
+                    return db.localeCompare(da);
+                  });
+                  if (todas.length === 0) return (
+                    <div className="text-sm text-muted-foreground py-4 flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4" /> Nenhuma folga registrada para este colaborador.
+                    </div>
+                  );
+                  const statusColors: Record<string, string> = {
+                    pendente: 'bg-yellow-100 text-yellow-700',
+                    aprovado: 'bg-green-100 text-green-700',
+                    aprovada: 'bg-green-100 text-green-700',
+                    recusado: 'bg-red-100 text-red-700',
+                    recusada: 'bg-red-100 text-red-700',
+                    utilizado: 'bg-blue-100 text-blue-700',
+                  };
+                  const formatD = (d: string) => {
+                    if (!d) return '-';
+                    const [y, m, day] = d.split('-');
+                    return `${day}/${m}/${y}`;
+                  };
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left px-3 py-2 font-medium text-xs">Tipo</th>
+                            <th className="text-left px-3 py-2 font-medium text-xs">Motivo</th>
+                            <th className="text-center px-3 py-2 font-medium text-xs">Início</th>
+                            <th className="text-center px-3 py-2 font-medium text-xs">Fim</th>
+                            <th className="text-center px-3 py-2 font-medium text-xs">Status</th>
+                            <th className="text-left px-3 py-2 font-medium text-xs">Origem</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {todas.map((f) => (
+                            <tr key={f.id} className="border-b hover:bg-muted/30">
+                              <td className="px-3 py-2">
+                                <div className="flex items-center gap-1.5">
+                                  {f.tipo === 'Day Off' ? <Cake className="w-3.5 h-3.5 text-pink-600" /> : <CalendarDays className="w-3.5 h-3.5 text-blue-600" />}
+                                  <span className="font-medium">{f.tipo}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">{f.motivo}</td>
+                              <td className="px-3 py-2 text-center">{formatD(f.dataInicio)}</td>
+                              <td className="px-3 py-2 text-center">{formatD(f.dataFim)}</td>
+                              <td className="px-3 py-2 text-center">
+                                <Badge className={statusColors[f.status] || 'bg-gray-100 text-gray-700'}>
+                                  {f.status.charAt(0).toUpperCase() + f.status.slice(1)}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{f.origem}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
               </>
             )}
 

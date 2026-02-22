@@ -1,0 +1,22 @@
+Day Off v42 Observations:
+- Page title: Day Off — Aniversário
+- Stats cards: Total Registros 0, Pendentes 0, Aprovados 0
+- Filters: Dia, Mês, Ano buttons visible (Ano selected by default)
+- Navigation: < Hoje > buttons for year navigation
+- Calendar: 12-month grid showing all months of 2026
+- Birthday indicators visible on some dates (Março 1, Maio 1, Julho 1, etc.) with cake icon badges
+- Today (Feb 22) highlighted in pink/red circle in February
+- Legend at bottom: Aniversário, Hoje, Indicador de aniversariante, Ativo, Afastado, Férias
+- "Aniversariantes de Fevereiro" section visible
+- Shows "Nenhum aniversariante neste mês" (no test data with Feb birthdays)
+- "Nenhum Day Off registrado" at the bottom
+- Novo Day Off button in top right
+- TypeScript: No errors
+- Tests: 356 passed
+
+After scrolling:
+- Legend visible: Aniversário (cake), Hoje (pink), Indicador de aniversariante, Ativo (green), Afastado (yellow), Férias (blue)
+- Aniversariantes de Fevereiro section with "Nenhum aniversariante neste mês"
+- "Nenhum Day Off registrado" at bottom
+- Calendar shows birthday indicators on several months (Março, Maio, Julho, Setembro, Outubro, Novembro)
+- All working correctly, filters Dia/Mês/Ano visible

@@ -1996,6 +1996,27 @@ export async function getEmailsAniversarianteEnviados(ano: number) {
 }
 
 // =============================================
+// ---- NOTIFICAÇÕES ANTECIPADAS DE ANIVERSÁRIO ----
+// =============================================
+
+export async function registrarNotificacaoAniversarioAntecipada(colaboradorId: number, ano: number, diasAntes: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    sql`INSERT IGNORE INTO birthday_advance_notifications (colaboradorId, ano, diasAntes, enviadoEm) VALUES (${colaboradorId}, ${ano}, ${diasAntes}, NOW())`
+  );
+}
+
+export async function getNotificacoesAniversarioEnviadas(ano: number, diasAntes: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(
+    sql`SELECT colaboradorId FROM birthday_advance_notifications WHERE ano = ${ano} AND diasAntes = ${diasAntes}`
+  );
+  return ((rows as any)[0] || []).map((r: any) => r.colaboradorId);
+}
+
+// =============================================
 // ---- WORKFLOW RENOVAÇÃO CONTRATO ----
 // =============================================
 
