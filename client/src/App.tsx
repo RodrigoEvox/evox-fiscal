@@ -71,6 +71,8 @@ const BeneficiosHub = lazy(() => import("./pages/rh/BeneficiosHub"));
 const CarreiraHub = lazy(() => import("./pages/rh/CarreiraHub"));
 const AdministracaoHub = lazy(() => import("./pages/rh/AdministracaoHub"));
 const RescisaoPage = lazy(() => import("./pages/rh/RescisaoPage"));
+const ProjecaoFinanceiraGEG = lazy(() => import("./pages/rh/ProjecaoFinanceiraGEG"));
+const SimuladorFeriasGEG = lazy(() => import("./pages/rh/SimuladorFeriasGEG"));
 
 function LazyFallback() {
   return (
@@ -118,6 +120,8 @@ function Router() {
         <Route path="/rh/carreira" component={CarreiraHub} />
         <Route path="/rh/administracao" component={AdministracaoHub} />
         <Route path="/rh/rescisao" component={RescisaoPage} />
+        <Route path="/rh/projecao-financeira" component={ProjecaoFinanceiraGEG} />
+        <Route path="/rh/simulador-ferias" component={SimuladorFeriasGEG} />
         <Route path="/rh/nova-tarefa" component={NovaTarefaGEG} />
         <Route path="/rh/colaboradores" component={ColaboradoresGEG} />
         <Route path="/rh/ferias" component={FeriasGEG} />

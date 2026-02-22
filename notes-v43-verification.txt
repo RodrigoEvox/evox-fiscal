@@ -1,0 +1,9 @@
+V43 Verification Notes:
+
+1. Carreira Hub - FIXED: Now shows Carreira, Metas, Avaliação 360, Pesquisa de Clima (not Cargos/Salários)
+2. Administração Hub - UPDATED: Now includes Custo Salarial, Cargos e Salários, Apontamentos da Folha, Rescisão, Comissões, Projeção Financeira, Visão Analítica
+3. Comissões moved from Gestão RH to Administração - DONE
+4. Projeção Financeira - WORKING: Shows monthly/annual projections with salary, encargos, benefícios, provisões, férias, rescisões
+5. Simulador de Férias - WORKING: Individual mode with colaborador selection, days, abono. Coletiva mode available.
+6. Day Off integration in Férias calendar - Added query and display section
+7. All 356 tests passing

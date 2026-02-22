@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search, CalendarDays, User, Briefcase, Info, Edit2, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search, CalendarDays, User, Briefcase, Info, Edit2, Trash2, ShieldCheck, ShieldAlert, Calculator } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 // Feriados nacionais brasileiros (atualizado 2026)
 function getFeriadosNacionais(ano: number): string[] {
@@ -156,6 +157,7 @@ function calcDias(inicio: string, fim: string) {
 
 export default function FeriasGEG() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [showForm, setShowForm] = useState(false);
   const [showSolicitacao, setShowSolicitacao] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -179,6 +181,7 @@ export default function FeriasGEG() {
 
   const colaboradores = trpc.colaboradores.list.useQuery();
   const ferias = trpc.ferias.list.useQuery();
+  const dayOffs = trpc.dayOff.list.useQuery();
   const solicitacoes = trpc.solicitacoesFolga.list.useQuery();
   const createFerias = trpc.ferias.create.useMutation({ onSuccess: () => { ferias.refetch(); setShowForm(false); resetForm(); toast.success('Férias programadas!'); } });
   const updateFerias = trpc.ferias.update.useMutation({ onSuccess: () => { ferias.refetch(); setShowForm(false); resetForm(); toast.success('Férias atualizadas!'); } });
@@ -195,6 +198,7 @@ export default function FeriasGEG() {
 
   const colabList = (colaboradores.data || []) as any[];
   const feriasList = (ferias.data || []) as any[];
+  const dayOffList = (dayOffs.data || []) as any[];
   const solList = (solicitacoes.data || []) as any[];
 
   // Calculate vacation balance for a collaborator
@@ -276,10 +280,11 @@ export default function FeriasGEG() {
     return colabList.filter(c => c.ativo !== false).map(c => {
       const periodo = calcPeriodoAquisitivo(c.dataAdmissao);
       const feriasColab = feriasList.filter(f => f.colaboradorId === c.id);
+      const dayOffsColab = dayOffList.filter((d: any) => d.colaboradorId === c.id);
       const saldo = calcSaldo(c.id);
-      return { ...c, periodo, ferias: feriasColab, saldo };
+      return { ...c, periodo, ferias: feriasColab, dayOffs: dayOffsColab, saldo };
     });
-  }, [colabList, feriasList]);
+  }, [colabList, feriasList, dayOffList]);
 
   const vencidos = colabComFerias.filter(c => c.periodo?.vencido);
   const proximoVencer = colabComFerias.filter(c => c.periodo?.proximoVencer && !c.periodo?.vencido);
@@ -300,6 +305,7 @@ export default function FeriasGEG() {
           <p className="text-muted-foreground">Gestão de férias conforme regras da CLT com controle de saldo</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/rh/simulador-ferias')}><Calculator className="w-4 h-4 mr-2" /> Simulador</Button>
           <Button variant="outline" onClick={() => setShowSolicitacao(true)}><Send className="w-4 h-4 mr-2" /> Programar Folgas</Button>
           <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Programar Férias</Button>
         </div>
@@ -396,6 +402,26 @@ export default function FeriasGEG() {
                         <span className="text-muted-foreground block">Períodos Usados</span>
                         <span className="font-medium">{c.saldo.periodosUsados}/3</span>
                       </div>
+                    </div>
+                  )}
+                  {/* Day Offs section */}
+                  {c.dayOffs && c.dayOffs.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">🎂 Day Offs / Folgas Agendadas:</span>
+                      {c.dayOffs.map((d: any) => (
+                        <div key={d.id} className="flex items-center gap-2 text-xs bg-pink-50 rounded p-2">
+                          <CalendarDays className="w-3.5 h-3.5 text-pink-500" />
+                          <span>{formatDateBR(d.dataEfetiva || d.dataOriginal)}</span>
+                          <span className="text-muted-foreground">Day Off Aniversário</span>
+                          <Badge variant="outline" className={`text-[10px] ${
+                            d.status === 'aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                            d.status === 'recusado' ? 'bg-red-50 text-red-700 border-red-200' :
+                            d.status === 'utilizado' ? 'bg-gray-50 text-gray-700 border-gray-200' :
+                            'bg-yellow-50 text-yellow-700 border-yellow-200'
+                          }`}>{d.status}</Badge>
+                          {d.observacao && <span className="text-muted-foreground italic">{d.observacao}</span>}
+                        </div>
+                      ))}
                     </div>
                   )}
                   {c.ferias.length > 0 && (

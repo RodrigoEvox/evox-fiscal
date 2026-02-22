@@ -1,7 +1,7 @@
 import GegHubPage from './GegHubPage';
 
 const ITEMS = [
-  { key: 'niveis-cargo', label: 'Carreira', rota: '/rh/niveis-cargo' },
+  { key: 'carreira-desenvolvimento', label: 'Carreira', rota: '/rh/carreira-desenvolvimento' },
   { key: 'metas', label: 'Metas', rota: '/rh/metas' },
   { key: 'avaliacao-desempenho', label: 'Avaliação 360', rota: '/rh/avaliacao-desempenho' },
   { key: 'pesquisa-clima', label: 'Pesquisa de Clima', rota: '/rh/pesquisa-clima' },

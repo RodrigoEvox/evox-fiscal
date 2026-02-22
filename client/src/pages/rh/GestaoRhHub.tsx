@@ -3,7 +3,6 @@ import GegHubPage from './GegHubPage';
 const ITEMS = [
   { key: 'colaboradores', label: 'Colaboradores', rota: '/rh/colaboradores' },
   { key: 'onboarding', label: 'Onboarding', rota: '/rh/onboarding' },
-  { key: 'comissao-rh', label: 'Comissões', rota: '/rh/comissao-rh' },
   { key: 'banco-horas', label: 'Banco de Horas', rota: '/rh/banco-horas' },
   { key: 'atestados-licencas', label: 'Atestados e Licenças', rota: '/rh/atestados-licencas' },
   { key: 'ferias', label: 'Férias e Folgas', rota: '/rh/ferias' },

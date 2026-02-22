@@ -1295,3 +1295,26 @@
 - [x] Alerta ao gestor 3 dias antes do aniversário
 - [x] Alerta ao gestor no dia do aniversário (já existia, mantido)
 - [x] 356 testes passando
+
+## GEG v43 — Correções de Rota, Projeção Financeira e Simulador de Férias
+
+### Bug Fixes
+- [x] Corrigir rota do hub Carreira (estava abrindo Cargos/Salários em vez de Carreira)
+- [x] Mover item Comissões de Gestão RH para Administração
+
+### Integração Day Off no Calendário de Férias
+- [x] Exibir Day Offs agendados na aba Cronograma da página de Férias
+- [x] Visão unificada de ausências (férias + day offs)
+
+### Projeção Financeira da Folha (Administração)
+- [x] Criar painel de projeção financeira mensal e anual
+- [x] Incluir dados de colaboradores, férias, rescisões, benefícios
+- [x] Atualizar automaticamente ao agendar férias ou inserir rescisão
+- [x] Servir como indicador para o setor financeiro
+
+### Simulador Financeiro de Férias
+- [x] Simulador de valor a pagar de férias por colaborador
+- [x] Suporte a férias coletivas (múltiplos colaboradores)
+- [x] Cálculo baseado em salário, 1/3 constitucional, abono pecuniário, INSS e IRRF
+- [x] Botão Simulador adicionado na página de Férias
+- [x] 356 testes passando
