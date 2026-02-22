@@ -1260,3 +1260,19 @@
 
 ## Bug Fix v40.1 — Visão Analítica 404
 - [x] Corrigir rota do submenu Visão Analítica (antigo Relatórios RH) que retorna 404 — rota era /rh/relatorios-rh, corrigida para /rh/relatorios
+
+## GEG v41 — Programar Folgas e Calendário Day Off
+
+### Programar Folgas (antigo Solicitação de Folga/Férias)
+- [x] Renomear botão "Solicitação de Folga" para "Programar Folgas"
+- [x] Renomear título do dialog de "Solicitação de Folga/Férias" para "Programar Folgas"
+- [x] Substituir campo Tipo por menu suspenso de Motivo: Day Off, Doação de Sangue, Banco de Horas, Outros
+- [x] Ao selecionar "Outros", exibir campo de texto para digitar o motivo
+- [x] Adicionar campo de Observações no formulário
+- [x] Atualizar backend para suportar novo campo motivo e observações (motivo concatenado no campo existente)
+
+### Calendário de Aniversários no Day Off
+- [x] Adicionar calendário anual na página Day Off com datas de aniversário dos colaboradores
+- [x] Buscar datas de nascimento do cadastro de colaboradores
+- [x] Exibir nomes dos aniversariantes em cada data do calendário (tooltip no hover)
+- [x] 356 testes passando

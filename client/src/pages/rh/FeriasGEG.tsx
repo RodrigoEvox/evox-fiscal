@@ -172,8 +172,9 @@ export default function FeriasGEG() {
   });
 
   const [solForm, setSolForm] = useState({
-    colaboradorId: 0, colaboradorNome: '', tipo: 'ferias' as string,
-    dataInicio: '', dataFim: '', motivo: '',
+    colaboradorId: 0, colaboradorNome: '', tipo: 'folga' as string,
+    dataInicio: '', dataFim: '', motivo: 'day_off' as string,
+    motivoOutro: '', observacoes: '',
   });
 
   const colaboradores = trpc.colaboradores.list.useQuery();
@@ -299,7 +300,7 @@ export default function FeriasGEG() {
           <p className="text-muted-foreground">Gestão de férias conforme regras da CLT com controle de saldo</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowSolicitacao(true)}><Send className="w-4 h-4 mr-2" /> Solicitação de Folga</Button>
+          <Button variant="outline" onClick={() => setShowSolicitacao(true)}><Send className="w-4 h-4 mr-2" /> Programar Folgas</Button>
           <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Programar Férias</Button>
         </div>
       </div>
@@ -655,10 +656,10 @@ export default function FeriasGEG() {
         </DialogContent>
       </Dialog>
 
-      {/* Solicitação de Folga Dialog */}
+      {/* Programar Folgas Dialog */}
       <Dialog open={showSolicitacao} onOpenChange={setShowSolicitacao}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Solicitação de Folga/Férias</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Programar Folgas</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Colaborador *</Label>
@@ -675,29 +676,55 @@ export default function FeriasGEG() {
               </Select>
             </div>
             <div>
-              <Label>Tipo</Label>
-              <Select value={solForm.tipo} onValueChange={v => setSolForm(f => ({ ...f, tipo: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Motivo *</Label>
+              <Select value={solForm.motivo} onValueChange={v => setSolForm(f => ({ ...f, motivo: v, motivoOutro: v !== 'outros' ? '' : f.motivoOutro }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o motivo" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ferias">Férias</SelectItem>
-                  <SelectItem value="folga">Folga</SelectItem>
+                  <SelectItem value="day_off">Day Off</SelectItem>
+                  <SelectItem value="doacao_sangue">Doação de Sangue</SelectItem>
+                  <SelectItem value="banco_horas">Banco de Horas</SelectItem>
+                  <SelectItem value="outros">Outros</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {solForm.motivo === 'outros' && (
+              <div>
+                <Label>Especifique o motivo *</Label>
+                <Input
+                  placeholder="Descreva o motivo da folga..."
+                  value={solForm.motivoOutro}
+                  onChange={e => setSolForm(f => ({ ...f, motivoOutro: e.target.value }))}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Data Início</Label><Input type="date" value={solForm.dataInicio} onChange={e => setSolForm(f => ({ ...f, dataInicio: e.target.value }))} /></div>
               <div><Label>Data Fim</Label><Input type="date" value={solForm.dataFim} onChange={e => setSolForm(f => ({ ...f, dataFim: e.target.value }))} /></div>
             </div>
-            <div><Label>Motivo</Label><Textarea value={solForm.motivo} onChange={e => setSolForm(f => ({ ...f, motivo: e.target.value }))} rows={3} /></div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea
+                placeholder="Observações adicionais..."
+                value={solForm.observacoes}
+                onChange={e => setSolForm(f => ({ ...f, observacoes: e.target.value }))}
+                rows={3}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSolicitacao(false)}>Cancelar</Button>
             <Button onClick={() => {
               if (!solForm.colaboradorId) { toast.error('Selecione o colaborador'); return; }
+              if (!solForm.motivo) { toast.error('Selecione o motivo'); return; }
+              if (solForm.motivo === 'outros' && !solForm.motivoOutro.trim()) { toast.error('Especifique o motivo'); return; }
+              if (!solForm.dataInicio || !solForm.dataFim) { toast.error('Informe as datas'); return; }
               const diasSol = calcDias(solForm.dataInicio, solForm.dataFim);
-              createSolicitacao.mutate({ colaboradorId: solForm.colaboradorId, tipo: solForm.tipo as any, dataInicio: solForm.dataInicio, dataFim: solForm.dataFim, diasSolicitados: diasSol, motivo: solForm.motivo });
+              const motivoLabels: Record<string, string> = { day_off: 'Day Off', doacao_sangue: 'Doação de Sangue', banco_horas: 'Banco de Horas', outros: 'Outros' };
+              const motivoTexto = solForm.motivo === 'outros' ? `Outros: ${solForm.motivoOutro}` : motivoLabels[solForm.motivo] || solForm.motivo;
+              const motivoFinal = solForm.observacoes.trim() ? `${motivoTexto}\n\nObs: ${solForm.observacoes}` : motivoTexto;
+              createSolicitacao.mutate({ colaboradorId: solForm.colaboradorId, tipo: 'folga' as any, dataInicio: solForm.dataInicio, dataFim: solForm.dataFim, diasSolicitados: diasSol, motivo: motivoFinal });
             }} disabled={createSolicitacao.isPending}>
-              Enviar Solicitação
+              Programar Folga
             </Button>
           </DialogFooter>
         </DialogContent>

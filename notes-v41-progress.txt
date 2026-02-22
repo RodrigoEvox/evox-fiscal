@@ -1,0 +1,18 @@
+V41 Progress Notes:
+
+1. Programar Folgas dialog - VERIFIED:
+   - Title changed to "Programar Folgas" ✓
+   - Motivo dropdown shows "Day Off" as default ✓
+   - Fields: Colaborador, Motivo (dropdown), Data Início, Data Fim, Observações ✓
+   - Button says "Programar Folga" ✓
+   - Need to test "Outros" option to verify conditional text field
+
+2. "Outros" conditional field - VERIFIED: Shows "Especifique o motivo" text input when Outros is selected ✓
+
+3. Day Off Birthday Calendar - VERIFIED:
+   - Shows 12-month calendar grid for 2026 ✓
+   - Has navigation arrows and "Hoje" button ✓
+   - February 22 (today) highlighted in pink ✓
+   - Birthday dots visible on some dates (pink dots on March 1, May 1, May 30, July 1, July 22, September 12, November 1, November 8) ✓
+   - Legend shows: Aniversário, Hoje, Indicador de aniversariante ✓
+   - KPIs at top: Total Registros, Pendentes, Aprovados ✓
