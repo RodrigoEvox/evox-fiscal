@@ -1365,3 +1365,27 @@
 
 - [x] 28 novos testes vitest (ferias-v45.test.ts)
 - [x] 384 testes passando no total
+
+## GEG v46 — Painel do Colaborador
+
+### Lista de Colaboradores
+- [x] Trocar visualização de cards para lista em ordem alfabética
+- [x] Manter na lista as mesmas informações do card (nome, cargo, status, regime, unidade, admissão)
+
+### Painel do Colaborador (expandido ao clicar)
+- [x] Dados pessoais: nome, cargo, setor, admissão, aniversário, status
+- [x] Histórico salarial: valores mês a mês, ano a ano, custo total e por período
+- [x] Histórico de férias completo
+- [x] Histórico de folgas e day offs
+- [x] Histórico de faltas
+- [x] Histórico de atestados
+- [x] Histórico de licenças
+- [x] Plano de carreira (se está ou não)
+- [x] Formação acadêmica
+- [x] Outras habilidades e experiências
+- [x] Unidade de trabalho
+- [x] Status atual e histórico de mudanças de status
+- [x] Mudanças de cargo e função
+- [x] Todas as informações em uma única tela
+- [x] 54 novos testes vitest (colaboradores-v46.test.ts)
+- [x] 438 testes passando no total

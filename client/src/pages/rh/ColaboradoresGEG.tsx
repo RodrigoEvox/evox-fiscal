@@ -16,7 +16,10 @@ import {
   CheckCircle2, XCircle, UserCheck, UserX, Clock, Briefcase,
   HeartPulse, Palmtree, ShieldAlert, FileWarning, Filter, RotateCcw,
   ChevronDown, ChevronUp, History, MapPin, Bus, Building2,
-  Download, FileSpreadsheet, FileText, Cake, CalendarDays
+  Download, FileSpreadsheet, FileText, Cake, CalendarDays,
+  ArrowLeft, GraduationCap, TrendingUp, DollarSign, Award,
+  FileCheck, AlertCircle, Stethoscope, BookOpen, Wrench,
+  ChevronRight, ArrowUpDown
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -69,6 +72,34 @@ function calcIdade(dataNasc: string): string {
   return idade >= 0 ? `${idade} anos` : '';
 }
 
+function formatDateBR(d: string | null | undefined): string {
+  if (!d) return '—';
+  const [y, m, day] = d.split('-');
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+}
+
+function calcTempoCasa(dataAdm: string): string {
+  if (!dataAdm) return '—';
+  const [y, m, d] = dataAdm.split('-').map(Number);
+  if (!y) return '—';
+  const adm = new Date(y, m - 1, d);
+  const hoje = new Date();
+  const meses = (hoje.getFullYear() - adm.getFullYear()) * 12 + (hoje.getMonth() - adm.getMonth());
+  const anos = Math.floor(meses / 12);
+  const mesesRest = meses % 12;
+  if (anos === 0) return `${mesesRest}m`;
+  if (mesesRest === 0) return `${anos}a`;
+  return `${anos}a ${mesesRest}m`;
+}
+
+function formatCurrency(v: string | number | null | undefined): string {
+  if (v === null || v === undefined || v === '') return '—';
+  const num = typeof v === 'string' ? parseFloat(v) : v;
+  if (isNaN(num)) return '—';
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 const DIAS_SEMANA = [
   { key: 'seg', label: 'Seg' }, { key: 'ter', label: 'Ter' },
   { key: 'qua', label: 'Qua' }, { key: 'qui', label: 'Qui' },
@@ -82,16 +113,16 @@ const PARENTESCOS = [
   'Tutelado(a)', 'Menor sob guarda',
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; bgCard: string }> = {
-  ativo: { label: 'Ativo', color: 'bg-green-100 text-green-700 border-green-200', icon: UserCheck, bgCard: 'border-l-green-500' },
-  inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: UserX, bgCard: 'border-l-gray-400' },
-  afastado: { label: 'Afastado', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: ShieldAlert, bgCard: 'border-l-orange-500' },
-  licenca: { label: 'Licença', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: FileWarning, bgCard: 'border-l-purple-500' },
-  atestado: { label: 'Atestado', color: 'bg-red-100 text-red-700 border-red-200', icon: HeartPulse, bgCard: 'border-l-red-500' },
-  desligado: { label: 'Desligado', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: XCircle, bgCard: 'border-l-slate-500' },
-  ferias: { label: 'Férias', color: 'bg-cyan-100 text-cyan-700 border-cyan-200', icon: Palmtree, bgCard: 'border-l-cyan-500' },
-  experiencia: { label: 'Experiência', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock, bgCard: 'border-l-yellow-500' },
-  aviso_previo: { label: 'Aviso Prévio', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Briefcase, bgCard: 'border-l-amber-500' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; bgCard: string; dot: string }> = {
+  ativo: { label: 'Ativo', color: 'bg-green-100 text-green-700 border-green-200', icon: UserCheck, bgCard: 'border-l-green-500', dot: 'bg-green-500' },
+  inativo: { label: 'Inativo', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: UserX, bgCard: 'border-l-gray-400', dot: 'bg-gray-400' },
+  afastado: { label: 'Afastado', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: ShieldAlert, bgCard: 'border-l-orange-500', dot: 'bg-orange-500' },
+  licenca: { label: 'Licença', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: FileWarning, bgCard: 'border-l-purple-500', dot: 'bg-purple-500' },
+  atestado: { label: 'Atestado', color: 'bg-red-100 text-red-700 border-red-200', icon: HeartPulse, bgCard: 'border-l-red-500', dot: 'bg-red-500' },
+  desligado: { label: 'Desligado', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: XCircle, bgCard: 'border-l-slate-500', dot: 'bg-slate-500' },
+  ferias: { label: 'Férias', color: 'bg-cyan-100 text-cyan-700 border-cyan-200', icon: Palmtree, bgCard: 'border-l-cyan-500', dot: 'bg-cyan-500' },
+  experiencia: { label: 'Experiência', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock, bgCard: 'border-l-yellow-500', dot: 'bg-yellow-500' },
+  aviso_previo: { label: 'Aviso Prévio', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Briefcase, bgCard: 'border-l-amber-500', dot: 'bg-amber-500' },
 };
 
 type Dependente = { nome: string; cpf: string; dataNascimento: string; parentesco: string; dependenteIR?: boolean; dependentePlanoSaude?: boolean };
@@ -107,6 +138,12 @@ const GRAUS_INSTRUCAO = [
   { value: 'mestrado', label: 'Mestrado' },
   { value: 'doutorado', label: 'Doutorado' },
 ];
+
+const NIVEIS_LABEL: Record<string, string> = {
+  estagiario: 'Estagiário', auxiliar: 'Auxiliar', assistente: 'Assistente',
+  analista_jr: 'Analista Jr', analista_pl: 'Analista Pleno', analista_sr: 'Analista Sênior',
+  coordenador: 'Coordenador', supervisor: 'Supervisor', gerente: 'Gerente', diretor: 'Diretor',
+};
 
 const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
@@ -135,6 +172,622 @@ const EMPTY_FORM = {
   statusColaborador: 'ativo' as string,
 };
 
+// ===== PAINEL DO COLABORADOR =====
+function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; setores: any[]; onClose: () => void; onEdit: (c: any) => void }) {
+  const [activeTab, setActiveTab] = useState('resumo');
+  const colabId = colab.id;
+
+  // Fetch all related data
+  const feriasQ = trpc.ferias.list.useQuery({ colaboradorId: colabId });
+  const folgasQ = trpc.solicitacoesFolga.list.useQuery({ colaboradorId: colabId });
+  const dayOffsQ = trpc.dayOff.list.useQuery({ colaboradorId: colabId });
+  const atestadosQ = trpc.atestadosLicencas.list.useQuery({ colaboradorId: colabId });
+  const historicoStatusQ = trpc.historicoStatus.list.useQuery({ colaboradorId: colabId });
+  const reajustesQ = trpc.reajustesSalariais.list.useQuery({ colaboradorId: colabId });
+  const planosQ = trpc.planosCarreira.list.useQuery({ colaboradorId: colabId });
+
+  const setorNome = setores.find((s: any) => s.id === colab.setorId)?.nome || '—';
+  const status = colab.statusColaborador || 'ativo';
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
+  const Icon = cfg.icon;
+  const jornadaDias = colab.jornadaDias ? (typeof colab.jornadaDias === 'string' ? JSON.parse(colab.jornadaDias) : colab.jornadaDias) : [];
+  const dependentes: Dependente[] = colab.dependentes ? (typeof colab.dependentes === 'string' ? JSON.parse(colab.dependentes) : colab.dependentes) : [];
+
+  const tabs = [
+    { id: 'resumo', label: 'Resumo', icon: User },
+    { id: 'salarial', label: 'Histórico Salarial', icon: DollarSign },
+    { id: 'ferias', label: 'Férias', icon: Palmtree },
+    { id: 'folgas', label: 'Folgas & Day Off', icon: CalendarDays },
+    { id: 'atestados', label: 'Atestados & Licenças', icon: Stethoscope },
+    { id: 'carreira', label: 'Carreira & Formação', icon: GraduationCap },
+    { id: 'status', label: 'Histórico de Status', icon: History },
+  ];
+
+  const InfoItem = ({ label, value, icon: Ic }: { label: string; value: React.ReactNode; icon?: any }) => (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] uppercase text-muted-foreground tracking-wider flex items-center gap-1">
+        {Ic && <Ic className="w-3 h-3" />}{label}
+      </span>
+      <span className="text-sm font-medium">{value || '—'}</span>
+    </div>
+  );
+
+  const SectionCard = ({ title, icon: Ic, children }: { title: string; icon: any; children: React.ReactNode }) => (
+    <div className="bg-card border border-border/60 rounded-xl p-5 space-y-4">
+      <h4 className="font-semibold text-sm flex items-center gap-2 text-primary">
+        <Ic className="w-4 h-4" />{title}
+      </h4>
+      {children}
+    </div>
+  );
+
+  const statusColors: Record<string, string> = {
+    pendente: 'bg-yellow-100 text-yellow-700', aprovado: 'bg-green-100 text-green-700',
+    aprovada: 'bg-green-100 text-green-700', programada: 'bg-blue-100 text-blue-700',
+    em_gozo: 'bg-cyan-100 text-cyan-700', concluida: 'bg-green-100 text-green-700',
+    vencida: 'bg-red-100 text-red-700', recusado: 'bg-red-100 text-red-700',
+    recusada: 'bg-red-100 text-red-700', utilizado: 'bg-blue-100 text-blue-700',
+    ativo: 'bg-green-100 text-green-700', encerrado: 'bg-gray-100 text-gray-700',
+    cancelado: 'bg-red-100 text-red-700', em_andamento: 'bg-blue-100 text-blue-700',
+    pausado: 'bg-yellow-100 text-yellow-700',
+  };
+
+  // ---- Salarial calculations ----
+  const reajustes = (reajustesQ.data || []) as any[];
+  const salarioAtual = parseFloat(colab.salarioBase || '0');
+  const comissoes = parseFloat(colab.comissoes || '0');
+  const adicionais = parseFloat(colab.adicionais || '0');
+  const custoMensal = salarioAtual + comissoes + adicionais;
+
+  // Build salary timeline from reajustes
+  const salaryTimeline = useMemo(() => {
+    const sorted = [...reajustes].sort((a, b) => (a.dataEfetivacao || '').localeCompare(b.dataEfetivacao || ''));
+    const timeline: { data: string; salarioAnterior: string; salarioNovo: string; tipo: string; percentual: string }[] = [];
+    sorted.forEach((r: any) => {
+      timeline.push({
+        data: r.dataEfetivacao || '',
+        salarioAnterior: r.salarioAnterior || '0',
+        salarioNovo: r.salarioNovo || '0',
+        tipo: r.tipo || '',
+        percentual: r.percentual || '0',
+      });
+    });
+    return timeline;
+  }, [reajustes]);
+
+  return (
+    <div className="space-y-0">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-border/60 rounded-xl p-6 mb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-background/80 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center">
+              <User className="w-7 h-7 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">{colab.nomeCompleto}</h2>
+              <p className="text-sm text-muted-foreground">{colab.cargo}{colab.funcao ? ` — ${colab.funcao}` : ''}</p>
+              <div className="flex items-center gap-3 mt-1.5">
+                <Badge className={`${cfg.color} border text-[10px] gap-1`} variant="secondary">
+                  <Icon className="w-3 h-3" /> {cfg.label}
+                </Badge>
+                {colab.tipoContrato && <Badge variant="outline" className="text-[10px]">{colab.tipoContrato.toUpperCase()}</Badge>}
+                <span className="text-xs text-muted-foreground">{setorNome}</span>
+              </div>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => onEdit(colab)} className="gap-1.5 shrink-0">
+            <Edit2 className="w-3.5 h-3.5" /> Editar
+          </Button>
+        </div>
+
+        {/* Quick stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-5">
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Admissão</p>
+            <p className="text-sm font-semibold">{formatDateBR(colab.dataAdmissao)}</p>
+          </div>
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Tempo de Casa</p>
+            <p className="text-sm font-semibold">{calcTempoCasa(colab.dataAdmissao)}</p>
+          </div>
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Aniversário</p>
+            <p className="text-sm font-semibold">{colab.dataNascimento ? formatDateBR(colab.dataNascimento) : '—'}</p>
+          </div>
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Salário Base</p>
+            <p className="text-sm font-semibold">{formatCurrency(colab.salarioBase)}</p>
+          </div>
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Unidade</p>
+            <p className="text-sm font-semibold">{colab.localTrabalho === 'home_office' ? 'Home Office' : colab.localTrabalho === 'barueri' ? 'Barueri' : colab.localTrabalho === 'uberaba' ? 'Uberaba' : '—'}</p>
+          </div>
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Nível</p>
+            <p className="text-sm font-semibold">{NIVEIS_LABEL[colab.nivelHierarquico] || colab.nivelHierarquico || '—'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto pb-2 mb-4 border-b border-border/40">
+        {tabs.map(t => {
+          const TabIcon = t.icon;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-t-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                activeTab === t.id
+                  ? 'bg-primary/10 text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              <TabIcon className="w-3.5 h-3.5" />{t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      <div className="space-y-4">
+        {/* ===== RESUMO ===== */}
+        {activeTab === 'resumo' && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <SectionCard title="Dados Pessoais" icon={User}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <InfoItem label="CPF" value={colab.cpf} />
+                  <InfoItem label="Data Nascimento" value={formatDateBR(colab.dataNascimento)} />
+                  <InfoItem label="Idade" value={calcIdade(colab.dataNascimento)} />
+                  <InfoItem label="Sexo" value={colab.sexo ? colab.sexo.charAt(0).toUpperCase() + colab.sexo.slice(1) : '—'} />
+                  <InfoItem label="Estado Civil" value={colab.estadoCivil ? colab.estadoCivil.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '—'} />
+                  <InfoItem label="Nacionalidade" value={colab.nacionalidade} />
+                  <InfoItem label="Naturalidade" value={colab.naturalidade} />
+                  <InfoItem label="Email" value={colab.email} />
+                  <InfoItem label="Telefone" value={colab.telefone} />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Dados Profissionais" icon={Briefcase}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <InfoItem label="Cargo" value={colab.cargo} />
+                  <InfoItem label="Função" value={colab.funcao} />
+                  <InfoItem label="Setor" value={setorNome} />
+                  <InfoItem label="Nível" value={NIVEIS_LABEL[colab.nivelHierarquico] || '—'} />
+                  <InfoItem label="Contrato" value={colab.tipoContrato?.toUpperCase()} />
+                  <InfoItem label="Local" value={colab.localTrabalho === 'home_office' ? 'Home Office' : colab.localTrabalho === 'barueri' ? 'Barueri' : colab.localTrabalho === 'uberaba' ? 'Uberaba' : '—'} />
+                  <InfoItem label="Jornada" value={`${colab.jornadaEntrada || '—'} às ${colab.jornadaSaida || '—'}`} />
+                  <InfoItem label="Carga Horária" value={colab.cargaHoraria ? `${colab.cargaHoraria}h/sem` : '—'} />
+                  <InfoItem label="Vale Transporte" value={
+                    <span className={colab.valeTransporte ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
+                      {colab.valeTransporte ? 'Sim' : 'Não'}
+                    </span>
+                  } />
+                </div>
+                {jornadaDias.length > 0 && (
+                  <div className="flex gap-1.5 mt-2">
+                    {DIAS_SEMANA.map(d => (
+                      <span key={d.key} className={`px-2 py-0.5 rounded text-[10px] font-medium ${jornadaDias.includes(d.key) ? 'bg-primary/10 text-primary' : 'bg-muted/40 text-muted-foreground'}`}>
+                        {d.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <SectionCard title="Endereço" icon={MapPin}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <InfoItem label="CEP" value={colab.cep} />
+                  <InfoItem label="Logradouro" value={colab.logradouro} />
+                  <InfoItem label="Número" value={colab.numero} />
+                  <InfoItem label="Complemento" value={colab.complemento} />
+                  <InfoItem label="Bairro" value={colab.bairro} />
+                  <InfoItem label="Cidade/UF" value={colab.cidade && colab.estado ? `${colab.cidade}/${colab.estado}` : colab.cidade || '—'} />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Dados Bancários" icon={Building2}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <InfoItem label="Banco" value={colab.banco} />
+                  <InfoItem label="Agência" value={colab.agencia} />
+                  <InfoItem label="Conta" value={colab.conta} />
+                  <InfoItem label="Tipo Conta" value={colab.tipoConta ? colab.tipoConta.charAt(0).toUpperCase() + colab.tipoConta.slice(1) : '—'} />
+                  <InfoItem label="Chave PIX" value={colab.chavePix} />
+                </div>
+              </SectionCard>
+            </div>
+
+            {/* Dependentes */}
+            {dependentes.length > 0 && (
+              <SectionCard title={`Dependentes (${dependentes.length})`} icon={User}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="text-left px-3 py-2 text-xs font-medium">Nome</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Parentesco</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">CPF</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Nascimento</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Idade</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">IR</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Plano</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dependentes.map((d, i) => (
+                        <tr key={i} className="border-b hover:bg-muted/20">
+                          <td className="px-3 py-2 font-medium">{d.nome}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{d.parentesco}</td>
+                          <td className="px-3 py-2 text-center">{d.cpf || '—'}</td>
+                          <td className="px-3 py-2 text-center">{formatDateBR(d.dataNascimento)}</td>
+                          <td className="px-3 py-2 text-center">{calcIdade(d.dataNascimento)}</td>
+                          <td className="px-3 py-2 text-center">{d.dependenteIR ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground">—</span>}</td>
+                          <td className="px-3 py-2 text-center">{d.dependentePlanoSaude ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground">—</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionCard>
+            )}
+
+            {/* Documentos, Saúde, Filiação, Pensão */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <SectionCard title="Documentos" icon={FileCheck}>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="RG" value={colab.rgNumero} />
+                  <InfoItem label="Órgão Emissor" value={colab.rgOrgaoEmissor} />
+                  <InfoItem label="CTPS" value={colab.ctpsNumero} />
+                  <InfoItem label="PIS/PASEP" value={colab.pisPasep} />
+                  <InfoItem label="Título Eleitor" value={colab.tituloEleitor} />
+                  <InfoItem label="Cert. Reservista" value={colab.certificadoReservista} />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Saúde & Outros" icon={Stethoscope}>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="ASO Admissional" value={
+                    <span className={colab.asoAdmissionalApto ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
+                      {colab.asoAdmissionalApto ? 'Apto' : 'Inapto'}
+                    </span>
+                  } />
+                  <InfoItem label="Data Exame" value={formatDateBR(colab.asoAdmissionalData)} />
+                  <InfoItem label="Filiação (Mãe)" value={colab.nomeMae} />
+                  <InfoItem label="Filiação (Pai)" value={colab.nomePai} />
+                  <InfoItem label="Pensão Alimentícia" value={colab.pagaPensaoAlimenticia ? `Sim — ${formatCurrency(colab.valorPensaoAlimenticia)}` : 'Não'} />
+                  <InfoItem label="Contrib. Assistencial" value={colab.temContribuicaoAssistencial ? `Sim — ${formatCurrency(colab.valorContribuicaoAssistencial)}` : 'Não'} />
+                </div>
+              </SectionCard>
+            </div>
+          </>
+        )}
+
+        {/* ===== HISTÓRICO SALARIAL ===== */}
+        {activeTab === 'salarial' && (
+          <>
+            {/* Custo atual */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+                <p className="text-[10px] uppercase text-muted-foreground">Salário Base</p>
+                <p className="text-lg font-bold text-primary">{formatCurrency(colab.salarioBase)}</p>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+                <p className="text-[10px] uppercase text-muted-foreground">Comissões</p>
+                <p className="text-lg font-bold">{formatCurrency(colab.comissoes)}</p>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+                <p className="text-[10px] uppercase text-muted-foreground">Adicionais</p>
+                <p className="text-lg font-bold">{formatCurrency(colab.adicionais)}</p>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-4 text-center">
+                <p className="text-[10px] uppercase text-muted-foreground">Custo Mensal Total</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(custoMensal)}</p>
+              </div>
+            </div>
+
+            <SectionCard title="Custo Anual Estimado" icon={DollarSign}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <InfoItem label="Custo Anual (12x)" value={formatCurrency(custoMensal * 12)} />
+                <InfoItem label="Com 13° Salário" value={formatCurrency(custoMensal * 13)} />
+                <InfoItem label="Com 13° + Férias (1/3)" value={formatCurrency(custoMensal * 13 + salarioAtual / 3)} />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Histórico de Reajustes" icon={TrendingUp}>
+              {reajustesQ.isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
+              ) : salaryTimeline.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">Nenhum reajuste salarial registrado.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="text-left px-3 py-2 text-xs font-medium">Data</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Tipo</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium">Anterior</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium">Novo</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium">Reajuste</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {salaryTimeline.map((r, i) => (
+                        <tr key={i} className="border-b hover:bg-muted/20">
+                          <td className="px-3 py-2">{formatDateBR(r.data)}</td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className="text-[10px]">
+                              {r.tipo === 'dois_anos' ? '2 Anos' : r.tipo === 'sindical' ? 'Sindical' : r.tipo === 'promocao' ? 'Promoção' : r.tipo === 'merito' ? 'Mérito' : r.tipo}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(r.salarioAnterior)}</td>
+                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(r.salarioNovo)}</td>
+                          <td className="px-3 py-2 text-right">
+                            <span className="text-green-600 font-medium">+{parseFloat(r.percentual).toFixed(1)}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+          </>
+        )}
+
+        {/* ===== FÉRIAS ===== */}
+        {activeTab === 'ferias' && (
+          <SectionCard title="Histórico de Férias" icon={Palmtree}>
+            {feriasQ.isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
+            ) : (feriasQ.data || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Nenhum registro de férias encontrado.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-3 py-2 text-xs font-medium">Período Aquisitivo</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Período 1</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Período 2</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Período 3</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Dias</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(feriasQ.data as any[]).map((f: any) => (
+                      <tr key={f.id} className="border-b hover:bg-muted/20">
+                        <td className="px-3 py-2">
+                          <span className="font-medium">{formatDateBR(f.periodoAquisitivoInicio)}</span>
+                          <span className="text-muted-foreground mx-1">a</span>
+                          <span className="font-medium">{formatDateBR(f.periodoAquisitivoFim)}</span>
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs">
+                          {f.periodo1Inicio ? `${formatDateBR(f.periodo1Inicio)} — ${formatDateBR(f.periodo1Fim)} (${f.periodo1Dias || 0}d)` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs">
+                          {f.periodo2Inicio ? `${formatDateBR(f.periodo2Inicio)} — ${formatDateBR(f.periodo2Fim)} (${f.periodo2Dias || 0}d)` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs">
+                          {f.periodo3Inicio ? `${formatDateBR(f.periodo3Inicio)} — ${formatDateBR(f.periodo3Fim)} (${f.periodo3Dias || 0}d)` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-center font-semibold">{f.diasTotais || 0}</td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge className={statusColors[f.status] || 'bg-gray-100 text-gray-700'} variant="secondary">
+                            {f.status?.charAt(0).toUpperCase() + f.status?.slice(1).replace('_', ' ')}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        )}
+
+        {/* ===== FOLGAS & DAY OFF ===== */}
+        {activeTab === 'folgas' && (
+          <SectionCard title="Histórico de Folgas & Day Off" icon={CalendarDays}>
+            {(folgasQ.isLoading || dayOffsQ.isLoading) ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
+            ) : (() => {
+              const folgas = (folgasQ.data || []).map((f: any) => ({
+                id: `folga-${f.id}`, tipo: f.tipo === 'folga' ? 'Folga' : f.tipo === 'ferias' ? 'Férias' : f.tipo === 'abono' ? 'Abono' : f.tipo === 'compensacao' ? 'Compensação' : f.tipo,
+                motivo: f.motivo || '—', dataInicio: f.dataInicio, dataFim: f.dataFim, status: f.status || 'pendente', origem: 'Programar Folgas',
+              }));
+              const dayoffs = (dayOffsQ.data || []).map((d: any) => ({
+                id: `dayoff-${d.id}`, tipo: 'Day Off', motivo: d.observacao || 'Aniversário',
+                dataInicio: d.dataEfetiva || d.dataOriginal, dataFim: d.dataEfetiva || d.dataOriginal, status: d.status || 'pendente', origem: 'Day Off',
+              }));
+              const todas = [...folgas, ...dayoffs].sort((a, b) => (b.dataInicio || '').localeCompare(a.dataInicio || ''));
+              if (todas.length === 0) return <p className="text-sm text-muted-foreground py-4">Nenhuma folga ou day off registrado.</p>;
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="text-left px-3 py-2 text-xs font-medium">Tipo</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Motivo</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Início</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Fim</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todas.map(f => (
+                        <tr key={f.id} className="border-b hover:bg-muted/20">
+                          <td className="px-3 py-2 font-medium">{f.tipo}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{f.motivo}</td>
+                          <td className="px-3 py-2 text-center">{formatDateBR(f.dataInicio)}</td>
+                          <td className="px-3 py-2 text-center">{formatDateBR(f.dataFim)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <Badge className={statusColors[f.status] || 'bg-gray-100 text-gray-700'} variant="secondary">
+                              {f.status.charAt(0).toUpperCase() + f.status.slice(1)}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </SectionCard>
+        )}
+
+        {/* ===== ATESTADOS & LICENÇAS ===== */}
+        {activeTab === 'atestados' && (
+          <SectionCard title="Histórico de Atestados & Licenças" icon={Stethoscope}>
+            {atestadosQ.isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
+            ) : (atestadosQ.data || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Nenhum atestado ou licença registrado.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-3 py-2 text-xs font-medium">Tipo</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Início</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Fim</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Dias</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium">CID</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium">Médico</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(atestadosQ.data as any[]).map((a: any) => (
+                      <tr key={a.id} className="border-b hover:bg-muted/20">
+                        <td className="px-3 py-2 font-medium text-xs">
+                          {a.tipo?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                        </td>
+                        <td className="px-3 py-2 text-center">{formatDateBR(a.dataInicio)}</td>
+                        <td className="px-3 py-2 text-center">{formatDateBR(a.dataFim)}</td>
+                        <td className="px-3 py-2 text-center font-semibold">{a.diasAfastamento}</td>
+                        <td className="px-3 py-2">{a.cid || '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{a.medico || '—'}</td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge className={statusColors[a.status] || 'bg-gray-100 text-gray-700'} variant="secondary">
+                            {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        )}
+
+        {/* ===== CARREIRA & FORMAÇÃO ===== */}
+        {activeTab === 'carreira' && (
+          <>
+            <SectionCard title="Formação Acadêmica" icon={GraduationCap}>
+              <div className="grid grid-cols-2 gap-4">
+                <InfoItem label="Grau de Instrução" value={GRAUS_INSTRUCAO.find(g => g.value === colab.grauInstrucao)?.label || '—'} />
+                <InfoItem label="Formação / Curso" value={colab.formacaoAcademica} />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Planos de Carreira" icon={Award}>
+              {planosQ.isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
+              ) : (planosQ.data || []).length === 0 ? (
+                <div className="flex items-center gap-2 py-4">
+                  <AlertCircle className="w-4 h-4 text-yellow-500" />
+                  <p className="text-sm text-muted-foreground">Colaborador não está vinculado a nenhum plano de carreira.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(planosQ.data as any[]).map((p: any) => (
+                    <div key={p.id} className="border border-border/50 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-sm">{p.titulo}</h5>
+                        <Badge className={statusColors[p.status] || 'bg-gray-100 text-gray-700'} variant="secondary">
+                          {p.status?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div><span className="text-muted-foreground">Nível Atual:</span> <span className="font-medium">{p.nivelAtual || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Nível Alvo:</span> <span className="font-medium">{p.nivelAlvo || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Prazo:</span> <span className="font-medium">{p.prazoMeses ? `${p.prazoMeses} meses` : '—'}</span></div>
+                        <div><span className="text-muted-foreground">Metas:</span> <span className="font-medium">{p.metas?.length || 0} definidas</span></div>
+                      </div>
+                      {p.descricao && <p className="text-xs text-muted-foreground mt-2">{p.descricao}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Experience periods */}
+            {(colab.periodoExperiencia1Inicio || colab.periodoExperiencia2Inicio) && (
+              <SectionCard title="Períodos de Experiência" icon={Clock}>
+                <div className="grid grid-cols-2 gap-4">
+                  {colab.periodoExperiencia1Inicio && (
+                    <InfoItem label="1° Período" value={`${formatDateBR(colab.periodoExperiencia1Inicio)} a ${formatDateBR(colab.periodoExperiencia1Fim)}`} />
+                  )}
+                  {colab.periodoExperiencia2Inicio && (
+                    <InfoItem label="2° Período" value={`${formatDateBR(colab.periodoExperiencia2Inicio)} a ${formatDateBR(colab.periodoExperiencia2Fim)}`} />
+                  )}
+                </div>
+              </SectionCard>
+            )}
+          </>
+        )}
+
+        {/* ===== HISTÓRICO DE STATUS ===== */}
+        {activeTab === 'status' && (
+          <SectionCard title="Histórico de Mudanças de Status" icon={History}>
+            {historicoStatusQ.isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>
+            ) : (historicoStatusQ.data || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Nenhuma alteração de status registrada.</p>
+            ) : (
+              <div className="relative ml-4 border-l-2 border-border/60 space-y-0">
+                {(historicoStatusQ.data as any[]).map((h: any, i: number) => {
+                  const cfgNovo = STATUS_CONFIG[h.statusNovo] || STATUS_CONFIG.ativo;
+                  const cfgAnterior = STATUS_CONFIG[h.statusAnterior] || STATUS_CONFIG.ativo;
+                  const IconNovo = cfgNovo.icon;
+                  return (
+                    <div key={h.id || i} className="relative pl-6 pb-4">
+                      <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center ${cfgNovo.color.split(' ')[0]}`}>
+                        <IconNovo className="w-2.5 h-2.5" />
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium">{cfgAnterior.label}</span>
+                        <span className="text-muted-foreground mx-1.5">&rarr;</span>
+                        <span className="font-semibold">{cfgNovo.label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{h.motivo || 'Sem motivo informado'}</p>
+                      <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
+                        <span>Módulo: {h.origemModulo || 'manual'}</span>
+                        <span>Por: {h.alteradoPorNome || 'Sistema'}</span>
+                        <span>{h.createdAt ? new Date(h.createdAt).toLocaleString('pt-BR') : ''}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===== MAIN COMPONENT =====
 export default function ColaboradoresGEG() {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
@@ -156,6 +809,9 @@ export default function ColaboradoresGEG() {
   const [cepLoading, setCepLoading] = useState(false);
   const [depForm, setDepForm] = useState<Dependente>({ nome: '', cpf: '', dataNascimento: '', parentesco: '', dependenteIR: false, dependentePlanoSaude: false });
   const formDirtyRef = useRef(false);
+  const [selectedColab, setSelectedColab] = useState<any | null>(null);
+  const [sortField, setSortField] = useState<string>('nomeCompleto');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
@@ -305,20 +961,6 @@ export default function ColaboradoresGEG() {
     setCpfValid(nums.length === 11 ? validarCPF(nums) : null);
   };
 
-  const openView = (c: any) => {
-    setForm({
-      ...EMPTY_FORM, ...c,
-      jornadaDias: c.jornadaDias ? (typeof c.jornadaDias === 'string' ? JSON.parse(c.jornadaDias) : c.jornadaDias) : ['seg', 'ter', 'qua', 'qui', 'sex'],
-      dependentes: c.dependentes ? (typeof c.dependentes === 'string' ? JSON.parse(c.dependentes) : c.dependentes) : [],
-      chavePix: c.chavePix || '',
-      statusColaborador: c.statusColaborador || 'ativo',
-    });
-    setEditId(c.id);
-    setViewMode(true);
-    setShowForm(true);
-    formDirtyRef.current = false;
-  };
-
   const addDependente = () => {
     if (!depForm.nome.trim()) { toast.error('Nome do dependente é obrigatório'); return; }
     if (!depForm.parentesco) { toast.error('Parentesco é obrigatório'); return; }
@@ -333,13 +975,9 @@ export default function ColaboradoresGEG() {
   };
 
   const allColabs = (colaboradores.data || []) as any[];
-
-  // Extract unique values for filter dropdowns
-  const uniqueCargos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.cargo).filter(Boolean))).sort(), [allColabs]);
-  const uniqueLocais = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.localTrabalho).filter(Boolean))).sort(), [allColabs]);
-  const uniqueNiveis = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.nivelHierarquico).filter(Boolean))).sort(), [allColabs]);
-  const uniqueContratos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.tipoContrato).filter(Boolean))).sort(), [allColabs]);
   const setoresList = (setores.data || []) as any[];
+
+  const uniqueCargos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.cargo).filter(Boolean))).sort(), [allColabs]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -373,7 +1011,7 @@ export default function ColaboradoresGEG() {
 
   const exportToCSV = () => {
     if (filtered.length === 0) { toast.error('Nenhum colaborador para exportar'); return; }
-    const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Fun\u00e7\u00e3o','Setor','Sal\u00e1rio Base','Status','Tipo Contrato','Local Trabalho','N\u00edvel Hier\u00e1rquico','Data Admiss\u00e3o','Email','Telefone','Vale Transporte'];
+    const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Função','Setor','Salário Base','Status','Tipo Contrato','Local Trabalho','Nível Hierárquico','Data Admissão','Email','Telefone','Vale Transporte'];
     const rows = filtered.map((c: any) => [
       c.nomeCompleto || '', c.cpf || '', c.dataNascimento || '', c.cargo || '', c.funcao || '',
       setoresList.find((s: any) => s.id === c.setorId)?.nome || '', c.salarioBase || '',
@@ -381,7 +1019,7 @@ export default function ColaboradoresGEG() {
       (c.tipoContrato || '').toUpperCase(),
       c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : c.localTrabalho === 'uberaba' ? 'Uberaba' : '',
       c.nivelHierarquico || '', c.dataAdmissao || '', c.email || '', c.telefone || '',
-      c.valeTransporte ? 'Sim' : 'N\u00e3o',
+      c.valeTransporte ? 'Sim' : 'Não',
     ]);
     const csvContent = '\uFEFF' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -396,7 +1034,7 @@ export default function ColaboradoresGEG() {
 
   const exportToExcel = () => {
     if (filtered.length === 0) { toast.error('Nenhum colaborador para exportar'); return; }
-    const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Fun\u00e7\u00e3o','Setor','Sal\u00e1rio Base','Status','Tipo Contrato','Local Trabalho','N\u00edvel Hier\u00e1rquico','Data Admiss\u00e3o','Email','Telefone','Vale Transporte'];
+    const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Função','Setor','Salário Base','Status','Tipo Contrato','Local Trabalho','Nível Hierárquico','Data Admissão','Email','Telefone','Vale Transporte'];
     const rows = filtered.map((c: any) => [
       c.nomeCompleto || '', c.cpf || '', c.dataNascimento || '', c.cargo || '', c.funcao || '',
       setoresList.find((s: any) => s.id === c.setorId)?.nome || '', c.salarioBase || '',
@@ -404,9 +1042,8 @@ export default function ColaboradoresGEG() {
       (c.tipoContrato || '').toUpperCase(),
       c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : c.localTrabalho === 'uberaba' ? 'Uberaba' : '',
       c.nivelHierarquico || '', c.dataAdmissao || '', c.email || '', c.telefone || '',
-      c.valeTransporte ? 'Sim' : 'N\u00e3o',
+      c.valeTransporte ? 'Sim' : 'Não',
     ]);
-    // Generate HTML table for Excel compatibility
     let html = '<html><head><meta charset="utf-8"></head><body>';
     html += '<table border="1"><thead><tr>';
     headers.forEach(h => { html += `<th style="background:#0A2540;color:white;font-weight:bold;padding:8px">${h}</th>`; });
@@ -429,40 +1066,34 @@ export default function ColaboradoresGEG() {
 
   const filtered = useMemo(() => {
     let list = [...allColabs];
-    if (filterStatus !== 'todos') {
-      list = list.filter((c: any) => (c.statusColaborador || 'ativo') === filterStatus);
-    }
-    if (filterCargo !== 'todos') {
-      list = list.filter((c: any) => c.cargo === filterCargo);
-    }
-    if (filterSetor !== 'todos') {
-      list = list.filter((c: any) => String(c.setorId) === filterSetor);
-    }
-    if (filterLocal !== 'todos') {
-      list = list.filter((c: any) => c.localTrabalho === filterLocal);
-    }
-    if (filterVT !== 'todos') {
-      list = list.filter((c: any) => {
-        if (filterVT === 'sim') return c.valeTransporte === true;
-        return c.valeTransporte === false || !c.valeTransporte;
-      });
-    }
-    if (filterNivel !== 'todos') {
-      list = list.filter((c: any) => c.nivelHierarquico === filterNivel);
-    }
-    if (filterContrato !== 'todos') {
-      list = list.filter((c: any) => c.tipoContrato === filterContrato);
-    }
+    if (filterStatus !== 'todos') list = list.filter((c: any) => (c.statusColaborador || 'ativo') === filterStatus);
+    if (filterCargo !== 'todos') list = list.filter((c: any) => c.cargo === filterCargo);
+    if (filterSetor !== 'todos') list = list.filter((c: any) => String(c.setorId) === filterSetor);
+    if (filterLocal !== 'todos') list = list.filter((c: any) => c.localTrabalho === filterLocal);
+    if (filterVT !== 'todos') list = list.filter((c: any) => filterVT === 'sim' ? c.valeTransporte === true : c.valeTransporte === false || !c.valeTransporte);
+    if (filterNivel !== 'todos') list = list.filter((c: any) => c.nivelHierarquico === filterNivel);
+    if (filterContrato !== 'todos') list = list.filter((c: any) => c.tipoContrato === filterContrato);
     if (search.trim()) {
       const s = search.toLowerCase();
-      list = list.filter((c: any) =>
-        c.nomeCompleto?.toLowerCase().includes(s) || c.cpf?.includes(s) || c.cargo?.toLowerCase().includes(s)
-      );
+      list = list.filter((c: any) => c.nomeCompleto?.toLowerCase().includes(s) || c.cpf?.includes(s) || c.cargo?.toLowerCase().includes(s));
     }
+    // Sort
+    list.sort((a: any, b: any) => {
+      let va = '', vb = '';
+      if (sortField === 'nomeCompleto') { va = (a.nomeCompleto || '').toLowerCase(); vb = (b.nomeCompleto || '').toLowerCase(); }
+      else if (sortField === 'cargo') { va = (a.cargo || '').toLowerCase(); vb = (b.cargo || '').toLowerCase(); }
+      else if (sortField === 'setor') {
+        va = (setoresList.find((s: any) => s.id === a.setorId)?.nome || '').toLowerCase();
+        vb = (setoresList.find((s: any) => s.id === b.setorId)?.nome || '').toLowerCase();
+      }
+      else if (sortField === 'dataAdmissao') { va = a.dataAdmissao || ''; vb = b.dataAdmissao || ''; }
+      else if (sortField === 'status') { va = a.statusColaborador || 'ativo'; vb = b.statusColaborador || 'ativo'; }
+      const cmp = va.localeCompare(vb);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
     return list;
-  }, [allColabs, search, filterStatus, filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato]);
+  }, [allColabs, search, filterStatus, filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato, sortField, sortDir, setoresList]);
 
-  // Status summary counts
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allColabs.forEach((c: any) => {
@@ -471,6 +1102,27 @@ export default function ColaboradoresGEG() {
     });
     return counts;
   }, [allColabs]);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
+    <th
+      className="text-left px-3 py-2.5 text-xs font-medium cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => toggleSort(field)}
+    >
+      <span className="flex items-center gap-1">
+        {children}
+        <ArrowUpDown className={`w-3 h-3 ${sortField === field ? 'text-primary' : 'text-muted-foreground/40'}`} />
+      </span>
+    </th>
+  );
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <div className="border-b border-primary/20 pb-1.5 mt-8 mb-4 first:mt-0">
@@ -497,6 +1149,20 @@ export default function ColaboradoresGEG() {
     );
   };
 
+  // If a colaborador is selected, show the panel
+  if (selectedColab) {
+    return (
+      <div className="space-y-6">
+        <PainelColaborador
+          colab={selectedColab}
+          setores={setoresList}
+          onClose={() => setSelectedColab(null)}
+          onEdit={(c) => { setSelectedColab(null); openEdit(c); }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -507,7 +1173,7 @@ export default function ColaboradoresGEG() {
         <Button onClick={() => { closeFormClean(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Colaborador</Button>
       </div>
 
-      {/* Status Summary Cards */}
+      {/* Status Summary */}
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setFilterStatus('todos')}
@@ -536,7 +1202,7 @@ export default function ColaboradoresGEG() {
         })}
       </div>
 
-      {/* Search + Advanced Filters Toggle */}
+      {/* Search + Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -670,45 +1336,69 @@ export default function ColaboradoresGEG() {
         </Card>
       )}
 
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((c: any) => {
-          const status = c.statusColaborador || 'ativo';
-          const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
-          return (
-            <Card key={c.id} className={`hover:shadow-md transition-shadow cursor-pointer border-l-4 ${cfg.bgCard}`} onClick={() => openView(c)}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-medium text-sm truncate">{c.nomeCompleto}</h4>
-                      <p className="text-xs text-muted-foreground truncate">{c.cargo}</p>
-                    </div>
-                  </div>
-                  {getStatusBadge(status)}
-                </div>
-                <div className="mt-3 flex gap-2 flex-wrap">
-                  {c.tipoContrato && <Badge variant="outline" className="text-[10px]">{c.tipoContrato.toUpperCase()}</Badge>}
-                  {c.localTrabalho && <Badge variant="secondary" className="text-[10px]">{c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : 'Uberaba'}</Badge>}
-                  {c.dataAdmissao && <span className="text-[10px] text-muted-foreground">Admissão: {c.dataAdmissao}</span>}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {filtered.length === 0 && (
-        <Card>
-          <CardContent className="py-16 text-center">
+      {/* ===== LIST TABLE ===== */}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <SortHeader field="nomeCompleto">Nome</SortHeader>
+                <SortHeader field="cargo">Cargo</SortHeader>
+                <SortHeader field="setor">Setor</SortHeader>
+                <SortHeader field="status">Status</SortHeader>
+                <th className="text-left px-3 py-2.5 text-xs font-medium">Contrato</th>
+                <th className="text-left px-3 py-2.5 text-xs font-medium">Unidade</th>
+                <SortHeader field="dataAdmissao">Admissão</SortHeader>
+                <th className="text-left px-3 py-2.5 text-xs font-medium">Tempo de Casa</th>
+                <th className="text-center px-3 py-2.5 text-xs font-medium w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c: any) => {
+                const status = c.statusColaborador || 'ativo';
+                const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
+                const setorNome = setoresList.find((s: any) => s.id === c.setorId)?.nome || '—';
+                return (
+                  <tr
+                    key={c.id}
+                    className="border-b hover:bg-muted/30 cursor-pointer transition-colors group"
+                    onClick={() => setSelectedColab(c)}
+                  >
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{c.nomeCompleto}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-muted-foreground">{c.cargo || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-muted-foreground">{setorNome}</td>
+                    <td className="px-3 py-2.5">{getStatusBadge(status)}</td>
+                    <td className="px-3 py-2.5">
+                      {c.tipoContrato && <Badge variant="outline" className="text-[10px]">{c.tipoContrato.toUpperCase()}</Badge>}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-muted-foreground">
+                      {c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : c.localTrabalho === 'uberaba' ? 'Uberaba' : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm">{formatDateBR(c.dataAdmissao)}</td>
+                    <td className="px-3 py-2.5 text-sm font-medium">{calcTempoCasa(c.dataAdmissao)}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length === 0 && (
+          <div className="py-16 text-center">
             <User className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground">Nenhum colaborador encontrado</p>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
+      </Card>
 
       {/* Exit Alert */}
       <AlertDialog open={exitAlert} onOpenChange={setExitAlert}>
@@ -747,8 +1437,8 @@ export default function ColaboradoresGEG() {
         <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg">
-              {viewMode ? <Eye className="w-5 h-5" /> : editId ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-              {viewMode ? 'Visualizar Colaborador' : editId ? 'Editar Colaborador' : 'Novo Colaborador'}
+              {editId ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+              {editId ? 'Editar Colaborador' : 'Novo Colaborador'}
             </DialogTitle>
           </DialogHeader>
 
@@ -764,13 +1454,12 @@ export default function ColaboradoresGEG() {
                   <button
                     key={key}
                     type="button"
-                    disabled={viewMode}
                     onClick={() => { setForm(f => ({ ...f, statusColaborador: key })); markDirty(); }}
                     className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-xs font-medium ${
                       selected
                         ? `${cfg.color} border-current shadow-sm`
                         : 'border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60'
-                    } ${viewMode ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
+                    } cursor-pointer`}
                   >
                     <Icon className="w-5 h-5" />
                     {cfg.label}
@@ -783,14 +1472,13 @@ export default function ColaboradoresGEG() {
             <SectionTitle>Dados Pessoais</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
               <Field label="Nome Completo" span={3} required>
-                <Input value={form.nomeCompleto} onChange={e => { setForm(f => ({ ...f, nomeCompleto: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Nome completo do colaborador" />
+                <Input value={form.nomeCompleto} onChange={e => { setForm(f => ({ ...f, nomeCompleto: e.target.value })); markDirty(); }} placeholder="Nome completo do colaborador" />
               </Field>
               <Field label="CPF" required>
                 <div className="relative">
                   <Input
                     value={form.cpf}
                     onChange={e => handleCpfChange(e.target.value)}
-                    disabled={viewMode}
                     placeholder="000.000.000-00"
                     className={cpfValid === false ? 'border-red-500 pr-10' : cpfValid === true ? 'border-green-500 pr-10' : 'pr-10'}
                   />
@@ -800,11 +1488,11 @@ export default function ColaboradoresGEG() {
                 {cpfValid === false && <p className="text-xs text-red-500 mt-1">CPF inválido</p>}
               </Field>
               <Field label="Data de Nascimento">
-                <Input type="date" value={form.dataNascimento} onChange={e => { setForm(f => ({ ...f, dataNascimento: e.target.value })); markDirty(); }} disabled={viewMode} />
+                <Input type="date" value={form.dataNascimento} onChange={e => { setForm(f => ({ ...f, dataNascimento: e.target.value })); markDirty(); }} />
                 {form.dataNascimento && <p className="text-xs text-muted-foreground mt-0.5">{calcIdade(form.dataNascimento)}</p>}
               </Field>
               <Field label="Sexo">
-                <Select value={form.sexo} onValueChange={v => { setForm(f => ({ ...f, sexo: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.sexo} onValueChange={v => { setForm(f => ({ ...f, sexo: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="masculino">Masculino</SelectItem>
@@ -814,7 +1502,7 @@ export default function ColaboradoresGEG() {
                 </Select>
               </Field>
               <Field label="Estado Civil">
-                <Select value={form.estadoCivil} onValueChange={v => { setForm(f => ({ ...f, estadoCivil: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.estadoCivil} onValueChange={v => { setForm(f => ({ ...f, estadoCivil: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="solteiro">Solteiro(a)</SelectItem>
@@ -826,84 +1514,56 @@ export default function ColaboradoresGEG() {
                 </Select>
               </Field>
               <Field label="Nacionalidade">
-                <Input value={form.nacionalidade} onChange={e => { setForm(f => ({ ...f, nacionalidade: e.target.value })); markDirty(); }} disabled={viewMode} />
+                <Input value={form.nacionalidade} onChange={e => { setForm(f => ({ ...f, nacionalidade: e.target.value })); markDirty(); }} />
               </Field>
               <Field label="Naturalidade">
-                <Input value={form.naturalidade} onChange={e => { setForm(f => ({ ...f, naturalidade: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Cidade/Estado" />
+                <Input value={form.naturalidade} onChange={e => { setForm(f => ({ ...f, naturalidade: e.target.value })); markDirty(); }} placeholder="Cidade/Estado" />
               </Field>
             </div>
 
             {/* ===== DOCUMENTOS ===== */}
             <SectionTitle>Documentos</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="RG Número">
-                <Input value={form.rgNumero} onChange={e => { setForm(f => ({ ...f, rgNumero: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Órgão Emissor">
-                <Input value={form.rgOrgaoEmissor} onChange={e => { setForm(f => ({ ...f, rgOrgaoEmissor: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Ex: SSP/SP" />
-              </Field>
-              <Field label="Data de Emissão">
-                <Input type="date" value={form.rgDataEmissao} onChange={e => { setForm(f => ({ ...f, rgDataEmissao: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="CTPS (Número/Série)">
-                <Input value={form.ctpsNumero} onChange={e => { setForm(f => ({ ...f, ctpsNumero: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Número e série" />
-              </Field>
+              <Field label="RG Número"><Input value={form.rgNumero} onChange={e => { setForm(f => ({ ...f, rgNumero: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Órgão Emissor"><Input value={form.rgOrgaoEmissor} onChange={e => { setForm(f => ({ ...f, rgOrgaoEmissor: e.target.value })); markDirty(); }} placeholder="Ex: SSP/SP" /></Field>
+              <Field label="Data de Emissão"><Input type="date" value={form.rgDataEmissao} onChange={e => { setForm(f => ({ ...f, rgDataEmissao: e.target.value })); markDirty(); }} /></Field>
+              <Field label="CTPS (Número/Série)"><Input value={form.ctpsNumero} onChange={e => { setForm(f => ({ ...f, ctpsNumero: e.target.value })); markDirty(); }} placeholder="Número e série" /></Field>
               <Field label="CTPS UF Emissão">
-                <Select value={form.ctpsUfEmissao} onValueChange={v => { setForm(f => ({ ...f, ctpsUfEmissao: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.ctpsUfEmissao} onValueChange={v => { setForm(f => ({ ...f, ctpsUfEmissao: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
-                  <SelectContent>
-                    {UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
-              <Field label="PIS/PASEP">
-                <Input value={form.pisPasep} onChange={e => { setForm(f => ({ ...f, pisPasep: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Título de Eleitor">
-                <Input value={form.tituloEleitor} onChange={e => { setForm(f => ({ ...f, tituloEleitor: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Zona">
-                <Input value={form.tituloEleitorZona} onChange={e => { setForm(f => ({ ...f, tituloEleitorZona: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Zona eleitoral" />
-              </Field>
-              <Field label="Seção">
-                <Input value={form.tituloEleitorSecao} onChange={e => { setForm(f => ({ ...f, tituloEleitorSecao: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Seção eleitoral" />
-              </Field>
-              <Field label="Certificado Reservista">
-                <Input value={form.certificadoReservista} onChange={e => { setForm(f => ({ ...f, certificadoReservista: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="PIS/PASEP"><Input value={form.pisPasep} onChange={e => { setForm(f => ({ ...f, pisPasep: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Título de Eleitor"><Input value={form.tituloEleitor} onChange={e => { setForm(f => ({ ...f, tituloEleitor: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Zona"><Input value={form.tituloEleitorZona} onChange={e => { setForm(f => ({ ...f, tituloEleitorZona: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Seção"><Input value={form.tituloEleitorSecao} onChange={e => { setForm(f => ({ ...f, tituloEleitorSecao: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Certificado Reservista"><Input value={form.certificadoReservista} onChange={e => { setForm(f => ({ ...f, certificadoReservista: e.target.value })); markDirty(); }} /></Field>
             </div>
 
             {/* ===== FORMAÇÃO ===== */}
             <SectionTitle>Formação Acadêmica</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <Field label="Grau de Instrução">
-                <Select value={form.grauInstrucao} onValueChange={v => { setForm(f => ({ ...f, grauInstrucao: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.grauInstrucao} onValueChange={v => { setForm(f => ({ ...f, grauInstrucao: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  <SelectContent>
-                    {GRAUS_INSTRUCAO.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{GRAUS_INSTRUCAO.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
               <Field label="Formação / Curso">
-                <Input value={form.formacaoAcademica} onChange={e => { setForm(f => ({ ...f, formacaoAcademica: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Ex: Administração de Empresas" />
+                <Input value={form.formacaoAcademica} onChange={e => { setForm(f => ({ ...f, formacaoAcademica: e.target.value })); markDirty(); }} placeholder="Ex: Administração de Empresas" />
               </Field>
             </div>
 
             {/* ===== CONTATO DE EMERGÊNCIA ===== */}
             <SectionTitle>Contato de Emergência</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Nome">
-                <Input value={form.contatoEmergenciaNome} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaNome: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Nome do contato" />
-              </Field>
-              <Field label="Telefone">
-                <Input value={form.contatoEmergenciaTelefone} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaTelefone: maskPhone(e.target.value) })); markDirty(); }} disabled={viewMode} placeholder="(00) 00000-0000" />
-              </Field>
+              <Field label="Nome"><Input value={form.contatoEmergenciaNome} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaNome: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Telefone"><Input value={form.contatoEmergenciaTelefone} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaTelefone: maskPhone(e.target.value) })); markDirty(); }} placeholder="(00) 00000-0000" /></Field>
               <Field label="Parentesco">
-                <Select value={form.contatoEmergenciaParentesco} onValueChange={v => { setForm(f => ({ ...f, contatoEmergenciaParentesco: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.contatoEmergenciaParentesco} onValueChange={v => { setForm(f => ({ ...f, contatoEmergenciaParentesco: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  <SelectContent>
-                    {PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
             </div>
@@ -911,12 +1571,8 @@ export default function ColaboradoresGEG() {
             {/* ===== FILIAÇÃO ===== */}
             <SectionTitle>Filiação</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-              <Field label="Nome da Mãe">
-                <Input value={form.nomeMae} onChange={e => { setForm(f => ({ ...f, nomeMae: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Nome do Pai">
-                <Input value={form.nomePai} onChange={e => { setForm(f => ({ ...f, nomePai: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="Nome da Mãe"><Input value={form.nomeMae} onChange={e => { setForm(f => ({ ...f, nomeMae: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Nome do Pai"><Input value={form.nomePai} onChange={e => { setForm(f => ({ ...f, nomePai: e.target.value })); markDirty(); }} /></Field>
             </div>
 
             {/* ===== ENDEREÇO ===== */}
@@ -924,51 +1580,36 @@ export default function ColaboradoresGEG() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3">
               <Field label="CEP">
                 <div className="relative">
-                  <Input value={form.cep} onChange={e => handleCepChange(e.target.value)} disabled={viewMode} placeholder="00000-000" />
+                  <Input value={form.cep} onChange={e => handleCepChange(e.target.value)} placeholder="00000-000" />
                   {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
                 </div>
               </Field>
-              <Field label="Logradouro" span={3}>
-                <Input value={form.logradouro} onChange={e => { setForm(f => ({ ...f, logradouro: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Número">
-                <Input value={form.numero} onChange={e => { setForm(f => ({ ...f, numero: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Complemento">
-                <Input value={form.complemento} onChange={e => { setForm(f => ({ ...f, complemento: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Bairro">
-                <Input value={form.bairro} onChange={e => { setForm(f => ({ ...f, bairro: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Cidade">
-                <Input value={form.cidade} onChange={e => { setForm(f => ({ ...f, cidade: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3 mt-3">
+              <Field label="Logradouro" span={3}><Input value={form.logradouro} onChange={e => { setForm(f => ({ ...f, logradouro: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Número"><Input value={form.numero} onChange={e => { setForm(f => ({ ...f, numero: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Complemento"><Input value={form.complemento} onChange={e => { setForm(f => ({ ...f, complemento: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Bairro"><Input value={form.bairro} onChange={e => { setForm(f => ({ ...f, bairro: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Cidade"><Input value={form.cidade} onChange={e => { setForm(f => ({ ...f, cidade: e.target.value })); markDirty(); }} /></Field>
               <Field label="Estado">
-                <Input value={form.estado} onChange={e => { setForm(f => ({ ...f, estado: e.target.value })); markDirty(); }} disabled={viewMode} maxLength={2} placeholder="UF" />
+                <Select value={form.estado} onValueChange={v => { setForm(f => ({ ...f, estado: v })); markDirty(); }}>
+                  <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                  <SelectContent>{UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
+                </Select>
               </Field>
             </div>
 
             {/* ===== CONTATO ===== */}
             <SectionTitle>Contato</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-              <Field label="Telefone">
-                <Input value={form.telefone} onChange={e => handlePhoneChange(e.target.value)} disabled={viewMode} placeholder="(00) 00000-0000" />
-              </Field>
-              <Field label="E-mail">
-                <Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="email@exemplo.com" />
-              </Field>
+              <Field label="Telefone"><Input value={form.telefone} onChange={e => handlePhoneChange(e.target.value)} placeholder="(00) 00000-0000" /></Field>
+              <Field label="E-mail"><Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); markDirty(); }} placeholder="email@exemplo.com" /></Field>
             </div>
 
             {/* ===== DADOS PROFISSIONAIS ===== */}
             <SectionTitle>Dados Profissionais</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Data de Admissão" required>
-                <Input type="date" value={form.dataAdmissao} onChange={e => { setForm(f => ({ ...f, dataAdmissao: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="Data de Admissão" required><Input type="date" value={form.dataAdmissao} onChange={e => { setForm(f => ({ ...f, dataAdmissao: e.target.value })); markDirty(); }} /></Field>
               <Field label="Tipo de Contrato">
-                <Select value={form.tipoContrato} onValueChange={v => { setForm(f => ({ ...f, tipoContrato: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.tipoContrato} onValueChange={v => { setForm(f => ({ ...f, tipoContrato: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="clt">CLT</SelectItem>
@@ -977,63 +1618,34 @@ export default function ColaboradoresGEG() {
                   </SelectContent>
                 </Select>
               </Field>
-              <div className="col-span-full">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">1º Período de Experiência</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Início">
-                    <Input type="date" value={form.periodoExperiencia1Inicio} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Inicio: e.target.value })); markDirty(); }} disabled={viewMode} />
-                  </Field>
-                  <Field label="Fim">
-                    <Input type="date" value={form.periodoExperiencia1Fim} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Fim: e.target.value })); markDirty(); }} disabled={viewMode} />
-                  </Field>
+              <Field label="Período Experiência 1">
+                <div className="flex gap-2">
+                  <Input type="date" value={form.periodoExperiencia1Inicio} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Inicio: e.target.value })); markDirty(); }} className="flex-1" />
+                  <Input type="date" value={form.periodoExperiencia1Fim} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Fim: e.target.value })); markDirty(); }} className="flex-1" />
                 </div>
-              </div>
-              <div className="col-span-full">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">2º Período de Experiência</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Início">
-                    <Input type="date" value={form.periodoExperiencia2Inicio} onChange={e => { setForm(f => ({ ...f, periodoExperiencia2Inicio: e.target.value })); markDirty(); }} disabled={viewMode} />
-                  </Field>
-                  <Field label="Fim">
-                    <Input type="date" value={form.periodoExperiencia2Fim} onChange={e => { setForm(f => ({ ...f, periodoExperiencia2Fim: e.target.value })); markDirty(); }} disabled={viewMode} />
-                  </Field>
-                </div>
-              </div>
-              <Field label="Cargo" required>
-                <Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} disabled={viewMode} />
               </Field>
-              <Field label="Função">
-                <Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="Cargo" required><Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Função"><Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} /></Field>
               <Field label="Nível Hierárquico">
-                <Select value={form.nivelHierarquico} onValueChange={v => { setForm(f => ({ ...f, nivelHierarquico: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.nivelHierarquico} onValueChange={v => { setForm(f => ({ ...f, nivelHierarquico: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="estagiario">Estagiário</SelectItem>
-                    <SelectItem value="auxiliar">Auxiliar</SelectItem>
-                    <SelectItem value="assistente">Assistente</SelectItem>
-                    <SelectItem value="analista_jr">Analista Jr</SelectItem>
-                    <SelectItem value="analista_pl">Analista Pleno</SelectItem>
-                    <SelectItem value="analista_sr">Analista Sênior</SelectItem>
-                    <SelectItem value="coordenador">Coordenador</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="gerente">Gerente</SelectItem>
-                    <SelectItem value="diretor">Diretor</SelectItem>
+                    {Object.entries(NIVEIS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
               <Field label="Setor">
-                <Select value={form.setorId ? String(form.setorId) : ''} onValueChange={v => { setForm(f => ({ ...f, setorId: Number(v) })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.setorId ? String(form.setorId) : ''} onValueChange={v => { setForm(f => ({ ...f, setorId: Number(v) })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
-                    {((setores.data || []) as any[]).filter((s: any) => s.ativo).map((s: any) => (
+                    {setoresList.filter((s: any) => s.ativo).map((s: any) => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
               <Field label="Local de Trabalho">
-                <Select value={form.localTrabalho} onValueChange={v => { setForm(f => ({ ...f, localTrabalho: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.localTrabalho} onValueChange={v => { setForm(f => ({ ...f, localTrabalho: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="home_office">Home Office</SelectItem>
@@ -1047,38 +1659,24 @@ export default function ColaboradoresGEG() {
             {/* ===== REMUNERAÇÃO ===== */}
             <SectionTitle>Remuneração</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Salário Base" required>
-                <Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
-              </Field>
-              <Field label="Comissões (valor)">
-                <Input value={form.comissoes} onChange={e => { setForm(f => ({ ...f, comissoes: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
-              </Field>
+              <Field label="Salário Base" required><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
+              <Field label="Comissões (valor)"><Input value={form.comissoes} onChange={e => { setForm(f => ({ ...f, comissoes: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
               <Field label="Recebe Comissão?">
                 <div className="flex items-center gap-2 h-9">
-                  <input type="checkbox" checked={form.recebeComissao} onChange={e => { setForm(f => ({ ...f, recebeComissao: e.target.checked })); markDirty(); }} disabled={viewMode} className="h-4 w-4 rounded border-gray-300" />
+                  <input type="checkbox" checked={form.recebeComissao} onChange={e => { setForm(f => ({ ...f, recebeComissao: e.target.checked })); markDirty(); }} className="h-4 w-4 rounded border-gray-300" />
                   <span className="text-sm">{form.recebeComissao ? 'Sim' : 'Não'}</span>
                 </div>
               </Field>
-              <Field label="Adicionais">
-                <Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="R$ 0,00" />
-              </Field>
+              <Field label="Adicionais"><Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
             </div>
 
-            {/* ===== JORNADA DE TRABALHO ===== */}
+            {/* ===== JORNADA ===== */}
             <SectionTitle>Jornada de Trabalho</SectionTitle>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3">
-              <Field label="Entrada">
-                <Input type="time" value={form.jornadaEntrada} onChange={e => { setForm(f => ({ ...f, jornadaEntrada: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Saída">
-                <Input type="time" value={form.jornadaSaida} onChange={e => { setForm(f => ({ ...f, jornadaSaida: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Intervalo">
-                <Input type="time" value={form.jornadaIntervalo} onChange={e => { setForm(f => ({ ...f, jornadaIntervalo: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Carga Horária (h/sem)">
-                <Input value={form.cargaHoraria} onChange={e => { setForm(f => ({ ...f, cargaHoraria: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="Entrada"><Input type="time" value={form.jornadaEntrada} onChange={e => { setForm(f => ({ ...f, jornadaEntrada: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Saída"><Input type="time" value={form.jornadaSaida} onChange={e => { setForm(f => ({ ...f, jornadaSaida: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Intervalo"><Input type="time" value={form.jornadaIntervalo} onChange={e => { setForm(f => ({ ...f, jornadaIntervalo: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Carga Horária (h/sem)"><Input value={form.cargaHoraria} onChange={e => { setForm(f => ({ ...f, cargaHoraria: e.target.value })); markDirty(); }} /></Field>
             </div>
             <div className="mt-4">
               <Label className="text-xs font-medium text-muted-foreground mb-2 block">Dias da Semana</Label>
@@ -1086,55 +1684,32 @@ export default function ColaboradoresGEG() {
                 {DIAS_SEMANA.map(d => {
                   const checked = form.jornadaDias.includes(d.key);
                   return (
-                    <button
-                      key={d.key}
-                      type="button"
-                      disabled={viewMode}
-                      onClick={() => toggleDia(d.key)}
+                    <button key={d.key} type="button" onClick={() => toggleDia(d.key)}
                       className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
-                        checked
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
-                      } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-                    >
-                      {d.label}
-                    </button>
+                        checked ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                      } cursor-pointer`}
+                    >{d.label}</button>
                   );
                 })}
               </div>
             </div>
-
-            {/* Vale Transporte */}
             <div className="flex items-center gap-3 mt-5">
               <Label className="text-xs font-medium text-muted-foreground">Vale Transporte</Label>
-              <button
-                type="button"
-                disabled={viewMode}
-                onClick={() => { setForm(f => ({ ...f, valeTransporte: !f.valeTransporte })); markDirty(); }}
+              <button type="button" onClick={() => { setForm(f => ({ ...f, valeTransporte: !f.valeTransporte })); markDirty(); }}
                 className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                  form.valeTransporte
-                    ? 'bg-green-100 text-green-700 border border-green-300'
-                    : 'bg-red-100 text-red-700 border border-red-300'
-                } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-              >
-                {form.valeTransporte ? 'Sim' : 'Não'}
-              </button>
+                  form.valeTransporte ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'
+                } cursor-pointer`}
+              >{form.valeTransporte ? 'Sim' : 'Não'}</button>
             </div>
 
             {/* ===== DADOS BANCÁRIOS ===== */}
             <SectionTitle>Dados Bancários</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Banco">
-                <Input value={form.banco} onChange={e => { setForm(f => ({ ...f, banco: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="Ex: Itaú, Bradesco..." />
-              </Field>
-              <Field label="Agência">
-                <Input value={form.agencia} onChange={e => { setForm(f => ({ ...f, agencia: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
-              <Field label="Conta">
-                <Input value={form.conta} onChange={e => { setForm(f => ({ ...f, conta: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="Banco"><Input value={form.banco} onChange={e => { setForm(f => ({ ...f, banco: e.target.value })); markDirty(); }} placeholder="Ex: Itaú, Bradesco..." /></Field>
+              <Field label="Agência"><Input value={form.agencia} onChange={e => { setForm(f => ({ ...f, agencia: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Conta"><Input value={form.conta} onChange={e => { setForm(f => ({ ...f, conta: e.target.value })); markDirty(); }} /></Field>
               <Field label="Tipo de Conta">
-                <Select value={form.tipoConta} onValueChange={v => { setForm(f => ({ ...f, tipoConta: v })); markDirty(); }} disabled={viewMode}>
+                <Select value={form.tipoConta} onValueChange={v => { setForm(f => ({ ...f, tipoConta: v })); markDirty(); }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="corrente">Corrente</SelectItem>
@@ -1142,9 +1717,7 @@ export default function ColaboradoresGEG() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Chave PIX" span={2}>
-                <Input value={form.chavePix} onChange={e => { setForm(f => ({ ...f, chavePix: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="CPF, e-mail, telefone ou chave aleatória" />
-              </Field>
+              <Field label="Chave PIX" span={2}><Input value={form.chavePix} onChange={e => { setForm(f => ({ ...f, chavePix: e.target.value })); markDirty(); }} placeholder="CPF, e-mail, telefone ou chave aleatória" /></Field>
             </div>
 
             {/* ===== SAÚDE ===== */}
@@ -1152,302 +1725,102 @@ export default function ColaboradoresGEG() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 items-end">
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Apto</Label>
-                <button
-                  type="button"
-                  disabled={viewMode}
-                  onClick={() => { setForm(f => ({ ...f, asoAdmissionalApto: !f.asoAdmissionalApto })); markDirty(); }}
+                <button type="button" onClick={() => { setForm(f => ({ ...f, asoAdmissionalApto: !f.asoAdmissionalApto })); markDirty(); }}
                   className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    form.asoAdmissionalApto
-                      ? 'bg-green-100 text-green-700 border border-green-300'
-                      : 'bg-red-100 text-red-700 border border-red-300'
-                  } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-                >
-                  {form.asoAdmissionalApto ? 'Sim' : 'Não'}
-                </button>
+                    form.asoAdmissionalApto ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'
+                  } cursor-pointer`}
+                >{form.asoAdmissionalApto ? 'Sim' : 'Não'}</button>
               </div>
-              <Field label="Data do Exame">
-                <Input type="date" value={form.asoAdmissionalData} onChange={e => { setForm(f => ({ ...f, asoAdmissionalData: e.target.value })); markDirty(); }} disabled={viewMode} />
-              </Field>
+              <Field label="Data do Exame"><Input type="date" value={form.asoAdmissionalData} onChange={e => { setForm(f => ({ ...f, asoAdmissionalData: e.target.value })); markDirty(); }} /></Field>
             </div>
 
             {/* ===== DEPENDENTES ===== */}
             <SectionTitle>Dependentes</SectionTitle>
             <p className="text-xs text-muted-foreground mb-3">Dependentes para IRRF / Salário-Família</p>
-
             {form.dependentes.length > 0 && (
               <div className="space-y-2 mb-4">
                 {form.dependentes.map((d, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-border/50">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1">
-                      <div>
-                        <span className="text-[10px] text-muted-foreground uppercase block">Nome</span>
-                        <span className="text-sm font-medium">{d.nome}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-muted-foreground uppercase block">Parentesco</span>
-                        <span className="text-sm">{d.parentesco}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-muted-foreground uppercase block">CPF</span>
-                        <span className="text-sm">{d.cpf || '—'}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-muted-foreground uppercase block">Nascimento</span>
-                        <span className="text-sm">{d.dataNascimento || '—'} {d.dataNascimento && <span className="text-muted-foreground">({calcIdade(d.dataNascimento)})</span>}</span>
-                      </div>
-                      <div className="flex gap-2 items-center col-span-full mt-1">
-                        {d.dependenteIR && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Dep. IR</Badge>}
-                        {d.dependentePlanoSaude && <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Plano Saúde</Badge>}
-                        {!d.dependenteIR && !d.dependentePlanoSaude && <span className="text-[10px] text-muted-foreground">—</span>}
-                      </div>
+                      <div><span className="text-[10px] uppercase text-muted-foreground">Nome</span><p className="text-sm font-medium">{d.nome}</p></div>
+                      <div><span className="text-[10px] uppercase text-muted-foreground">Parentesco</span><p className="text-sm">{d.parentesco}</p></div>
+                      <div><span className="text-[10px] uppercase text-muted-foreground">CPF</span><p className="text-sm">{d.cpf || '—'}</p></div>
+                      <div><span className="text-[10px] uppercase text-muted-foreground">Nascimento</span><p className="text-sm">{formatDateBR(d.dataNascimento)}</p></div>
                     </div>
-                    {!viewMode && (
-                      <button onClick={() => removeDependente(i)} className="p-1.5 hover:bg-red-50 rounded-md transition-colors shrink-0">
-                        <X className="w-4 h-4 text-red-400" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {d.dependenteIR && <Badge variant="outline" className="text-[10px]">IR</Badge>}
+                      {d.dependentePlanoSaude && <Badge variant="outline" className="text-[10px]">Plano</Badge>}
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeDependente(i)}><X className="w-3.5 h-3.5" /></Button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* ===== PENSÃO ALIMENTÍCIA ===== */}
-            <SectionTitle>Pensão Alimentícia</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 items-end">
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Paga Pensão</Label>
-                <button
-                  type="button"
-                  disabled={viewMode}
-                  onClick={() => { setForm(f => ({ ...f, pagaPensaoAlimenticia: !f.pagaPensaoAlimenticia })); markDirty(); }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    form.pagaPensaoAlimenticia
-                      ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-                      : 'bg-gray-100 text-gray-500 border border-gray-300'
-                  } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-                >
-                  {form.pagaPensaoAlimenticia ? 'Sim' : 'Não'}
-                </button>
-              </div>
-              {form.pagaPensaoAlimenticia && (
-                <Field label="Valor da Pensão (R$)">
-                  <Input value={form.valorPensaoAlimenticia} onChange={e => { setForm(f => ({ ...f, valorPensaoAlimenticia: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="0,00" />
+            {/* Add dependente form */}
+            <div className="border border-dashed border-border rounded-lg p-4">
+              <h5 className="text-xs font-semibold mb-3">Adicionar Dependente</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+                <Field label="Nome" required><Input value={depForm.nome} onChange={e => setDepForm(f => ({ ...f, nome: e.target.value }))} /></Field>
+                <Field label="CPF"><Input value={depForm.cpf} onChange={e => setDepForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))} placeholder="000.000.000-00" /></Field>
+                <Field label="Data Nascimento"><Input type="date" value={depForm.dataNascimento} onChange={e => setDepForm(f => ({ ...f, dataNascimento: e.target.value }))} /></Field>
+                <Field label="Parentesco" required>
+                  <Select value={depForm.parentesco} onValueChange={v => setDepForm(f => ({ ...f, parentesco: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>{PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                  </Select>
                 </Field>
-              )}
-            </div>
-
-            {/* ===== CONTRIBUIÇÃO ASSISTENCIAL ===== */}
-            <SectionTitle>Contribuição Assistencial</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 items-end">
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tem Contribuição</Label>
-                <button
-                  type="button"
-                  disabled={viewMode}
-                  onClick={() => { setForm(f => ({ ...f, temContribuicaoAssistencial: !f.temContribuicaoAssistencial })); markDirty(); }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    form.temContribuicaoAssistencial
-                      ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-                      : 'bg-gray-100 text-gray-500 border border-gray-300'
-                  } ${viewMode ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-                >
-                  {form.temContribuicaoAssistencial ? 'Sim' : 'Não'}
-                </button>
-              </div>
-              {form.temContribuicaoAssistencial && (
-                <Field label="Valor (R$)">
-                  <Input value={form.valorContribuicaoAssistencial} onChange={e => { setForm(f => ({ ...f, valorContribuicaoAssistencial: e.target.value })); markDirty(); }} disabled={viewMode} placeholder="0,00" />
-                </Field>
-              )}
-            </div>
-
-            {/* ===== HISTÓRICO DE STATUS ===== */}
-            {editId && (viewMode || showForm) && (
-              <>
-                <SectionTitle>Histórico de Status</SectionTitle>
-                {historicoStatus.isLoading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando histórico...
+                <div className="flex items-end gap-4">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={depForm.dependenteIR} onChange={e => setDepForm(f => ({ ...f, dependenteIR: e.target.checked }))} className="h-4 w-4" />
+                    <span className="text-xs">Dep. IR</span>
                   </div>
-                ) : (historicoStatus.data || []).length === 0 ? (
-                  <div className="text-sm text-muted-foreground py-4 flex items-center gap-2">
-                    <History className="w-4 h-4" /> Nenhuma alteração de status registrada.
-                  </div>
-                ) : (
-                  <div className="relative ml-4 border-l-2 border-border/60 space-y-0">
-                    {(historicoStatus.data as any[]).slice(0, 10).map((h: any, i: number) => {
-                      const cfgNovo = STATUS_CONFIG[h.statusNovo] || STATUS_CONFIG.ativo;
-                      const cfgAnterior = STATUS_CONFIG[h.statusAnterior] || STATUS_CONFIG.ativo;
-                      const IconNovo = cfgNovo.icon;
-                      return (
-                        <div key={h.id || i} className="relative pl-6 pb-4">
-                          <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center ${cfgNovo.color.split(' ')[0]}`}>
-                            <IconNovo className="w-2.5 h-2.5" />
-                          </div>
-                          <div className="text-sm">
-                            <span className="font-medium">{cfgAnterior.label}</span>
-                            <span className="text-muted-foreground mx-1.5">&rarr;</span>
-                            <span className="font-semibold">{cfgNovo.label}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{h.motivo || 'Sem motivo informado'}</p>
-                          <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
-                            <span>Módulo: {h.origemModulo || 'manual'}</span>
-                            <span>Por: {h.alteradoPorNome || 'Sistema'}</span>
-                            <span>{h.createdAt ? new Date(h.createdAt).toLocaleString('pt-BR') : ''}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* ===== HISTÓRICO DE FOLGAS ===== */}
-            {editId && (viewMode || showForm) && (
-              <>
-                <SectionTitle>Histórico de Folgas</SectionTitle>
-                {(folgasColab.isLoading || dayoffsColab.isLoading) ? (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando folgas...
-                  </div>
-                ) : (() => {
-                  const folgas = (folgasColab.data || []).map((f: any) => ({
-                    id: `folga-${f.id}`,
-                    tipo: f.tipo === 'folga' ? 'Folga' : f.tipo === 'ferias' ? 'Férias' : f.tipo === 'abono' ? 'Abono' : f.tipo === 'compensacao' ? 'Compensação' : f.tipo,
-                    motivo: f.motivo || '-',
-                    dataInicio: f.dataInicio,
-                    dataFim: f.dataFim,
-                    status: f.status || 'pendente',
-                    origem: 'Programar Folgas',
-                  }));
-                  const dayoffs = (dayoffsColab.data || []).map((d: any) => ({
-                    id: `dayoff-${d.id}`,
-                    tipo: 'Day Off',
-                    motivo: d.observacao || 'Aniversário',
-                    dataInicio: d.dataEfetiva || d.dataOriginal,
-                    dataFim: d.dataEfetiva || d.dataOriginal,
-                    status: d.status || 'pendente',
-                    origem: 'Day Off',
-                  }));
-                  const todas = [...folgas, ...dayoffs].sort((a, b) => {
-                    const da = a.dataInicio || '';
-                    const db = b.dataInicio || '';
-                    return db.localeCompare(da);
-                  });
-                  if (todas.length === 0) return (
-                    <div className="text-sm text-muted-foreground py-4 flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4" /> Nenhuma folga registrada para este colaborador.
-                    </div>
-                  );
-                  const statusColors: Record<string, string> = {
-                    pendente: 'bg-yellow-100 text-yellow-700',
-                    aprovado: 'bg-green-100 text-green-700',
-                    aprovada: 'bg-green-100 text-green-700',
-                    recusado: 'bg-red-100 text-red-700',
-                    recusada: 'bg-red-100 text-red-700',
-                    utilizado: 'bg-blue-100 text-blue-700',
-                  };
-                  const formatD = (d: string) => {
-                    if (!d) return '-';
-                    const [y, m, day] = d.split('-');
-                    return `${day}/${m}/${y}`;
-                  };
-                  return (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-muted/50">
-                            <th className="text-left px-3 py-2 font-medium text-xs">Tipo</th>
-                            <th className="text-left px-3 py-2 font-medium text-xs">Motivo</th>
-                            <th className="text-center px-3 py-2 font-medium text-xs">Início</th>
-                            <th className="text-center px-3 py-2 font-medium text-xs">Fim</th>
-                            <th className="text-center px-3 py-2 font-medium text-xs">Status</th>
-                            <th className="text-left px-3 py-2 font-medium text-xs">Origem</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {todas.map((f) => (
-                            <tr key={f.id} className="border-b hover:bg-muted/30">
-                              <td className="px-3 py-2">
-                                <div className="flex items-center gap-1.5">
-                                  {f.tipo === 'Day Off' ? <Cake className="w-3.5 h-3.5 text-pink-600" /> : <CalendarDays className="w-3.5 h-3.5 text-blue-600" />}
-                                  <span className="font-medium">{f.tipo}</span>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 text-muted-foreground">{f.motivo}</td>
-                              <td className="px-3 py-2 text-center">{formatD(f.dataInicio)}</td>
-                              <td className="px-3 py-2 text-center">{formatD(f.dataFim)}</td>
-                              <td className="px-3 py-2 text-center">
-                                <Badge className={statusColors[f.status] || 'bg-gray-100 text-gray-700'}>
-                                  {f.status.charAt(0).toUpperCase() + f.status.slice(1)}
-                                </Badge>
-                              </td>
-                              <td className="px-3 py-2 text-xs text-muted-foreground">{f.origem}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
-              </>
-            )}
-
-            {!viewMode && (
-              <div className="border-2 border-dashed border-border/60 rounded-lg p-5 space-y-4 bg-muted/10">
-                <h5 className="text-sm font-semibold text-foreground">Adicionar Dependente</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                  <Field label="Nome Completo" required>
-                    <Input placeholder="Nome completo do dependente" value={depForm.nome} onChange={e => setDepForm(f => ({ ...f, nome: e.target.value }))} />
-                  </Field>
-                  <Field label="Parentesco" required>
-                    <Select value={depForm.parentesco} onValueChange={v => setDepForm(f => ({ ...f, parentesco: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar parentesco" /></SelectTrigger>
-                      <SelectContent>
-                        {PARENTESCOS.map(p => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="CPF">
-                    <Input placeholder="000.000.000-00" value={depForm.cpf} onChange={e => setDepForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))} />
-                  </Field>
-                  <Field label="Data de Nascimento">
-                    <Input type="date" value={depForm.dataNascimento} onChange={e => setDepForm(f => ({ ...f, dataNascimento: e.target.value }))} />
-                    {depForm.dataNascimento && <p className="text-xs text-muted-foreground mt-0.5">{calcIdade(depForm.dataNascimento)}</p>}
-                  </Field>
-                  <div className="flex gap-6 items-center col-span-full">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" checked={depForm.dependenteIR || false} onChange={e => setDepForm(f => ({ ...f, dependenteIR: e.target.checked }))} className="rounded border-border" />
-                      Dependente para IR
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" checked={depForm.dependentePlanoSaude || false} onChange={e => setDepForm(f => ({ ...f, dependentePlanoSaude: e.target.checked }))} className="rounded border-border" />
-                      Dependente Plano de Saúde
-                    </label>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={depForm.dependentePlanoSaude} onChange={e => setDepForm(f => ({ ...f, dependentePlanoSaude: e.target.checked }))} className="h-4 w-4" />
+                    <span className="text-xs">Plano Saúde</span>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={addDependente} className="gap-1.5">
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Dependente
-                </Button>
+                <div className="flex items-end">
+                  <Button variant="outline" size="sm" onClick={addDependente} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Adicionar</Button>
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* ===== PENSÃO / CONTRIBUIÇÃO ===== */}
+            <SectionTitle>Pensão & Contribuição</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+              <div className="flex items-center gap-3">
+                <Label className="text-xs font-medium text-muted-foreground">Pensão Alimentícia</Label>
+                <button type="button" onClick={() => { setForm(f => ({ ...f, pagaPensaoAlimenticia: !f.pagaPensaoAlimenticia })); markDirty(); }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    form.pagaPensaoAlimenticia ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'
+                  } cursor-pointer`}
+                >{form.pagaPensaoAlimenticia ? 'Sim' : 'Não'}</button>
+              </div>
+              {form.pagaPensaoAlimenticia && (
+                <Field label="Valor Pensão"><Input value={form.valorPensaoAlimenticia} onChange={e => { setForm(f => ({ ...f, valorPensaoAlimenticia: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
+              )}
+              <div className="flex items-center gap-3">
+                <Label className="text-xs font-medium text-muted-foreground">Contribuição Assistencial</Label>
+                <button type="button" onClick={() => { setForm(f => ({ ...f, temContribuicaoAssistencial: !f.temContribuicaoAssistencial })); markDirty(); }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    form.temContribuicaoAssistencial ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'
+                  } cursor-pointer`}
+                >{form.temContribuicaoAssistencial ? 'Sim' : 'Não'}</button>
+              </div>
+              {form.temContribuicaoAssistencial && (
+                <Field label="Valor Contribuição"><Input value={form.valorContribuicaoAssistencial} onChange={e => { setForm(f => ({ ...f, valorContribuicaoAssistencial: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
+              )}
+            </div>
+
           </div>
 
           <DialogFooter className="px-6 py-4 border-t shrink-0">
-            <Button variant="outline" onClick={tryCloseForm}>
-              {viewMode ? 'Fechar' : 'Cancelar'}
+            <Button variant="outline" onClick={tryCloseForm}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending} className="gap-1.5">
+              {(createMut.isPending || updateMut.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {editId ? 'Salvar Alterações' : 'Cadastrar Colaborador'}
             </Button>
-            {viewMode ? (
-              <Button onClick={() => setViewMode(false)}><Edit2 className="w-4 h-4 mr-2" /> Editar</Button>
-            ) : (
-              <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
-                {(createMut.isPending || updateMut.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {editId ? 'Salvar Alterações' : 'Cadastrar Colaborador'}
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
