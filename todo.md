@@ -1257,3 +1257,6 @@
 - [x] Frontend: página de rescisão com seleção de colaborador e tipo de desligamento
 - [ ] Geração de PDF do termo de rescisão (próxima iteração)
 - [x] Testes vitest para as 3 funcionalidades (356 testes passando)
+
+## Bug Fix v40.1 — Visão Analítica 404
+- [x] Corrigir rota do submenu Visão Analítica (antigo Relatórios RH) que retorna 404 — rota era /rh/relatorios-rh, corrigida para /rh/relatorios
