@@ -72,9 +72,9 @@ export default function ComissaoRhGEG() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Coins className="w-6 h-6 text-amber-600" /> Comissões RH
+            <Coins className="w-6 h-6 text-amber-600" /> Comissões e Prêmios
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Comissões por tipo — Evox Monitor, DPT, Crédito</p>
+          <p className="text-sm text-muted-foreground mt-1">Comissões e prêmios por tipo — Evox Monitor, DPT, Crédito</p>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, tipo: 'evox_monitor', descricao: '', valorBase: '', percentual: '', valorComissao: '', observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Nova Comissão

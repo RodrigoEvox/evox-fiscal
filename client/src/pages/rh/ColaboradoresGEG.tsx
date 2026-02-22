@@ -359,8 +359,20 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
                   <InfoItem label="Estado Civil" value={colab.estadoCivil ? colab.estadoCivil.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '—'} />
                   <InfoItem label="Nacionalidade" value={colab.nacionalidade} />
                   <InfoItem label="Naturalidade" value={colab.naturalidade} />
-                  <InfoItem label="Email" value={colab.email} />
-                  <InfoItem label="Telefone" value={colab.telefone} />
+                </div>
+                <div className="border-t pt-3 mt-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">CONTATOS PESSOAIS</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InfoItem label="Email Pessoal" value={colab.email} />
+                    <InfoItem label="Telefone Pessoal" value={colab.telefone} />
+                  </div>
+                </div>
+                <div className="border-t pt-3 mt-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">CONTATOS CORPORATIVOS</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InfoItem label="Email Corporativo" value={(colab as any).emailCorporativo} />
+                    <InfoItem label="Telefone Corporativo" value={(colab as any).telefoneCorporativo} />
+                  </div>
                 </div>
               </SectionCard>
 
@@ -969,6 +981,8 @@ export default function ColaboradoresGEG() {
       periodoExperiencia2Inicio: form.periodoExperiencia2Inicio || undefined,
       periodoExperiencia2Fim: form.periodoExperiencia2Fim || undefined,
       recebeComissao: form.recebeComissao,
+      telefoneCorporativo: (form as any).telefoneCorporativo || undefined,
+      emailCorporativo: (form as any).emailCorporativo || undefined,
       setorId: form.setorId || undefined,
       estadoCivil: (form.estadoCivil || undefined) as any,
       sexo: (form.sexo || undefined) as any,
@@ -1673,8 +1687,10 @@ export default function ColaboradoresGEG() {
             {/* ===== CONTATO ===== */}
             <SectionTitle>Contato</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-              <Field label="Telefone"><Input value={form.telefone} onChange={e => handlePhoneChange(e.target.value)} placeholder="(00) 00000-0000" /></Field>
-              <Field label="E-mail"><Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); markDirty(); }} placeholder="email@exemplo.com" /></Field>
+              <Field label="Telefone Pessoal"><Input value={form.telefone} onChange={e => handlePhoneChange(e.target.value)} placeholder="(00) 00000-0000" /></Field>
+              <Field label="E-mail Pessoal"><Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); markDirty(); }} placeholder="email@exemplo.com" /></Field>
+              <Field label="Telefone Corporativo"><Input value={(form as any).telefoneCorporativo || ''} onChange={e => { setForm(f => ({ ...f, telefoneCorporativo: maskPhone(e.target.value) } as any)); markDirty(); }} placeholder="(00) 00000-0000" /></Field>
+              <Field label="E-mail Corporativo"><Input type="email" value={(form as any).emailCorporativo || ''} onChange={e => { setForm(f => ({ ...f, emailCorporativo: e.target.value } as any)); markDirty(); }} placeholder="nome@empresa.com.br" /></Field>
             </div>
 
             {/* ===== DADOS PROFISSIONAIS ===== */}
@@ -1733,8 +1749,7 @@ export default function ColaboradoresGEG() {
             <SectionTitle>Remuneração</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
               <Field label="Salário Base" required><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
-              <Field label="Comissões (valor)"><Input value={form.comissoes} onChange={e => { setForm(f => ({ ...f, comissoes: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
-              <Field label="Recebe Comissão?">
+              <Field label="Cargo Comissionado?">
                 <div className="flex items-center gap-2 h-9">
                   <input type="checkbox" checked={form.recebeComissao} onChange={e => { setForm(f => ({ ...f, recebeComissao: e.target.checked })); markDirty(); }} className="h-4 w-4 rounded border-gray-300" />
                   <span className="text-sm">{form.recebeComissao ? 'Sim' : 'Não'}</span>

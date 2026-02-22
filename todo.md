@@ -1404,3 +1404,38 @@
 - [x] Adicionar gráfico de evolução salarial no Histórico Salarial
 - [x] 21 novos testes vitest (colaboradores-v47.test.ts)
 - [x] 459 testes passando no total
+
+## GEG v48 — Submenus ocultos no sidebar + campo comissionado
+
+### Sidebar — Submenus GEG
+- [x] Adicionar "Aniversariantes" como submenu dentro de Gestão RH
+- [x] Adicionar "Contratos Vencendo" (workflow de renovação) como submenu dentro de Gestão RH
+- [x] Adicionar "BI — Indicadores de RH" como submenu dentro de Administração
+
+### Formulário Novo Colaborador
+- [x] Trocar campo "Comissões (valor)" por "Cargo Comissionado? Sim/Não"
+- [x] Renomear seção/campo de comissões para "Comissões e Prêmios" (tratado em outro módulo)
+
+### Dashboard GEG — Correções visuais
+- [x] Cores da legenda devem seguir as cores do gráfico de Distribuição por Status
+- [x] Headcount por Setor: adicionar visão por setor E por local de trabalho (toggle/tabs)
+
+## GEG v49 — Equipamentos, Senhas e Contatos Corporativos
+
+### Correção Painel do Colaborador
+- [x] Corrigir sobreposição do campo email sobre telefone em Dados Pessoais
+- [x] Separar campos: email pessoal, email corporativo, telefone pessoal, telefone corporativo
+
+### Gestão de Equipamentos e Comunicações (Gestão RH)
+- [x] Criar tabela equipamentosColaborador no schema
+- [x] Criar router CRUD para equipamentos
+- [x] Criar página EquipamentosGEG com gestão de celulares, notebooks, emails e telefones corporativos
+- [x] Adicionar ao hub Gestão RH
+
+### Gestão de Senhas e Autorizações (Gestão RH)
+- [x] Criar tabela senhasAutorizacoes no schema
+- [x] Criar router CRUD para senhas e autorizações
+- [x] Criar página SenhasAutorizacoesGEG com gestão de senhas, chaves, autorizações de veículos
+- [x] Adicionar ao hub Gestão RH
+- [x] 29 novos testes vitest (v49-equipamentos-senhas.test.ts)
+- [x] 488 testes passando no total

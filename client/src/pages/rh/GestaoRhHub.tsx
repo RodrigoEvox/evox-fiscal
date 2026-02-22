@@ -7,6 +7,10 @@ const ITEMS = [
   { key: 'atestados-licencas', label: 'Atestados e Licenças', rota: '/rh/atestados-licencas' },
   { key: 'ferias', label: 'Férias e Folgas', rota: '/rh/ferias' },
   { key: 'reajustes', label: 'Reajustes Salariais', rota: '/rh/reajustes' },
+  { key: 'aniversariantes', label: 'Aniversariantes', rota: '/rh/email-aniversariante' },
+  { key: 'contratos-vencendo', label: 'Contratos Vencendo', rota: '/rh/workflow-renovacao' },
+  { key: 'equipamentos', label: 'Equipamentos & Comunicações', rota: '/rh/equipamentos' },
+  { key: 'senhas-autorizacoes', label: 'Senhas & Autorizações', rota: '/rh/senhas-autorizacoes' },
 ];
 
 export default function GestaoRhHub() {

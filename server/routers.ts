@@ -3785,6 +3785,122 @@ export const appRouter = router({
   }),
 
   // ===== DASHBOARD GEG CONSOLIDADO =====
+  // ---- EQUIPAMENTOS COLABORADOR ----
+  equipamentos: router({
+    list: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listEquipamentos(input?.colaboradorId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        colaboradorId: z.number(),
+        colaboradorNome: z.string(),
+        tipo: z.enum(['notebook','celular','desktop','monitor','headset','teclado','mouse','webcam','impressora','tablet','telefone_fixo','ramal','email_corporativo','telefone_corporativo','outro']),
+        marca: z.string().optional(),
+        modelo: z.string().optional(),
+        numeroSerie: z.string().optional(),
+        patrimonio: z.string().optional(),
+        descricao: z.string().optional(),
+        dataEntrega: z.string().optional(),
+        dataDevolucao: z.string().optional(),
+        statusEquipamento: z.enum(['em_uso','devolvido','manutencao','perdido','descartado']).default('em_uso'),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createEquipamento({
+          ...input,
+          registradoPorId: ctx.user?.id,
+          registradoPorNome: ctx.user?.name || 'Sistema',
+        } as any);
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          tipo: z.enum(['notebook','celular','desktop','monitor','headset','teclado','mouse','webcam','impressora','tablet','telefone_fixo','ramal','email_corporativo','telefone_corporativo','outro']).optional(),
+          marca: z.string().optional(),
+          modelo: z.string().optional(),
+          numeroSerie: z.string().optional(),
+          patrimonio: z.string().optional(),
+          descricao: z.string().optional(),
+          dataEntrega: z.string().optional(),
+          dataDevolucao: z.string().optional(),
+          statusEquipamento: z.enum(['em_uso','devolvido','manutencao','perdido','descartado']).optional(),
+          observacoes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateEquipamento(input.id, input.data as any);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteEquipamento(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ---- SENHAS E AUTORIZAÇÕES ----
+  senhasAutorizacoes: router({
+    list: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listSenhasAutorizacoes(input?.colaboradorId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        colaboradorId: z.number(),
+        colaboradorNome: z.string(),
+        tipoSenhaAuth: z.enum(['email','computador','celular','alarme_escritorio','sistema_interno','vpn','wifi','cofre','chave_empresa','chave_sala','chave_armario','veiculo_empresa','estacionamento','cartao_acesso','biometria','outro']),
+        descricao: z.string().optional(),
+        possuiSenha: z.boolean().default(false),
+        senhaObs: z.string().optional(),
+        autorizado: z.boolean().default(false),
+        dataAutorizacao: z.string().optional(),
+        dataRevogacao: z.string().optional(),
+        identificador: z.string().optional(),
+        statusSenhaAuth: z.enum(['ativo','revogado','expirado','pendente']).default('ativo'),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createSenhaAutorizacao({
+          ...input,
+          registradoPorId: ctx.user?.id,
+          registradoPorNome: ctx.user?.name || 'Sistema',
+        } as any);
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          tipoSenhaAuth: z.enum(['email','computador','celular','alarme_escritorio','sistema_interno','vpn','wifi','cofre','chave_empresa','chave_sala','chave_armario','veiculo_empresa','estacionamento','cartao_acesso','biometria','outro']).optional(),
+          descricao: z.string().optional(),
+          possuiSenha: z.boolean().optional(),
+          senhaObs: z.string().optional(),
+          autorizado: z.boolean().optional(),
+          dataAutorizacao: z.string().optional(),
+          dataRevogacao: z.string().optional(),
+          identificador: z.string().optional(),
+          statusSenhaAuth: z.enum(['ativo','revogado','expirado','pendente']).optional(),
+          observacoes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateSenhaAutorizacao(input.id, input.data as any);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteSenhaAutorizacao(input.id);
+        return { success: true };
+      }),
+  }),
+
   dashboardGEG: router({
     get: protectedProcedure
       .input(z.object({

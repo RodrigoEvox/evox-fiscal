@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,13 @@ import {
 import { CardDescription } from "@/components/ui/card";
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#14b8a6"];
+
+// Cores fixas por status para manter consistência entre gráfico e legenda
+const STATUS_PIE_COLORS: Record<string, string> = {
+  ativo: "#22c55e", inativo: "#6b7280", afastado: "#f97316", licenca: "#3b82f6",
+  atestado: "#ef4444", desligado: "#9ca3af", ferias: "#6366f1",
+  experiencia: "#eab308", aviso_previo: "#8b5cf6",
+};
 
 const STATUS_LABELS: Record<string, string> = {
   ativo: "Ativo", inativo: "Inativo", afastado: "Afastado", licenca: "Licença",
@@ -91,9 +98,23 @@ export default function DashboardGEG() {
     if (!dashboard) return [];
     const d = dashboard as any;
     return Object.entries(d.headcountPorSetor || {})
-      .map(([setor, count]) => ({ setor: setor.length > 18 ? setor.substring(0, 18) + "…" : setor, quantidade: Number(count) }))
+      .map(([setor, count]) => ({ setor: setor.length > 18 ? setor.substring(0, 18) + "\u2026" : setor, quantidade: Number(count) }))
       .sort((a, b) => b.quantidade - a.quantidade);
   }, [dashboard]);
+
+  // Headcount por local de trabalho
+  const [headcountView, setHeadcountView] = useState<'setor' | 'local'>('setor');
+  const headcountLocal = useMemo(() => {
+    if (!colabs) return [];
+    const counts: Record<string, number> = {};
+    (colabs as any[]).forEach((c: any) => {
+      const local = c.localTrabalho || 'Não informado';
+      counts[local] = (counts[local] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([local, count]) => ({ setor: local.length > 18 ? local.substring(0, 18) + '\u2026' : local, quantidade: count }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+  }, [colabs]);
 
   // Turnover últimos 6 meses
   const turnoverData = useMemo(() => {
@@ -247,21 +268,21 @@ export default function DashboardGEG() {
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="value" labelLine={false}>
-                    {statusData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    {statusData.map((entry, i) => (
+                      <Cell key={i} fill={STATUS_PIE_COLORS[entry.key] || COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number, name: string) => [`${value}`, name]} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1.5 overflow-y-auto max-h-[220px]">
-                {statusData.map((s) => {
+                {statusData.map((s, i) => {
                   const Icon = STATUS_ICONS[s.key] || Users;
-                  const colorClass = STATUS_COLORS[s.key] || "text-gray-600 bg-gray-50";
+                  const pieColor = STATUS_PIE_COLORS[s.key] || COLORS[i % COLORS.length];
                   return (
                     <div key={s.key} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/50">
                       <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded flex items-center justify-center ${colorClass}`}>
+                        <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: pieColor + '20', color: pieColor }}>
                           <Icon className="w-3.5 h-3.5" />
                         </div>
                         <span className="text-sm">{s.name}</span>
@@ -275,21 +296,41 @@ export default function DashboardGEG() {
           </CardContent>
         </Card>
 
-        {/* Headcount por Setor */}
+        {/* Headcount por Setor / Local */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Briefcase className="w-4 h-4" /> Headcount por Setor
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Briefcase className="w-4 h-4" /> Headcount
+              </CardTitle>
+              <div className="flex gap-1 bg-muted rounded-md p-0.5">
+                <button
+                  onClick={() => setHeadcountView('setor')}
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all ${
+                    headcountView === 'setor' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Por Setor
+                </button>
+                <button
+                  onClick={() => setHeadcountView('local')}
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all ${
+                    headcountView === 'local' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Por Local
+                </button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={headcountSetor} layout="vertical">
+              <BarChart data={headcountView === 'setor' ? headcountSetor : headcountLocal} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
                 <YAxis dataKey="setor" type="category" width={130} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: any) => [v, "Colaboradores"]} />
-                <Bar dataKey="quantidade" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="quantidade" fill={headcountView === 'setor' ? '#6366f1' : '#06b6d4'} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

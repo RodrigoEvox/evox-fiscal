@@ -765,9 +765,12 @@ export const colaboradores = mysqlTable("colaboradores", {
   bairro: varchar("bairro", { length: 255 }),
   cidade: varchar("cidade", { length: 255 }),
   estado: varchar("estado", { length: 2 }),
-  // Contato
+  // Contato Pessoal
   telefone: varchar("telefone", { length: 20 }),
   email: varchar("email", { length: 320 }),
+  // Contato Corporativo
+  telefoneCorporativo: varchar("telefoneCorporativo", { length: 20 }),
+  emailCorporativo: varchar("emailCorporativo", { length: 320 }),
   // Dados Profissionais
   dataAdmissao: varchar("dataAdmissao", { length: 10 }).notNull(),
   cargo: varchar("cargo", { length: 255 }).notNull(),
@@ -1499,3 +1502,64 @@ export const rescisoes = mysqlTable("rescisoes", {
 
 export type Rescisao = typeof rescisoes.$inferSelect;
 export type InsertRescisao = typeof rescisoes.$inferInsert;
+
+// ---- EQUIPAMENTOS DO COLABORADOR ----
+export const equipamentosColaborador = mysqlTable("equipamentos_colaborador", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
+  tipo: mysqlEnum("tipo", [
+    "notebook", "celular", "desktop", "monitor", "headset", "teclado",
+    "mouse", "webcam", "impressora", "tablet", "telefone_fixo", "ramal",
+    "email_corporativo", "telefone_corporativo", "outro"
+  ]).notNull(),
+  marca: varchar("marca", { length: 255 }),
+  modelo: varchar("modelo", { length: 255 }),
+  numeroSerie: varchar("numeroSerie", { length: 255 }),
+  patrimonio: varchar("patrimonio", { length: 100 }),
+  descricao: text("descricao"),
+  dataEntrega: varchar("dataEntrega", { length: 10 }),
+  dataDevolucao: varchar("dataDevolucao", { length: 10 }),
+  status: mysqlEnum("statusEquipamento", ["em_uso", "devolvido", "manutencao", "perdido", "descartado"]).default("em_uso").notNull(),
+  observacoes: text("observacoes"),
+  registradoPorId: int("registradoPorId"),
+  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EquipamentoColaborador = typeof equipamentosColaborador.$inferSelect;
+export type InsertEquipamentoColaborador = typeof equipamentosColaborador.$inferInsert;
+
+// ---- SENHAS E AUTORIZAÇÕES DO COLABORADOR ----
+export const senhasAutorizacoes = mysqlTable("senhas_autorizacoes", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
+  tipo: mysqlEnum("tipoSenhaAuth", [
+    "email", "computador", "celular", "alarme_escritorio", "sistema_interno",
+    "vpn", "wifi", "cofre", "chave_empresa", "chave_sala", "chave_armario",
+    "veiculo_empresa", "estacionamento", "cartao_acesso", "biometria", "outro"
+  ]).notNull(),
+  descricao: varchar("descricao", { length: 500 }),
+  // Para senhas: valor criptografado (ou apenas indicação de que possui)
+  possuiSenha: boolean("possuiSenha").default(false),
+  senhaObs: text("senhaObs"), // observações sobre a senha (ex: "senha padrão inicial")
+  // Para autorizações: detalhes
+  autorizado: boolean("autorizado").default(false),
+  dataAutorizacao: varchar("dataAutorizacao", { length: 10 }),
+  dataRevogacao: varchar("dataRevogacao", { length: 10 }),
+  autorizadoPorId: int("autorizadoPorId"),
+  autorizadoPorNome: varchar("autorizadoPorNome", { length: 255 }),
+  // Detalhes específicos
+  identificador: varchar("identificador", { length: 255 }), // ex: placa do veículo, número da chave
+  status: mysqlEnum("statusSenhaAuth", ["ativo", "revogado", "expirado", "pendente"]).default("ativo").notNull(),
+  observacoes: text("observacoes"),
+  registradoPorId: int("registradoPorId"),
+  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SenhaAutorizacao = typeof senhasAutorizacoes.$inferSelect;
+export type InsertSenhaAutorizacao = typeof senhasAutorizacoes.$inferInsert;

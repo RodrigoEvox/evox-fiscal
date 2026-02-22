@@ -60,6 +60,8 @@ import {
   beneficiosCustom, InsertBeneficioCustom,
   programasCarreira, InsertProgramaCarreira,
   rescisoes, InsertRescisao,
+  equipamentosColaborador, InsertEquipamentoColaborador,
+  senhasAutorizacoes, InsertSenhaAutorizacao,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3949,4 +3951,69 @@ export function calcularRescisao(params: {
     mesesTrabalhados,
     anosTrabalhados,
   };
+}
+
+
+// =============================================
+// ---- EQUIPAMENTOS COLABORADOR ----
+// =============================================
+
+export async function listEquipamentos(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(equipamentosColaborador).where(eq(equipamentosColaborador.colaboradorId, colaboradorId)).orderBy(desc(equipamentosColaborador.createdAt));
+  }
+  return db.select().from(equipamentosColaborador).orderBy(desc(equipamentosColaborador.createdAt));
+}
+
+export async function createEquipamento(data: InsertEquipamentoColaborador) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(equipamentosColaborador).values(data);
+  return result[0].insertId;
+}
+
+export async function updateEquipamento(id: number, data: Partial<InsertEquipamentoColaborador>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(equipamentosColaborador).set(data).where(eq(equipamentosColaborador.id, id));
+}
+
+export async function deleteEquipamento(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(equipamentosColaborador).where(eq(equipamentosColaborador.id, id));
+}
+
+// =============================================
+// ---- SENHAS E AUTORIZAÇÕES ----
+// =============================================
+
+export async function listSenhasAutorizacoes(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(senhasAutorizacoes).where(eq(senhasAutorizacoes.colaboradorId, colaboradorId)).orderBy(desc(senhasAutorizacoes.createdAt));
+  }
+  return db.select().from(senhasAutorizacoes).orderBy(desc(senhasAutorizacoes.createdAt));
+}
+
+export async function createSenhaAutorizacao(data: InsertSenhaAutorizacao) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(senhasAutorizacoes).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSenhaAutorizacao(id: number, data: Partial<InsertSenhaAutorizacao>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(senhasAutorizacoes).set(data).where(eq(senhasAutorizacoes.id, id));
+}
+
+export async function deleteSenhaAutorizacao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(senhasAutorizacoes).where(eq(senhasAutorizacoes.id, id));
 }

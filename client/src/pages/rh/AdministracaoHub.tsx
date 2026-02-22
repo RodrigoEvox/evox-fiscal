@@ -5,9 +5,10 @@ const ITEMS = [
   { key: 'niveis-cargo', label: 'Cargos e Salários', rota: '/rh/niveis-cargo' },
   { key: 'apontamentos-folha', label: 'Apontamentos da Folha', rota: '/rh/apontamentos-folha' },
   { key: 'rescisao', label: 'Rescisão', rota: '/rh/rescisao' },
-  { key: 'comissao-rh', label: 'Comissões', rota: '/rh/comissao-rh' },
+  { key: 'comissao-rh', label: 'Comissões e Prêmios', rota: '/rh/comissao-rh' },
   { key: 'projecao-financeira', label: 'Projeção Financeira', rota: '/rh/projecao-financeira' },
   { key: 'relatorios-rh', label: 'Visão Analítica', rota: '/rh/relatorios' },
+  { key: 'bi-indicadores', label: 'BI — Indicadores de RH', rota: '/rh/bi' },
 ];
 
 export default function AdministracaoHub() {
