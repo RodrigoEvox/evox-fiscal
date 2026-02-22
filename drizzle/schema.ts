@@ -1414,3 +1414,88 @@ export const niveisCargo = mysqlTable("niveis_cargo", {
 
 export type NivelCargo = typeof niveisCargo.$inferSelect;
 export type InsertNivelCargo = typeof niveisCargo.$inferInsert;
+
+// ---- BENEFÍCIOS CUSTOMIZADOS ----
+export const beneficiosCustom = mysqlTable("beneficios_custom", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  icone: varchar("icone", { length: 50 }).default("Gift"),
+  cor: varchar("cor", { length: 7 }).default("#3B82F6"),
+  rota: varchar("rota", { length: 255 }),
+  ativo: boolean("ativo").default(true).notNull(),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BeneficioCustom = typeof beneficiosCustom.$inferSelect;
+export type InsertBeneficioCustom = typeof beneficiosCustom.$inferInsert;
+
+// ---- PROGRAMAS DE CARREIRA CUSTOMIZADOS ----
+export const programasCarreira = mysqlTable("programas_carreira", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  descricao: text("descricao"),
+  icone: varchar("icone", { length: 50 }).default("GraduationCap"),
+  cor: varchar("cor", { length: 7 }).default("#8B5CF6"),
+  rota: varchar("rota", { length: 255 }),
+  ativo: boolean("ativo").default(true).notNull(),
+  criadoPorId: int("criadoPorId"),
+  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProgramaCarreira = typeof programasCarreira.$inferSelect;
+export type InsertProgramaCarreira = typeof programasCarreira.$inferInsert;
+
+// ---- RESCISÕES ----
+export const rescisoes = mysqlTable("rescisoes", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
+  dataDesligamento: varchar("dataDesligamento", { length: 10 }).notNull(),
+  tipoDesligamento: mysqlEnum("tipoDesligamento", [
+    "sem_justa_causa",
+    "justa_causa",
+    "pedido_demissao",
+    "termino_experiencia_1",
+    "termino_experiencia_2",
+    "acordo_mutuo"
+  ]).notNull(),
+  // Dados do colaborador no momento da rescisão
+  dataAdmissao: varchar("dataAdmissao", { length: 10 }).notNull(),
+  salarioBase: decimal("salarioBase", { precision: 12, scale: 2 }).notNull(),
+  tipoContrato: varchar("tipoContrato", { length: 50 }),
+  periodoExperiencia1Inicio: varchar("periodoExperiencia1Inicio", { length: 10 }),
+  periodoExperiencia1Fim: varchar("periodoExperiencia1Fim", { length: 10 }),
+  periodoExperiencia2Inicio: varchar("periodoExperiencia2Inicio", { length: 10 }),
+  periodoExperiencia2Fim: varchar("periodoExperiencia2Fim", { length: 10 }),
+  // Verbas calculadas
+  saldoSalario: decimal("saldoSalario", { precision: 12, scale: 2 }).default("0"),
+  avisoPrevio: decimal("avisoPrevio", { precision: 12, scale: 2 }).default("0"),
+  avisoPrevioDias: int("avisoPrevioDias").default(0),
+  decimoTerceiroProporcional: decimal("decimoTerceiroProporcional", { precision: 12, scale: 2 }).default("0"),
+  decimoTerceiroMeses: int("decimoTerceiroMeses").default(0),
+  feriasProporcionais: decimal("feriasProporcionais", { precision: 12, scale: 2 }).default("0"),
+  feriasMeses: int("feriasMeses").default(0),
+  tercoConstitucional: decimal("tercoConstitucional", { precision: 12, scale: 2 }).default("0"),
+  feriasVencidas: decimal("feriasVencidas", { precision: 12, scale: 2 }).default("0"),
+  fgtsDepositado: decimal("fgtsDepositado", { precision: 12, scale: 2 }).default("0"),
+  multaFgts: decimal("multaFgts", { precision: 12, scale: 2 }).default("0"),
+  multaFgtsPercentual: decimal("multaFgtsPercentual", { precision: 5, scale: 2 }).default("0"),
+  // Totais
+  totalProventos: decimal("totalProventos", { precision: 12, scale: 2 }).default("0"),
+  totalDescontos: decimal("totalDescontos", { precision: 12, scale: 2 }).default("0"),
+  totalLiquido: decimal("totalLiquido", { precision: 12, scale: 2 }).default("0"),
+  observacao: text("observacao"),
+  registradoPorId: int("registradoPorId"),
+  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Rescisao = typeof rescisoes.$inferSelect;
+export type InsertRescisao = typeof rescisoes.$inferInsert;

@@ -3639,6 +3639,151 @@ export const appRouter = router({
     }),
   }),
 
+  // ---- BENEFÍCIOS CUSTOMIZADOS ----
+  beneficiosCustom: router({
+    list: protectedProcedure.query(async () => {
+      return db.listBeneficiosCustom();
+    }),
+    create: protectedProcedure.input(z.object({
+      nome: z.string().min(1),
+      descricao: z.string().optional(),
+      icone: z.string().optional(),
+      cor: z.string().optional(),
+      rota: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createBeneficioCustom({
+        ...input,
+        criadoPorId: ctx.user?.id || null,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      });
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.object({
+        nome: z.string().optional(),
+        descricao: z.string().optional(),
+        icone: z.string().optional(),
+        cor: z.string().optional(),
+        rota: z.string().optional(),
+        ativo: z.boolean().optional(),
+      }),
+    })).mutation(async ({ input }) => {
+      await db.updateBeneficioCustom(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteBeneficioCustom(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- PROGRAMAS DE CARREIRA CUSTOMIZADOS ----
+  programasCarreira: router({
+    list: protectedProcedure.query(async () => {
+      return db.listProgramasCarreira();
+    }),
+    create: protectedProcedure.input(z.object({
+      nome: z.string().min(1),
+      descricao: z.string().optional(),
+      icone: z.string().optional(),
+      cor: z.string().optional(),
+      rota: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const id = await db.createProgramaCarreira({
+        ...input,
+        criadoPorId: ctx.user?.id || null,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+      });
+      return { id };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      data: z.object({
+        nome: z.string().optional(),
+        descricao: z.string().optional(),
+        icone: z.string().optional(),
+        cor: z.string().optional(),
+        rota: z.string().optional(),
+        ativo: z.boolean().optional(),
+      }),
+    })).mutation(async ({ input }) => {
+      await db.updateProgramaCarreira(input.id, input.data as any);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteProgramaCarreira(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ---- RESCISÕES ----
+  rescisoes: router({
+    list: protectedProcedure.query(async () => {
+      return db.listRescisoes();
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return db.getRescisaoById(input.id);
+    }),
+    calcular: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      dataDesligamento: z.string(),
+      tipoDesligamento: z.enum(['sem_justa_causa', 'justa_causa', 'pedido_demissao', 'termino_experiencia_1', 'termino_experiencia_2', 'acordo_mutuo']),
+    })).mutation(async ({ input, ctx }) => {
+      // Buscar dados do colaborador
+      const colabs = await db.listColaboradores();
+      const colab = colabs.find((c: any) => c.id === input.colaboradorId);
+      if (!colab) throw new TRPCError({ code: 'NOT_FOUND', message: 'Colaborador não encontrado' });
+
+      const calculo = db.calcularRescisao({
+        salarioBase: Number(colab.salarioBase || 0),
+        dataAdmissao: colab.dataAdmissao,
+        dataDesligamento: input.dataDesligamento,
+        tipoDesligamento: input.tipoDesligamento,
+        periodoExperiencia1Fim: colab.periodoExperiencia1Fim,
+        periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
+      });
+
+      // Salvar no banco
+      const id = await db.createRescisao({
+        colaboradorId: input.colaboradorId,
+        colaboradorNome: colab.nomeCompleto,
+        dataDesligamento: input.dataDesligamento,
+        tipoDesligamento: input.tipoDesligamento,
+        dataAdmissao: colab.dataAdmissao,
+        salarioBase: String(colab.salarioBase),
+        tipoContrato: colab.tipoContrato,
+        periodoExperiencia1Inicio: colab.periodoExperiencia1Inicio,
+        periodoExperiencia1Fim: colab.periodoExperiencia1Fim,
+        periodoExperiencia2Inicio: colab.periodoExperiencia2Inicio,
+        periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
+        saldoSalario: String(calculo.saldoSalario),
+        avisoPrevio: String(calculo.avisoPrevio),
+        avisoPrevioDias: calculo.avisoPrevioDias,
+        decimoTerceiroProporcional: String(calculo.decimoTerceiroProporcional),
+        decimoTerceiroMeses: calculo.decimoTerceiroMeses,
+        feriasProporcionais: String(calculo.feriasProporcionais),
+        feriasMeses: calculo.feriasMeses,
+        tercoConstitucional: String(calculo.tercoConstitucional),
+        feriasVencidas: String(calculo.feriasVencidas),
+        fgtsDepositado: String(calculo.fgtsDepositado),
+        multaFgts: String(calculo.multaFgts),
+        multaFgtsPercentual: String(calculo.multaFgtsPercentual),
+        totalProventos: String(calculo.totalProventos),
+        totalDescontos: String(calculo.totalDescontos),
+        totalLiquido: String(calculo.totalLiquido),
+        registradoPorId: ctx.user?.id || null,
+        registradoPorNome: ctx.user?.name || 'Sistema',
+      });
+
+      return { id, ...calculo };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteRescisao(input.id);
+      return { success: true };
+    }),
+  }),
+
   // ===== DASHBOARD GEG CONSOLIDADO =====
   dashboardGEG: router({
     get: protectedProcedure

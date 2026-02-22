@@ -70,6 +70,7 @@ const AcoesEvoxHub = lazy(() => import("./pages/rh/AcoesEvoxHub"));
 const BeneficiosHub = lazy(() => import("./pages/rh/BeneficiosHub"));
 const CarreiraHub = lazy(() => import("./pages/rh/CarreiraHub"));
 const AdministracaoHub = lazy(() => import("./pages/rh/AdministracaoHub"));
+const RescisaoPage = lazy(() => import("./pages/rh/RescisaoPage"));
 
 function LazyFallback() {
   return (
@@ -116,6 +117,7 @@ function Router() {
         <Route path="/rh/beneficios" component={BeneficiosHub} />
         <Route path="/rh/carreira" component={CarreiraHub} />
         <Route path="/rh/administracao" component={AdministracaoHub} />
+        <Route path="/rh/rescisao" component={RescisaoPage} />
         <Route path="/rh/nova-tarefa" component={NovaTarefaGEG} />
         <Route path="/rh/colaboradores" component={ColaboradoresGEG} />
         <Route path="/rh/ferias" component={FeriasGEG} />

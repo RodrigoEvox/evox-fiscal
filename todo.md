@@ -1232,3 +1232,28 @@
 - [x] Atualizar setor_config no banco para 6 itens hub
 - [x] Remover link Relatórios automático para GEG
 - [x] 346 testes passando
+
+## GEG v40 — Exportação, Formulários Dinâmicos e Rescisão
+
+### Exportação de Apontamentos da Folha (Excel/PDF)
+- [x] Backend: rota para gerar Excel consolidado com VT, academia, comissões e reajustes
+- [x] Backend: rota para gerar PDF consolidado para envio à contabilidade
+- [x] Frontend: botões de exportação Excel e PDF na página de Apontamentos da Folha
+- [x] Relatório deve incluir mês/ano de referência, totais por colaborador e totais gerais
+
+### Opção "Incluir Novo" nos Hubs Benefícios e Carreira
+- [x] Criar tabela beneficios_custom para benefícios personalizados
+- [x] Criar tabela programas_carreira para programas de carreira personalizados
+- [x] Backend: CRUD para benefícios e programas customizados
+- [x] Frontend: formulário dinâmico ao clicar "Incluir Novo" em Benefícios
+- [x] Frontend: formulário dinâmico ao clicar "Incluir Novo" em Carreira
+- [x] Novos itens aparecem como cards nos respectivos hubs
+
+### Relatório de Rescisão
+- [x] Criar tabela rescisoes para armazenar cálculos de rescisão
+- [x] Backend: cálculo automático de verbas rescisórias por tipo de desligamento
+- [x] Tipos: sem justa causa, justa causa, pedido de demissão, término de experiência (1º/2º período), acordo mútuo
+- [x] Cálculo inclui: saldo de salário, aviso prévio, 13º proporcional, férias proporcionais + 1/3, FGTS + multa 40%
+- [x] Frontend: página de rescisão com seleção de colaborador e tipo de desligamento
+- [ ] Geração de PDF do termo de rescisão (próxima iteração)
+- [x] Testes vitest para as 3 funcionalidades (356 testes passando)

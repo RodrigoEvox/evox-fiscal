@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { FileSpreadsheet, Loader2, DollarSign, Users, RefreshCw, Download } from 'lucide-react';
+import { FileSpreadsheet, Loader2, DollarSign, Users, RefreshCw, Download, FileDown, FileText } from 'lucide-react';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const TIPO_LABELS: Record<string, string> = {
@@ -78,6 +78,35 @@ export default function ApontamentosFolhaGEG() {
             {gerarMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
             Gerar Apontamentos
           </Button>
+          {(apontamentos?.length || 0) > 0 && (
+            <>
+              <Button
+                variant="outline"
+                className="border-green-300 text-green-700 hover:bg-green-50"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = `/api/apontamentos-folha/excel?mes=${mesRef}&ano=${anoRef}`;
+                  link.download = `apontamentos-folha-${MESES[mesRef-1]}-${anoRef}.xlsx`;
+                  link.click();
+                  toast.success('Download do Excel iniciado!');
+                }}
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => {
+                  window.open(`/api/apontamentos-folha/pdf?mes=${mesRef}&ano=${anoRef}`, '_blank');
+                  toast.success('PDF gerado com sucesso!');
+                }}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

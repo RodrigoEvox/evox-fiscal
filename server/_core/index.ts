@@ -364,6 +364,216 @@ async function startServer() {
     }
   });
 
+  // ---- APONTAMENTOS DA FOLHA EXPORT (Excel) ----
+  app.get('/api/apontamentos-folha/excel', async (req: any, res: any) => {
+    try {
+      const dbMod = await import('../db');
+      const mesRef = parseInt(req.query.mes) || (new Date().getMonth() + 1);
+      const anoRef = parseInt(req.query.ano) || new Date().getFullYear();
+      const apontamentos = await dbMod.listApontamentosFolha(mesRef, anoRef);
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Evox Fiscal';
+      wb.created = new Date();
+
+      const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const TIPO_LABELS: Record<string, string> = {
+        vale_transporte: 'Vale Transporte', academia: 'Academia', comissao: 'Comissão',
+        reajuste_sindical: 'Reajuste Sindical', reajuste_dois_anos: 'Reajuste 2 Anos',
+        pensao_alimenticia: 'Pensão Alimentícia', contribuicao_assistencial: 'Contribuição Assist.',
+        banco_horas: 'Banco de Horas', outro: 'Outro',
+      };
+
+      // Sheet 1: Resumo por Tipo
+      const wsResumo = wb.addWorksheet('Resumo');
+      wsResumo.columns = [
+        { header: 'Tipo', key: 'tipo', width: 25 },
+        { header: 'Quantidade', key: 'qtd', width: 14 },
+        { header: 'Valor Total (R$)', key: 'total', width: 20 },
+      ];
+      const tipoMap: Record<string, { qtd: number; total: number }> = {};
+      (apontamentos || []).forEach((a: any) => {
+        if (!tipoMap[a.tipo]) tipoMap[a.tipo] = { qtd: 0, total: 0 };
+        tipoMap[a.tipo].qtd++;
+        tipoMap[a.tipo].total += Number(a.valor);
+      });
+      Object.entries(tipoMap).forEach(([tipo, data]) => {
+        wsResumo.addRow({ tipo: TIPO_LABELS[tipo] || tipo, qtd: data.qtd, total: data.total });
+      });
+      const totalGeral = Object.values(tipoMap).reduce((s, d) => s + d.total, 0);
+      const totalRow = wsResumo.addRow({ tipo: 'TOTAL GERAL', qtd: (apontamentos || []).length, total: totalGeral });
+      totalRow.font = { bold: true };
+      wsResumo.getRow(1).font = { bold: true };
+      wsResumo.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+      wsResumo.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+      // Sheet 2: Detalhamento por Colaborador
+      const wsDetalhe = wb.addWorksheet('Por Colaborador');
+      wsDetalhe.columns = [
+        { header: 'Colaborador', key: 'nome', width: 35 },
+        { header: 'Tipo', key: 'tipo', width: 22 },
+        { header: 'Descrição', key: 'descricao', width: 45 },
+        { header: 'Natureza', key: 'natureza', width: 12 },
+        { header: 'Valor (R$)', key: 'valor', width: 16 },
+      ];
+      (apontamentos || []).sort((a: any, b: any) => a.colaboradorNome.localeCompare(b.colaboradorNome)).forEach((a: any) => {
+        wsDetalhe.addRow({
+          nome: a.colaboradorNome,
+          tipo: TIPO_LABELS[a.tipo] || a.tipo,
+          descricao: a.descricao || '-',
+          natureza: a.natureza === 'desconto' ? 'Desconto' : 'Provento',
+          valor: Number(a.valor),
+        });
+      });
+      wsDetalhe.getRow(1).font = { bold: true };
+      wsDetalhe.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+      wsDetalhe.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+      // Sheet 3: Totais por Colaborador
+      const wsTotais = wb.addWorksheet('Totais por Colaborador');
+      wsTotais.columns = [
+        { header: 'Colaborador', key: 'nome', width: 35 },
+        { header: 'VT (R$)', key: 'vt', width: 14 },
+        { header: 'Academia (R$)', key: 'academia', width: 14 },
+        { header: 'Comissões (R$)', key: 'comissao', width: 14 },
+        { header: 'Reajustes (R$)', key: 'reajuste', width: 14 },
+        { header: 'Outros (R$)', key: 'outros', width: 14 },
+        { header: 'Total (R$)', key: 'total', width: 16 },
+      ];
+      const colabMap: Record<number, any> = {};
+      (apontamentos || []).forEach((a: any) => {
+        if (!colabMap[a.colaboradorId]) colabMap[a.colaboradorId] = { nome: a.colaboradorNome, vt: 0, academia: 0, comissao: 0, reajuste: 0, outros: 0, total: 0 };
+        const val = Number(a.valor);
+        colabMap[a.colaboradorId].total += val;
+        if (a.tipo === 'vale_transporte') colabMap[a.colaboradorId].vt += val;
+        else if (a.tipo === 'academia') colabMap[a.colaboradorId].academia += val;
+        else if (a.tipo === 'comissao') colabMap[a.colaboradorId].comissao += val;
+        else if (a.tipo.startsWith('reajuste')) colabMap[a.colaboradorId].reajuste += val;
+        else colabMap[a.colaboradorId].outros += val;
+      });
+      Object.values(colabMap).sort((a: any, b: any) => a.nome.localeCompare(b.nome)).forEach((c: any) => {
+        wsTotais.addRow(c);
+      });
+      const totaisRow = wsTotais.addRow({
+        nome: 'TOTAL GERAL',
+        vt: Object.values(colabMap).reduce((s: number, c: any) => s + c.vt, 0),
+        academia: Object.values(colabMap).reduce((s: number, c: any) => s + c.academia, 0),
+        comissao: Object.values(colabMap).reduce((s: number, c: any) => s + c.comissao, 0),
+        reajuste: Object.values(colabMap).reduce((s: number, c: any) => s + c.reajuste, 0),
+        outros: Object.values(colabMap).reduce((s: number, c: any) => s + c.outros, 0),
+        total: totalGeral,
+      });
+      totaisRow.font = { bold: true };
+      wsTotais.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      wsTotais.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+
+      const fileName = `apontamentos-folha-${MESES[mesRef-1]}-${anoRef}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      await wb.xlsx.write(res);
+      res.end();
+    } catch (err: any) {
+      console.error('[Apontamentos Excel Export Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ---- APONTAMENTOS DA FOLHA EXPORT (PDF via HTML) ----
+  app.get('/api/apontamentos-folha/pdf', async (req: any, res: any) => {
+    try {
+      const dbMod = await import('../db');
+      const mesRef = parseInt(req.query.mes) || (new Date().getMonth() + 1);
+      const anoRef = parseInt(req.query.ano) || new Date().getFullYear();
+      const apontamentos = await dbMod.listApontamentosFolha(mesRef, anoRef);
+
+      const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const TIPO_LABELS: Record<string, string> = {
+        vale_transporte: 'Vale Transporte', academia: 'Academia', comissao: 'Comissão',
+        reajuste_sindical: 'Reajuste Sindical', reajuste_dois_anos: 'Reajuste 2 Anos',
+        pensao_alimenticia: 'Pensão Alimentícia', contribuicao_assistencial: 'Contribuição Assist.',
+        banco_horas: 'Banco de Horas', outro: 'Outro',
+      };
+      const fmtCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+
+      // Aggregate data
+      const tipoMap: Record<string, { qtd: number; total: number }> = {};
+      const colabMap: Record<number, { nome: string; items: any[]; total: number }> = {};
+      (apontamentos || []).forEach((a: any) => {
+        if (!tipoMap[a.tipo]) tipoMap[a.tipo] = { qtd: 0, total: 0 };
+        tipoMap[a.tipo].qtd++;
+        tipoMap[a.tipo].total += Number(a.valor);
+        if (!colabMap[a.colaboradorId]) colabMap[a.colaboradorId] = { nome: a.colaboradorNome, items: [], total: 0 };
+        colabMap[a.colaboradorId].items.push(a);
+        colabMap[a.colaboradorId].total += Number(a.valor);
+      });
+      const totalGeral = Object.values(tipoMap).reduce((s, d) => s + d.total, 0);
+      const colabs = Object.values(colabMap).sort((a, b) => a.nome.localeCompare(b.nome));
+
+      const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a2e; font-size: 12px; }
+  h1 { color: #1e3a5f; font-size: 20px; border-bottom: 3px solid #3B82F6; padding-bottom: 8px; margin-bottom: 4px; }
+  .subtitle { color: #6b7280; font-size: 11px; margin-bottom: 20px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; border-left: 4px solid; }
+  .kpi-card.blue { border-left-color: #3B82F6; } .kpi-card.green { border-left-color: #10B981; } .kpi-card.purple { border-left-color: #8B5CF6; }
+  .kpi-label { font-size: 9px; text-transform: uppercase; color: #6b7280; }
+  .kpi-value { font-size: 20px; font-weight: 700; margin: 2px 0; }
+  h2 { font-size: 14px; color: #1e3a5f; margin-top: 24px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #1e3a5f; color: white; padding: 6px 10px; text-align: left; font-size: 10px; text-transform: uppercase; }
+  td { padding: 5px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .total-row { background: #e8f0fe !important; font-weight: 700; }
+  .right { text-align: right; }
+  .colab-header { background: #f1f5f9; font-weight: 600; font-size: 12px; }
+  .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #9ca3af; text-align: center; }
+  @media print { body { margin: 20px; } }
+</style></head>
+<body>
+  <h1>Apontamentos da Folha — ${MESES[mesRef-1]}/${anoRef}</h1>
+  <div class="subtitle">Evox Fiscal — Gente & Gestão | Gerado em ${dataHora}</div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card blue"><div class="kpi-label">Total Registros</div><div class="kpi-value">${(apontamentos || []).length}</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Valor Total</div><div class="kpi-value" style="font-size:16px">${fmtCurrency(totalGeral)}</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Colaboradores</div><div class="kpi-value">${colabs.length}</div></div>
+  </div>
+
+  <h2>Resumo por Tipo</h2>
+  <table>
+    <thead><tr><th>Tipo</th><th class="right">Qtd.</th><th class="right">Valor Total</th></tr></thead>
+    <tbody>
+      ${Object.entries(tipoMap).map(([tipo, data]) => `<tr><td>${TIPO_LABELS[tipo] || tipo}</td><td class="right">${data.qtd}</td><td class="right">${fmtCurrency(data.total)}</td></tr>`).join('')}
+      <tr class="total-row"><td>TOTAL</td><td class="right">${(apontamentos || []).length}</td><td class="right">${fmtCurrency(totalGeral)}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Detalhamento por Colaborador</h2>
+  ${colabs.map(c => `
+    <table>
+      <thead><tr class="colab-header"><th colspan="3">${c.nome} — Total: ${fmtCurrency(c.total)}</th></tr>
+      <tr><th>Tipo</th><th>Descrição</th><th class="right">Valor</th></tr></thead>
+      <tbody>
+        ${c.items.map((i: any) => `<tr><td>${TIPO_LABELS[i.tipo] || i.tipo}</td><td>${i.descricao || '-'}</td><td class="right">${fmtCurrency(Number(i.valor))}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  `).join('')}
+
+  <div class="footer">Documento gerado automaticamente pelo sistema Evox Fiscal — Gente & Gestão | Para uso contábil</div>
+</body></html>`;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="apontamentos-folha-${MESES[mesRef-1]}-${anoRef}.html"`);
+      res.send(html);
+    } catch (err: any) {
+      console.error('[Apontamentos PDF Export Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Public REST API v1
   app.use("/api/v1", apiRouter);
   // tRPC API

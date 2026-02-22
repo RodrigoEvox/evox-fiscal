@@ -57,6 +57,9 @@ import {
   reajustesSalariais, InsertReajusteSalarial,
   apontamentosFolha, InsertApontamentoFolha,
   niveisCargo, InsertNivelCargo,
+  beneficiosCustom, InsertBeneficioCustom,
+  programasCarreira, InsertProgramaCarreira,
+  rescisoes, InsertRescisao,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3685,5 +3688,244 @@ export async function getDashboardGEG(mes?: number, ano?: number) {
     evolucao,
     reajustesPendentesLista,
     custoTotalMes: totalVT + totalAcademia + totalComissoes,
+  };
+}
+
+// =============================================
+// ---- BENEFÍCIOS CUSTOMIZADOS ----
+// =============================================
+export async function listBeneficiosCustom() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(beneficiosCustom).orderBy(desc(beneficiosCustom.createdAt));
+}
+
+export async function createBeneficioCustom(data: InsertBeneficioCustom) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(beneficiosCustom).values(data);
+  return result[0].insertId;
+}
+
+export async function updateBeneficioCustom(id: number, data: Partial<InsertBeneficioCustom>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(beneficiosCustom).set(data).where(eq(beneficiosCustom.id, id));
+}
+
+export async function deleteBeneficioCustom(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(beneficiosCustom).where(eq(beneficiosCustom.id, id));
+}
+
+// =============================================
+// ---- PROGRAMAS DE CARREIRA CUSTOMIZADOS ----
+// =============================================
+export async function listProgramasCarreira() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(programasCarreira).orderBy(desc(programasCarreira.createdAt));
+}
+
+export async function createProgramaCarreira(data: InsertProgramaCarreira) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(programasCarreira).values(data);
+  return result[0].insertId;
+}
+
+export async function updateProgramaCarreira(id: number, data: Partial<InsertProgramaCarreira>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(programasCarreira).set(data).where(eq(programasCarreira.id, id));
+}
+
+export async function deleteProgramaCarreira(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(programasCarreira).where(eq(programasCarreira.id, id));
+}
+
+// =============================================
+// ---- RESCISÕES ----
+// =============================================
+export async function listRescisoes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(rescisoes).orderBy(desc(rescisoes.createdAt));
+}
+
+export async function getRescisaoById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(rescisoes).where(eq(rescisoes.id, id));
+  return rows[0] || null;
+}
+
+export async function createRescisao(data: InsertRescisao) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(rescisoes).values(data);
+  return result[0].insertId;
+}
+
+export async function updateRescisao(id: number, data: Partial<InsertRescisao>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(rescisoes).set(data).where(eq(rescisoes.id, id));
+}
+
+export async function deleteRescisao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(rescisoes).where(eq(rescisoes.id, id));
+}
+
+// ---- CÁLCULO DE RESCISÃO ----
+export function calcularRescisao(params: {
+  salarioBase: number;
+  dataAdmissao: string; // YYYY-MM-DD
+  dataDesligamento: string; // YYYY-MM-DD
+  tipoDesligamento: string;
+  periodoExperiencia1Fim?: string | null;
+  periodoExperiencia2Fim?: string | null;
+}) {
+  const { salarioBase, dataAdmissao, dataDesligamento, tipoDesligamento } = params;
+  const admissao = new Date(dataAdmissao + 'T12:00:00');
+  const desligamento = new Date(dataDesligamento + 'T12:00:00');
+
+  // Tempo de serviço em meses
+  const diffMs = desligamento.getTime() - admissao.getTime();
+  const mesesTrabalhados = Math.max(1, Math.ceil(diffMs / (30.44 * 24 * 60 * 60 * 1000)));
+  const anosTrabalhados = Math.floor(mesesTrabalhados / 12);
+
+  // Saldo de salário (dias trabalhados no mês do desligamento)
+  const diaDesligamento = desligamento.getDate();
+  const diasNoMes = new Date(desligamento.getFullYear(), desligamento.getMonth() + 1, 0).getDate();
+  const saldoSalario = Number(((salarioBase / 30) * diaDesligamento).toFixed(2));
+
+  // 13º proporcional (meses trabalhados no ano / 12)
+  const mesDesligamento = desligamento.getMonth() + 1;
+  const meses13 = mesDesligamento; // meses trabalhados no ano corrente
+  let decimoTerceiroProporcional = 0;
+  let decimoTerceiroMeses = 0;
+
+  // Férias proporcionais
+  const mesesDesdeUltimoAniversario = mesesTrabalhados % 12 || 12;
+  let feriasProporcionais = 0;
+  let feriasMeses = 0;
+  let tercoConstitucional = 0;
+  let feriasVencidas = 0;
+
+  // Aviso prévio
+  let avisoPrevio = 0;
+  let avisoPrevioDias = 0;
+
+  // FGTS
+  const fgtsDepositado = Number((salarioBase * 0.08 * mesesTrabalhados).toFixed(2));
+  let multaFgts = 0;
+  let multaFgtsPercentual = 0;
+
+  const isExperiencia = tipoDesligamento === 'termino_experiencia_1' || tipoDesligamento === 'termino_experiencia_2';
+
+  switch (tipoDesligamento) {
+    case 'sem_justa_causa':
+      // Aviso prévio: 30 dias + 3 dias por ano trabalhado (máx 90 dias)
+      avisoPrevioDias = Math.min(90, 30 + (anosTrabalhados * 3));
+      avisoPrevio = Number(((salarioBase / 30) * avisoPrevioDias).toFixed(2));
+      // 13º proporcional
+      decimoTerceiroMeses = meses13;
+      decimoTerceiroProporcional = Number(((salarioBase / 12) * decimoTerceiroMeses).toFixed(2));
+      // Férias proporcionais + 1/3
+      feriasMeses = mesesDesdeUltimoAniversario;
+      feriasProporcionais = Number(((salarioBase / 12) * feriasMeses).toFixed(2));
+      tercoConstitucional = Number((feriasProporcionais / 3).toFixed(2));
+      // Férias vencidas (se tiver mais de 1 ano)
+      if (anosTrabalhados >= 1) {
+        feriasVencidas = Number((salarioBase + salarioBase / 3).toFixed(2));
+      }
+      // Multa FGTS 40%
+      multaFgtsPercentual = 40;
+      multaFgts = Number((fgtsDepositado * 0.40).toFixed(2));
+      break;
+
+    case 'justa_causa':
+      // Apenas saldo de salário e férias vencidas
+      if (anosTrabalhados >= 1) {
+        feriasVencidas = Number((salarioBase + salarioBase / 3).toFixed(2));
+      }
+      break;
+
+    case 'pedido_demissao':
+      // 13º proporcional
+      decimoTerceiroMeses = meses13;
+      decimoTerceiroProporcional = Number(((salarioBase / 12) * decimoTerceiroMeses).toFixed(2));
+      // Férias proporcionais + 1/3
+      feriasMeses = mesesDesdeUltimoAniversario;
+      feriasProporcionais = Number(((salarioBase / 12) * feriasMeses).toFixed(2));
+      tercoConstitucional = Number((feriasProporcionais / 3).toFixed(2));
+      // Férias vencidas
+      if (anosTrabalhados >= 1) {
+        feriasVencidas = Number((salarioBase + salarioBase / 3).toFixed(2));
+      }
+      // Sem aviso prévio (empregado deve cumprir ou descontar)
+      break;
+
+    case 'termino_experiencia_1':
+    case 'termino_experiencia_2':
+      // 13º proporcional
+      decimoTerceiroMeses = meses13;
+      decimoTerceiroProporcional = Number(((salarioBase / 12) * decimoTerceiroMeses).toFixed(2));
+      // Férias proporcionais + 1/3
+      feriasMeses = mesesDesdeUltimoAniversario;
+      feriasProporcionais = Number(((salarioBase / 12) * feriasMeses).toFixed(2));
+      tercoConstitucional = Number((feriasProporcionais / 3).toFixed(2));
+      // Sem aviso prévio, sem multa FGTS
+      break;
+
+    case 'acordo_mutuo':
+      // Aviso prévio: 50% do valor
+      avisoPrevioDias = Math.min(90, 30 + (anosTrabalhados * 3));
+      avisoPrevio = Number((((salarioBase / 30) * avisoPrevioDias) * 0.5).toFixed(2));
+      // 13º proporcional integral
+      decimoTerceiroMeses = meses13;
+      decimoTerceiroProporcional = Number(((salarioBase / 12) * decimoTerceiroMeses).toFixed(2));
+      // Férias proporcionais + 1/3
+      feriasMeses = mesesDesdeUltimoAniversario;
+      feriasProporcionais = Number(((salarioBase / 12) * feriasMeses).toFixed(2));
+      tercoConstitucional = Number((feriasProporcionais / 3).toFixed(2));
+      // Férias vencidas
+      if (anosTrabalhados >= 1) {
+        feriasVencidas = Number((salarioBase + salarioBase / 3).toFixed(2));
+      }
+      // Multa FGTS 20%
+      multaFgtsPercentual = 20;
+      multaFgts = Number((fgtsDepositado * 0.20).toFixed(2));
+      break;
+  }
+
+  const totalProventos = Number((saldoSalario + avisoPrevio + decimoTerceiroProporcional + feriasProporcionais + tercoConstitucional + feriasVencidas + multaFgts).toFixed(2));
+  const totalDescontos = 0; // Simplificado - descontos de INSS/IR seriam calculados à parte
+  const totalLiquido = Number((totalProventos - totalDescontos).toFixed(2));
+
+  return {
+    saldoSalario,
+    avisoPrevio,
+    avisoPrevioDias,
+    decimoTerceiroProporcional,
+    decimoTerceiroMeses,
+    feriasProporcionais,
+    feriasMeses,
+    tercoConstitucional,
+    feriasVencidas,
+    fgtsDepositado,
+    multaFgts,
+    multaFgtsPercentual,
+    totalProventos,
+    totalDescontos,
+    totalLiquido,
+    mesesTrabalhados,
+    anosTrabalhados,
   };
 }

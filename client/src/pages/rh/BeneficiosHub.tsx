@@ -7,5 +7,5 @@ const ITEMS = [
 ];
 
 export default function BeneficiosHub() {
-  return <GegHubPage title="Benefícios" grupo="Benefícios" items={ITEMS} showAddNew />;
+  return <GegHubPage title="Benefícios" grupo="Benefícios" items={ITEMS} showAddNew addNewType="beneficio" />;
 }
