@@ -1,0 +1,23 @@
+V44 Verification Notes - Projeção Financeira Enhancements
+
+1. Page loads correctly with title "Projeção Financeira da Folha"
+2. Subtitle shows "Projeção mensal e anual de custos com pessoal" ✓
+3. Year selector shows 2026 (current year) ✓
+4. "Fevereiro" correctly marked as "Atual" for 2026 ✓
+5. Summary cards show: Custo Mensal, Projeção Anual, Colaboradores Ativos, Encargos+Provisões ✓
+6. Composição do Custo section with clickable values (eye icon on hover) ✓
+7. Projeção Mensal table with clickable values for drill-down ✓
+8. Férias Programadas shows "próximos 6 meses" ✓
+9. Rescisões shows "últimos e próximos 6 meses" ✓
+10. Nota sobre projeção mentions 5-year range ✓
+
+Verified:
+- Year selector has 5 years (2026-2030) ✓
+- 2027: Confirmed NO "Atual" badge appears (keyword search found nothing) ✓
+- Drill-down dialog works: clicking Salários Base shows "Memória de Cálculo — Salários Base" with table of all collaborators, cargo, setor, and salary ✓
+- Year selector has 5 years (2026-2030) ✓
+- Férias Programadas shows "próximos 6 meses" ✓
+- Rescisões shows "últimos e próximos 6 meses" ✓
+- Descrição na capa: "Projeção mensal e anual de custos com pessoal" ✓
+
+All v44 features verified successfully.

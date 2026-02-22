@@ -113,6 +113,7 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'documentos': { desc: 'Documentos e arquivos por colaborador' },
   'relatorios-rh': { desc: 'Relatórios e indicadores analíticos' },
   'rescisao': { desc: 'Cálculo de verbas rescisórias por tipo de desligamento' },
+  'projecao-financeira': { desc: 'Projeção mensal e anual de custos com pessoal' },
 };
 
 export interface HubItem {

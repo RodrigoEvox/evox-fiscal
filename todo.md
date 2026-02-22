@@ -1318,3 +1318,26 @@
 - [x] Cálculo baseado em salário, 1/3 constitucional, abono pecuniário, INSS e IRRF
 - [x] Botão Simulador adicionado na página de Férias
 - [x] 356 testes passando
+
+## GEG v44 — Projeção Financeira Avançada
+
+### Bug Fixes
+- [x] Corrigir badge "Atual" que aparece em 2027 — só marcar no ano corrente real
+- [x] Atualizar descrição na capa de Projeção Financeira em Administração para "Projeção mensal e anual de custos com pessoal"
+
+### Memória de Cálculo
+- [x] Ao clicar em qualquer valor da projeção, exibir detalhamento (ex: tabela de colaboradores e salários)
+- [x] Memória de cálculo para Salários Base (lista de colaboradores)
+- [x] Memória de cálculo para Encargos (INSS + FGTS detalhado)
+- [x] Memória de cálculo para Benefícios (VT, academia, etc.)
+- [x] Memória de cálculo para Provisões (13º e férias)
+- [x] Memória de cálculo para Férias Programadas (lista de férias)
+- [x] Memória de cálculo para Rescisões (lista de rescisões)
+
+### Férias e Rescisões Expandidas
+- [x] Alterar indicativo de férias e rescisões para últimos e próximos 6 meses (em vez de 3)
+
+### Projeção 5 Anos
+- [x] Seletor de ano dinâmico: ano atual até ano atual + 4
+- [x] Acréscimo automático ao virar o ano (ex: 2026→2030, 2027→2031)
+- [x] 356 testes passando
