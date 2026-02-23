@@ -235,7 +235,7 @@ export default function RelatorioAtivos() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/rh/gestao-rh/equipamentos">
+          <Link href="/rh/equipamentos">
             <Button variant="ghost" size="icon" className="shrink-0">
               <ArrowLeft className="w-5 h-5" />
             </Button>
