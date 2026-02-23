@@ -1618,3 +1618,7 @@
 - [x] Importação em lote: upload de planilha Excel/CSV
 - [x] Importação em lote: mapeamento de colunas e preview antes de importar
 - [x] Importação em lote: processamento e inserção dos dados
+
+## v59 — Ajustes Formação Acadêmica
+- [x] Remover campo "Formação / Curso (principal)" do formulário de novo colaborador
+- [x] Corrigir dropdown de Curso em Formações Superiores: rolagem A-Z com suporte a scroll do mouse

@@ -178,9 +178,9 @@ function CursoAutocomplete({ value, onChange }: { value: string; onChange: (v: s
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const filtered = useMemo(() => {
-    if (!search) return CURSOS_SUPERIORES.slice(0, 30);
+    if (!search) return CURSOS_SUPERIORES;
     const lower = search.toLowerCase();
-    return CURSOS_SUPERIORES.filter(c => c.toLowerCase().includes(lower)).slice(0, 30);
+    return CURSOS_SUPERIORES.filter(c => c.toLowerCase().includes(lower));
   }, [search]);
 
   return (
@@ -194,11 +194,11 @@ function CursoAutocomplete({ value, onChange }: { value: string; onChange: (v: s
       <PopoverContent className="w-[320px] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput placeholder="Buscar curso..." value={search} onValueChange={setSearch} className="h-8 text-xs" />
-          <CommandList>
+          <CommandList className="max-h-[280px] overflow-y-auto" onWheel={e => e.stopPropagation()}>
             <CommandEmpty>Nenhum curso encontrado.</CommandEmpty>
             <CommandGroup>
               {filtered.map(c => (
-                <CommandItem key={c} value={c} onSelect={() => { onChange(c); setOpen(false); setSearch(''); }} className="text-xs">
+                <CommandItem key={c} value={c} onSelect={() => { onChange(c); setOpen(false); setSearch(''); }} className="text-xs cursor-pointer">
                   {c}
                 </CommandItem>
               ))}
@@ -816,7 +816,6 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
             <SectionCard title="Formação Acadêmica" icon={GraduationCap}>
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Grau de Instrução" value={GRAUS_INSTRUCAO.find(g => g.value === colab.grauInstrucao)?.label || '—'} />
-                <InfoItem label="Formação / Curso" value={colab.formacaoAcademica} />
               </div>
             </SectionCard>
 
@@ -1939,9 +1938,7 @@ export default function ColaboradoresGEG() {
                   <SelectContent>{GRAUS_INSTRUCAO.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
-              <Field label="Formação / Curso (principal)">
-                <Input value={form.formacaoAcademica} onChange={e => { setForm(f => ({ ...f, formacaoAcademica: e.target.value })); markDirty(); }} placeholder="Ex: Administração de Empresas" />
-              </Field>
+
             </div>
 
             {/* Formações Superiores */}
