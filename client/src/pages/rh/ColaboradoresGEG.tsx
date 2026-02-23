@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ import {
   Download, FileSpreadsheet, FileText, Cake, CalendarDays,
   ArrowLeft, GraduationCap, TrendingUp, DollarSign, Award,
   FileCheck, AlertCircle, Stethoscope, BookOpen, Wrench,
-  ChevronRight, ArrowUpDown, ChevronLeft as ChevronLeftIcon, ChevronsLeft, ChevronsRight, Printer
+  ChevronRight, ArrowUpDown, ChevronLeft as ChevronLeftIcon, ChevronsLeft, ChevronsRight, Printer, Upload
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -163,9 +164,9 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-const Field = ({ label, children, span = 1, required = false }: { label: string; children: React.ReactNode; span?: number; required?: boolean }) => (
-  <div className={span === 2 ? 'md:col-span-2' : span === 3 ? 'md:col-span-3' : ''}>
-    <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+const Field = ({ label, children, span = 1, required = false, error = false }: { label: string; children: React.ReactNode; span?: number; required?: boolean; error?: boolean }) => (
+  <div className={`${span === 2 ? 'md:col-span-2' : span === 3 ? 'md:col-span-3' : ''} ${error ? '[&_input]:border-red-500 [&_input]:ring-red-500/20 [&_button[role=combobox]]:border-red-500' : ''}`}>
+    <Label className={`text-xs font-medium mb-1.5 block ${error ? 'text-red-500' : 'text-muted-foreground'}`}>
       {label}{required && <span className="text-red-500 ml-0.5">*</span>}
     </Label>
     {children}
@@ -1100,6 +1101,7 @@ function ExperienciaSection({ form, setForm, markDirty }: { form: any; setForm: 
 
 // ===== MAIN COMPONENT =====
 export default function ColaboradoresGEG() {
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState(false);
@@ -1125,6 +1127,7 @@ export default function ColaboradoresGEG() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
 
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
@@ -1156,6 +1159,7 @@ export default function ColaboradoresGEG() {
     setEditId(null);
     setViewMode(false);
     setCpfValid(null);
+    setValidationErrors(new Set());
     formDirtyRef.current = false;
   };
 
@@ -1218,12 +1222,22 @@ export default function ColaboradoresGEG() {
   };
 
   const handleSave = () => {
-    if (!form.nomeCompleto.trim()) { toast.error('Nome completo é obrigatório'); return; }
-    if (!form.cpf.trim()) { toast.error('CPF é obrigatório'); return; }
-    if (cpfValid === false) { toast.error('CPF inválido'); return; }
-    if (!form.dataAdmissao) { toast.error('Data de admissão é obrigatória'); return; }
-    if (!form.cargo.trim()) { toast.error('Cargo é obrigatório'); return; }
-    if (!form.salarioBase.trim()) { toast.error('Salário base é obrigatório'); return; }
+    // Comprehensive validation
+    const errors = new Set<string>();
+    const errorMessages: string[] = [];
+
+    if (!form.nomeCompleto.trim()) { errors.add('nomeCompleto'); errorMessages.push('Nome completo'); }
+    if (!form.cpf.trim()) { errors.add('cpf'); errorMessages.push('CPF'); }
+    if (cpfValid === false) { errors.add('cpf'); errorMessages.push('CPF inválido'); }
+    if (!form.dataAdmissao) { errors.add('dataAdmissao'); errorMessages.push('Data de admissão'); }
+    if (!form.cargo.trim()) { errors.add('cargo'); errorMessages.push('Cargo'); }
+    if (!form.salarioBase.trim()) { errors.add('salarioBase'); errorMessages.push('Salário base'); }
+
+    setValidationErrors(errors);
+    if (errors.size > 0) {
+      toast.error(`Campos obrigatórios não preenchidos: ${errorMessages.join(', ')}`);
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     if (form.dataAdmissao !== today && !admissaoAlert && !editId) {
@@ -1519,7 +1533,10 @@ export default function ColaboradoresGEG() {
           <h1 className="text-2xl font-bold">Colaboradores</h1>
           <p className="text-muted-foreground">Cadastro e gestão de colaboradores — Gente & Gestão</p>
         </div>
-        <Button onClick={() => { closeFormClean(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Colaborador</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/rh/importacao-colaboradores')}><Upload className="w-4 h-4 mr-2" /> Importar</Button>
+          <Button onClick={() => { closeFormClean(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Colaborador</Button>
+        </div>
       </div>
 
       {/* Status Summary */}
@@ -1806,7 +1823,7 @@ export default function ColaboradoresGEG() {
 
       {/* ===== MAIN FORM DIALOG ===== */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) tryCloseForm(); }}>
-        <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0">
+        <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg">
               {editId ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -1843,10 +1860,10 @@ export default function ColaboradoresGEG() {
             {/* ===== DADOS PESSOAIS ===== */}
             <SectionTitle>Dados Pessoais</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Nome Completo" span={3} required>
+              <Field label="Nome Completo" span={3} required error={validationErrors.has('nomeCompleto')}>
                 <Input value={form.nomeCompleto} onChange={e => { setForm(f => ({ ...f, nomeCompleto: e.target.value })); markDirty(); }} placeholder="Nome completo do colaborador" />
               </Field>
-              <Field label="CPF" required>
+              <Field label="CPF" required error={validationErrors.has('cpf')}>
                 <div className="relative">
                   <Input
                     value={form.cpf}
@@ -1930,45 +1947,48 @@ export default function ColaboradoresGEG() {
             {/* Formações Superiores */}
             <div className="mt-4 border border-dashed border-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <h5 className="text-xs font-semibold flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Formações Superiores</h5>
+                <h5 className="text-sm font-semibold flex items-center gap-1.5"><GraduationCap className="w-4 h-4" /> Formações Superiores</h5>
                 <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setForm(f => ({ ...f, formacoesSuperior: [...f.formacoesSuperior, { curso: '', instituicao: '', anoConclusao: '', status: 'concluido' }] })); markDirty(); }}>
                   <Plus className="w-3 h-3" /> Adicionar
                 </Button>
               </div>
               {form.formacoesSuperior.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma formação superior adicional cadastrada.</p>}
               {form.formacoesSuperior.map((fs: FormacaoSuperior, idx: number) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2 mb-3 p-3 bg-muted/30 rounded-md border border-border/50">
-                  <div className="md:col-span-5">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Curso</Label>
+                <div key={idx} className="mb-3 p-4 bg-muted/30 rounded-md border border-border/50 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Formação {idx + 1}</span>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, formacoesSuperior: f.formacoesSuperior.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Curso</Label>
                     <CursoAutocomplete
                       value={fs.curso}
                       onChange={(v) => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], curso: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }}
                     />
                   </div>
-                  <div className="md:col-span-3">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Instituição</Label>
-                    <Input className="h-8 text-sm" value={fs.instituicao} onChange={e => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], instituicao: e.target.value }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }} placeholder="Nome da instituição" />
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Instituição</Label>
+                    <Input className="h-9 text-sm" value={fs.instituicao} onChange={e => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], instituicao: e.target.value }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }} placeholder="Nome da instituição" />
                   </div>
-                  <div className="md:col-span-1">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Ano</Label>
-                    <Input className="h-8 text-sm" value={fs.anoConclusao} onChange={e => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], anoConclusao: e.target.value }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }} placeholder="2024" maxLength={4} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Status</Label>
-                    <Select value={fs.status} onValueChange={v => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], status: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }}>
-                      <SelectTrigger className="h-8 text-xs w-full truncate"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="concluido">Concluído</SelectItem>
-                        <SelectItem value="cursando">Cursando</SelectItem>
-                        <SelectItem value="trancado">Trancado</SelectItem>
-                        <SelectItem value="incompleto">Incompleto</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-1 flex items-end">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, formacoesSuperior: f.formacoesSuperior.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Ano de Conclusão</Label>
+                      <Input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4} className="h-9 text-sm" value={fs.anoConclusao} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], anoConclusao: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }} placeholder="Ex: 2024" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Status</Label>
+                      <Select value={fs.status} onValueChange={v => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], status: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }}>
+                        <SelectTrigger className="h-9 text-sm w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="concluido">Concluído</SelectItem>
+                          <SelectItem value="cursando">Cursando</SelectItem>
+                          <SelectItem value="trancado">Trancado</SelectItem>
+                          <SelectItem value="incompleto">Incompleto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1977,30 +1997,33 @@ export default function ColaboradoresGEG() {
             {/* Formações Técnicas */}
             <div className="mt-4 border border-dashed border-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <h5 className="text-xs font-semibold flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Formações Técnicas</h5>
+                <h5 className="text-sm font-semibold flex items-center gap-1.5"><Wrench className="w-4 h-4" /> Formações Técnicas</h5>
                 <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setForm(f => ({ ...f, formacoesTecnicas: [...f.formacoesTecnicas, { curso: '', instituicao: '', anoConclusao: '' }] })); markDirty(); }}>
                   <Plus className="w-3 h-3" /> Adicionar
                 </Button>
               </div>
               {form.formacoesTecnicas.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma formação técnica cadastrada.</p>}
               {form.formacoesTecnicas.map((ft: FormacaoTecnica, idx: number) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2 mb-3 p-3 bg-muted/30 rounded-md border border-border/50">
-                  <div className="md:col-span-5">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Curso Técnico</Label>
-                    <Input className="h-8 text-sm" value={ft.curso} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], curso: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Ex: Técnico em Contabilidade" />
-                  </div>
-                  <div className="md:col-span-5">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Instituição</Label>
-                    <Input className="h-8 text-sm" value={ft.instituicao} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], instituicao: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Nome da instituição" />
-                  </div>
-                  <div className="md:col-span-1">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Ano</Label>
-                    <Input className="h-8 text-sm" value={ft.anoConclusao} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], anoConclusao: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="2024" maxLength={4} />
-                  </div>
-                  <div className="md:col-span-1 flex items-end">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, formacoesTecnicas: f.formacoesTecnicas.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
+                <div key={idx} className="mb-3 p-4 bg-muted/30 rounded-md border border-border/50 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Técnico {idx + 1}</span>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, formacoesTecnicas: f.formacoesTecnicas.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
                       <X className="w-3.5 h-3.5" />
                     </Button>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Curso Técnico</Label>
+                    <Input className="h-9 text-sm" value={ft.curso} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], curso: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Ex: Técnico em Contabilidade" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Instituição</Label>
+                      <Input className="h-9 text-sm" value={ft.instituicao} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], instituicao: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Nome da instituição" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Ano de Conclusão</Label>
+                      <Input type="text" inputMode="numeric" pattern="[0-9]*" className="h-9 text-sm" value={ft.anoConclusao} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], anoConclusao: v }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Ex: 2024" />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -2009,29 +2032,30 @@ export default function ColaboradoresGEG() {
             {/* Habilidades e Experiências Extras */}
             <div className="mt-4 border border-dashed border-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <h5 className="text-xs font-semibold flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Demais Experiências & Habilidades</h5>
+                <h5 className="text-sm font-semibold flex items-center gap-1.5"><Award className="w-4 h-4" /> Demais Experiências & Habilidades</h5>
                 <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setForm(f => ({ ...f, habilidadesExtras: [...f.habilidadesExtras, { descricao: '', tipo: 'Certificação' }] })); markDirty(); }}>
                   <Plus className="w-3 h-3" /> Adicionar
                 </Button>
               </div>
               {form.habilidadesExtras.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma habilidade ou experiência adicional cadastrada. Isso ajuda a mapear competências além da formação principal.</p>}
               {form.habilidadesExtras.map((he: HabilidadeExtra, idx: number) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2 mb-3 p-3 bg-muted/30 rounded-md border border-border/50">
-                  <div className="md:col-span-8">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Descrição</Label>
-                    <Input className="h-8 text-sm" value={he.descricao} onChange={e => { setForm(f => { const arr = [...f.habilidadesExtras]; arr[idx] = { ...arr[idx], descricao: e.target.value }; return { ...f, habilidadesExtras: arr }; }); markDirty(); }} placeholder="Ex: Certificação CPA-20, Excel Avançado, Inglês Fluente..." />
-                  </div>
-                  <div className="md:col-span-3">
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Tipo</Label>
-                    <Select value={he.tipo} onValueChange={v => { setForm(f => { const arr = [...f.habilidadesExtras]; arr[idx] = { ...arr[idx], tipo: v }; return { ...f, habilidadesExtras: arr }; }); markDirty(); }}>
-                      <SelectTrigger className="h-8 text-xs w-full truncate"><SelectValue /></SelectTrigger>
-                      <SelectContent>{TIPOS_HABILIDADE.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-1 flex items-end">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, habilidadesExtras: f.habilidadesExtras.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
+                <div key={idx} className="mb-3 p-4 bg-muted/30 rounded-md border border-border/50 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Habilidade {idx + 1}</span>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, habilidadesExtras: f.habilidadesExtras.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
                       <X className="w-3.5 h-3.5" />
                     </Button>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Descrição</Label>
+                    <Input className="h-9 text-sm" value={he.descricao} onChange={e => { setForm(f => { const arr = [...f.habilidadesExtras]; arr[idx] = { ...arr[idx], descricao: e.target.value }; return { ...f, habilidadesExtras: arr }; }); markDirty(); }} placeholder="Ex: Certificação CPA-20, Excel Avançado, Inglês Fluente..." />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Tipo</Label>
+                    <Select value={he.tipo} onValueChange={v => { setForm(f => { const arr = [...f.habilidadesExtras]; arr[idx] = { ...arr[idx], tipo: v }; return { ...f, habilidadesExtras: arr }; }); markDirty(); }}>
+                      <SelectTrigger className="h-9 text-sm w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>{TIPOS_HABILIDADE.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
                 </div>
               ))}
@@ -2092,7 +2116,7 @@ export default function ColaboradoresGEG() {
             <SectionTitle>Dados Profissionais</SectionTitle>
             {/* Row 1: Admissão, Tipo Contrato */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-              <Field label="Data de Admissão" required><Input type="date" value={form.dataAdmissao} onChange={e => { setForm(f => ({ ...f, dataAdmissao: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Data de Admissão" required error={validationErrors.has('dataAdmissao')}><Input type="date" value={form.dataAdmissao} onChange={e => { setForm(f => ({ ...f, dataAdmissao: e.target.value })); markDirty(); }} /></Field>
               <Field label="Tipo de Contrato">
                 <Select value={form.tipoContrato} onValueChange={v => { setForm(f => ({ ...f, tipoContrato: v })); markDirty(); }}>
                   <SelectTrigger className="w-full truncate"><SelectValue /></SelectTrigger>
@@ -2118,7 +2142,7 @@ export default function ColaboradoresGEG() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Cargo" required>
+              <Field label="Cargo" required error={validationErrors.has('cargo')}>
                 {cargosBySetor.length > 0 ? (
                   <Select value={form.cargo} onValueChange={handleCargoSelect}>
                     <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar cargo" /></SelectTrigger>
@@ -2174,7 +2198,7 @@ export default function ColaboradoresGEG() {
             {/* ===== REMUNERAÇÃO ===== */}
             <SectionTitle>Remuneração</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Salário Base" required><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
+              <Field label="Salário Base" required error={validationErrors.has('salarioBase')}><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
               <Field label="Cargo Comissionado?">
                 <div className="flex items-center gap-3 h-9">
                   <label className="flex items-center gap-1.5 cursor-pointer">

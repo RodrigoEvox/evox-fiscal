@@ -1369,3 +1369,30 @@ export const termosResponsabilidade = mysqlTable("termos_responsabilidade", {
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
+
+
+// ===== CONVENÇÃO COLETIVA DE TRABALHO (CCT) =====
+export const convencaoColetiva = mysqlTable("convencao_coletiva", {
+	id: int().autoincrement().primaryKey().notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	sindicato: varchar({ length: 500 }),
+	vigenciaInicio: varchar({ length: 10 }).notNull(),
+	vigenciaFim: varchar({ length: 10 }).notNull(),
+	dataBase: varchar({ length: 10 }),
+	status: mysqlEnum('cctStatus', ['vigente','vencida','pendente']).default('vigente').notNull(),
+	arquivoPdfUrl: text(),
+	arquivoPdfNome: varchar({ length: 500 }),
+	anexosJson: text(),
+	resumoLlm: text(),
+	clausulasJson: text(),
+	regrasFeriasJson: text(),
+	regrasJornadaJson: text(),
+	regrasSalarioJson: text(),
+	regrasBeneficiosJson: text(),
+	regrasRescisaoJson: text(),
+	observacoes: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});

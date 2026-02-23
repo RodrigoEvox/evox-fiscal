@@ -106,6 +106,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'beneficios-hub': Wallet,
   'carreira-hub': GraduationCap,
   'admin-hub': Settings,
+  'cct': Shield,
 };
 
 interface SetorConfigItem {

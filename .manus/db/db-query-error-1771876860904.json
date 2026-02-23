@@ -1,0 +1,21 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS convencao_coletiva (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  titulo VARCHAR(500) NOT NULL,\n  sindicato VARCHAR(500),\n  vigenciaInicio VARCHAR(10) NOT NULL,\n  vigenciaFim VARCHAR(10) NOT NULL,\n  dataBase VARCHAR(10),\n  cctStatus ENUM('vigente','vencida','pendente') NOT NULL DEFAULT 'vigente',\n  arquivoPdfUrl TEXT,\n  arquivoPdfNome VARCHAR(500),\n  anexosJson TEXT,\n  resumoLlm TEXT,\n  clausulasJson TEXT,\n  regrasFeriasJson TEXT,\n  regrasJornadaJson TEXT,\n  regrasSalarioJson TEXT,\n  regrasBeneficiosJson TEXT,\n  regrasRescisaoJson TEXT,\n  observacoes TEXT,\n  criadoPorId INT,\n  criadoPorNome VARCHAR(255),\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute CREATE TABLE IF NOT EXISTS convencao_coletiva (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  titulo VARCHAR(500) NOT NULL,\n  sindicato VARCHAR(500),\n  vigenciaInicio VARCHAR(10) NOT NULL,\n  vigenciaFim VARCHAR(10) NOT NULL,\n  dataBase VARCHAR(10),\n  cctStatus ENUM('vigente','vencida','pendente') NOT NULL DEFAULT 'vigente',\n  arquivoPdfUrl TEXT,\n  arquivoPdfNome VARCHAR(500),\n  anexosJson TEXT,\n  resumoLlm TEXT,\n  clausulasJson TEXT,\n  regrasFeriasJson TEXT,\n  regrasJornadaJson TEXT,\n  regrasSalarioJson TEXT,\n  regrasBeneficiosJson TEXT,\n  regrasRescisaoJson TEXT,\n  observacoes TEXT,\n  criadoPorId INT,\n  criadoPorNome VARCHAR(255),\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 7 column 11 near \"dataBase VARCHAR(10),",
+    "  cctStatus ENUM('vigente','vencida','pendente') NOT NULL DEFAULT 'vigente',",
+    "  arquivoPdfUrl TEXT,",
+    "  arquivoPdfNome VARCHAR(500),",
+    "  anexosJson TEXT,",
+    "  resumoLlm TEXT,",
+    "  clausulasJson TEXT,",
+    "  regrasFeriasJson TEXT,",
+    "  regrasJornadaJson TEXT,",
+    "  regrasSalarioJson TEXT,",
+    "  regrasBeneficiosJson TEXT,",
+    "  regrasRescisaoJson TEXT,",
+    "  observacoes TEXT,",
+    "  c"
+  ]
+}

@@ -2266,6 +2266,55 @@ export const appRouter = router({
       await logAudit('criacao', 'colaborador', id, input.nomeCompleto, ctx);
       return { id };
     }),
+    importBulk: protectedProcedure
+      .input(z.object({
+        colaboradores: z.array(z.record(z.string(), z.any())),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const results = { success: 0, errors: 0, errorDetails: [] as string[] };
+        for (let i = 0; i < input.colaboradores.length; i++) {
+          const row = input.colaboradores[i];
+          try {
+            const nome = row.nomeCompleto || row.nome_completo || row['Nome Completo'] || row['NOME COMPLETO'] || row.nome || row.Nome || '';
+            const cpf = row.cpf || row.CPF || '';
+            const dataAdmissao = row.dataAdmissao || row.data_admissao || row['Data Admissão'] || row['DATA ADMISSAO'] || '';
+            const cargo = row.cargo || row.Cargo || row.CARGO || '';
+            const salarioBase = row.salarioBase || row.salario_base || row['Salário Base'] || row['SALARIO BASE'] || row.salario || row.Salario || '';
+
+            if (!nome || !cpf || !dataAdmissao || !cargo || !salarioBase) {
+              results.errors++;
+              results.errorDetails.push(`Linha ${i + 1}: Campos obrigatórios faltando`);
+              continue;
+            }
+
+            const data: any = {
+              nomeCompleto: nome, cpf, dataNascimento: row.dataNascimento || row.data_nascimento || row['Data Nascimento'] || '',
+              dataAdmissao, cargo, funcao: row.funcao || row.Funcao || '',
+              salarioBase: String(salarioBase), telefone: row.telefone || row.Telefone || '',
+              email: row.email || row.Email || '', rgNumero: row.rgNumero || row.rg || '',
+              pisPasep: row.pisPasep || row.pis || '', ctpsNumero: row.ctpsNumero || row.ctps || '',
+              cep: row.cep || row.CEP || '', logradouro: row.logradouro || '',
+              numero: row.numero || '', bairro: row.bairro || '', cidade: row.cidade || '',
+              estado: row.estado || row.uf || row.UF || '',
+              tipoContrato: (row.tipoContrato || row.tipo_contrato || 'clt').toLowerCase().replace(/ /g, '_'),
+              statusColaborador: 'ativo', nacionalidade: row.nacionalidade || 'Brasileira',
+              sexo: row.sexo || undefined, estadoCivil: row.estadoCivil || undefined,
+              nomeMae: row.nomeMae || '', nomePai: row.nomePai || '',
+              banco: row.banco || '', agencia: row.agencia || '', conta: row.conta || '',
+              valeTransporte: row.valeTransporte === true || row.valeTransporte === 'sim' || false,
+            };
+            if (!['clt', 'pj', 'contrato_trabalho'].includes(data.tipoContrato)) data.tipoContrato = 'clt';
+
+            const id = await db.createColaborador(data);
+            if (id) { results.success++; } else { results.errors++; results.errorDetails.push(`Linha ${i + 1}: Erro ao inserir ${nome}`); }
+          } catch (err: any) {
+            results.errors++;
+            results.errorDetails.push(`Linha ${i + 1}: ${err.message || 'Erro desconhecido'}`);
+          }
+        }
+        await logAudit('criar', 'importacao_colaboradores', null, `Import: ${results.success} ok, ${results.errors} erros`, ctx);
+        return results;
+      }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
       data: z.record(z.string(), z.any()),
@@ -2274,7 +2323,7 @@ export const appRouter = router({
       if (input.data.statusColaborador) {
         await db.changeColaboradorStatus(
           input.id, input.data.statusColaborador,
-          input.data.motivoDesligamento || 'Altera\u00e7\u00e3o manual de status',
+          input.data.motivoDesligamento || 'Alteração manual de status',
           'manual', null,
           ctx.user?.id || null, ctx.user?.name || 'Sistema'
         );
@@ -4178,6 +4227,239 @@ export const appRouter = router({
       }).optional())
       .query(async ({ input }) => {
         return db.getDashboardGEG(input?.mes, input?.ano);
+      }),
+  }),
+
+  // ---- CONVENÇÃO COLETIVA DE TRABALHO (CCT) ----
+  cct: router({
+    list: protectedProcedure.query(async () => {
+      return db.listCCTs();
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return db.getCCTById(input.id);
+      }),
+    getVigente: protectedProcedure.query(async () => {
+      return db.getCCTVigente();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        titulo: z.string().min(1),
+        sindicato: z.string().optional(),
+        vigenciaInicio: z.string(),
+        vigenciaFim: z.string(),
+        dataBase: z.string().optional(),
+        status: z.enum(['vigente','vencida','pendente']).default('vigente'),
+        arquivoPdfUrl: z.string().optional(),
+        arquivoPdfNome: z.string().optional(),
+        anexosJson: z.string().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createCCT({
+          ...input,
+          criadoPorId: ctx.user.id,
+          criadoPorNome: ctx.user.name,
+        });
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        titulo: z.string().optional(),
+        sindicato: z.string().optional(),
+        vigenciaInicio: z.string().optional(),
+        vigenciaFim: z.string().optional(),
+        dataBase: z.string().optional(),
+        status: z.enum(['vigente','vencida','pendente']).optional(),
+        arquivoPdfUrl: z.string().optional(),
+        arquivoPdfNome: z.string().optional(),
+        anexosJson: z.string().optional(),
+        resumoLlm: z.string().optional(),
+        clausulasJson: z.string().optional(),
+        regrasFeriasJson: z.string().optional(),
+        regrasJornadaJson: z.string().optional(),
+        regrasSalarioJson: z.string().optional(),
+        regrasBeneficiosJson: z.string().optional(),
+        regrasRescisaoJson: z.string().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateCCT(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteCCT(input.id);
+        return { success: true };
+      }),
+    uploadPdf: protectedProcedure
+      .input(z.object({
+        fileName: z.string(),
+        fileBase64: z.string(),
+        contentType: z.string().default('application/pdf'),
+      }))
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.fileBase64, 'base64');
+        const key = `cct/${Date.now()}-${input.fileName}`;
+        const { url } = await storagePut(key, buffer, input.contentType);
+        return { url, key, fileName: input.fileName };
+      }),
+    analisarPdf: protectedProcedure
+      .input(z.object({
+        cctId: z.number(),
+        pdfUrl: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import('./_core/llm');
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: 'system',
+              content: `Você é um especialista em direito trabalhista brasileiro. Analise o documento da Convenção Coletiva de Trabalho (CCT) fornecido e extraia as informações de forma estruturada em JSON.
+
+Retorne um JSON com a seguinte estrutura:
+{
+  "resumo": "Resumo geral da CCT em 3-5 parágrafos",
+  "clausulas": [
+    { "numero": "1", "titulo": "Título da cláusula", "conteudo": "Conteúdo resumido", "categoria": "geral|salario|ferias|jornada|beneficios|rescisao|outros" }
+  ],
+  "regrasFerias": {
+    "descricao": "Regras específicas sobre férias",
+    "itens": ["Regra 1", "Regra 2"]
+  },
+  "regrasJornada": {
+    "descricao": "Regras sobre jornada de trabalho",
+    "itens": ["Regra 1", "Regra 2"]
+  },
+  "regrasSalario": {
+    "descricao": "Regras sobre salário e remuneração",
+    "pisoSalarial": "valor se houver",
+    "reajuste": "percentual se houver",
+    "itens": ["Regra 1", "Regra 2"]
+  },
+  "regrasBeneficios": {
+    "descricao": "Regras sobre benefícios",
+    "itens": ["Regra 1", "Regra 2"]
+  },
+  "regrasRescisao": {
+    "descricao": "Regras sobre rescisão contratual",
+    "itens": ["Regra 1", "Regra 2"]
+  }
+}
+
+Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Analise esta Convenção Coletiva de Trabalho e extraia todas as informações estruturadas:' },
+                { type: 'file_url', file_url: { url: input.pdfUrl, mime_type: 'application/pdf' as const } }
+              ] as any
+            }
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'cct_analysis',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  resumo: { type: 'string' },
+                  clausulas: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        numero: { type: 'string' },
+                        titulo: { type: 'string' },
+                        conteudo: { type: 'string' },
+                        categoria: { type: 'string' }
+                      },
+                      required: ['numero', 'titulo', 'conteudo', 'categoria'],
+                      additionalProperties: false
+                    }
+                  },
+                  regrasFerias: {
+                    type: 'object',
+                    properties: {
+                      descricao: { type: 'string' },
+                      itens: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ['descricao', 'itens'],
+                    additionalProperties: false
+                  },
+                  regrasJornada: {
+                    type: 'object',
+                    properties: {
+                      descricao: { type: 'string' },
+                      itens: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ['descricao', 'itens'],
+                    additionalProperties: false
+                  },
+                  regrasSalario: {
+                    type: 'object',
+                    properties: {
+                      descricao: { type: 'string' },
+                      pisoSalarial: { type: 'string' },
+                      reajuste: { type: 'string' },
+                      itens: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ['descricao', 'pisoSalarial', 'reajuste', 'itens'],
+                    additionalProperties: false
+                  },
+                  regrasBeneficios: {
+                    type: 'object',
+                    properties: {
+                      descricao: { type: 'string' },
+                      itens: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ['descricao', 'itens'],
+                    additionalProperties: false
+                  },
+                  regrasRescisao: {
+                    type: 'object',
+                    properties: {
+                      descricao: { type: 'string' },
+                      itens: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ['descricao', 'itens'],
+                    additionalProperties: false
+                  }
+                },
+                required: ['resumo', 'clausulas', 'regrasFerias', 'regrasJornada', 'regrasSalario', 'regrasBeneficios', 'regrasRescisao'],
+                additionalProperties: false
+              }
+            }
+          }
+        });
+
+        const content = response.choices?.[0]?.message?.content as string | undefined;
+        if (!content) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Falha na análise do PDF' });
+
+        let parsed;
+        try {
+          parsed = JSON.parse(content);
+        } catch {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Resposta da IA não é JSON válido' });
+        }
+
+        await db.updateCCT(input.cctId, {
+          resumoLlm: parsed.resumo,
+          clausulasJson: JSON.stringify(parsed.clausulas),
+          regrasFeriasJson: JSON.stringify(parsed.regrasFerias),
+          regrasJornadaJson: JSON.stringify(parsed.regrasJornada),
+          regrasSalarioJson: JSON.stringify(parsed.regrasSalario),
+          regrasBeneficiosJson: JSON.stringify(parsed.regrasBeneficios),
+          regrasRescisaoJson: JSON.stringify(parsed.regrasRescisao),
+        });
+
+        return { success: true, resumo: parsed.resumo, totalClausulas: parsed.clausulas?.length || 0 };
       }),
   }),
 });

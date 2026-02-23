@@ -1,0 +1,42 @@
+{
+  "query": "SHOW COLUMNS FROM colaboradores WHERE Field LIKE '%formac%' OR Field LIKE '%habilid%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM colaboradores WHERE Field LIKE '%formac%' OR Field LIKE '%habilid%';",
+  "rows": [
+    {
+      "Field": "formacaoAcademica",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "formacoesSuperior",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "formacoesTecnicas",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "habilidadesExtras",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nformacaoAcademica\ttext\tYES\t\tNULL\t\nformacoesSuperior\ttext\tYES\t\tNULL\t\nformacoesTecnicas\ttext\tYES\t\tNULL\t\nhabilidadesExtras\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 74
+}

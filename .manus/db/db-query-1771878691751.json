@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'colaboradores' AND COLUMN_NAME LIKE '%formac%' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'colaboradores' AND COLUMN_NAME LIKE '%formac%' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "formacaoAcademica"
+    },
+    {
+      "COLUMN_NAME": "formacoesSuperior"
+    },
+    {
+      "COLUMN_NAME": "formacoesTecnicas"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nformacaoAcademica\nformacoesSuperior\nformacoesTecnicas\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

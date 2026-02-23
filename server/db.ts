@@ -65,6 +65,7 @@ import {
   emailsCorporativos, InsertEmailCorporativo,
   senhaHistorico, InsertSenhaHistorico,
   termosResponsabilidade,
+  convencaoColetiva,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4135,4 +4136,45 @@ export async function getRelatorioAtivosColaborador(colaboradorId?: number) {
   ]);
   
   return { equipamentos, emails, senhas, termos };
+}
+
+
+// ===== CONVENÇÃO COLETIVA DE TRABALHO (CCT) =====
+export async function listCCTs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(convencaoColetiva).orderBy(desc(convencaoColetiva.createdAt));
+}
+
+export async function getCCTById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(convencaoColetiva).where(eq(convencaoColetiva.id, id));
+  return rows[0] || null;
+}
+
+export async function getCCTVigente() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(convencaoColetiva).where(eq(convencaoColetiva.status, 'vigente')).orderBy(desc(convencaoColetiva.createdAt)).limit(1);
+  return rows[0] || null;
+}
+
+export async function createCCT(data: any) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(convencaoColetiva).values(data);
+  return result.insertId;
+}
+
+export async function updateCCT(id: number, data: any) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(convencaoColetiva).set(data).where(eq(convencaoColetiva.id, id));
+}
+
+export async function deleteCCT(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(convencaoColetiva).where(eq(convencaoColetiva.id, id));
 }

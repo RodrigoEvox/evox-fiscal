@@ -1605,3 +1605,16 @@
 - [x] Formação acadêmica: possibilidade de inserir formações de nível técnico (uma ou mais)
 - [x] Formação acadêmica: possibilidade de inserir demais experiências/habilidades sem certificação
 - [x] Bug: mensagem "preencha a data de admissão" sobrepondo campo de início em período de experiência
+
+## v58 — Formação Acadêmica Layout + Módulo CCT + Validação + Importação
+- [x] Formação Acadêmica: empilhar campos e aumentar largura para melhor preenchimento
+- [x] Formação Acadêmica: corrigir campo "Ano" que não aceita digitação
+- [x] Módulo CCT: schema e tabela no banco para CCTs
+- [x] Módulo CCT: backend com upload PDF, leitura LLM, CRUD e histórico
+- [x] Módulo CCT: frontend com página completa em Gestão RH
+- [x] Módulo CCT: alerta de vencimento da CCT
+- [x] Validação de campos obrigatórios: indicadores visuais (asterisco) nos campos obrigatórios
+- [x] Validação de campos obrigatórios: validação antes de salvar colaborador
+- [x] Importação em lote: upload de planilha Excel/CSV
+- [x] Importação em lote: mapeamento de colunas e preview antes de importar
+- [x] Importação em lote: processamento e inserção dos dados

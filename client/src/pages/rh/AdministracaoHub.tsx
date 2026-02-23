@@ -9,6 +9,7 @@ const ITEMS = [
   { key: 'projecao-financeira', label: 'Projeção Financeira', rota: '/rh/projecao-financeira' },
   { key: 'relatorios-rh', label: 'Visão Analítica', rota: '/rh/relatorios' },
   { key: 'bi-indicadores', label: 'BI — Indicadores de RH', rota: '/rh/bi' },
+  { key: 'cct', label: 'Convenção Coletiva (CCT)', rota: '/rh/cct' },
 ];
 
 export default function AdministracaoHub() {
