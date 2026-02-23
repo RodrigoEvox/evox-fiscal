@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +13,7 @@ import {
 } from "recharts";
 import {
   Users, TrendingUp, TrendingDown, DollarSign, Calendar, AlertTriangle,
-  Target, Activity, BarChart3, PieChart as PieChartIcon, Download, FileSpreadsheet, FileText,
-} from "lucide-react";
+  Target, Activity, BarChart3, PieChart as PieChartIcon, Download, FileSpreadsheet, FileText, ArrowLeft} from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
@@ -278,11 +278,22 @@ export default function BiRH() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="w-7 h-7 text-primary" />
             BI — Indicadores de RH
           </h1>
-          <p className="text-muted-foreground mt-1">Painel consolidado com cruzamento de dados de turnover, absenteísmo, custo salarial e metas</p>
+
+              <p className="text-muted-foreground mt-1">Painel consolidado com cruzamento de dados de turnover, absenteísmo, custo salarial e metas</p>
+
+            </div>
+
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Select value={periodo} onValueChange={setPeriodo}>

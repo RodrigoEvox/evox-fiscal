@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  Mail, Send, Settings, Cake, Users, CheckCircle2, Eye,
-} from "lucide-react";
+  Mail, Send, Settings, Cake, Users, CheckCircle2, Eye, ArrowLeft} from 'lucide-react';
 
 export default function EmailAniversariante() {
   const [tab, setTab] = useState("config");
@@ -65,13 +65,24 @@ export default function EmailAniversariante() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold flex items-center gap-2">
             <Mail className="w-7 h-7 text-primary" />
             E-mail de Aniversariantes
           </h1>
-          <p className="text-muted-foreground mt-1">
+
+              <p className="text-muted-foreground mt-1">
             Configure e envie mensagens de parabéns automáticas para os colaboradores
           </p>
+
+            </div>
+
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">

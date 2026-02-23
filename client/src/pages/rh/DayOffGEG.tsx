@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Cake, Loader2, CheckCircle2, XCircle, Clock, Edit, ChevronLeft, ChevronRight, Calendar, User, CalendarDays, CalendarRange, Eye } from 'lucide-react';
+import { Plus, Cake, Loader2, CheckCircle2, XCircle, Clock, Edit, ChevronLeft, ChevronRight, Calendar, User, CalendarDays, CalendarRange, Eye, ArrowLeft} from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = { pendente: 'Pendente', aprovado: 'Aprovado', recusado: 'Recusado', utilizado: 'Utilizado' };
 const STATUS_COLORS: Record<string, string> = { pendente: 'bg-yellow-100 text-yellow-700', aprovado: 'bg-green-100 text-green-700', recusado: 'bg-red-100 text-red-700', utilizado: 'bg-blue-100 text-blue-700' };
@@ -545,10 +546,21 @@ export default function DayOffGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Cake className="w-6 h-6 text-pink-600" /> Day Off — Aniversário
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Folga de aniversário com aprovação e possibilidade de alteração</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Folga de aniversário com aprovação e possibilidade de alteração</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, dataAniversario: '', dataOriginal: '', dataEfetiva: '', alterado: false, motivoAlteracao: '', observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Novo Day Off

@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Plus, Heart, Droplets, Leaf, BarChart3, Trophy, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Heart, Droplets, Leaf, BarChart3, Trophy, Search, Edit2, Trash2, ArrowLeft, XCircle} from 'lucide-react';
 
 const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> = {
   fit: { label: 'Ação Fit', icon: Heart, color: 'bg-green-100 text-green-800' },
@@ -78,12 +79,28 @@ export default function AcoesBeneficios() {
   const totalAtivas = list.filter(a => a.status === 'ativa').length;
   const totalParticipantes = list.reduce((sum, a) => sum + (a.participantesAtuais || 0), 0);
 
-  return (
+  
+  const clearAllFilters = () => {
+    setSearch("");
+    setFilterTipo("");
+  };
+return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Ações e Benefícios</h1>
-          <p className="text-muted-foreground">Gestão de ações fit, solidárias, engajamento e doação de sangue — Gente & Gestão</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Ações e Benefícios</h1>
+
+              <p className="text-muted-foreground">Gestão de ações fit, solidárias, engajamento e doação de sangue — Gente & Gestão</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Nova Ação</Button>
       </div>

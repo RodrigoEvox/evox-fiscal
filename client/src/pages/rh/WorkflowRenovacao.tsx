@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   FileCheck, AlertTriangle, Clock, CheckCircle2, XCircle, RefreshCw,
-  UserCheck, UserMinus, Briefcase, Play, Filter,
-} from "lucide-react";
+  UserCheck, UserMinus, Briefcase, Play, Filter, ArrowLeft} from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
   pendente: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
@@ -74,18 +74,31 @@ export default function WorkflowRenovacao() {
   const pendentes = (workflows as any[] || []).filter((w: any) => w.status === "pendente").length;
   const resolvidos = (workflows as any[] || []).filter((w: any) => w.status === "resolvido").length;
 
-  return (
+  
+  const clearAllFilters = () => { setFiltroStatus("todos"); };
+return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileCheck className="w-7 h-7 text-primary" />
             Workflow de Renovação de Contratos
           </h1>
-          <p className="text-muted-foreground mt-1">
+
+              <p className="text-muted-foreground mt-1">
             Gerencie decisões sobre contratos de experiência próximos do vencimento
           </p>
+
+            </div>
+
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -185,6 +198,7 @@ export default function WorkflowRenovacao() {
             <SelectItem value="cancelado">Cancelados</SelectItem>
           </SelectContent>
         </Select>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground"><XCircle className="w-4 h-4 mr-1" />Limpar Filtros</Button>
       </div>
 
       {/* Workflow List */}

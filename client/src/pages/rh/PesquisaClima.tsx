@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,7 @@ import {
   Plus, BarChart3, ClipboardCheck, FileText, Trash2, Send,
   Eye, CheckCircle2, Clock, XCircle, AlertCircle, Loader2,
   Star, MessageSquare, ToggleLeft, ThumbsUp, ThumbsDown,
-  Download
-} from 'lucide-react';
+  Download, ArrowLeft} from 'lucide-react';
 import { generatePesquisaClimaPdf } from '@/lib/pesquisaClimaPdf';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -196,13 +196,24 @@ export default function PesquisaClima() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ClipboardCheck className="w-7 h-7 text-primary" />
             Pesquisa de Clima Organizacional
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+
+              <p className="text-muted-foreground text-sm mt-1">
             Crie pesquisas anônimas, colete feedback e analise o clima da organização
           </p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-2" /> Nova Pesquisa

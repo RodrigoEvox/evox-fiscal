@@ -1,10 +1,11 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DollarSign, TrendingUp, Users, CalendarDays, AlertTriangle, ArrowUpRight, ArrowDownRight, Briefcase, Wallet, Receipt, PiggyBank, X, Eye } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, CalendarDays, AlertTriangle, ArrowUpRight, ArrowDownRight, Briefcase, Wallet, Receipt, PiggyBank, X, Eye, ArrowLeft} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -630,10 +631,21 @@ export default function ProjecaoFinanceiraGEG() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="w-7 h-7 text-blue-600" /> Projeção Financeira da Folha
           </h1>
-          <p className="text-muted-foreground">Projeção mensal e anual de custos com pessoal</p>
+
+              <p className="text-muted-foreground">Projeção mensal e anual de custos com pessoal</p>
+
+            </div>
+
+          </div>
         </div>
         <Select value={String(anoSelecionado)} onValueChange={v => setAnoSelecionado(Number(v))}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>

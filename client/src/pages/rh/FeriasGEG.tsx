@@ -14,9 +14,8 @@ import { toast } from 'sonner';
 import {
   Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search,
   CalendarDays, User, Briefcase, Info, Edit2, Trash2, ShieldCheck, ShieldAlert,
-  Calculator, ChevronLeft, ChevronRight, Eye, X, History, Building2
-} from 'lucide-react';
-import { useLocation } from 'wouter';
+  Calculator, ChevronLeft, ChevronRight, Eye, X, History, Building2, ArrowLeft} from 'lucide-react';
+import { useLocation , Link} from 'wouter';
 
 // ─── Helpers ───────────────────────────────────────────────────────
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -353,13 +352,28 @@ export default function FeriasGEG() {
   // Available years: current year + next year (auto-increment)
   const availableYears = [anoAtual, anoAtual + 1];
 
-  return (
+  
+  const clearAllFilters = () => {
+    setSearch("");
+  };
+return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Férias & Folgas — Gente & Gestão</h1>
-          <p className="text-muted-foreground">Gestão de férias e folgas com calendário, alertas CLT e controle de saldo</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Férias & Folgas — Gente & Gestão</h1>
+
+              <p className="text-muted-foreground">Gestão de férias e folgas com calendário, alertas CLT e controle de saldo</p>
+
+            </div>
+
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/rh/simulador-ferias')}><Calculator className="w-4 h-4 mr-2" /> Simulador</Button>

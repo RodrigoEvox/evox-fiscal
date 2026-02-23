@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +8,7 @@ import {
   Users, TrendingDown, Clock, DollarSign, Building2, BarChart3,
   AlertTriangle, UserMinus, UserPlus, Activity, Calendar, FileDown,
   Loader2, UserCheck, UserX, ShieldAlert, HeartPulse, Palmtree,
-  Briefcase, FileWarning
-} from 'lucide-react';
+  Briefcase, FileWarning, ArrowLeft} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -233,8 +233,19 @@ export default function RelatoriosRH() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Relatórios RH</h1>
-          <p className="text-muted-foreground">Dashboard consolidado — Gente & Gestão</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Relatórios RH</h1>
+
+              <p className="text-muted-foreground">Dashboard consolidado — Gente & Gestão</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={handleExportPDF} disabled={exporting} variant="outline" className="gap-2">
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}

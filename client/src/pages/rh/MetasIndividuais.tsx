@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -13,8 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Plus, Target, TrendingUp, BarChart3, Trash2, Edit2,
-  CheckCircle2, Clock, XCircle, AlertCircle, Filter, User
-} from 'lucide-react';
+  CheckCircle2, Clock, XCircle, AlertCircle, Filter, User, ArrowLeft} from 'lucide-react';
 
 function formatDateBR(d: string) {
   if (!d) return '';
@@ -222,10 +222,21 @@ export default function MetasIndividuais() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold flex items-center gap-2">
             <Target className="w-6 h-6 text-blue-500" /> Metas Individuais (KPIs)
           </h1>
-          <p className="text-muted-foreground">Gerencie metas mensuráveis vinculadas às avaliações 360°</p>
+
+              <p className="text-muted-foreground">Gerencie metas mensuráveis vinculadas às avaliações 360°</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Nova Meta

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `emails_corporativos` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `colaboradorId` int NOT NULL,\n  `colaboradorNome` varchar(500) NOT NULL,\n  `email` varchar(320) NOT NULL,\n  `tipoEmail` enum('principal','alias','compartilhado','grupo') NOT NULL DEFAULT 'principal',\n  `statusEmail` enum('ativo','desativado','suspenso') NOT NULL DEFAULT 'ativo',\n  `dataCriacao` varchar(10),\n  `dataDesativacao` varchar(10),\n  `observacoes` text,\n  `registradoPorId` int,\n  `registradoPorNome` varchar(255),\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `emails_corporativos_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute CREATE TABLE IF NOT EXISTS `emails_corporativos` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `colaboradorId` int NOT NULL,\n  `colaboradorNome` varchar(500) NOT NULL,\n  `email` varchar(320) NOT NULL,\n  `tipoEmail` enum('principal','alias','compartilhado','grupo') NOT NULL DEFAULT 'principal',\n  `statusEmail` enum('ativo','desativado','suspenso') NOT NULL DEFAULT 'ativo',\n  `dataCriacao` varchar(10),\n  `dataDesativacao` varchar(10),\n  `observacoes` text,\n  `registradoPorId` int,\n  `registradoPorNome` varchar(255),\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `emails_corporativos_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 130
+}

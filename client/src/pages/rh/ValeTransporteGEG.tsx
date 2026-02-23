@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Bus, Trash2, Calculator, Loader2, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Bus, Trash2, Calculator, Loader2, DollarSign, Calendar, ArrowLeft, XCircle} from 'lucide-react';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -36,6 +37,8 @@ export default function ValeTransporteGEG() {
   const deleteMut = trpc.valeTransporte.delete.useMutation({
     onSuccess: () => { utils.valeTransporte.list.invalidate(); toast.success('VT removido'); },
   });
+
+  const clearAllFilters = () => { setMesRef(new Date().getMonth() + 1); setAnoRef(new Date().getFullYear()); };
 
   const valorTotal = useMemo(() => {
     return (form.diasUteis * form.passagensPorDia * Number(form.valorPassagem)).toFixed(2);
@@ -67,10 +70,21 @@ export default function ValeTransporteGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Bus className="w-6 h-6 text-blue-600" /> Vale Transporte
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Gestão de vale transporte por colaborador — cálculo automático</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Gestão de vale transporte por colaborador — cálculo automático</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, colaboradorNome: '', diasUteis: 22, passagensPorDia: 2, valorPassagem: '4.40', cidadePassagem: 'sp', observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Novo VT
@@ -89,6 +103,7 @@ export default function ValeTransporteGEG() {
         <div>
           <Label className="text-xs">Ano</Label>
           <Input type="number" value={anoRef} onChange={e => setAnoRef(Number(e.target.value))} className="w-[100px]" />
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground"><XCircle className="w-4 h-4 mr-1" />Limpar Filtros</Button>
         </div>
       </div>
 

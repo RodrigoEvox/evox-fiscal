@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -13,8 +14,7 @@ import { toast } from 'sonner';
 import {
   Plus, Clock, TrendingUp, TrendingDown, CheckCircle2, XCircle,
   Trash2, Filter, User, Loader2, ArrowUpCircle, ArrowDownCircle,
-  BarChart3, AlertCircle, Settings
-} from 'lucide-react';
+  BarChart3, AlertCircle, Settings, ArrowLeft} from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend
@@ -138,6 +138,8 @@ export default function BancoHoras() {
     return { totalExtras, totalCompensacoes, saldoGeral, comSaldoPositivo, comSaldoNegativo, totalColaboradores: list.length };
   }, [saldos]);
 
+  const clearAllFilters = () => { setFiltroColaborador("todos"); };
+
   // Chart data
   const chartData = useMemo(() => {
     if (!saldos || !saldos.length) return [];
@@ -156,13 +158,24 @@ export default function BancoHoras() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Clock className="w-7 h-7 text-primary" />
             Banco de Horas
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+
+              <p className="text-muted-foreground text-sm mt-1">
             Controle de horas extras e compensações dos colaboradores
           </p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-2" /> Novo Registro
@@ -241,6 +254,7 @@ export default function BancoHoras() {
                 ))}
               </SelectContent>
             </Select>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground"><XCircle className="w-4 h-4 mr-1" />Limpar Filtros</Button>
           </div>
 
           {isLoading ? (

@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import {
   Briefcase, Loader2, Calculator, DollarSign, Calendar, Users,
-  FileText, Trash2, Eye, AlertTriangle,
-} from 'lucide-react';
+  FileText, Trash2, Eye, AlertTriangle, ArrowLeft} from 'lucide-react';
 
 const TIPO_DESLIGAMENTO_LABELS: Record<string, string> = {
   sem_justa_causa: 'Sem Justa Causa',
@@ -104,12 +104,23 @@ export default function RescisaoPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Briefcase className="w-6 h-6 text-indigo-600" /> Rescisão
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+
+              <p className="text-sm text-muted-foreground mt-1">
             Cálculo automático de verbas rescisórias por tipo de desligamento
           </p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => setShowCalcDialog(true)}>
           <Calculator className="w-4 h-4 mr-2" />

@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -12,8 +13,7 @@ import { toast } from 'sonner';
 import {
   Search, Plus, Mail, Monitor, Smartphone, Bell, Server, Wifi, Lock,
   Key, Car, ParkingCircle, CreditCard, Fingerprint, Package,
-  Edit2, Trash2, Shield, ShieldCheck, ShieldX, ShieldAlert, Filter
-} from 'lucide-react';
+  Edit2, Trash2, Shield, ShieldCheck, ShieldX, ShieldAlert, Filter, ArrowLeft, XCircle} from 'lucide-react';
 
 const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> = {
   email: { label: 'E-mail', icon: Mail, color: 'bg-blue-100 text-blue-700' },
@@ -86,7 +86,13 @@ export default function SenhasAutorizacoesGEG() {
 
   const colabOptions = useMemo(() => {
     if (!colabQ.data) return [];
-    return (colabQ.data as any[])
+    
+  const clearAllFilters = () => {
+    setSearch("");
+    setFilterTipo("");
+    setFilterStatus("");
+  };
+return (colabQ.data as any[])
       .filter((c: any) => c.ativo !== false)
       .sort((a: any, b: any) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || ''))
       .map((c: any) => ({ id: c.id, nome: c.nomeCompleto }));
@@ -152,8 +158,19 @@ export default function SenhasAutorizacoesGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Senhas & Autorizações</h1>
-          <p className="text-muted-foreground text-sm">Gestão de senhas, chaves, acessos e autorizações dos colaboradores</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Senhas & Autorizações</h1>
+
+              <p className="text-muted-foreground text-sm">Gestão de senhas, chaves, acessos e autorizações dos colaboradores</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Novo Registro

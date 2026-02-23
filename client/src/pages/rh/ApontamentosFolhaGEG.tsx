@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { FileSpreadsheet, Loader2, DollarSign, Users, RefreshCw, Download, FileDown, FileText } from 'lucide-react';
+import { FileSpreadsheet, Loader2, DollarSign, Users, RefreshCw, Download, FileDown, FileText, ArrowLeft, XCircle} from 'lucide-react';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const TIPO_LABELS: Record<string, string> = {
@@ -64,14 +65,27 @@ export default function ApontamentosFolhaGEG() {
 
   const totalGeral = useMemo(() => (apontamentos || []).reduce((s, a) => s + Number(a.valor), 0), [apontamentos]);
 
-  return (
+  
+  const clearAllFilters = () => { setMesRef(new Date().getMonth() + 1); setAnoRef(new Date().getFullYear()); };
+return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6 text-indigo-600" /> Apontamentos da Folha
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Relatório consolidado de apontamentos para contabilidade</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Relatório consolidado de apontamentos para contabilidade</p>
+
+            </div>
+
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => gerarMut.mutate({ mesReferencia: mesRef, anoReferencia: anoRef })} disabled={gerarMut.isPending}>
@@ -122,6 +136,7 @@ export default function ApontamentosFolhaGEG() {
         <div>
           <Label className="text-xs">Ano</Label>
           <Input type="number" value={anoRef} onChange={e => setAnoRef(Number(e.target.value))} className="w-[100px]" />
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground"><XCircle className="w-4 h-4 mr-1" />Limpar Filtros</Button>
         </div>
       </div>
 

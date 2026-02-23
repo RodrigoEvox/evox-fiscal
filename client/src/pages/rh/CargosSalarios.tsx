@@ -1,9 +1,11 @@
+import { Button } from '@/components/ui/button';
+import { Link } from 'wouter';
 import { useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Users, DollarSign, Building2, TrendingUp } from 'lucide-react';
+import { BarChart3, Users, DollarSign, Building2, TrendingUp, ArrowLeft} from 'lucide-react';
 
 const NIVEL_LABELS: Record<string, string> = {
   estagiario: 'Estagiário', auxiliar: 'Auxiliar', assistente: 'Assistente',
@@ -81,8 +83,19 @@ export default function CargosSalarios() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Cargos e Salários</h1>
-        <p className="text-muted-foreground">Visão analítica da estrutura de colaboradores e custos salariais — Gente & Gestão</p>
+        <div className="flex items-center gap-3 mb-6">
+
+          <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+          <div>
+
+            <h1 className="text-2xl font-bold">Cargos e Salários</h1>
+
+            <p className="text-muted-foreground">Visão analítica da estrutura de colaboradores e custos salariais — Gente & Gestão</p>
+
+          </div>
+
+        </div>
       </div>
 
       {/* KPIs */}

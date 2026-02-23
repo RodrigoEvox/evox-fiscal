@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -14,8 +15,7 @@ import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import {
   Plus, Target, Star, Users, User, ClipboardCheck, Trash2,
-  ChevronRight, BarChart3, Award, TrendingUp, Calendar, Edit2
-} from 'lucide-react';
+  ChevronRight, BarChart3, Award, TrendingUp, Calendar, Edit2, ArrowLeft} from 'lucide-react';
 
 function formatDateBR(d: string) {
   if (!d) return '';
@@ -200,8 +200,19 @@ export default function AvaliacaoDesempenho() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Avaliação de Desempenho 360°</h1>
-          <p className="text-muted-foreground">Ciclos de avaliação por múltiplas perspectivas vinculados aos planos de carreira</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Avaliação de Desempenho 360°</h1>
+
+              <p className="text-muted-foreground">Ciclos de avaliação por múltiplas perspectivas vinculados aos planos de carreira</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetCicloForm(); setShowCicloForm(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Novo Ciclo

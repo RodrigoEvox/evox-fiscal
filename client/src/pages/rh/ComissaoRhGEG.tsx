@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Coins, Trash2, Loader2, DollarSign, TrendingUp } from 'lucide-react';
+import { Plus, Coins, Trash2, Loader2, DollarSign, TrendingUp, ArrowLeft, XCircle} from 'lucide-react';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const TIPO_LABELS: Record<string, string> = { evox_monitor: 'Evox Monitor', dpt: 'DPT', credito: 'Crédito', outro: 'Outro' };
@@ -42,6 +43,8 @@ export default function ComissaoRhGEG() {
 
   const totalComissoes = useMemo(() => (comissoes || []).reduce((s, c) => s + Number(c.valorComissao), 0), [comissoes]);
 
+  const clearAllFilters = () => { setMesRef(new Date().getMonth() + 1); setAnoRef(new Date().getFullYear()); };
+
   // Auto-calculate commission value
   const calcComissao = useMemo(() => {
     if (form.valorBase && form.percentual) {
@@ -71,10 +74,21 @@ export default function ComissaoRhGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Coins className="w-6 h-6 text-amber-600" /> Comissões e Prêmios
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Comissões e prêmios por tipo — Evox Monitor, DPT, Crédito</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Comissões e prêmios por tipo — Evox Monitor, DPT, Crédito</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, tipo: 'evox_monitor', descricao: '', valorBase: '', percentual: '', valorComissao: '', observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Nova Comissão
@@ -93,6 +107,7 @@ export default function ComissaoRhGEG() {
         <div>
           <Label className="text-xs">Ano</Label>
           <Input type="number" value={anoRef} onChange={e => setAnoRef(Number(e.target.value))} className="w-[100px]" />
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground"><XCircle className="w-4 h-4 mr-1" />Limpar Filtros</Button>
         </div>
       </div>
 

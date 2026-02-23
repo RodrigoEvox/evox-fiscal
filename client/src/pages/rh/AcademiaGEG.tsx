@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Dumbbell, Trash2, Loader2, DollarSign, Users, CheckCircle2 } from 'lucide-react';
+import { Plus, Dumbbell, Trash2, Loader2, DollarSign, Users, CheckCircle2, ArrowLeft} from 'lucide-react';
 
 function formatCurrency(v: string | number) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -70,10 +71,21 @@ export default function AcademiaGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Dumbbell className="w-6 h-6 text-orange-600" /> Benefício Academia
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Gestão de benefício academia por colaborador</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Gestão de benefício academia por colaborador</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, nomeAcademia: '', plano: '', valorPlano: '', descontoFolha: false, valorDesconto: '', dataEntrada: '', fidelidade: false, fidelidadeMeses: 0, observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Novo Registro

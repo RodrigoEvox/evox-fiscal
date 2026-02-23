@@ -62,6 +62,7 @@ import {
   rescisoes, InsertRescisao,
   equipamentosColaborador, InsertEquipamentoColaborador,
   senhasAutorizacoes, InsertSenhaAutorizacao,
+  emailsCorporativos, InsertEmailCorporativo,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4016,4 +4017,40 @@ export async function deleteSenhaAutorizacao(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(senhasAutorizacoes).where(eq(senhasAutorizacoes.id, id));
+}
+
+// ---- EMAILS CORPORATIVOS ----
+export async function listEmailsCorporativos(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(emailsCorporativos).where(eq(emailsCorporativos.colaboradorId, colaboradorId)).orderBy(desc(emailsCorporativos.createdAt));
+  }
+  return db.select().from(emailsCorporativos).orderBy(desc(emailsCorporativos.createdAt));
+}
+
+export async function createEmailCorporativo(data: InsertEmailCorporativo) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(emailsCorporativos).values(data);
+  return result[0].insertId;
+}
+
+export async function updateEmailCorporativo(id: number, data: Partial<InsertEmailCorporativo>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(emailsCorporativos).set(data).where(eq(emailsCorporativos.id, id));
+}
+
+export async function deleteEmailCorporativo(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(emailsCorporativos).where(eq(emailsCorporativos.id, id));
+}
+
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const results = await db.select().from(emailsCorporativos).where(eq(emailsCorporativos.email, email));
+  return results.length > 0;
 }

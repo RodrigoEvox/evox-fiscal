@@ -3901,6 +3901,78 @@ export const appRouter = router({
       }),
   }),
 
+  // ---- EMAILS CORPORATIVOS ----
+  emailsCorporativos: router({
+    list: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listEmailsCorporativos(input?.colaboradorId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        colaboradorId: z.number(),
+        colaboradorNome: z.string(),
+        email: z.string().email(),
+        tipoEmail: z.enum(['principal','alias','compartilhado','grupo']).default('principal'),
+        statusEmail: z.enum(['ativo','desativado','suspenso']).default('ativo'),
+        dataCriacao: z.string().optional(),
+        dataDesativacao: z.string().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Check if email already exists
+        const exists = await db.checkEmailExists(input.email);
+        if (exists) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'Este e-mail já está cadastrado no sistema' });
+        }
+        const id = await db.createEmailCorporativo({
+          ...input,
+          registradoPorId: ctx.user?.id,
+          registradoPorNome: ctx.user?.name || 'Sistema',
+        } as any);
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          email: z.string().email().optional(),
+          tipoEmail: z.enum(['principal','alias','compartilhado','grupo']).optional(),
+          statusEmail: z.enum(['ativo','desativado','suspenso']).optional(),
+          dataCriacao: z.string().optional(),
+          dataDesativacao: z.string().optional(),
+          observacoes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        if (input.data.email) {
+          const exists = await db.checkEmailExists(input.data.email);
+          if (exists) {
+            // Check if it's the same record
+            const all = await db.listEmailsCorporativos();
+            const existing = (all as any[]).find((e: any) => e.email === input.data.email);
+            if (existing && existing.id !== input.id) {
+              throw new TRPCError({ code: 'CONFLICT', message: 'Este e-mail já está cadastrado no sistema' });
+            }
+          }
+        }
+        await db.updateEmailCorporativo(input.id, input.data as any);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteEmailCorporativo(input.id);
+        return { success: true };
+      }),
+    checkExists: protectedProcedure
+      .input(z.object({ email: z.string() }))
+      .query(async ({ input }) => {
+        const exists = await db.checkEmailExists(input.email);
+        return { exists };
+      }),
+  }),
+
   dashboardGEG: router({
     get: protectedProcedure
       .input(z.object({

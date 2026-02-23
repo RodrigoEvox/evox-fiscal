@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Layers, Trash2, Loader2, GraduationCap, DollarSign, ArrowUpCircle } from 'lucide-react';
+import { Plus, Layers, Trash2, Loader2, GraduationCap, DollarSign, ArrowUpCircle, ArrowLeft} from 'lucide-react';
 
 const GRAU_LABELS: Record<string, string> = {
   fundamental_incompleto: 'Fund. Incompleto', fundamental_completo: 'Fund. Completo',
@@ -74,10 +75,21 @@ export default function NiveisCargoGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Layers className="w-6 h-6 text-teal-600" /> Níveis de Cargo
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Definição de níveis por cargo/setor com requisitos de formação</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Definição de níveis por cargo/setor com requisitos de formação</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ cargoId: 0, setorId: 0, nivel: 1, titulo: '', descricao: '', salarioMinimo: '', salarioMaximo: '', grauInstrucaoMinimo: 'medio_completo', requisitosFormacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Novo Nível

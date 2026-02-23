@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -11,8 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Upload, FileText, Image, Trash2, Download, User, Search,
-  Camera, CreditCard, FileCheck, Stethoscope, File, FolderOpen
-} from 'lucide-react';
+  Camera, CreditCard, FileCheck, Stethoscope, File, FolderOpen, ArrowLeft, XCircle} from 'lucide-react';
 
 const TIPO_LABELS: Record<string, string> = {
   foto: 'Foto',
@@ -135,12 +135,27 @@ export default function DocumentosColaborador() {
 
   const isImage = (mimeType: string) => mimeType?.startsWith('image/');
 
-  return (
+  
+  const clearAllFilters = () => {
+    setSearch("");
+  };
+return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Documentos dos Colaboradores</h1>
-          <p className="text-muted-foreground">Upload e gestão de documentos digitalizados (Foto, RG, CTPS, ASO)</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Documentos dos Colaboradores</h1>
+
+              <p className="text-muted-foreground">Upload e gestão de documentos digitalizados (Foto, RG, CTPS, ASO)</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setUploadForm({ colaboradorId: selectedColabId || 0, tipo: 'foto', file: null }); setShowUpload(true); }}>
           <Upload className="w-4 h-4 mr-2" /> Enviar Documento

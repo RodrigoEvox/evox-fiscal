@@ -1563,3 +1563,23 @@ export const senhasAutorizacoes = mysqlTable("senhas_autorizacoes", {
 
 export type SenhaAutorizacao = typeof senhasAutorizacoes.$inferSelect;
 export type InsertSenhaAutorizacao = typeof senhasAutorizacoes.$inferInsert;
+
+// ---- EMAILS CORPORATIVOS ----
+export const emailsCorporativos = mysqlTable("emails_corporativos", {
+  id: int("id").autoincrement().primaryKey(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  tipo: mysqlEnum("tipoEmail", ["principal", "alias", "compartilhado", "grupo"]).default("principal").notNull(),
+  status: mysqlEnum("statusEmail", ["ativo", "desativado", "suspenso"]).default("ativo").notNull(),
+  dataCriacao: varchar("dataCriacao", { length: 10 }),
+  dataDesativacao: varchar("dataDesativacao", { length: 10 }),
+  observacoes: text("observacoes"),
+  registradoPorId: int("registradoPorId"),
+  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailCorporativo = typeof emailsCorporativos.$inferSelect;
+export type InsertEmailCorporativo = typeof emailsCorporativos.$inferInsert;

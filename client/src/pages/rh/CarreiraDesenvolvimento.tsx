@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Plus, GraduationCap, Target, Search, Edit2, TrendingUp, Star, BookOpen } from 'lucide-react';
+import { Plus, GraduationCap, Target, Search, Edit2, TrendingUp, Star, BookOpen, ArrowLeft, XCircle} from 'lucide-react';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   em_andamento: { label: 'Em Andamento', color: 'bg-blue-100 text-blue-800' },
@@ -91,12 +92,27 @@ export default function CarreiraDesenvolvimento() {
     plano_carreira: 'Plano de Carreira', meta: 'Meta',
   };
 
-  return (
+  
+  const clearAllFilters = () => {
+    setSearch("");
+  };
+return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Carreira & Desenvolvimento</h1>
-          <p className="text-muted-foreground">Planos de carreira, treinamentos e desenvolvimento — Gente & Gestão</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Carreira & Desenvolvimento</h1>
+
+              <p className="text-muted-foreground">Planos de carreira, treinamentos e desenvolvimento — Gente & Gestão</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Plano</Button>
       </div>

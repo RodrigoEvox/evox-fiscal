@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plus, Search, FileText, Calendar, AlertTriangle, User, Briefcase } from 'lucide-react';
+import { Plus, Search, FileText, Calendar, AlertTriangle, User, Briefcase, ArrowLeft, XCircle} from 'lucide-react';
 
 const TIPO_LABELS: Record<string, string> = {
   atestado_medico: 'Atestado Médico',
@@ -119,12 +120,27 @@ export default function AtestadosLicencas() {
     return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
   }, [list]);
 
-  return (
+  
+  const clearAllFilters = () => {
+    setSearch("");
+  };
+return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Atestados e Licenças</h1>
-          <p className="text-muted-foreground">Gestão de atestados e licenças dos colaboradores — Gente & Gestão</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Atestados e Licenças</h1>
+
+              <p className="text-muted-foreground">Gestão de atestados e licenças dos colaboradores — Gente & Gestão</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Registro</Button>
       </div>

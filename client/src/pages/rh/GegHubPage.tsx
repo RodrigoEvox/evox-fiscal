@@ -13,7 +13,7 @@ import {
   Users, UserPlus, DollarSign, Clock, FileText, Calendar, TrendingUp,
   Heart, Gift, Dumbbell, Bus, Cake, GraduationCap, Target, ClipboardCheck,
   BarChart3, Layers, FileBarChart, FolderOpen, Banknote, Briefcase, Award,
-  BookOpen, Star, Sparkles, Shield, Zap,
+  BookOpen, Star, Sparkles, Shield, Zap, Monitor, KeyRound, PieChart,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -55,6 +55,11 @@ const ICON_MAP: Record<string, any> = {
   'Briefcase': Briefcase,
   'Dumbbell': Dumbbell,
   'Bus': Bus,
+  'aniversariantes': Cake,
+  'contratos-vencendo': FileText,
+  'equipamentos': Monitor,
+  'senhas-autorizacoes': KeyRound,
+  'bi-indicadores': PieChart,
 };
 
 const AVAILABLE_ICONS = [
@@ -114,6 +119,10 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'relatorios-rh': { desc: 'Relatórios e indicadores analíticos' },
   'rescisao': { desc: 'Cálculo de verbas rescisórias por tipo de desligamento' },
   'projecao-financeira': { desc: 'Projeção mensal e anual de custos com pessoal' },
+  'aniversariantes': { desc: 'Calendário de aniversários e agendamento de Day Off' },
+  'contratos-vencendo': { desc: 'Workflow de renovação de contratos próximos ao vencimento' },
+  'equipamentos': { desc: 'Gestão de equipamentos, e-mails corporativos (@grupoevox.com.br) e senhas/acessos' },
+  'bi-indicadores': { desc: 'Business Intelligence com indicadores analíticos de RH' },
 };
 
 export interface HubItem {

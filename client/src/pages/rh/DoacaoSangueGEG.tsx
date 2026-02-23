@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Heart, Loader2, CheckCircle2, XCircle, Clock, FileText } from 'lucide-react';
+import { Plus, Heart, Loader2, CheckCircle2, XCircle, Clock, FileText, ArrowLeft} from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = { pendente: 'Pendente', aprovado: 'Aprovado', recusado: 'Recusado', utilizado: 'Utilizado' };
 const STATUS_COLORS: Record<string, string> = { pendente: 'bg-yellow-100 text-yellow-700', aprovado: 'bg-green-100 text-green-700', recusado: 'bg-red-100 text-red-700', utilizado: 'bg-blue-100 text-blue-700' };
@@ -60,10 +61,21 @@ export default function DoacaoSangueGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Heart className="w-6 h-6 text-red-600" /> Doação de Sangue
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Registro de doações com prazo de folga e fluxo de aprovação</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Registro de doações com prazo de folga e fluxo de aprovação</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, dataDoacao: '', prazoFolga: '1', dataFolga: '', comprovanteUrl: '', observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Nova Doação

@@ -1439,3 +1439,45 @@
 - [x] Adicionar ao hub Gestão RH
 - [x] 29 novos testes vitest (v49-equipamentos-senhas.test.ts)
 - [x] 488 testes passando no total
+
+## GEG v50 — UX Global, Painel Ativos, Devolução Equipamentos
+
+### Descrições no hub Gestão RH
+- [ ] Adicionar descrição em todos os campos do hub Gestão RH (Aniversariantes, Contratos Vencendo, Equipamentos, Senhas)
+
+### Navegação — Seta de Voltar
+- [ ] Garantir seta de voltar em todas as páginas GEG (Equipamentos, Senhas, etc.)
+
+### Alerta de saída ao editar
+- [ ] Criar hook useUnsavedChanges para alertar ao sair de formulários em edição
+- [ ] Aplicar em todas as páginas com formulários de edição/inserção
+
+### Limpar Filtros
+- [ ] Adicionar botão "Limpar Filtros" em todas as páginas com filtros
+
+### Painel do Colaborador — Equipamentos e Autorizações
+- [ ] Adicionar aba "Ativos & Acessos" no painel do colaborador com equipamentos, senhas e autorizações
+
+### Controle de Devolução de Equipamentos
+- [ ] Criar fluxo de devolução com termo de responsabilidade ao desligar colaborador
+- [ ] Gerar termo de responsabilidade para assinatura digital
+
+### Relatório Consolidado de Ativos
+- [ ] Criar página de relatório consolidado de ativos por colaborador (equipamentos + acessos + autorizações)
+- [ ] Exportar relatório em PDF para auditorias
+
+## GEG v51 — Reestruturar Equipamentos & Comunicações em 3 Abas
+
+### Separar em 3 abas isoladas
+- [x] Aba Equipamentos: gestão de notebooks, celulares, etc. com KPIs próprios
+- [x] Aba E-mails Corporativos: criação com domínio @grupoevox.com.br, sugestão automática de nomes e verificação de duplicidade
+- [x] Aba Senhas & Acessos: gestão de senhas, chaves, autorizações separada dos equipamentos
+- [x] KPIs independentes por aba
+- [x] Cada aba com dados isolados para gestão e auditoria
+
+## v52 — Correções Formulário Novo Colaborador + Equipamentos 3 abas
+- [x] Cargo Comissionado: trocar checkbox para radio Sim/Não exclusivo
+- [x] Dados Profissionais: corrigir layout campos que se sobrepõem com textos grandes
+- [x] Período de Experiência: opção 1 ou 2 períodos, dias editáveis (sugestão 90 ou 2x45), cálculo automático data fim a partir da admissão
+- [x] Período de Experiência: refletir no workflow de renovação de contratos
+- [x] Finalizar reestruturação Equipamentos com 3 abas separadas (Equipamentos, E-mails Corporativos, Senhas & Acessos)

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -838,6 +838,197 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
           </SectionCard>
         )}
       </div>
+    </div>
+  );
+}
+
+// ===== EXPERIÊNCIA SECTION =====
+function addDays(dateStr: string, days: number): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function ExperienciaSection({ form, setForm, markDirty }: { form: any; setForm: (fn: (f: any) => any) => void; markDirty: () => void }) {
+  // Derive mode from existing data
+  const [formatoExp, setFormatoExp] = useState<'unico' | 'dois'>(() => {
+    if (form.periodoExperiencia2Inicio || form.periodoExperiencia2Fim) return 'dois';
+    return 'unico';
+  });
+  const [diasPeriodo1, setDiasPeriodo1] = useState<number>(() => {
+    if (form.periodoExperiencia1Inicio && form.periodoExperiencia1Fim) {
+      const d1 = new Date(form.periodoExperiencia1Inicio + 'T12:00:00');
+      const d2 = new Date(form.periodoExperiencia1Fim + 'T12:00:00');
+      const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 90;
+    }
+    return 90;
+  });
+  const [diasPeriodo2, setDiasPeriodo2] = useState<number>(() => {
+    if (form.periodoExperiencia2Inicio && form.periodoExperiencia2Fim) {
+      const d1 = new Date(form.periodoExperiencia2Inicio + 'T12:00:00');
+      const d2 = new Date(form.periodoExperiencia2Fim + 'T12:00:00');
+      const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 45;
+    }
+    return 45;
+  });
+
+  // Recalculate dates when admissão, formato or dias change
+  const recalcular = useCallback((admissao: string, formato: 'unico' | 'dois', d1: number, d2: number) => {
+    if (!admissao) return;
+    const p1Inicio = admissao;
+    const p1Fim = addDays(admissao, d1);
+    if (formato === 'unico') {
+      setForm(f => ({
+        ...f,
+        periodoExperiencia1Inicio: p1Inicio,
+        periodoExperiencia1Fim: p1Fim,
+        periodoExperiencia2Inicio: '',
+        periodoExperiencia2Fim: '',
+      }));
+    } else {
+      const p2Inicio = addDays(p1Fim, 1);
+      const p2Fim = addDays(p1Fim, d2);
+      setForm(f => ({
+        ...f,
+        periodoExperiencia1Inicio: p1Inicio,
+        periodoExperiencia1Fim: p1Fim,
+        periodoExperiencia2Inicio: p2Inicio,
+        periodoExperiencia2Fim: p2Fim,
+      }));
+    }
+    markDirty();
+  }, [setForm, markDirty]);
+
+  // Auto-recalculate when admissão changes
+  useEffect(() => {
+    if (form.dataAdmissao) {
+      recalcular(form.dataAdmissao, formatoExp, diasPeriodo1, diasPeriodo2);
+    }
+  }, [form.dataAdmissao]);
+
+  const handleFormatoChange = (v: 'unico' | 'dois') => {
+    setFormatoExp(v);
+    if (v === 'unico') {
+      setDiasPeriodo1(90);
+      recalcular(form.dataAdmissao, 'unico', 90, 0);
+    } else {
+      setDiasPeriodo1(45);
+      setDiasPeriodo2(45);
+      recalcular(form.dataAdmissao, 'dois', 45, 45);
+    }
+  };
+
+  const handleDias1Change = (v: number) => {
+    const dias = Math.max(1, Math.min(365, v || 0));
+    setDiasPeriodo1(dias);
+    recalcular(form.dataAdmissao, formatoExp, dias, diasPeriodo2);
+  };
+
+  const handleDias2Change = (v: number) => {
+    const dias = Math.max(1, Math.min(365, v || 0));
+    setDiasPeriodo2(dias);
+    recalcular(form.dataAdmissao, formatoExp, diasPeriodo1, dias);
+  };
+
+  const formatDateBR = (d: string) => {
+    if (!d) return '—';
+    const [y, m, day] = d.split('-');
+    return `${day}/${m}/${y}`;
+  };
+
+  return (
+    <div className="mt-3 p-4 bg-muted/30 rounded-lg border border-border/50">
+      <div className="flex items-center justify-between mb-3">
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Período de Experiência</Label>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="formatoExp" checked={formatoExp === 'unico'} onChange={() => handleFormatoChange('unico')} className="h-3.5 w-3.5 accent-primary" />
+            <span className="text-xs font-medium">Período Único</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="formatoExp" checked={formatoExp === 'dois'} onChange={() => handleFormatoChange('dois')} className="h-3.5 w-3.5 accent-primary" />
+            <span className="text-xs font-medium">Dois Períodos</span>
+          </label>
+        </div>
+      </div>
+
+      {formatoExp === 'unico' ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Dias</Label>
+            <Input type="number" min={1} max={365} value={diasPeriodo1} onChange={e => handleDias1Change(parseInt(e.target.value) || 0)} className="w-full" />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Início</Label>
+            <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm">
+              {form.periodoExperiencia1Inicio ? formatDateBR(form.periodoExperiencia1Inicio) : <span className="text-muted-foreground">Preencha a data de admissão</span>}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Fim</Label>
+            <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm font-medium">
+              {form.periodoExperiencia1Fim ? formatDateBR(form.periodoExperiencia1Fim) : '—'}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Período 1 */}
+          <div>
+            <Label className="text-xs font-medium text-blue-600 mb-1.5 block">1° Período</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Dias</Label>
+                <Input type="number" min={1} max={365} value={diasPeriodo1} onChange={e => handleDias1Change(parseInt(e.target.value) || 0)} className="w-full" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Início</Label>
+                <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm">
+                  {form.periodoExperiencia1Inicio ? formatDateBR(form.periodoExperiencia1Inicio) : <span className="text-muted-foreground">Preencha a data de admissão</span>}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Fim</Label>
+                <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm font-medium">
+                  {form.periodoExperiencia1Fim ? formatDateBR(form.periodoExperiencia1Fim) : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Período 2 */}
+          <div>
+            <Label className="text-xs font-medium text-emerald-600 mb-1.5 block">2° Período</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Dias</Label>
+                <Input type="number" min={1} max={365} value={diasPeriodo2} onChange={e => handleDias2Change(parseInt(e.target.value) || 0)} className="w-full" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Início</Label>
+                <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm">
+                  {form.periodoExperiencia2Inicio ? formatDateBR(form.periodoExperiencia2Inicio) : '—'}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Fim</Label>
+                <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm font-medium">
+                  {form.periodoExperiencia2Fim ? formatDateBR(form.periodoExperiencia2Fim) : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {form.dataAdmissao && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Total: <span className="font-semibold">{formatoExp === 'unico' ? diasPeriodo1 : diasPeriodo1 + diasPeriodo2} dias</span> de experiência
+          {formatoExp === 'dois' && <span> ({diasPeriodo1} + {diasPeriodo2} dias)</span>}
+        </p>
+      )}
     </div>
   );
 }
@@ -1695,11 +1886,12 @@ export default function ColaboradoresGEG() {
 
             {/* ===== DADOS PROFISSIONAIS ===== */}
             <SectionTitle>Dados Profissionais</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+            {/* Row 1: Admissão, Tipo Contrato */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <Field label="Data de Admissão" required><Input type="date" value={form.dataAdmissao} onChange={e => { setForm(f => ({ ...f, dataAdmissao: e.target.value })); markDirty(); }} /></Field>
               <Field label="Tipo de Contrato">
                 <Select value={form.tipoContrato} onValueChange={v => { setForm(f => ({ ...f, tipoContrato: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full truncate"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="clt">CLT</SelectItem>
                     <SelectItem value="pj">PJ</SelectItem>
@@ -1707,25 +1899,27 @@ export default function ColaboradoresGEG() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Período Experiência 1">
-                <div className="flex gap-2">
-                  <Input type="date" value={form.periodoExperiencia1Inicio} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Inicio: e.target.value })); markDirty(); }} className="flex-1" />
-                  <Input type="date" value={form.periodoExperiencia1Fim} onChange={e => { setForm(f => ({ ...f, periodoExperiencia1Fim: e.target.value })); markDirty(); }} className="flex-1" />
-                </div>
-              </Field>
+            </div>
+            {/* Row 2: Período de Experiência (full width, handled in phase 4) */}
+            <ExperienciaSection form={form} setForm={setForm} markDirty={markDirty} />
+            {/* Row 3: Cargo, Função, Nível Hierárquico */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 mt-3">
               <Field label="Cargo" required><Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} /></Field>
               <Field label="Função"><Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} /></Field>
               <Field label="Nível Hierárquico">
                 <Select value={form.nivelHierarquico} onValueChange={v => { setForm(f => ({ ...f, nivelHierarquico: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(NIVEIS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
+            </div>
+            {/* Row 4: Setor, Local de Trabalho */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 mt-3">
               <Field label="Setor">
                 <Select value={form.setorId ? String(form.setorId) : ''} onValueChange={v => { setForm(f => ({ ...f, setorId: Number(v) })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     {setoresList.filter((s: any) => s.ativo).map((s: any) => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
@@ -1735,7 +1929,7 @@ export default function ColaboradoresGEG() {
               </Field>
               <Field label="Local de Trabalho">
                 <Select value={form.localTrabalho} onValueChange={v => { setForm(f => ({ ...f, localTrabalho: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="home_office">Home Office</SelectItem>
                     <SelectItem value="barueri">Unidade Barueri</SelectItem>
@@ -1750,9 +1944,15 @@ export default function ColaboradoresGEG() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
               <Field label="Salário Base" required><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
               <Field label="Cargo Comissionado?">
-                <div className="flex items-center gap-2 h-9">
-                  <input type="checkbox" checked={form.recebeComissao} onChange={e => { setForm(f => ({ ...f, recebeComissao: e.target.checked })); markDirty(); }} className="h-4 w-4 rounded border-gray-300" />
-                  <span className="text-sm">{form.recebeComissao ? 'Sim' : 'Não'}</span>
+                <div className="flex items-center gap-3 h-9">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="recebeComissao" checked={form.recebeComissao === true} onChange={() => { setForm(f => ({ ...f, recebeComissao: true })); markDirty(); }} className="h-4 w-4 accent-primary" />
+                    <span className="text-sm font-medium">Sim</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="recebeComissao" checked={form.recebeComissao === false} onChange={() => { setForm(f => ({ ...f, recebeComissao: false })); markDirty(); }} className="h-4 w-4 accent-primary" />
+                    <span className="text-sm font-medium">Não</span>
+                  </label>
                 </div>
               </Field>
               <Field label="Adicionais"><Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>

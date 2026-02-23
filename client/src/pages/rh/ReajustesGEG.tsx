@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Plus, TrendingUp, Loader2, DollarSign, Users, Calendar, Zap, Scale } from 'lucide-react';
+import { Plus, TrendingUp, Loader2, DollarSign, Users, Calendar, Zap, Scale, ArrowLeft} from 'lucide-react';
 
 const TIPO_LABELS: Record<string, string> = { dois_anos: '2 Anos de Casa', sindical: 'Reajuste Sindical', promocao: 'Promoção', merito: 'Mérito', outro: 'Outro' };
 const TIPO_COLORS: Record<string, string> = { dois_anos: 'bg-blue-100 text-blue-700', sindical: 'bg-purple-100 text-purple-700', promocao: 'bg-green-100 text-green-700', merito: 'bg-amber-100 text-amber-700', outro: 'bg-gray-100 text-gray-700' };
@@ -95,10 +96,21 @@ export default function ReajustesGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-emerald-600" /> Reajustes Salariais
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Reajuste 2 anos (10% automático), sindical anual e outros</p>
+
+              <p className="text-sm text-muted-foreground mt-1">Reajuste 2 anos (10% automático), sindical anual e outros</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { setForm({ colaboradorId: 0, tipo: 'sindical', percentual: '', salarioAnterior: '', salarioNovo: '', dataAplicacao: '', observacao: '' }); setShowDialog(true); }}>
           <Plus className="w-4 h-4 mr-2" /> Novo Reajuste

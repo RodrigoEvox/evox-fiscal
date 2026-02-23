@@ -1,3 +1,4 @@
+import { Link } from 'wouter';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Clock, CheckCircle2, AlertCircle, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Clock, CheckCircle2, AlertCircle, Trash2, Edit2, ArrowLeft} from 'lucide-react';
 
 const PRIORIDADE_COLORS: Record<string, string> = {
   baixa: 'bg-green-100 text-green-800',
@@ -79,8 +80,19 @@ export default function NovaTarefaGEG() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Nova Tarefa — Gente & Gestão</h1>
-          <p className="text-muted-foreground">Gerencie as tarefas do setor</p>
+          <div className="flex items-center gap-3 mb-6">
+
+            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+
+            <div>
+
+              <h1 className="text-2xl font-bold">Nova Tarefa — Gente & Gestão</h1>
+
+              <p className="text-muted-foreground">Gerencie as tarefas do setor</p>
+
+            </div>
+
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4 mr-2" /> Nova Tarefa</Button>
       </div>
