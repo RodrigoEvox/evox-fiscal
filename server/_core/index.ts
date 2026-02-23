@@ -298,6 +298,39 @@ async function runExperienciaExpirationCheck() {
   }
 }
 
+async function checkCCTExpiration() {
+  try {
+    const db = await import('../db');
+    const { notifyOwner } = await import('./notification');
+    const ccts = await db.listCCTs();
+    const hoje = new Date();
+    for (const cct of ccts) {
+      if (!cct.vigenciaFim) continue;
+      const fim = new Date(cct.vigenciaFim + 'T00:00:00');
+      const diffDias = Math.floor((hoje.getTime() - fim.getTime()) / (1000 * 60 * 60 * 24));
+      let alerta = '';
+      if (diffDias >= 5 && diffDias < 6) alerta = '5 dias';
+      else if (diffDias >= 15 && diffDias < 16) alerta = '15 dias';
+      else if (diffDias >= 30 && diffDias < 31) alerta = '30 dias';
+      if (alerta) {
+        const titulo = `CCT Vencida h\u00e1 ${alerta}: ${cct.sindicato || 'Sem sindicato'}`;
+        const conteudo = `A Conven\u00e7\u00e3o Coletiva de Trabalho "${cct.sindicato || 'N/A'}" (Vig\u00eancia: ${cct.vigenciaInicio || '?'} a ${cct.vigenciaFim || '?'}) est\u00e1 vencida h\u00e1 ${alerta}. Providencie a renova\u00e7\u00e3o.`;
+        await notifyOwner({ title: titulo, content: conteudo });
+        // Also create in-app notification for all users
+        try {
+          const users = await db.listUsers();
+          for (const u of users) {
+            await db.createNotificacao({ userId: u.id, tipo: 'cct_vencimento', titulo, mensagem: conteudo });
+          }
+        } catch (e) { console.error('[CCT Notif] Error creating in-app notifications', e); }
+        console.log(`[CCT Scheduler] Alert sent: ${titulo}`);
+      }
+    }
+  } catch (err) {
+    console.error('[CCT Scheduler Error]', err);
+  }
+}
+
 function startScheduledJobs() {
   // Run birthday emails daily at 8:00 AM (check every hour)
   const HOUR_MS = 60 * 60 * 1000;
@@ -305,6 +338,7 @@ function startScheduledJobs() {
   let lastContractRun = '';
   let lastReajusteRun = '';
   let lastExperienciaRun = '';
+  let lastCCTRun = '';
 
   setInterval(async () => {
     const now = new Date();
@@ -334,6 +368,12 @@ function startScheduledJobs() {
       lastExperienciaRun = todayKey;
       await runExperienciaExpirationCheck();
     }
+
+    // Run CCT expiration check once per day (after 9 AM)
+    if (now.getHours() >= 9 && lastCCTRun !== todayKey) {
+      lastCCTRun = todayKey;
+      await checkCCTExpiration();
+    }
   }, HOUR_MS);
 
   // Also run once on startup after a short delay
@@ -343,9 +383,10 @@ function startScheduledJobs() {
     await runContractExpirationCheck();
     await runReajusteDoisAnosCheck();
     await runExperienciaExpirationCheck();
+    await checkCCTExpiration();
   }, 10000);
 
-  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, and experiencia checks scheduled');
+  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, and CCT expiration checks scheduled');
 }
 
 async function startServer() {
@@ -905,6 +946,87 @@ async function startServer() {
       res.send(html);
     } catch (err: any) {
       console.error('[Apontamentos PDF Export Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ---- COLABORADORES PDF EXPORT ----
+  app.get('/api/colaboradores/export-pdf', async (req: any, res: any) => {
+    try {
+      const { createPDF, addHeader, addSectionTitle, addTable, addFooter, fmtDate } = await import('../pdfGenerator');
+      const db = await import('../db');
+      const allColabs = await db.listColaboradores();
+      const setores = await db.listSetores();
+      const setorMap = new Map(setores.map((s: any) => [s.id, s.nome]));
+
+      // Apply filters
+      let filtered = [...allColabs];
+      const { status, cargo, setor, local, vt, nivel, contrato, search } = req.query;
+      if (status) filtered = filtered.filter((c: any) => (c.statusColaborador || 'ativo') === status);
+      if (cargo) filtered = filtered.filter((c: any) => c.cargo === cargo);
+      if (setor) filtered = filtered.filter((c: any) => String(c.setorId) === setor);
+      if (local) filtered = filtered.filter((c: any) => c.localTrabalho === local);
+      if (vt === 'sim') filtered = filtered.filter((c: any) => c.valeTransporte);
+      if (vt === 'nao') filtered = filtered.filter((c: any) => !c.valeTransporte);
+      if (nivel) filtered = filtered.filter((c: any) => c.nivelHierarquico === nivel);
+      if (contrato) filtered = filtered.filter((c: any) => c.tipoContrato === contrato);
+      if (search) {
+        const q = (search as string).toLowerCase();
+        filtered = filtered.filter((c: any) => c.nomeCompleto?.toLowerCase().includes(q) || c.cpf?.includes(q) || c.cargo?.toLowerCase().includes(q));
+      }
+
+      const GRAU_LABELS: Record<string, string> = {
+        fundamental_incompleto: 'Fund. Inc.', fundamental_completo: 'Fund. Comp.',
+        medio_incompleto: 'M\u00e9dio Inc.', medio_completo: 'M\u00e9dio Comp.',
+        superior_incompleto: 'Sup. Inc.', superior_completo: 'Sup. Comp.',
+        pos_graduacao: 'P\u00f3s-Grad.', mestrado: 'Mestrado', doutorado: 'Doutorado',
+      };
+
+      const doc = createPDF();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="colaboradores-${new Date().toISOString().slice(0,10)}.pdf"`);
+      doc.pipe(res);
+
+      const filtersApplied: string[] = [];
+      if (status) filtersApplied.push(`Status: ${status}`);
+      if (cargo) filtersApplied.push(`Cargo: ${cargo}`);
+      if (setor) filtersApplied.push(`Setor: ${setorMap.get(Number(setor)) || setor}`);
+      if (local) filtersApplied.push(`Local: ${local}`);
+      if (contrato) filtersApplied.push(`Contrato: ${contrato}`);
+      if (search) filtersApplied.push(`Busca: ${search}`);
+
+      addHeader(doc, 'Relat\u00f3rio de Colaboradores', `${filtered.length} colaboradores${filtersApplied.length ? ' | Filtros: ' + filtersApplied.join(', ') : ''}`);
+      addSectionTitle(doc, 'Listagem de Colaboradores');
+
+      const columns = [
+        { header: 'Nome', width: 120 },
+        { header: 'CPF', width: 70 },
+        { header: 'Cargo', width: 80 },
+        { header: 'Setor', width: 70 },
+        { header: 'Status', width: 50 },
+        { header: 'Contrato', width: 45 },
+        { header: 'Forma\u00e7\u00e3o', width: 55 },
+        { header: 'Admiss\u00e3o', width: 55 },
+      ];
+
+      const rows = filtered.map((c: any) => ({
+        values: [
+          c.nomeCompleto || '',
+          c.cpf || '',
+          c.cargo || '',
+          setorMap.get(c.setorId) || '',
+          c.statusColaborador || 'ativo',
+          (c.tipoContrato || '').toUpperCase(),
+          GRAU_LABELS[c.grauInstrucao] || '',
+          fmtDate(c.dataAdmissao || ''),
+        ],
+      }));
+
+      addTable(doc, columns, rows);
+      addFooter(doc);
+      doc.end();
+    } catch (err: any) {
+      console.error('[Colaboradores PDF Export Error]', err);
       res.status(500).json({ error: err.message });
     }
   });

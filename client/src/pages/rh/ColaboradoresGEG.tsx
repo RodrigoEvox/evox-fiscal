@@ -177,11 +177,34 @@ const Field = ({ label, children, span = 1, required = false, error = false }: {
 function CursoAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const letterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
   const filtered = useMemo(() => {
     if (!search) return CURSOS_SUPERIORES;
     const lower = search.toLowerCase();
     return CURSOS_SUPERIORES.filter(c => c.toLowerCase().includes(lower));
   }, [search]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    filtered.forEach(c => {
+      const letter = c.charAt(0).toUpperCase();
+      if (!groups[letter]) groups[letter] = [];
+      groups[letter].push(c);
+    });
+    return groups;
+  }, [filtered]);
+
+  const availableLetters = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+  const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  const scrollToLetter = (letter: string) => {
+    setActiveLetter(letter);
+    const el = letterRefs.current[letter];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -191,19 +214,53 @@ function CursoAutocomplete({ value, onChange }: { value: string; onChange: (v: s
           <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="start">
+      <PopoverContent className="w-[380px] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Buscar curso..." value={search} onValueChange={setSearch} className="h-8 text-xs" />
-          <CommandList className="max-h-[280px] overflow-y-auto" onWheel={e => e.stopPropagation()}>
-            <CommandEmpty>Nenhum curso encontrado.</CommandEmpty>
-            <CommandGroup>
-              {filtered.map(c => (
-                <CommandItem key={c} value={c} onSelect={() => { onChange(c); setOpen(false); setSearch(''); }} className="text-xs cursor-pointer">
-                  {c}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
+          <CommandInput placeholder="Buscar curso..." value={search} onValueChange={(v) => { setSearch(v); setActiveLetter(null); }} className="h-8 text-xs" />
+          <div className="flex">
+            {!search && (
+              <div className="flex flex-col items-center py-1 px-0.5 border-r bg-muted/30 overflow-y-auto max-h-[300px]" style={{ minWidth: '22px' }}>
+                {allLetters.map(letter => {
+                  const hasItems = availableLetters.includes(letter);
+                  return (
+                    <button
+                      key={letter}
+                      type="button"
+                      disabled={!hasItems}
+                      onClick={() => hasItems && scrollToLetter(letter)}
+                      className={`text-[10px] leading-tight py-[1px] px-0.5 rounded transition-colors w-full text-center
+                        ${activeLetter === letter ? 'bg-primary text-primary-foreground font-bold' : ''}
+                        ${hasItems ? 'hover:bg-primary/20 cursor-pointer text-foreground font-medium' : 'text-muted-foreground/30 cursor-default'}`}
+                    >
+                      {letter}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <CommandList ref={listRef} className="max-h-[300px] overflow-y-auto flex-1" onWheel={e => e.stopPropagation()}>
+              <CommandEmpty>Nenhum curso encontrado.</CommandEmpty>
+              {search ? (
+                <CommandGroup>
+                  {filtered.map(c => (
+                    <CommandItem key={c} value={c} onSelect={() => { onChange(c); setOpen(false); setSearch(''); setActiveLetter(null); }} className="text-xs cursor-pointer">
+                      {c}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ) : (
+                availableLetters.map(letter => (
+                  <CommandGroup key={letter} heading={<div ref={el => { letterRefs.current[letter] = el as HTMLDivElement; }} className="text-xs font-bold text-primary">{letter}</div>}>
+                    {grouped[letter].map(c => (
+                      <CommandItem key={c} value={c} onSelect={() => { onChange(c); setOpen(false); setSearch(''); setActiveLetter(null); }} className="text-xs cursor-pointer">
+                        {c}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))
+              )}
+            </CommandList>
+          </div>
         </Command>
         <div className="border-t p-2">
           <Input className="h-7 text-xs" placeholder="Ou digite manualmente..." value={value} onChange={e => onChange(e.target.value)} />
@@ -1402,6 +1459,21 @@ export default function ColaboradoresGEG() {
     toast.success(`${filtered.length} colaboradores exportados em CSV`);
   };
 
+  const exportToPdf = () => {
+    if (filtered.length === 0) { toast.error('Nenhum colaborador para exportar'); return; }
+    const params = new URLSearchParams();
+    if (filterStatus !== 'todos') params.set('status', filterStatus);
+    if (filterCargo !== 'todos') params.set('cargo', filterCargo);
+    if (filterSetor !== 'todos') params.set('setor', filterSetor);
+    if (filterLocal !== 'todos') params.set('local', filterLocal);
+    if (filterVT !== 'todos') params.set('vt', filterVT);
+    if (filterNivel !== 'todos') params.set('nivel', filterNivel);
+    if (filterContrato !== 'todos') params.set('contrato', filterContrato);
+    if (search.trim()) params.set('search', search.trim());
+    window.open(`/api/colaboradores/export-pdf?${params.toString()}`, '_blank');
+    toast.success(`Gerando PDF com ${filtered.length} colaboradores...`);
+  };
+
   const exportToExcel = () => {
     if (filtered.length === 0) { toast.error('Nenhum colaborador para exportar'); return; }
     const headers = ['Nome Completo','CPF','Data Nascimento','Cargo','Função','Setor','Salário Base','Status','Tipo Contrato','Local Trabalho','Nível Hierárquico','Data Admissão','Email','Telefone','Vale Transporte'];
@@ -1607,6 +1679,9 @@ export default function ColaboradoresGEG() {
               <DropdownMenuItem onClick={exportToCSV} className="gap-2 cursor-pointer">
                 <FileText className="w-4 h-4 text-blue-600" /> Exportar CSV (.csv)
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToPdf} className="gap-2 cursor-pointer">
+                <FileText className="w-4 h-4 text-red-600" /> Exportar PDF (.pdf)
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -1715,6 +1790,7 @@ export default function ColaboradoresGEG() {
                 <th className="text-left px-3 py-2.5 text-xs font-medium">Unidade</th>
                 <SortHeader field="dataAdmissao">Admissão</SortHeader>
                 <th className="text-left px-3 py-2.5 text-xs font-medium">Tempo de Casa</th>
+                <th className="text-left px-3 py-2.5 text-xs font-medium">Formação</th>
                 <th className="text-center px-3 py-2.5 text-xs font-medium w-10"></th>
               </tr>
             </thead>
@@ -1748,6 +1824,31 @@ export default function ColaboradoresGEG() {
                     </td>
                     <td className="px-3 py-2.5 text-sm">{formatDateBR(c.dataAdmissao)}</td>
                     <td className="px-3 py-2.5 text-sm font-medium">{calcTempoCasa(c.dataAdmissao)}</td>
+                    <td className="px-3 py-2.5">
+                      {(() => {
+                        const grau = c.grauInstrucao;
+                        if (!grau) return <span className="text-muted-foreground/40">—</span>;
+                        const GRAU_BADGE: Record<string, { label: string; color: string; icon: string }> = {
+                          fundamental_incompleto: { label: 'Fund.', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: '' },
+                          fundamental_completo: { label: 'Fund.', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '' },
+                          medio_incompleto: { label: 'Médio', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: '' },
+                          medio_completo: { label: 'Médio', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: '' },
+                          superior_incompleto: { label: 'Sup.', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: '🎓' },
+                          superior_completo: { label: 'Sup.', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: '🎓' },
+                          pos_graduacao: { label: 'Pós', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: '🎓' },
+                          mestrado: { label: 'Msc.', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: '🏅' },
+                          doutorado: { label: 'Dr.', color: 'bg-red-50 text-red-700 border-red-200', icon: '🏅' },
+                        };
+                        const badge = GRAU_BADGE[grau];
+                        if (!badge) return <span className="text-muted-foreground/40">—</span>;
+                        return (
+                          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge.color}`}>
+                            {badge.icon && <span className="text-[9px]">{badge.icon}</span>}
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-3 py-2.5 text-center">
                       <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
                     </td>
@@ -1962,7 +2063,14 @@ export default function ColaboradoresGEG() {
                     <Label className="text-xs text-muted-foreground mb-1 block">Curso</Label>
                     <CursoAutocomplete
                       value={fs.curso}
-                      onChange={(v) => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], curso: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }}
+                      onChange={(v) => {
+                        const isDuplicate = form.formacoesSuperior.some((fs2: FormacaoSuperior, i: number) => i !== idx && fs2.curso && fs2.curso.toLowerCase() === v.toLowerCase());
+                        if (isDuplicate) {
+                          toast.error(`O curso "${v}" já foi adicionado nesta ficha. Escolha outro curso.`);
+                          return;
+                        }
+                        setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], curso: v }; return { ...f, formacoesSuperior: arr }; }); markDirty();
+                      }}
                     />
                   </div>
                   <div>
@@ -2010,7 +2118,14 @@ export default function ColaboradoresGEG() {
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1 block">Curso Técnico</Label>
-                    <Input className="h-9 text-sm" value={ft.curso} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], curso: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Ex: Técnico em Contabilidade" />
+                    <Input className="h-9 text-sm" value={ft.curso} onChange={e => {
+                      const v = e.target.value;
+                      const isDuplicate = form.formacoesTecnicas.some((ft2: any, i: number) => i !== idx && ft2.curso && ft2.curso.toLowerCase() === v.toLowerCase());
+                      if (isDuplicate && v.length > 3) {
+                        toast.error(`O curso t\u00e9cnico "${v}" j\u00e1 foi adicionado nesta ficha.`);
+                      }
+                      setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], curso: v }; return { ...f, formacoesTecnicas: arr }; }); markDirty();
+                    }} placeholder="Ex: Técnico em Contabilidade" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>

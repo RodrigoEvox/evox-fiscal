@@ -1622,3 +1622,10 @@
 ## v59 — Ajustes Formação Acadêmica
 - [x] Remover campo "Formação / Curso (principal)" do formulário de novo colaborador
 - [x] Corrigir dropdown de Curso em Formações Superiores: rolagem A-Z com suporte a scroll do mouse
+
+## v60 — CCT Alertas, Exportação, Badges, Validação Duplicidade
+- [x] Notificações automáticas de CCT: alertas por e-mail quando CCT vencida (5, 15 e 30 dias)
+- [x] Exportação de relatório de colaboradores: gerar PDF/Excel com filtros aplicados da listagem
+- [x] Busca por letra inicial no dropdown de cursos: índice alfabético lateral (A, B, C...)
+- [x] Indicador de formação na listagem de colaboradores: badge/ícone do grau de instrução na tabela
+- [x] Validação de duplicidade de formações: alertar ao adicionar mesmo curso duas vezes
