@@ -11,13 +11,60 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
   Search, Plus, Laptop, Smartphone, Monitor, Headphones, Keyboard,
   Mouse, Camera, Printer, Tablet, Phone, Mail, Hash, Package,
   Edit2, Trash2, ChevronDown, ChevronUp, Filter, ArrowLeft, XCircle,
   Lock, Key, Car, ParkingCircle, CreditCard, Fingerprint,
   Bell, Server, Wifi, Shield, ShieldCheck, ShieldX, ShieldAlert,
-  AtSign, CheckCircle2, AlertCircle, UserCheck, Loader2
+  AtSign, CheckCircle2, AlertCircle, UserCheck, Loader2, Eye, EyeOff,
+  Download, FileSpreadsheet, FileText, History, Clock
 } from 'lucide-react';
+
+// ===================== EXPORT HELPERS =====================
+
+function exportCSV(filename: string, headers: string[], rows: string[][]) {
+  const bom = '\uFEFF';
+  const csv = bom + [headers.join(';'), ...rows.map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(';'))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  toast.success('Arquivo CSV exportado!');
+}
+
+function exportPDF(title: string, headers: string[], rows: string[][]) {
+  // Simple HTML-to-print PDF approach
+  const html = `
+    <html><head><title>${title}</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; }
+      h1 { font-size: 16px; margin-bottom: 10px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+      th { background: #f0f0f0; font-weight: bold; }
+      tr:nth-child(even) { background: #fafafa; }
+      .footer { margin-top: 20px; font-size: 9px; color: #999; }
+    </style></head><body>
+    <h1>${title}</h1>
+    <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+    <table>
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c || '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+    <p class="footer">Evox Fiscal — Sistema de Gestão</p>
+    </body></html>`;
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 500);
+  }
+  toast.success('PDF gerado para impressão!');
+}
 
 // ===================== CONSTANTS =====================
 
@@ -361,6 +408,37 @@ function EquipamentosTab() {
         <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground">
           <XCircle className="w-4 h-4 mr-1" />Limpar Filtros
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="w-4 h-4" /> Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => {
+              const headers = ['Colaborador', 'Tipo', 'Marca', 'Modelo', 'Nº Série', 'Patrimônio', 'Status', 'Data Entrega'];
+              const rows = filtered.map((e: any) => [
+                e.colaboradorNome, EQUIP_TIPO_LABELS[e.tipo]?.label || e.tipo, e.marca, e.modelo,
+                e.numeroSerie, e.patrimonio, EQUIP_STATUS_LABELS[e.statusEquipamento]?.label || e.statusEquipamento,
+                e.dataEntrega || ''
+              ]);
+              exportCSV('equipamentos.csv', headers, rows);
+            }}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              const headers = ['Colaborador', 'Tipo', 'Marca', 'Modelo', 'Nº Série', 'Patrimônio', 'Status', 'Data Entrega'];
+              const rows = filtered.map((e: any) => [
+                e.colaboradorNome, EQUIP_TIPO_LABELS[e.tipo]?.label || e.tipo, e.marca, e.modelo,
+                e.numeroSerie, e.patrimonio, EQUIP_STATUS_LABELS[e.statusEquipamento]?.label || e.statusEquipamento,
+                e.dataEntrega || ''
+              ]);
+              exportPDF('Relatório de Equipamentos', headers, rows);
+            }}>
+              <FileText className="w-4 h-4 mr-2" /> Exportar PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Novo Equipamento
         </Button>
@@ -673,6 +751,35 @@ function EmailsTab() {
         <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground">
           <XCircle className="w-4 h-4 mr-1" />Limpar Filtros
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="w-4 h-4" /> Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => {
+              const headers = ['Colaborador', 'E-mail', 'Status', 'Data Criação', 'Observações'];
+              const rows = filtered.map((e: any) => [
+                e.colaboradorNome, e.email, e.statusEmail || 'ativo',
+                e.dataCriacao || '', e.observacoes || ''
+              ]);
+              exportCSV('emails-corporativos.csv', headers, rows);
+            }}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              const headers = ['Colaborador', 'E-mail', 'Status', 'Data Criação', 'Observações'];
+              const rows = filtered.map((e: any) => [
+                e.colaboradorNome, e.email, e.statusEmail || 'ativo',
+                e.dataCriacao || '', e.observacoes || ''
+              ]);
+              exportPDF('Relatório de E-mails Corporativos', headers, rows);
+            }}>
+              <FileText className="w-4 h-4 mr-2" /> Exportar PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Novo E-mail
         </Button>
@@ -858,6 +965,7 @@ function SenhasTab() {
     tipoSenhaAuth: '' as string,
     descricao: '',
     possuiSenha: false,
+    senhaValor: '',
     senhaObs: '',
     autorizado: false,
     dataAutorizacao: '',
@@ -867,25 +975,28 @@ function SenhasTab() {
     observacoes: '',
   };
   const [form, setForm] = useState(EMPTY_FORM);
+  const [showPassword, setShowPassword] = useState(false);
 
   const senhasQ = trpc.senhasAutorizacoes.list.useQuery();
   const colabQ = trpc.colaboradores.list.useQuery();
+  const historicoQ = trpc.senhasAutorizacoes.historico.useQuery();
   const utils = trpc.useUtils();
+  const [showHistorico, setShowHistorico] = useState(false);
 
   const createMut = trpc.senhasAutorizacoes.create.useMutation({
-    onSuccess: () => { utils.senhasAutorizacoes.list.invalidate(); toast.success('Registro criado'); setShowForm(false); resetForm(); },
+    onSuccess: () => { utils.senhasAutorizacoes.list.invalidate(); utils.senhasAutorizacoes.historico.invalidate(); toast.success('Registro criado'); setShowForm(false); resetForm(); },
     onError: (e) => toast.error(e.message),
   });
   const updateMut = trpc.senhasAutorizacoes.update.useMutation({
-    onSuccess: () => { utils.senhasAutorizacoes.list.invalidate(); toast.success('Registro atualizado'); setShowForm(false); resetForm(); },
+    onSuccess: () => { utils.senhasAutorizacoes.list.invalidate(); utils.senhasAutorizacoes.historico.invalidate(); toast.success('Registro atualizado'); setShowForm(false); resetForm(); },
     onError: (e) => toast.error(e.message),
   });
   const deleteMut = trpc.senhasAutorizacoes.delete.useMutation({
-    onSuccess: () => { utils.senhasAutorizacoes.list.invalidate(); toast.success('Registro removido'); },
+    onSuccess: () => { utils.senhasAutorizacoes.list.invalidate(); utils.senhasAutorizacoes.historico.invalidate(); toast.success('Registro removido'); },
     onError: (e) => toast.error(e.message),
   });
 
-  const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); };
+  const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setShowPassword(false); };
 
   const clearAllFilters = () => {
     setSearch('');
@@ -931,6 +1042,7 @@ function SenhasTab() {
       tipoSenhaAuth: e.tipoSenhaAuth,
       descricao: e.descricao || '',
       possuiSenha: e.possuiSenha || false,
+      senhaValor: e.senhaValor || '',
       senhaObs: e.senhaObs || '',
       autorizado: e.autorizado || false,
       dataAutorizacao: e.dataAutorizacao || '',
@@ -941,6 +1053,7 @@ function SenhasTab() {
     });
     setEditId(e.id);
     setShowForm(true);
+    setShowPassword(false);
   };
 
   // Group by colaborador
@@ -1007,6 +1120,39 @@ function SenhasTab() {
         <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground">
           <XCircle className="w-4 h-4 mr-1" />Limpar Filtros
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="w-4 h-4" /> Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => {
+              const headers = ['Colaborador', 'Tipo', 'Descrição', 'Identificador', 'Status', 'Data Autorização', 'Data Revogação'];
+              const rows = filtered.map((e: any) => [
+                e.colaboradorNome, SENHA_TIPO_LABELS[e.tipoSenhaAuth]?.label || e.tipoSenhaAuth,
+                e.descricao || '', e.identificador || '',
+                SENHA_STATUS_LABELS[e.statusSenhaAuth]?.label || e.statusSenhaAuth,
+                e.dataAutorizacao || '', e.dataRevogacao || ''
+              ]);
+              exportCSV('senhas-acessos.csv', headers, rows);
+            }}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              const headers = ['Colaborador', 'Tipo', 'Descrição', 'Identificador', 'Status', 'Data Autorização', 'Data Revogação'];
+              const rows = filtered.map((e: any) => [
+                e.colaboradorNome, SENHA_TIPO_LABELS[e.tipoSenhaAuth]?.label || e.tipoSenhaAuth,
+                e.descricao || '', e.identificador || '',
+                SENHA_STATUS_LABELS[e.statusSenhaAuth]?.label || e.statusSenhaAuth,
+                e.dataAutorizacao || '', e.dataRevogacao || ''
+              ]);
+              exportPDF('Relatório de Senhas & Acessos', headers, rows);
+            }}>
+              <FileText className="w-4 h-4 mr-2" /> Exportar PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Nova Senha/Acesso
         </Button>
@@ -1112,7 +1258,30 @@ function SenhasTab() {
               </div>
             </div>
             {form.possuiSenha && (
-              <div><label className="text-sm font-medium mb-1 block">Observações da Senha</label><Textarea value={form.senhaObs} onChange={e => setForm(f => ({ ...f, senhaObs: e.target.value }))} rows={2} placeholder="Informações sobre a senha (não armazene a senha real aqui)" /></div>
+              <>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Senha</label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.senhaValor}
+                      onChange={e => setForm(f => ({ ...f, senhaValor: e.target.value }))}
+                      placeholder="Digite a senha do colaborador"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                      title={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Visível apenas para gestores do setor</p>
+                </div>
+                <div><label className="text-sm font-medium mb-1 block">Observações da Senha</label><Textarea value={form.senhaObs} onChange={e => setForm(f => ({ ...f, senhaObs: e.target.value }))} rows={2} placeholder="Informações adicionais sobre a senha" /></div>
+              </>
             )}
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-sm font-medium mb-1 block">Data Autorização</label><Input type="date" value={form.dataAutorizacao} onChange={e => setForm(f => ({ ...f, dataAutorizacao: e.target.value }))} /></div>
@@ -1137,6 +1306,67 @@ function SenhasTab() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Histórico de Alterações */}
+      <Card className="mt-4">
+        <CardContent className="p-4">
+          <button
+            onClick={() => setShowHistorico(p => !p)}
+            className="flex items-center gap-2 w-full text-left"
+          >
+            <History className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Histórico de Alterações</span>
+            <Badge variant="outline" className="text-[10px] ml-1">{(historicoQ.data as any[] || []).length}</Badge>
+            <span className="ml-auto">{showHistorico ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</span>
+          </button>
+          {showHistorico && (
+            <div className="mt-3 space-y-2 max-h-[400px] overflow-y-auto">
+              {(historicoQ.data as any[] || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum registro no histórico</p>
+              ) : (
+                (historicoQ.data as any[]).map((h: any) => {
+                  const acaoColors: Record<string, string> = {
+                    criado: 'bg-green-100 text-green-700',
+                    atualizado: 'bg-blue-100 text-blue-700',
+                    revogado: 'bg-red-100 text-red-700',
+                    reativado: 'bg-emerald-100 text-emerald-700',
+                    transferido: 'bg-purple-100 text-purple-700',
+                    senha_alterada: 'bg-amber-100 text-amber-700',
+                  };
+                  const acaoLabels: Record<string, string> = {
+                    criado: 'Criado',
+                    atualizado: 'Atualizado',
+                    revogado: 'Revogado',
+                    reativado: 'Reativado',
+                    transferido: 'Transferido',
+                    senha_alterada: 'Senha Alterada',
+                  };
+                  return (
+                    <div key={h.id} className="flex items-start gap-3 p-2 rounded-md border bg-muted/30">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium">{h.colaboradorNome}</span>
+                          <Badge className={`text-[10px] ${acaoColors[h.acao] || 'bg-gray-100 text-gray-700'}`}>
+                            {acaoLabels[h.acao] || h.acao}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{h.detalhes}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {h.createdAt ? new Date(h.createdAt).toLocaleString('pt-BR') : ''}
+                          {h.realizadoPorNome ? ` — por ${h.realizadoPorNome}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

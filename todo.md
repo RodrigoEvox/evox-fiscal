@@ -1481,3 +1481,35 @@
 - [x] Período de Experiência: opção 1 ou 2 períodos, dias editáveis (sugestão 90 ou 2x45), cálculo automático data fim a partir da admissão
 - [x] Período de Experiência: refletir no workflow de renovação de contratos
 - [x] Finalizar reestruturação Equipamentos com 3 abas separadas (Equipamentos, E-mails Corporativos, Senhas & Acessos)
+
+## v53 — Integração Colaboradores ↔ Módulos + Equipamentos Export + Histórico Senhas + Notificações
+
+### Auto-preenchimento Cargo/Setor/Salário no formulário de colaborador
+- [x] Ao selecionar cargo no formulário, puxar automaticamente setor e salário base de Cargos e Salários
+- [x] Ao selecionar setor, filtrar cargos disponíveis daquele setor
+- [x] Salário base preenchido automaticamente a partir do cadastro de Cargos e Salários
+
+### Reflexo dos dados de colaboradores nos módulos correlatos
+- [x] Cargos e Salários: refletir quantidade de colaboradores por cargo/setor (organograma hierárquico automático)
+- [ ] Benefícios: refletir dados de colaboradores ativos para cálculo de benefícios
+- [ ] Comissões: vincular colaboradores comissionados automaticamente
+- [ ] Projeção Financeira: usar dados reais de colaboradores para projeção da folha
+- [ ] Demais módulos: garantir que dados de colaboradores reflitam onde necessário
+
+### Exportação Excel/PDF por aba em Equipamentos & Comunicações
+- [x] Exportação Excel na aba Equipamentos
+- [x] Exportação Excel na aba E-mails Corporativos
+- [x] Exportação Excel na aba Senhas & Acessos
+- [x] Exportação PDF em cada aba
+
+### Histórico de alterações em Senhas & Acessos
+- [x] Tabela de log de alterações (criação, revogação, transferência)
+- [x] Exibir histórico na interface com timeline
+
+### Notificação automática de vencimento de período de experiência
+- [x] Detectar colaboradores com período de experiência próximo do fim
+- [x] Gerar notificação/alerta para o RH
+- [x] Campo de senha real mascarada em Nova Senha/Acesso com botão ver/ocultar para gestor
+- [x] Organograma hierárquico automático em Cargos e Salários a partir dos colaboradores cadastrados por setor
+- [x] Reestruturar Férias & Folgas: painel informativo com KPIs, alertas de férias vencidas/próximas, filtro por período
+- [x] Condensar Férias & Folgas em aba única com informações gerais, colaboradores e solicitações (sem visão calendário)

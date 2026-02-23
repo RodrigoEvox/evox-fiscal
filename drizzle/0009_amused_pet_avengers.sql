@@ -1,0 +1,1 @@
+ALTER TABLE `senhas_autorizacoes` ADD `senhaValor` varchar(500);

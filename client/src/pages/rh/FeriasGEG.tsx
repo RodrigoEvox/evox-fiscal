@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -9,17 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
-  Plus, Calendar, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search,
+  Plus, AlertTriangle, CheckCircle2, Clock, XCircle, Send, Search,
   CalendarDays, User, Briefcase, Info, Edit2, Trash2, ShieldCheck, ShieldAlert,
-  Calculator, ChevronLeft, ChevronRight, Eye, X, History, Building2, ArrowLeft} from 'lucide-react';
-import { useLocation , Link} from 'wouter';
+  Calculator, ChevronRight, Eye, X, History, Building2, ArrowLeft,
+  TrendingUp, Users, CalendarClock, Filter, Download, FileSpreadsheet,
+  ChevronDown, ChevronUp, BarChart3, Calendar
+} from 'lucide-react';
+import { useLocation, Link } from 'wouter';
 
 // ─── Helpers ───────────────────────────────────────────────────────
-const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
 function getFeriadosNacionais(ano: number): string[] {
   const fixos = [`${ano}-01-01`,`${ano}-04-21`,`${ano}-05-01`,`${ano}-09-07`,`${ano}-10-12`,`${ano}-11-02`,`${ano}-11-15`,`${ano}-12-25`];
   const a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
@@ -65,8 +65,20 @@ function calcPeriodoAquisitivo(dataAdmissao:string){
 }
 function formatDateBR(d:string){if(!d)return '';const[y,m,day]=d.split('-');return `${day}/${m}/${y}`;}
 function calcDias(i:string,f:string){if(!i||!f)return 0;return Math.max(1,Math.round((new Date(f+'T12:00:00').getTime()-new Date(i+'T12:00:00').getTime())/864e5)+1);}
-function daysInMonth(y:number,m:number){return new Date(y,m+1,0).getDate();}
-function firstDayOfMonth(y:number,m:number){return new Date(y,m,1).getDay();}
+
+const MESES_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+// ─── Export helpers ────────────────────────────────────────────────
+function exportCSV(rows: Record<string, any>[], filename: string) {
+  if (rows.length === 0) { toast.error('Nenhum dado para exportar'); return; }
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `${filename}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast.success('Exportação CSV concluída');
+}
 
 // ─── Main Component ────────────────────────────────────────────────
 export default function FeriasGEG() {
@@ -80,17 +92,18 @@ export default function FeriasGEG() {
   const [showSolicitacao, setShowSolicitacao] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState('calendario');
   const [cltAlerts, setCltAlerts] = useState<{tipo:string;msg:string}[]>([]);
   const [confirmClt, setConfirmClt] = useState(false);
   const [selectedColab, setSelectedColab] = useState<any>(null);
   const [expandedColabId, setExpandedColabId] = useState<number|null>(null);
-  const [calView, setCalView] = useState<'ano'|'mes'|'dia'>('ano');
-  const [calYear, setCalYear] = useState(anoAtual);
-  const [calMonth, setCalMonth] = useState(hoje.getMonth());
-  const [calDay, setCalDay] = useState(hoje.getDate());
   const [sectorAlertOpen, setSectorAlertOpen] = useState(false);
   const [sectorAlertData, setSectorAlertData] = useState<{setor:string;colabs:string[];onConfirm:()=>void}|null>(null);
+  const [filterSetor, setFilterSetor] = useState('all');
+  const [filterStatus, setFilterStatus] = useState<'all'|'vencido'|'a_vencer'|'ok'>('all');
+  const [filterPeriodoInicio, setFilterPeriodoInicio] = useState('');
+  const [filterPeriodoFim, setFilterPeriodoFim] = useState('');
+  const [showColaboradores, setShowColaboradores] = useState(true);
+  const [showSolicitacoes, setShowSolicitacoes] = useState(true);
 
   const [form, setForm] = useState({
     colaboradorId:0,dataInicio:'',dataFim:'',diasPeriodo:0,periodoNum:1,
@@ -130,53 +143,7 @@ export default function FeriasGEG() {
     return {diasUsados:du,saldoDias:30-du,diasDireito:30,periodosUsados:fc.length,periodosRestantes:3-fc.length};
   };
 
-  // ─── Calendar data ───────────────────────────────────────────────
-  const calendarEvents = useMemo(() => {
-    const events: Record<string, {tipo:'ferias'|'folga'|'dayoff';nome:string;setor:string;id:number;status:string;dias?:number}[]> = {};
-    const addEvent = (dateStr:string, ev:any) => {
-      if (!dateStr) return;
-      if (!events[dateStr]) events[dateStr] = [];
-      events[dateStr].push(ev);
-    };
-
-    feriasList.forEach((f:any) => {
-      const c = colabList.find((c:any) => c.id === f.colaboradorId);
-      if (!c) return;
-      const inicio = f.periodo1Inicio || f.dataInicio;
-      const fim = f.periodo1Fim || f.dataFim;
-      if (!inicio || !fim) return;
-      const d1 = new Date(inicio+'T12:00:00');
-      const d2 = new Date(fim+'T12:00:00');
-      for (let d = new Date(d1); d <= d2; d.setDate(d.getDate()+1)) {
-        addEvent(d.toISOString().split('T')[0], {tipo:'ferias',nome:c.nomeCompleto,setor:c.setor||'',id:f.id,status:f.status,dias:f.periodo1Dias||f.diasTotais});
-      }
-    });
-
-    dayOffList.forEach((d:any) => {
-      const c = colabList.find((c:any) => c.id === d.colaboradorId);
-      if (!c) return;
-      const dt = d.dataEfetiva || d.dataOriginal;
-      if (dt) addEvent(dt, {tipo:'dayoff',nome:c.nomeCompleto,setor:c.setor||'',id:d.id,status:d.status});
-    });
-
-    solList.forEach((s:any) => {
-      if (s.status === 'recusada') return;
-      const c = colabList.find((c:any) => c.id === s.colaboradorId);
-      const nome = c?.nomeCompleto || s.colaboradorNome || 'N/A';
-      const setor = c?.setor || '';
-      if (s.dataInicio && s.dataFim) {
-        const d1 = new Date(s.dataInicio+'T12:00:00');
-        const d2 = new Date(s.dataFim+'T12:00:00');
-        for (let d = new Date(d1); d <= d2; d.setDate(d.getDate()+1)) {
-          addEvent(d.toISOString().split('T')[0], {tipo:'folga',nome,setor,id:s.id,status:s.status});
-        }
-      }
-    });
-
-    return events;
-  }, [feriasList, dayOffList, solList, colabList]);
-
-  // ─── Concessivo alerts (next 6 months) ───────────────────────────
+  // ─── Computed data ──────────────────────────────────────────────
   const colabComFerias = useMemo(() => {
     return colabList.filter(c => c.ativo !== false && c.status !== 'desligado').map(c => {
       const periodo = calcPeriodoAquisitivo(c.dataAdmissao);
@@ -188,19 +155,56 @@ export default function FeriasGEG() {
     });
   }, [colabList, feriasList, dayOffList, solList]);
 
-  const concessivosAVencer = useMemo(() => {
-    return colabComFerias.filter(c => c.periodo && c.periodo.diasParaVencer >= 0 && c.periodo.diasParaVencer <= 180 && !c.periodo.vencido);
-  }, [colabComFerias]);
+  const concessivosVencidos = useMemo(() => colabComFerias.filter(c => c.periodo?.vencido), [colabComFerias]);
+  const concessivosAVencer = useMemo(() => colabComFerias.filter(c => c.periodo && c.periodo.diasParaVencer >= 0 && c.periodo.diasParaVencer <= 180 && !c.periodo.vencido), [colabComFerias]);
 
-  const concessivosVencidos = useMemo(() => {
-    return colabComFerias.filter(c => c.periodo?.vencido);
-  }, [colabComFerias]);
+  // Setores list
+  const setores = useMemo(() => {
+    const s = new Set<string>();
+    colabList.forEach(c => { if (c.setor) s.add(c.setor); });
+    return Array.from(s).sort();
+  }, [colabList]);
 
+  // ─── KPIs ───────────────────────────────────────────────────────
+  const kpis = useMemo(() => {
+    const totalColabs = colabComFerias.length;
+    const feriasAgendadas = feriasList.filter(f => f.status === 'programada' || f.status === 'em_gozo').length;
+    const folgasAgendadas = solList.filter(s => s.status === 'pendente' || s.status === 'aprovada').length;
+    const dayOffsAgendados = dayOffList.filter(d => d.status === 'aprovado' || d.status === 'pendente').length;
+    const vencidos = concessivosVencidos.length;
+    const aVencer = concessivosAVencer.length;
+    const saldoMedio = totalColabs > 0 ? Math.round(colabComFerias.reduce((s, c) => s + c.saldo.saldoDias, 0) / totalColabs) : 0;
+    const solPendentes = solList.filter(s => s.status === 'pendente').length;
+
+    // Férias no período filtrado
+    let feriasNoPeriodo = feriasList;
+    if (filterPeriodoInicio) feriasNoPeriodo = feriasNoPeriodo.filter(f => (f.periodo1Inicio || f.dataInicio) >= filterPeriodoInicio);
+    if (filterPeriodoFim) feriasNoPeriodo = feriasNoPeriodo.filter(f => (f.periodo1Inicio || f.dataInicio) <= filterPeriodoFim);
+
+    return { totalColabs, feriasAgendadas, folgasAgendadas, dayOffsAgendados, vencidos, aVencer, saldoMedio, solPendentes, feriasNoPeriodo: feriasNoPeriodo.length };
+  }, [colabComFerias, feriasList, dayOffList, solList, concessivosVencidos, concessivosAVencer, filterPeriodoInicio, filterPeriodoFim]);
+
+  // ─── Filtered colaboradores ─────────────────────────────────────
   const filtered = useMemo(() => {
-    if (!search.trim()) return colabComFerias;
-    const s = search.toLowerCase();
-    return colabComFerias.filter(c => c.nomeCompleto?.toLowerCase().includes(s) || c.cargo?.toLowerCase().includes(s) || c.setor?.toLowerCase().includes(s));
-  }, [colabComFerias, search]);
+    let list = colabComFerias;
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      list = list.filter(c => c.nomeCompleto?.toLowerCase().includes(s) || c.cargo?.toLowerCase().includes(s) || c.setor?.toLowerCase().includes(s));
+    }
+    if (filterSetor !== 'all') list = list.filter(c => c.setor === filterSetor);
+    if (filterStatus === 'vencido') list = list.filter(c => c.periodo?.vencido);
+    else if (filterStatus === 'a_vencer') list = list.filter(c => c.periodo?.proximoVencer && !c.periodo?.vencido);
+    else if (filterStatus === 'ok') list = list.filter(c => !c.periodo?.vencido && !c.periodo?.proximoVencer);
+    return list;
+  }, [colabComFerias, search, filterSetor, filterStatus]);
+
+  // Filtered solicitações
+  const filteredSol = useMemo(() => {
+    let list = solList;
+    if (filterPeriodoInicio) list = list.filter(s => s.dataInicio >= filterPeriodoInicio);
+    if (filterPeriodoFim) list = list.filter(s => s.dataInicio <= filterPeriodoFim);
+    return list;
+  }, [solList, filterPeriodoInicio, filterPeriodoFim]);
 
   // ─── Sector overlap check ───────────────────────────────────────
   const checkSectorOverlap = useCallback((colabId:number, dataInicio:string, dataFim:string, onConfirm:()=>void) => {
@@ -209,10 +213,8 @@ export default function FeriasGEG() {
     const setor = colab.setor;
     const d1 = new Date(dataInicio+'T12:00:00');
     const d2 = new Date(dataFim+'T12:00:00');
-
     const colabsNoSetor = colabList.filter((c:any) => c.setor === setor && c.id !== colabId && c.ativo !== false);
     const conflitos: string[] = [];
-
     colabsNoSetor.forEach((c:any) => {
       const feriasC = feriasList.filter((f:any) => f.colaboradorId === c.id && f.status !== 'cancelada');
       feriasC.forEach((f:any) => {
@@ -234,13 +236,10 @@ export default function FeriasGEG() {
         }
       });
     });
-
     if (conflitos.length > 0) {
       setSectorAlertData({setor, colabs: Array.from(new Set(conflitos)), onConfirm});
       setSectorAlertOpen(true);
-    } else {
-      onConfirm();
-    }
+    } else { onConfirm(); }
   }, [colabList, feriasList, dayOffList, solList]);
 
   // ─── Handlers ────────────────────────────────────────────────────
@@ -288,91 +287,36 @@ export default function FeriasGEG() {
 
   const saldoSelected = selectedColab ? calcSaldo(selectedColab.id) : null;
 
-  // ─── Calendar rendering helpers ──────────────────────────────────
-  const getEventsForDate = (dateStr:string) => calendarEvents[dateStr] || [];
-
-  const renderMiniMonth = (year:number, month:number) => {
-    const days = daysInMonth(year, month);
-    const first = firstDayOfMonth(year, month);
-    const todayStr = hoje.toISOString().split('T')[0];
-    const cells: React.ReactElement[] = [];
-
-    for (let i = 0; i < first; i++) cells.push(<div key={`e${i}`} />);
-    for (let d = 1; d <= days; d++) {
-      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const evts = getEventsForDate(dateStr);
-      const isToday = dateStr === todayStr;
-      const hasFerias = evts.some(e => e.tipo === 'ferias');
-      const hasFolga = evts.some(e => e.tipo === 'folga' || e.tipo === 'dayoff');
-
-      cells.push(
-        <button key={d} onClick={() => {setCalMonth(month);setCalDay(d);setCalView('dia');}}
-          className={`relative w-full aspect-square flex items-center justify-center text-xs rounded-md transition-all hover:bg-accent
-            ${isToday ? 'bg-primary text-primary-foreground font-bold' : ''}
-            ${hasFerias && !isToday ? 'bg-blue-100 text-blue-800 font-medium' : ''}
-            ${hasFolga && !hasFerias && !isToday ? 'bg-pink-100 text-pink-800 font-medium' : ''}
-          `}
-          title={evts.length > 0 ? evts.map(e => `${e.nome} (${e.tipo})`).join(', ') : undefined}
-        >
-          {d}
-          {evts.length > 0 && (
-            <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-              {hasFerias && <span className="w-1 h-1 rounded-full bg-blue-500" />}
-              {hasFolga && <span className="w-1 h-1 rounded-full bg-pink-500" />}
-            </span>
-          )}
-        </button>
-      );
-    }
-    return cells;
-  };
-
-  // Events for selected day
-  const selectedDayStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(calDay).padStart(2,'0')}`;
-  const selectedDayEvents = getEventsForDate(selectedDayStr);
-
-  // Events for selected month
-  const monthEvents = useMemo(() => {
-    const evts: {date:string;nome:string;tipo:string;status:string;setor:string}[] = [];
-    const prefix = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
-    Object.entries(calendarEvents).forEach(([date, events]) => {
-      if (date.startsWith(prefix)) {
-        events.forEach(e => evts.push({date, nome:e.nome, tipo:e.tipo, status:e.status, setor:e.setor}));
-      }
-    });
-    const seen = new Set<string>();
-    return evts.filter(e => {
-      const key = `${e.nome}-${e.tipo}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).sort((a,b) => a.date.localeCompare(b.date));
-  }, [calendarEvents, calYear, calMonth]);
-
-  // Available years: current year + next year (auto-increment)
-  const availableYears = [anoAtual, anoAtual + 1];
-
-  
   const clearAllFilters = () => {
-    setSearch("");
+    setSearch('');
+    setFilterSetor('all');
+    setFilterStatus('all');
+    setFilterPeriodoInicio('');
+    setFilterPeriodoFim('');
   };
-return (
+
+  const handleExportColaboradores = () => {
+    exportCSV(filtered.map(c => ({
+      Nome: c.nomeCompleto,
+      Cargo: c.cargo || '',
+      Setor: c.setor || '',
+      Admissão: formatDateBR(c.dataAdmissao),
+      'Saldo Dias': c.saldo.saldoDias,
+      'Períodos Usados': `${c.saldo.periodosUsados}/3`,
+      'Concessivo Até': c.periodo ? formatDateBR(c.periodo.fimConcessivo) : '',
+      Status: c.periodo?.vencido ? 'Vencido' : c.periodo?.proximoVencer ? 'A Vencer' : 'Regular',
+    })), 'ferias-colaboradores');
+  };
+
+  return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-
-            <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
-
-            <div>
-
-              <h1 className="text-2xl font-bold">Férias & Folgas — Gente & Gestão</h1>
-
-              <p className="text-muted-foreground">Gestão de férias e folgas com calendário, alertas CLT e controle de saldo</p>
-
-            </div>
-
+        <div className="flex items-center gap-3">
+          <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+          <div>
+            <h1 className="text-2xl font-bold">Férias & Folgas — Gente & Gestão</h1>
+            <p className="text-muted-foreground text-sm">Painel de gestão de férias, folgas, alertas CLT e controle de saldo</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -382,335 +326,344 @@ return (
         </div>
       </div>
 
-      {/* Concessivo Alerts */}
+      {/* ─── KPIs ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Colaboradores</p>
+                <p className="text-2xl font-bold text-blue-600">{kpis.totalColabs}</p>
+              </div>
+              <Users className="w-5 h-5 text-blue-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-cyan-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Férias Agendadas</p>
+                <p className="text-2xl font-bold text-cyan-600">{kpis.feriasAgendadas}</p>
+              </div>
+              <Calendar className="w-5 h-5 text-cyan-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Folgas Agendadas</p>
+                <p className="text-2xl font-bold text-purple-600">{kpis.folgasAgendadas + kpis.dayOffsAgendados}</p>
+              </div>
+              <CalendarDays className="w-5 h-5 text-purple-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Férias Vencidas</p>
+                <p className="text-2xl font-bold text-red-600">{kpis.vencidos}</p>
+              </div>
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-amber-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">A Vencer (6m)</p>
+                <p className="text-2xl font-bold text-amber-600">{kpis.aVencer}</p>
+              </div>
+              <Clock className="w-5 h-5 text-amber-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Saldo Médio</p>
+                <p className="text-2xl font-bold text-green-600">{kpis.saldoMedio}d</p>
+              </div>
+              <BarChart3 className="w-5 h-5 text-green-400" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ─── ALERTAS ───────────────────────────────────────────────── */}
       {concessivosVencidos.length > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-red-700 font-semibold mb-2"><AlertTriangle className="w-5 h-5" /> Férias Vencidas — Risco de Pagamento em Dobro</div>
-            <div className="space-y-1">{concessivosVencidos.map(c => (<p key={c.id} className="text-sm text-red-600">{c.nomeCompleto} — Vencido há {Math.abs(c.periodo?.diasParaVencer||0)} dias</p>))}</div>
+            <div className="flex items-center gap-2 text-red-700 font-semibold mb-2"><AlertTriangle className="w-5 h-5" /> Férias Vencidas — Risco de Pagamento em Dobro ({concessivosVencidos.length})</div>
+            <div className="space-y-1">{concessivosVencidos.slice(0, 5).map(c => (<p key={c.id} className="text-sm text-red-600">{c.nomeCompleto} ({c.setor || 'Sem setor'}) — Vencido há {Math.abs(c.periodo?.diasParaVencer||0)} dias</p>))}</div>
+            {concessivosVencidos.length > 5 && <p className="text-xs text-red-500 mt-1">+ {concessivosVencidos.length - 5} colaborador(es)</p>}
           </CardContent>
         </Card>
       )}
       {concessivosAVencer.length > 0 && (
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-yellow-700 font-semibold mb-2"><Clock className="w-5 h-5" /> Períodos Concessivos a Vencer (próximos 6 meses)</div>
-            <div className="space-y-1">{concessivosAVencer.map(c => (<p key={c.id} className="text-sm text-yellow-600">{c.nomeCompleto} — Vence em {c.periodo?.diasParaVencer} dias ({formatDateBR(c.periodo?.fimConcessivo||'')})</p>))}</div>
+            <div className="flex items-center gap-2 text-yellow-700 font-semibold mb-2"><Clock className="w-5 h-5" /> Períodos Concessivos a Vencer — Próximos 6 Meses ({concessivosAVencer.length})</div>
+            <div className="space-y-1">{concessivosAVencer.slice(0, 5).map(c => (<p key={c.id} className="text-sm text-yellow-600">{c.nomeCompleto} ({c.setor || 'Sem setor'}) — Vence em {c.periodo?.diasParaVencer} dias ({formatDateBR(c.periodo?.fimConcessivo||'')})</p>))}</div>
+            {concessivosAVencer.length > 5 && <p className="text-xs text-yellow-500 mt-1">+ {concessivosAVencer.length - 5} colaborador(es)</p>}
+          </CardContent>
+        </Card>
+      )}
+      {kpis.solPendentes > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-orange-700 font-semibold"><Send className="w-5 h-5" /> {kpis.solPendentes} solicitação(ões) de folga pendente(s) de aprovação</div>
           </CardContent>
         </Card>
       )}
 
-      {/* Tabs */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="calendario"><Calendar className="w-4 h-4 mr-1" /> Calendário</TabsTrigger>
-          <TabsTrigger value="colaboradores"><User className="w-4 h-4 mr-1" /> Colaboradores</TabsTrigger>
-          <TabsTrigger value="solicitacoes"><Send className="w-4 h-4 mr-1" /> Solicitações ({solList.filter(s => s.status === 'pendente').length})</TabsTrigger>
-        </TabsList>
+      {/* ─── FILTROS ───────────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Filtros</span>
+            <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={clearAllFilters}><X className="w-3 h-3 mr-1" /> Limpar</Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Nome, cargo, setor..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+            </div>
+            <Select value={filterSetor} onValueChange={setFilterSetor}>
+              <SelectTrigger><SelectValue placeholder="Todos os Setores" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Setores</SelectItem>
+                {setores.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+              <SelectTrigger><SelectValue placeholder="Todos os Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="vencido">Férias Vencidas</SelectItem>
+                <SelectItem value="a_vencer">A Vencer (6m)</SelectItem>
+                <SelectItem value="ok">Regular</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="date" value={filterPeriodoInicio} onChange={e => setFilterPeriodoInicio(e.target.value)} placeholder="Período de" />
+            <Input type="date" value={filterPeriodoFim} onChange={e => setFilterPeriodoFim(e.target.value)} placeholder="Período até" />
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* ─── CALENDÁRIO TAB ─────────────────────────────────────── */}
-        <TabsContent value="calendario" className="space-y-4 mt-4">
-          <div className="flex items-center justify-between">
+      {/* ─── COLABORADORES ─────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="p-0">
+          <button className="w-full flex items-center justify-between p-4 text-left" onClick={() => setShowColaboradores(p => !p)}>
             <div className="flex items-center gap-2">
-              <Select value={String(calYear)} onValueChange={v => setCalYear(Number(v))}>
-                <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                <SelectContent>{availableYears.map(y => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}</SelectContent>
-              </Select>
-              {calView !== 'ano' && (
-                <Select value={String(calMonth)} onValueChange={v => setCalMonth(Number(v))}>
-                  <SelectTrigger className="w-36"><SelectValue>{MESES[calMonth]}</SelectValue></SelectTrigger>
-                  <SelectContent>{MESES.map((m,i) => (<SelectItem key={i} value={String(i)}>{m}</SelectItem>))}</SelectContent>
-                </Select>
+              <Users className="w-5 h-5 text-blue-600" />
+              <span className="font-semibold">Colaboradores</span>
+              <Badge variant="outline" className="text-xs">{filtered.length}</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleExportColaboradores(); }}>
+                <Download className="w-3.5 h-3.5 mr-1" /> Exportar
+              </Button>
+              {showColaboradores ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+          </button>
+
+          {showColaboradores && (
+            <div className="border-t">
+              {filtered.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum colaborador encontrado com os filtros aplicados.</p>
+              ) : (
+                <div className="divide-y">
+                  {filtered.map(c => {
+                    const isExpanded = expandedColabId === c.id;
+                    return (
+                      <div key={c.id}>
+                        <button className="w-full flex items-center gap-4 p-4 text-left hover:bg-accent/30 transition-colors" onClick={() => setExpandedColabId(isExpanded ? null : c.id)}>
+                          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{c.nomeCompleto}</p>
+                            <p className="text-xs text-muted-foreground truncate">{c.cargo}</p>
+                          </div>
+                          <div className="hidden md:block text-xs text-muted-foreground w-28 text-center">
+                            <span className="block text-[10px] uppercase tracking-wide">Setor</span>
+                            <span className="font-medium">{c.setor || '—'}</span>
+                          </div>
+                          <div className="hidden md:block text-xs text-muted-foreground w-40 text-center">
+                            <span className="block text-[10px] uppercase tracking-wide">Concessivo até</span>
+                            <span className="font-medium">{c.periodo ? formatDateBR(c.periodo.fimConcessivo) : '—'}</span>
+                          </div>
+                          <div className="hidden md:block text-xs text-muted-foreground w-24 text-center">
+                            <span className="block text-[10px] uppercase tracking-wide">Tempo de Casa</span>
+                            <span className="font-medium">{c.periodo ? `${c.periodo.anosCompletos}a ${c.periodo.mesesTrabalhados}m` : '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`text-[10px] ${c.saldo.saldoDias<=0?'text-red-600 border-red-300':c.saldo.saldoDias<=10?'text-yellow-600 border-yellow-300':'text-green-600 border-green-300'}`}>
+                              {c.saldo.saldoDias}d
+                            </Badge>
+                            {c.periodo?.vencido && <Badge variant="destructive" className="text-[10px]">Vencido</Badge>}
+                            {c.periodo?.proximoVencer && !c.periodo?.vencido && <Badge className="bg-yellow-100 text-yellow-800 text-[10px]">A vencer</Badge>}
+                            <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="border-t px-4 pb-4 pt-3 space-y-4 bg-muted/20">
+                            <div className="grid grid-cols-5 gap-2 text-xs">
+                              <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Admissão</span><span className="font-medium">{formatDateBR(c.dataAdmissao)}</span></div>
+                              <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Aquisitivo</span><span className="font-medium">{c.periodo ? `${formatDateBR(c.periodo.inicioAquisitivo)} a ${formatDateBR(c.periodo.fimAquisitivo)}` : '—'}</span></div>
+                              <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Concessivo até</span><span className="font-medium">{c.periodo ? formatDateBR(c.periodo.fimConcessivo) : '—'}</span></div>
+                              <div className={`rounded p-2 border ${c.saldo.saldoDias<=0?'bg-red-50 border-red-200':c.saldo.saldoDias<=10?'bg-yellow-50 border-yellow-200':'bg-green-50 border-green-200'}`}>
+                                <span className="text-muted-foreground block">Saldo</span><span className="font-bold">{c.saldo.saldoDias} dias</span>
+                              </div>
+                              <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Períodos</span><span className="font-medium">{c.saldo.periodosUsados}/3</span></div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => {setSelectedColab(c);setForm(f=>({...f,colaboradorId:c.id}));setShowForm(true);}}>
+                                <Plus className="w-3.5 h-3.5 mr-1" /> Férias
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                setSolForm(f=>({...f,colaboradorId:c.id,colaboradorNome:c.nomeCompleto}));
+                                setShowSolicitacao(true);
+                              }}>
+                                <Send className="w-3.5 h-3.5 mr-1" /> Folga
+                              </Button>
+                            </div>
+
+                            {/* Férias history */}
+                            <div>
+                              <h5 className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2"><History className="w-3.5 h-3.5" /> Histórico de Férias</h5>
+                              {c.ferias.length === 0 ? (
+                                <p className="text-xs text-muted-foreground italic">Nenhuma férias registrada.</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {c.ferias.map((f:any) => (
+                                    <div key={f.id} className="flex items-center gap-2 text-xs bg-blue-50 rounded p-2">
+                                      <CalendarDays className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                      <span>{formatDateBR(f.periodo1Inicio||f.dataInicio)} a {formatDateBR(f.periodo1Fim||f.dataFim)}</span>
+                                      <span className="text-muted-foreground">({f.periodo1Dias||f.diasTotais} dias)</span>
+                                      <Badge variant="outline" className="text-[10px]">{f.status}</Badge>
+                                      {f.aprovadorGestorStatus && f.aprovadorGestorStatus !== 'pendente' && (
+                                        <Badge variant="outline" className={`text-[10px] ${f.aprovadorGestorStatus==='aprovado'?'bg-green-50 text-green-700 border-green-200':'bg-red-50 text-red-700 border-red-200'}`}>
+                                          Gestor: {f.aprovadorGestorStatus==='aprovado'?'✓':'✗'}
+                                        </Badge>
+                                      )}
+                                      {f.aprovadorDiretoriaStatus && f.aprovadorDiretoriaStatus !== 'pendente' && (
+                                        <Badge variant="outline" className={`text-[10px] ${f.aprovadorDiretoriaStatus==='aprovado'?'bg-green-50 text-green-700 border-green-200':'bg-red-50 text-red-700 border-red-200'}`}>
+                                          Diretoria: {f.aprovadorDiretoriaStatus==='aprovado'?'✓':'✗'}
+                                        </Badge>
+                                      )}
+                                      <div className="ml-auto flex gap-1">
+                                        {f.aprovadorGestorStatus === 'pendente' && (
+                                          <button onClick={() => aprovarGestor.mutate({id:f.id,aprovado:true})} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Gestor)"><ShieldCheck className="w-3.5 h-3.5 text-green-600" /></button>
+                                        )}
+                                        {f.aprovadorGestorStatus === 'aprovado' && f.aprovadorDiretoriaStatus === 'pendente' && (
+                                          <button onClick={() => aprovarDiretoria.mutate({id:f.id,aprovado:true})} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Diretoria)"><ShieldAlert className="w-3.5 h-3.5 text-blue-600" /></button>
+                                        )}
+                                        <button onClick={() => {setEditId(f.id);setSelectedColab(c);setForm({colaboradorId:c.id,dataInicio:f.periodo1Inicio||'',dataFim:f.periodo1Fim||'',diasPeriodo:f.periodo1Dias||f.diasTotais||0,periodoNum:1,abonoConvertido:f.abonoConvertido||false,observacao:f.observacao||'',status:f.status||'programada'});setShowForm(true);}} className="p-1 hover:bg-blue-100 rounded" title="Editar"><Edit2 className="w-3.5 h-3.5 text-blue-600" /></button>
+                                        {f.status !== 'em_gozo' && (
+                                          <button onClick={() => {if(confirm('Excluir férias?'))deleteFerias.mutate({id:f.id});}} className="p-1 hover:bg-red-100 rounded" title="Excluir"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Folgas / Day Offs history */}
+                            <div>
+                              <h5 className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2"><CalendarDays className="w-3.5 h-3.5" /> Histórico de Folgas & Day Offs</h5>
+                              {(c.dayOffs.length === 0 && c.folgas.length === 0) ? (
+                                <p className="text-xs text-muted-foreground italic">Nenhuma folga registrada.</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {c.dayOffs.map((d:any) => (
+                                    <div key={`do-${d.id}`} className="flex items-center gap-2 text-xs bg-pink-50 rounded p-2">
+                                      <CalendarDays className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />
+                                      <span>{formatDateBR(d.dataEfetiva||d.dataOriginal)}</span>
+                                      <span className="text-muted-foreground">Day Off Aniversário</span>
+                                      <Badge variant="outline" className={`text-[10px] ${d.status==='aprovado'?'bg-green-50 text-green-700 border-green-200':d.status==='recusado'?'bg-red-50 text-red-700 border-red-200':'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{d.status}</Badge>
+                                    </div>
+                                  ))}
+                                  {c.folgas.map((s:any) => (
+                                    <div key={`sol-${s.id}`} className="flex items-center gap-2 text-xs bg-purple-50 rounded p-2">
+                                      <Send className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                                      <span>{formatDateBR(s.dataInicio)} a {formatDateBR(s.dataFim)}</span>
+                                      <span className="text-muted-foreground">{s.motivo?.split('\n')[0] || 'Folga'}</span>
+                                      <Badge variant="outline" className={`text-[10px] ${s.status==='aprovada'?'bg-green-50 text-green-700 border-green-200':s.status==='recusada'?'bg-red-50 text-red-700 border-red-200':'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{s.status}</Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── SOLICITAÇÕES ──────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="p-0">
+          <button className="w-full flex items-center justify-between p-4 text-left" onClick={() => setShowSolicitacoes(p => !p)}>
             <div className="flex items-center gap-2">
-              <div className="flex border rounded-md overflow-hidden">
-                <button onClick={() => setCalView('ano')} className={`px-3 py-1.5 text-xs font-medium transition-colors ${calView==='ano'?'bg-primary text-primary-foreground':'hover:bg-accent'}`}>Ano</button>
-                <button onClick={() => setCalView('mes')} className={`px-3 py-1.5 text-xs font-medium transition-colors ${calView==='mes'?'bg-primary text-primary-foreground':'hover:bg-accent'}`}>Mês</button>
-                <button onClick={() => {setCalView('dia');setCalDay(hoje.getDate());setCalMonth(hoje.getMonth());setCalYear(anoAtual);}} className={`px-3 py-1.5 text-xs font-medium transition-colors ${calView==='dia'?'bg-primary text-primary-foreground':'hover:bg-accent'}`}>Hoje</button>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => {
-                if (calView==='ano') setCalYear(y=>y-1);
-                else if (calView==='mes') {if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);}else setCalMonth(m=>m-1);}
-                else {const d=new Date(calYear,calMonth,calDay-1);setCalYear(d.getFullYear());setCalMonth(d.getMonth());setCalDay(d.getDate());}
-              }}><ChevronLeft className="w-4 h-4" /></Button>
-              <Button variant="outline" size="sm" onClick={() => {
-                if (calView==='ano') setCalYear(y=>y+1);
-                else if (calView==='mes') {if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);}else setCalMonth(m=>m+1);}
-                else {const d=new Date(calYear,calMonth,calDay+1);setCalYear(d.getFullYear());setCalMonth(d.getMonth());setCalDay(d.getDate());}
-              }}><ChevronRight className="w-4 h-4" /></Button>
+              <Send className="w-5 h-5 text-purple-600" />
+              <span className="font-semibold">Solicitações de Folga</span>
+              <Badge variant="outline" className="text-xs">{filteredSol.length}</Badge>
+              {kpis.solPendentes > 0 && <Badge className="bg-orange-100 text-orange-700 text-[10px]">{kpis.solPendentes} pendente(s)</Badge>}
             </div>
-          </div>
+            {showSolicitacoes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
 
-          {/* Legend */}
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Férias</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-pink-500" /> Folga / Day Off</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-primary" /> Hoje</span>
-          </div>
-
-          {/* ANNUAL VIEW */}
-          {calView === 'ano' && (
-            <div className="grid grid-cols-4 gap-4">
-              {MESES.map((nome, idx) => {
-                const isCurrentMonth = calYear === anoAtual && idx === hoje.getMonth();
-                return (
-                  <Card key={idx} className={`cursor-pointer hover:shadow-md transition-shadow ${isCurrentMonth ? 'ring-2 ring-primary' : ''}`}
-                    onClick={() => {setCalMonth(idx);setCalView('mes');}}>
-                    <CardContent className="p-3">
-                      <h4 className={`text-sm font-semibold mb-2 ${isCurrentMonth ? 'text-primary' : ''}`}>{nome}</h4>
-                      <div className="grid grid-cols-7 gap-0.5 text-[10px]">
-                        {['D','S','T','Q','Q','S','S'].map((d,i) => (<div key={i} className="text-center text-muted-foreground font-medium">{d}</div>))}
-                        {renderMiniMonth(calYear, idx)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
-          {/* MONTHLY VIEW */}
-          {calView === 'mes' && (
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-lg font-semibold mb-3">{MESES[calMonth]} {calYear}</h3>
-                  <div className="grid grid-cols-7 gap-1">
-                    {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((d,i) => (<div key={i} className="text-center text-xs font-medium text-muted-foreground py-2">{d}</div>))}
-                    {renderMiniMonth(calYear, calMonth).map((cell, i) => (
-                      <div key={i} className="min-h-[48px]">{cell}</div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-base">Ausências em {MESES[calMonth]} {calYear}</CardTitle></CardHeader>
-                <CardContent>
-                  {monthEvents.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma ausência programada neste mês.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {monthEvents.map((e, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors">
-                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${e.tipo==='ferias'?'bg-blue-500':'bg-pink-500'}`} />
-                          <span className="text-sm font-medium flex-1">{e.nome}</span>
-                          <span className="text-xs text-muted-foreground">{e.setor}</span>
-                          <Badge variant="outline" className="text-[10px]">{e.tipo==='ferias'?'Férias':e.tipo==='dayoff'?'Day Off':'Folga'}</Badge>
-                          <span className="text-xs text-muted-foreground">{formatDateBR(e.date)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* DAY VIEW */}
-          {calView === 'dia' && (
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-base">{calDay} de {MESES[calMonth]} de {calYear}</CardTitle></CardHeader>
-              <CardContent>
-                {selectedDayEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma ausência neste dia.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedDayEvents.map((e, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${e.tipo==='ferias'?'bg-blue-100':'bg-pink-100'}`}>
-                          {e.tipo==='ferias' ? <Calendar className="w-5 h-5 text-blue-600" /> : <CalendarDays className="w-5 h-5 text-pink-600" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{e.nome}</p>
-                          <p className="text-xs text-muted-foreground">{e.setor} — {e.tipo==='ferias'?'Férias':e.tipo==='dayoff'?'Day Off':'Folga'}</p>
-                        </div>
-                        <Badge variant="outline" className={`text-[10px] ${e.status==='aprovado'||e.status==='aprovada'||e.status==='concluida'?'bg-green-50 text-green-700':'bg-yellow-50 text-yellow-700'}`}>{e.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* ─── COLABORADORES TAB ──────────────────────────────────── */}
-        <TabsContent value="colaboradores" className="space-y-4 mt-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar por nome, cargo ou setor..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-          </div>
-
-          <div className="space-y-2">
-            {filtered.map(c => {
-              const isExpanded = expandedColabId === c.id;
-              return (
-                <Card key={c.id} className={`transition-shadow ${isExpanded ? 'ring-1 ring-primary shadow-md' : 'hover:shadow-sm cursor-pointer'}`}>
-                  <CardContent className="p-0">
-                    {/* Compact row */}
-                    <button className="w-full flex items-center gap-4 p-4 text-left" onClick={() => setExpandedColabId(isExpanded ? null : c.id)}>
-                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{c.nomeCompleto}</p>
-                        <p className="text-xs text-muted-foreground truncate">{c.cargo}</p>
-                      </div>
-                      <div className="hidden md:block text-xs text-muted-foreground w-28 text-center">
-                        <span className="block text-[10px] uppercase tracking-wide">Setor</span>
-                        <span className="font-medium">{c.setor || '—'}</span>
-                      </div>
-                      <div className="hidden md:block text-xs text-muted-foreground w-40 text-center">
-                        <span className="block text-[10px] uppercase tracking-wide">Concessivo até</span>
-                        <span className="font-medium">{c.periodo ? formatDateBR(c.periodo.fimConcessivo) : '—'}</span>
-                      </div>
-                      <div className="hidden md:block text-xs text-muted-foreground w-24 text-center">
-                        <span className="block text-[10px] uppercase tracking-wide">Tempo de Casa</span>
-                        <span className="font-medium">{c.periodo ? `${c.periodo.anosCompletos}a ${c.periodo.mesesTrabalhados}m` : '—'}</span>
+          {showSolicitacoes && (
+            <div className="border-t divide-y">
+              {filteredSol.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação encontrada.</p>
+              ) : (
+                filteredSol.map((s:any) => (
+                  <div key={s.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-sm">{s.colaboradorNome || colabList.find((c:any)=>c.id===s.colaboradorId)?.nomeCompleto || 'N/A'}</h4>
+                        <p className="text-xs text-muted-foreground">{s.tipo==='ferias'?'Férias':'Folga'} — {formatDateBR(s.dataInicio)} a {formatDateBR(s.dataFim)}</p>
+                        {s.motivo && <p className="text-xs text-muted-foreground mt-1">{s.motivo}</p>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-[10px] ${c.saldo.saldoDias<=0?'text-red-600 border-red-300':c.saldo.saldoDias<=10?'text-yellow-600 border-yellow-300':'text-green-600 border-green-300'}`}>
-                          {c.saldo.saldoDias}d
-                        </Badge>
-                        {c.periodo?.vencido && <Badge variant="destructive" className="text-[10px]">Vencido</Badge>}
-                        {c.periodo?.proximoVencer && !c.periodo?.vencido && <Badge className="bg-yellow-100 text-yellow-800 text-[10px]">A vencer</Badge>}
-                        <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        {s.status === 'pendente' && (
+                          <>
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-green-600" onClick={() => updateSolicitacao.mutate({id:s.id,data:{status:'aprovada'}})}><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-red-600" onClick={() => {const j=prompt('Justificativa:');if(j)updateSolicitacao.mutate({id:s.id,data:{status:'recusada',justificativaRecusa:j}});}}><XCircle className="w-3.5 h-3.5 mr-1" /> Recusar</Button>
+                          </>
+                        )}
+                        {s.status !== 'pendente' && (
+                          <Badge className={s.status==='aprovada'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}>{s.status==='aprovada'?'Aprovada':'Recusada'}</Badge>
+                        )}
                       </div>
-                    </button>
-
-                    {/* Expanded detail */}
-                    {isExpanded && (
-                      <div className="border-t px-4 pb-4 pt-3 space-y-4 bg-muted/20">
-                        <div className="grid grid-cols-5 gap-2 text-xs">
-                          <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Admissão</span><span className="font-medium">{formatDateBR(c.dataAdmissao)}</span></div>
-                          <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Aquisitivo</span><span className="font-medium">{c.periodo ? `${formatDateBR(c.periodo.inicioAquisitivo)} a ${formatDateBR(c.periodo.fimAquisitivo)}` : '—'}</span></div>
-                          <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Concessivo até</span><span className="font-medium">{c.periodo ? formatDateBR(c.periodo.fimConcessivo) : '—'}</span></div>
-                          <div className={`rounded p-2 border ${c.saldo.saldoDias<=0?'bg-red-50 border-red-200':c.saldo.saldoDias<=10?'bg-yellow-50 border-yellow-200':'bg-green-50 border-green-200'}`}>
-                            <span className="text-muted-foreground block">Saldo</span><span className="font-bold">{c.saldo.saldoDias} dias</span>
-                          </div>
-                          <div className="bg-background rounded p-2 border"><span className="text-muted-foreground block">Períodos</span><span className="font-medium">{c.saldo.periodosUsados}/3</span></div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => {setSelectedColab(c);setForm(f=>({...f,colaboradorId:c.id}));setShowForm(true);}}>
-                            <Plus className="w-3.5 h-3.5 mr-1" /> Férias
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => {
-                            setSolForm(f=>({...f,colaboradorId:c.id,colaboradorNome:c.nomeCompleto}));
-                            setShowSolicitacao(true);
-                          }}>
-                            <Send className="w-3.5 h-3.5 mr-1" /> Folga
-                          </Button>
-                        </div>
-
-                        {/* Férias history */}
-                        <div>
-                          <h5 className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2"><History className="w-3.5 h-3.5" /> Histórico de Férias</h5>
-                          {c.ferias.length === 0 ? (
-                            <p className="text-xs text-muted-foreground italic">Nenhuma férias registrada.</p>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {c.ferias.map((f:any) => (
-                                <div key={f.id} className="flex items-center gap-2 text-xs bg-blue-50 rounded p-2">
-                                  <CalendarDays className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                  <span>{formatDateBR(f.periodo1Inicio||f.dataInicio)} a {formatDateBR(f.periodo1Fim||f.dataFim)}</span>
-                                  <span className="text-muted-foreground">({f.periodo1Dias||f.diasTotais} dias)</span>
-                                  <Badge variant="outline" className="text-[10px]">{f.status}</Badge>
-                                  {f.aprovadorGestorStatus && f.aprovadorGestorStatus !== 'pendente' && (
-                                    <Badge variant="outline" className={`text-[10px] ${f.aprovadorGestorStatus==='aprovado'?'bg-green-50 text-green-700 border-green-200':'bg-red-50 text-red-700 border-red-200'}`}>
-                                      Gestor: {f.aprovadorGestorStatus==='aprovado'?'✓':'✗'}
-                                    </Badge>
-                                  )}
-                                  {f.aprovadorDiretoriaStatus && f.aprovadorDiretoriaStatus !== 'pendente' && (
-                                    <Badge variant="outline" className={`text-[10px] ${f.aprovadorDiretoriaStatus==='aprovado'?'bg-green-50 text-green-700 border-green-200':'bg-red-50 text-red-700 border-red-200'}`}>
-                                      Diretoria: {f.aprovadorDiretoriaStatus==='aprovado'?'✓':'✗'}
-                                    </Badge>
-                                  )}
-                                  <div className="ml-auto flex gap-1">
-                                    {f.aprovadorGestorStatus === 'pendente' && (
-                                      <button onClick={() => aprovarGestor.mutate({id:f.id,aprovado:true})} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Gestor)"><ShieldCheck className="w-3.5 h-3.5 text-green-600" /></button>
-                                    )}
-                                    {f.aprovadorGestorStatus === 'aprovado' && f.aprovadorDiretoriaStatus === 'pendente' && (
-                                      <button onClick={() => aprovarDiretoria.mutate({id:f.id,aprovado:true})} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Diretoria)"><ShieldAlert className="w-3.5 h-3.5 text-blue-600" /></button>
-                                    )}
-                                    <button onClick={() => {setEditId(f.id);setSelectedColab(c);setForm({colaboradorId:c.id,dataInicio:f.periodo1Inicio||'',dataFim:f.periodo1Fim||'',diasPeriodo:f.periodo1Dias||f.diasTotais||0,periodoNum:1,abonoConvertido:f.abonoConvertido||false,observacao:f.observacao||'',status:f.status||'programada'});setShowForm(true);}} className="p-1 hover:bg-blue-100 rounded" title="Editar"><Edit2 className="w-3.5 h-3.5 text-blue-600" /></button>
-                                    {f.status !== 'em_gozo' && (
-                                      <button onClick={() => {if(confirm('Excluir férias?'))deleteFerias.mutate({id:f.id});}} className="p-1 hover:bg-red-100 rounded" title="Excluir"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Folgas / Day Offs history */}
-                        <div>
-                          <h5 className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2"><CalendarDays className="w-3.5 h-3.5" /> Histórico de Folgas & Day Offs</h5>
-                          {(c.dayOffs.length === 0 && c.folgas.length === 0) ? (
-                            <p className="text-xs text-muted-foreground italic">Nenhuma folga registrada.</p>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {c.dayOffs.map((d:any) => (
-                                <div key={`do-${d.id}`} className="flex items-center gap-2 text-xs bg-pink-50 rounded p-2">
-                                  <CalendarDays className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />
-                                  <span>{formatDateBR(d.dataEfetiva||d.dataOriginal)}</span>
-                                  <span className="text-muted-foreground">Day Off Aniversário</span>
-                                  <Badge variant="outline" className={`text-[10px] ${d.status==='aprovado'?'bg-green-50 text-green-700 border-green-200':d.status==='recusado'?'bg-red-50 text-red-700 border-red-200':'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{d.status}</Badge>
-                                </div>
-                              ))}
-                              {c.folgas.map((s:any) => (
-                                <div key={`sol-${s.id}`} className="flex items-center gap-2 text-xs bg-purple-50 rounded p-2">
-                                  <Send className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
-                                  <span>{formatDateBR(s.dataInicio)} a {formatDateBR(s.dataFim)}</span>
-                                  <span className="text-muted-foreground">{s.motivo?.split('\n')[0] || 'Folga'}</span>
-                                  <Badge variant="outline" className={`text-[10px] ${s.status==='aprovada'?'bg-green-50 text-green-700 border-green-200':s.status==='recusada'?'bg-red-50 text-red-700 border-red-200':'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{s.status}</Badge>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </TabsContent>
-
-        {/* ─── SOLICITAÇÕES TAB ───────────────────────────────────── */}
-        <TabsContent value="solicitacoes" className="space-y-4 mt-4">
-          {solList.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma solicitação pendente.</p>}
-          {solList.map((s:any) => (
-            <Card key={s.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-sm">{s.colaboradorNome || colabList.find((c:any)=>c.id===s.colaboradorId)?.nomeCompleto || 'N/A'}</h4>
-                    <p className="text-xs text-muted-foreground">{s.tipo==='ferias'?'Férias':'Folga'} — {formatDateBR(s.dataInicio)} a {formatDateBR(s.dataFim)}</p>
-                    {s.motivo && <p className="text-xs text-muted-foreground mt-1">{s.motivo}</p>}
+                    </div>
+                    {s.justificativaRecusa && <p className="text-xs text-red-500 mt-2">Justificativa: {s.justificativaRecusa}</p>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {s.status === 'pendente' && (
-                      <>
-                        <Button size="sm" variant="outline" className="h-7 text-xs text-green-600" onClick={() => updateSolicitacao.mutate({id:s.id,data:{status:'aprovada'}})}><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs text-red-600" onClick={() => {const j=prompt('Justificativa:');if(j)updateSolicitacao.mutate({id:s.id,data:{status:'recusada',justificativaRecusa:j}});}}><XCircle className="w-3.5 h-3.5 mr-1" /> Recusar</Button>
-                      </>
-                    )}
-                    {s.status !== 'pendente' && (
-                      <Badge className={s.status==='aprovada'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}>{s.status==='aprovada'?'Aprovada':'Recusada'}</Badge>
-                    )}
-                  </div>
-                </div>
-                {s.justificativaRecusa && <p className="text-xs text-red-500 mt-2">Justificativa: {s.justificativaRecusa}</p>}
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-      </Tabs>
+                ))
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ─── SECTOR OVERLAP ALERT ─────────────────────────────────── */}
       <Dialog open={sectorAlertOpen} onOpenChange={setSectorAlertOpen}>
@@ -765,7 +718,7 @@ return (
               <Card className="bg-blue-50/50 border-blue-200">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-blue-800"><User className="w-4 h-4" /> Dados do Colaborador</div>
-                  <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div className="grid grid-cols-3 gap-2 text-xs">
                     <div><span className="text-muted-foreground block">Nome</span><span className="font-medium">{selectedColab.nomeCompleto}</span></div>
                     <div><span className="text-muted-foreground block">Cargo</span><span className="font-medium">{selectedColab.cargo}</span></div>
                     <div><span className="text-muted-foreground block">Admissão</span><span className="font-medium">{formatDateBR(selectedColab.dataAdmissao)}</span></div>
@@ -879,7 +832,6 @@ return (
               const labels:Record<string,string>={day_off:'Day Off',doacao_sangue:'Doação de Sangue',banco_horas:'Banco de Horas',outros:'Outros'};
               const motivoTexto=solForm.motivo==='outros'?`Outros: ${solForm.motivoOutro}`:labels[solForm.motivo]||solForm.motivo;
               const motivoFinal=solForm.observacoes.trim()?`${motivoTexto}\n\nObs: ${solForm.observacoes}`:motivoTexto;
-
               checkSectorOverlap(solForm.colaboradorId, solForm.dataInicio, solForm.dataFim, () => {
                 createSolicitacao.mutate({colaboradorId:solForm.colaboradorId,tipo:'folga' as any,dataInicio:solForm.dataInicio,dataFim:solForm.dataFim,diasSolicitados:diasSol,motivo:motivoFinal});
               });

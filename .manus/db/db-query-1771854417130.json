@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS senha_historico (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  senhaAutorizacaoId INT NOT NULL,\n  colaboradorId INT NOT NULL,\n  colaboradorNome VARCHAR(500) NOT NULL,\n  acao ENUM('criado', 'atualizado', 'revogado', 'reativado', 'transferido', 'senha_alterada') NOT NULL,\n  detalhes TEXT,\n  realizadoPorId INT,\n  realizadoPorNome VARCHAR(255),\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute CREATE TABLE IF NOT EXISTS senha_historico (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  senhaAutorizacaoId INT NOT NULL,\n  colaboradorId INT NOT NULL,\n  colaboradorNome VARCHAR(500) NOT NULL,\n  acao ENUM('criado', 'atualizado', 'revogado', 'reativado', 'transferido', 'senha_alterada') NOT NULL,\n  detalhes TEXT,\n  realizadoPorId INT,\n  realizadoPorNome VARCHAR(255),\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 159
+}

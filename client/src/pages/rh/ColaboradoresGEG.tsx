@@ -1063,6 +1063,7 @@ export default function ColaboradoresGEG() {
 
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
+  const niveisCargosQ = trpc.niveisCargo.list.useQuery();
   const historicoStatus = trpc.historicoStatus.list.useQuery(
     { colaboradorId: editId || 0 },
     { enabled: !!editId && (viewMode || showForm) }
@@ -1226,8 +1227,38 @@ export default function ColaboradoresGEG() {
 
   const allColabs = (colaboradores.data || []) as any[];
   const setoresList = (setores.data || []) as any[];
+  const niveisCargos = (niveisCargosQ.data || []) as any[];
 
   const uniqueCargos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.cargo).filter(Boolean))).sort(), [allColabs]);
+
+  // Cargos filtrados pelo setor selecionado no formulário (de niveis_cargo)
+  const cargosBySetor = useMemo(() => {
+    if (!form.setorId) return niveisCargos.filter((nc: any) => nc.ativo !== false);
+    return niveisCargos.filter((nc: any) => nc.setorId === form.setorId && nc.ativo !== false);
+  }, [niveisCargos, form.setorId]);
+
+  // Handler: ao selecionar setor, limpa cargo se não pertence ao novo setor
+  const handleSetorChange = (setorIdStr: string) => {
+    const newSetorId = Number(setorIdStr);
+    setForm(f => {
+      const cargoStillValid = niveisCargos.some((nc: any) => nc.setorId === newSetorId && nc.cargo === f.cargo && nc.ativo !== false);
+      return { ...f, setorId: newSetorId, ...(cargoStillValid ? {} : { cargo: '', salarioBase: '', funcao: '' }) };
+    });
+    markDirty();
+  };
+
+  // Handler: ao selecionar cargo, preenche salário base automaticamente
+  const handleCargoSelect = (cargoNome: string) => {
+    const nc = niveisCargos.find((n: any) => n.cargo === cargoNome && (form.setorId ? n.setorId === form.setorId : true) && n.ativo !== false);
+    setForm(f => ({
+      ...f,
+      cargo: cargoNome,
+      salarioBase: nc?.salarioMinimo || nc?.salarioMaximo || f.salarioBase,
+      setorId: nc?.setorId || f.setorId,
+      nivelHierarquico: f.nivelHierarquico || '',
+    }));
+    markDirty();
+  };
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -1902,10 +1933,47 @@ export default function ColaboradoresGEG() {
             </div>
             {/* Row 2: Período de Experiência (full width, handled in phase 4) */}
             <ExperienciaSection form={form} setForm={setForm} markDirty={markDirty} />
-            {/* Row 3: Cargo, Função, Nível Hierárquico */}
+            {/* Row 3: Setor, Cargo (auto-fill de Cargos e Salários), Nível Hierárquico */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 mt-3">
-              <Field label="Cargo" required><Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} /></Field>
-              <Field label="Função"><Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} /></Field>
+              <Field label="Setor">
+                <Select value={form.setorId ? String(form.setorId) : ''} onValueChange={handleSetorChange}>
+                  <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
+                  <SelectContent>
+                    {setoresList.filter((s: any) => s.ativo).map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Cargo" required>
+                {cargosBySetor.length > 0 ? (
+                  <Select value={form.cargo} onValueChange={handleCargoSelect}>
+                    <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar cargo" /></SelectTrigger>
+                    <SelectContent>
+                      {cargosBySetor.map((nc: any) => {
+                        const setorNome = setoresList.find((s: any) => s.id === nc.setorId)?.nome || '';
+                        const faixa = nc.salarioMinimo ? `R$ ${Number(nc.salarioMinimo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
+                        return (
+                          <SelectItem key={nc.id} value={nc.cargo}>
+                            <span>{nc.cargo}</span>
+                            {!form.setorId && setorNome && <span className="text-muted-foreground text-xs ml-1">({setorNome})</span>}
+                            {faixa && <span className="text-muted-foreground text-xs ml-1">— {faixa}</span>}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.cargo} onChange={e => { setForm(f => ({ ...f, cargo: e.target.value })); markDirty(); }} placeholder="Digite o cargo" />
+                )}
+                {form.cargo && cargosBySetor.length > 0 && (() => {
+                  const nc = cargosBySetor.find((n: any) => n.cargo === form.cargo);
+                  if (nc?.salarioMinimo && nc?.salarioMaximo && nc.salarioMinimo !== nc.salarioMaximo) {
+                    return <p className="text-xs text-muted-foreground mt-0.5">Faixa salarial: R$ {Number(nc.salarioMinimo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — R$ {Number(nc.salarioMaximo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>;
+                  }
+                  return null;
+                })()}
+              </Field>
               <Field label="Nível Hierárquico">
                 <Select value={form.nivelHierarquico} onValueChange={v => { setForm(f => ({ ...f, nivelHierarquico: v })); markDirty(); }}>
                   <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -1915,18 +1983,9 @@ export default function ColaboradoresGEG() {
                 </Select>
               </Field>
             </div>
-            {/* Row 4: Setor, Local de Trabalho */}
+            {/* Row 4: Função, Local de Trabalho */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 mt-3">
-              <Field label="Setor">
-                <Select value={form.setorId ? String(form.setorId) : ''} onValueChange={v => { setForm(f => ({ ...f, setorId: Number(v) })); markDirty(); }}>
-                  <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  <SelectContent>
-                    {setoresList.filter((s: any) => s.ativo).map((s: any) => (
-                      <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              <Field label="Função"><Input value={form.funcao} onChange={e => { setForm(f => ({ ...f, funcao: e.target.value })); markDirty(); }} /></Field>
               <Field label="Local de Trabalho">
                 <Select value={form.localTrabalho} onValueChange={v => { setForm(f => ({ ...f, localTrabalho: v })); markDirty(); }}>
                   <SelectTrigger className="w-full truncate"><SelectValue placeholder="Selecionar" /></SelectTrigger>

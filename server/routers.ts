@@ -3857,6 +3857,7 @@ export const appRouter = router({
         tipoSenhaAuth: z.enum(['email','computador','celular','alarme_escritorio','sistema_interno','vpn','wifi','cofre','chave_empresa','chave_sala','chave_armario','veiculo_empresa','estacionamento','cartao_acesso','biometria','outro']),
         descricao: z.string().optional(),
         possuiSenha: z.boolean().default(false),
+        senhaValor: z.string().optional(),
         senhaObs: z.string().optional(),
         autorizado: z.boolean().default(false),
         dataAutorizacao: z.string().optional(),
@@ -3871,6 +3872,18 @@ export const appRouter = router({
           registradoPorId: ctx.user?.id,
           registradoPorNome: ctx.user?.name || 'Sistema',
         } as any);
+        // Log history
+        if (id) {
+          await db.createSenhaHistorico({
+            senhaAutorizacaoId: id,
+            colaboradorId: input.colaboradorId,
+            colaboradorNome: input.colaboradorNome,
+            acao: 'criado',
+            detalhes: `Registro criado: ${input.tipoSenhaAuth} - ${input.descricao || 'sem descrição'}`,
+            realizadoPorId: ctx.user?.id,
+            realizadoPorNome: ctx.user?.name || 'Sistema',
+          });
+        }
         return { id };
       }),
     update: protectedProcedure
@@ -3880,6 +3893,7 @@ export const appRouter = router({
           tipoSenhaAuth: z.enum(['email','computador','celular','alarme_escritorio','sistema_interno','vpn','wifi','cofre','chave_empresa','chave_sala','chave_armario','veiculo_empresa','estacionamento','cartao_acesso','biometria','outro']).optional(),
           descricao: z.string().optional(),
           possuiSenha: z.boolean().optional(),
+          senhaValor: z.string().optional(),
           senhaObs: z.string().optional(),
           autorizado: z.boolean().optional(),
           dataAutorizacao: z.string().optional(),
@@ -3889,15 +3903,66 @@ export const appRouter = router({
           observacoes: z.string().optional(),
         }),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // Detect what changed for history
+        const changes: string[] = [];
+        const d = input.data;
+        if (d.statusSenhaAuth === 'revogado') changes.push('Status alterado para Revogado');
+        if (d.statusSenhaAuth === 'ativo') changes.push('Status reativado para Ativo');
+        if (d.senhaValor !== undefined) changes.push('Senha alterada');
+        if (d.tipoSenhaAuth) changes.push(`Tipo alterado para ${d.tipoSenhaAuth}`);
+        if (d.descricao !== undefined) changes.push('Descrição atualizada');
+        if (d.identificador !== undefined) changes.push('Identificador atualizado');
+        if (d.dataRevogacao) changes.push(`Data de revogação definida: ${d.dataRevogacao}`);
+        if (changes.length === 0) changes.push('Registro atualizado');
+
         await db.updateSenhaAutorizacao(input.id, input.data as any);
+
+        // Determine acao
+        let acao: 'atualizado' | 'revogado' | 'reativado' | 'senha_alterada' = 'atualizado';
+        if (d.statusSenhaAuth === 'revogado') acao = 'revogado';
+        else if (d.statusSenhaAuth === 'ativo') acao = 'reativado';
+        else if (d.senhaValor !== undefined) acao = 'senha_alterada';
+
+        // Get the record to find colaborador info
+        const records = await db.listSenhasAutorizacoes();
+        const record = (records as any[]).find((r: any) => r.id === input.id);
+        await db.createSenhaHistorico({
+          senhaAutorizacaoId: input.id,
+          colaboradorId: record?.colaboradorId || 0,
+          colaboradorNome: record?.colaboradorNome || 'Desconhecido',
+          acao,
+          detalhes: changes.join('; '),
+          realizadoPorId: ctx.user?.id,
+          realizadoPorNome: ctx.user?.name || 'Sistema',
+        });
+
         return { success: true };
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // Get record before deleting for history
+        const records = await db.listSenhasAutorizacoes();
+        const record = (records as any[]).find((r: any) => r.id === input.id);
         await db.deleteSenhaAutorizacao(input.id);
+        if (record) {
+          await db.createSenhaHistorico({
+            senhaAutorizacaoId: input.id,
+            colaboradorId: record.colaboradorId || 0,
+            colaboradorNome: record.colaboradorNome || 'Desconhecido',
+            acao: 'revogado',
+            detalhes: 'Registro removido do sistema',
+            realizadoPorId: ctx.user?.id,
+            realizadoPorNome: ctx.user?.name || 'Sistema',
+          });
+        }
         return { success: true };
+      }),
+    historico: protectedProcedure
+      .input(z.object({ senhaAutorizacaoId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listSenhaHistorico(input?.senhaAutorizacaoId);
       }),
   }),
 

@@ -227,12 +227,84 @@ async function runReajusteDoisAnosCheck() {
   }
 }
 
+async function runExperienciaExpirationCheck() {
+  try {
+    const db = await import('../db');
+    const { notifyOwner } = await import('./notification');
+    const colabs = await db.listColaboradores();
+    const hoje = new Date();
+    const alertas: { nome: string; periodo: string; dataFim: string; diasRestantes: number }[] = [];
+
+    for (const c of colabs as any[]) {
+      if (c.status === 'desligado') continue;
+
+      // Check periodo 1
+      if (c.periodoExperiencia1Fim) {
+        const fim = new Date(c.periodoExperiencia1Fim + 'T00:00:00');
+        const diff = Math.ceil((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff >= 0 && diff <= 15) {
+          alertas.push({
+            nome: c.nomeCompleto || c.nome || 'Colaborador',
+            periodo: '1º Período',
+            dataFim: c.periodoExperiencia1Fim,
+            diasRestantes: diff,
+          });
+        }
+      }
+      // Check periodo 2
+      if (c.periodoExperiencia2Fim) {
+        const fim = new Date(c.periodoExperiencia2Fim + 'T00:00:00');
+        const diff = Math.ceil((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff >= 0 && diff <= 15) {
+          alertas.push({
+            nome: c.nomeCompleto || c.nome || 'Colaborador',
+            periodo: '2º Período',
+            dataFim: c.periodoExperiencia2Fim,
+            diasRestantes: diff,
+          });
+        }
+      }
+    }
+
+    if (alertas.length > 0) {
+      // Create in-app notifications
+      const allUsers = await db.listUsers();
+      for (const alerta of alertas) {
+        const titulo = `Experiência Vencendo: ${alerta.nome}`;
+        const mensagem = `O ${alerta.periodo} de experiência de ${alerta.nome} vence em ${alerta.diasRestantes} dia(s) (${alerta.dataFim}). Tome as providências necessárias.`;
+        for (const u of allUsers) {
+          // Avoid duplicate notifications - check if already notified today
+          await db.createNotificacao({
+            usuarioId: u.id,
+            tipo: 'geral' as any,
+            titulo,
+            mensagem,
+            lida: false,
+          });
+        }
+      }
+
+      // Also notify owner
+      const lista = alertas.map(a => `• ${a.nome} - ${a.periodo}: vence em ${a.diasRestantes} dia(s) (${a.dataFim})`).join('\n');
+      await notifyOwner({
+        title: `⚠️ ${alertas.length} período(s) de experiência vencendo nos próximos 15 dias`,
+        content: `Os seguintes períodos de experiência estão próximos do vencimento:\n\n${lista}\n\nAcesse o módulo Colaboradores no GEG para tomar as providências.`,
+      });
+
+      console.log(`[Experiencia Scheduler] Found ${alertas.length} expiring experience period(s)`);
+    }
+  } catch (err) {
+    console.error('[Experiencia Scheduler Error]', err);
+  }
+}
+
 function startScheduledJobs() {
   // Run birthday emails daily at 8:00 AM (check every hour)
   const HOUR_MS = 60 * 60 * 1000;
   let lastBirthdayRun = '';
   let lastContractRun = '';
   let lastReajusteRun = '';
+  let lastExperienciaRun = '';
 
   setInterval(async () => {
     const now = new Date();
@@ -256,6 +328,12 @@ function startScheduledJobs() {
       lastReajusteRun = todayKey;
       await runReajusteDoisAnosCheck();
     }
+
+    // Run experiencia expiration check once per day (after 9 AM)
+    if (now.getHours() >= 9 && lastExperienciaRun !== todayKey) {
+      lastExperienciaRun = todayKey;
+      await runExperienciaExpirationCheck();
+    }
   }, HOUR_MS);
 
   // Also run once on startup after a short delay
@@ -264,9 +342,10 @@ function startScheduledJobs() {
     await runAdvanceBirthdayNotifications();
     await runContractExpirationCheck();
     await runReajusteDoisAnosCheck();
+    await runExperienciaExpirationCheck();
   }, 10000);
 
-  console.log('[Scheduler] Birthday emails, contract checks, and reajuste alerts scheduled');
+  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, and experiencia checks scheduled');
 }
 
 async function startServer() {

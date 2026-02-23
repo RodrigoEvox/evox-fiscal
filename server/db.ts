@@ -63,6 +63,7 @@ import {
   equipamentosColaborador, InsertEquipamentoColaborador,
   senhasAutorizacoes, InsertSenhaAutorizacao,
   emailsCorporativos, InsertEmailCorporativo,
+  senhaHistorico, InsertSenhaHistorico,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4017,6 +4018,23 @@ export async function deleteSenhaAutorizacao(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(senhasAutorizacoes).where(eq(senhasAutorizacoes.id, id));
+}
+
+// ---- HISTÓRICO DE SENHAS E ACESSOS ----
+export async function listSenhaHistorico(senhaAutorizacaoId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (senhaAutorizacaoId) {
+    return db.select().from(senhaHistorico).where(eq(senhaHistorico.senhaAutorizacaoId, senhaAutorizacaoId)).orderBy(desc(senhaHistorico.createdAt));
+  }
+  return db.select().from(senhaHistorico).orderBy(desc(senhaHistorico.createdAt));
+}
+
+export async function createSenhaHistorico(data: InsertSenhaHistorico) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(senhaHistorico).values(data);
+  return result[0].insertId;
 }
 
 // ---- EMAILS CORPORATIVOS ----

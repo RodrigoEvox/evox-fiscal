@@ -1544,6 +1544,7 @@ export const senhasAutorizacoes = mysqlTable("senhas_autorizacoes", {
   descricao: varchar("descricao", { length: 500 }),
   // Para senhas: valor criptografado (ou apenas indicação de que possui)
   possuiSenha: boolean("possuiSenha").default(false),
+  senhaValor: varchar("senhaValor", { length: 500 }), // senha real do colaborador (mascarada na UI)
   senhaObs: text("senhaObs"), // observações sobre a senha (ex: "senha padrão inicial")
   // Para autorizações: detalhes
   autorizado: boolean("autorizado").default(false),
@@ -1583,3 +1584,19 @@ export const emailsCorporativos = mysqlTable("emails_corporativos", {
 
 export type EmailCorporativo = typeof emailsCorporativos.$inferSelect;
 export type InsertEmailCorporativo = typeof emailsCorporativos.$inferInsert;
+
+// ---- HISTÓRICO DE SENHAS E ACESSOS ----
+export const senhaHistorico = mysqlTable("senha_historico", {
+  id: int("id").autoincrement().primaryKey(),
+  senhaAutorizacaoId: int("senhaAutorizacaoId").notNull(),
+  colaboradorId: int("colaboradorId").notNull(),
+  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
+  acao: mysqlEnum("acao", ["criado", "atualizado", "revogado", "reativado", "transferido", "senha_alterada"]).notNull(),
+  detalhes: text("detalhes"), // description of what changed
+  realizadoPorId: int("realizadoPorId"),
+  realizadoPorNome: varchar("realizadoPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SenhaHistoricoRow = typeof senhaHistorico.$inferSelect;
+export type InsertSenhaHistorico = typeof senhaHistorico.$inferInsert;
