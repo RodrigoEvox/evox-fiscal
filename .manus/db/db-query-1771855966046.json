@@ -1,0 +1,178 @@
+{
+  "query": "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME LIKE '%colaborador%' AND TABLE_SCHEMA = DATABASE() AND TABLE_NAME != 'colaboradores';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME LIKE '%colaborador%' AND TABLE_SCHEMA = DATABASE() AND TABLE_NAME != 'colaboradores';",
+  "rows": [
+    {
+      "TABLE_NAME": "ferias",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "solicitacoes_folga",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "atestados_licencas",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "planos_carreira",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "avaliacoes",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "avaliacoes",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "colaborador_documentos",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "metas_individuais",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "metas_individuais",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "historico_status_colaborador",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "email_aniversariante_log",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "workflow_renovacao_contrato",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "workflow_renovacao_contrato",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "onboarding_colaborador",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "onboarding_colaborador",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "banco_horas",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "banco_horas",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "vale_transporte",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "vale_transporte",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "academia_beneficio",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "academia_beneficio",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "comissao_rh",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "comissao_rh",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "day_off",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "day_off",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "doacao_sangue",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "doacao_sangue",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "reajustes_salariais",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "reajustes_salariais",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "apontamentos_folha",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "apontamentos_folha",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "rescisoes",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "rescisoes",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "birthday_advance_notifications",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "equipamentos_colaborador",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "equipamentos_colaborador",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "senhas_autorizacoes",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "senhas_autorizacoes",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "emails_corporativos",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "emails_corporativos",
+      "COLUMN_NAME": "colaboradorNome"
+    },
+    {
+      "TABLE_NAME": "senha_historico",
+      "COLUMN_NAME": "colaboradorId"
+    },
+    {
+      "TABLE_NAME": "senha_historico",
+      "COLUMN_NAME": "colaboradorNome"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tCOLUMN_NAME\nferias\tcolaboradorId\nsolicitacoes_folga\tcolaboradorId\natestados_licencas\tcolaboradorId\nplanos_carreira\tcolaboradorId\navaliacoes\tcolaboradorId\navaliacoes\tcolaboradorNome\ncolaborador_documentos\tcolaboradorId\nmetas_individuais\tcolaboradorId\nmetas_individuais\tcolaboradorNome\nhistorico_status_colaborador\tcolaboradorId\nemail_aniversariante_log\tcolaboradorId\nworkflow_renovacao_contrato\tcolaboradorId\nworkflow_renovacao_contrato\tcolaboradorNome\nonboarding_colaborador\tcolaboradorId\nonboarding_colaborador\tcolaboradorNome\nbanco_horas\tcolaboradorId\nbanco_horas\tcolaboradorNome\nvale_transporte\tcolaboradorId\nvale_transporte\tcolaboradorNome\nacademia_beneficio\tcolaboradorId\nacademia_beneficio\tcolaboradorNome\ncomissao_rh\tcolaboradorId\ncomissao_rh\tcolaboradorNome\nday_off\tcolaboradorId\nday_off\tcolaboradorNome\ndoacao_sangue\tcolaboradorId\ndoacao_sangue\tcolaboradorNome\nreajustes_salariais\tcolaboradorId\nreajustes_salariais\tcolaboradorNome\napontamentos_folha\tcolaboradorId\napontamentos_folha\tcolaboradorNome\nrescisoes\tcolaboradorId\nrescisoes\tcolaboradorNome\nbirthday_advance_notifications\tcolaboradorId\nequipamentos_colaborador\tcolaboradorId\nequipamentos_colaborador\tcolaboradorNome\nsenhas_autorizacoes\tcolaboradorId\nsenhas_autorizacoes\tcolaboradorNome\nemails_corporativos\tcolaboradorId\nemails_corporativos\tcolaboradorNome\nsenha_historico\tcolaboradorId\nsenha_historico\tcolaboradorNome\n",
+  "stderr": "",
+  "execution_time_ms": 80
+}

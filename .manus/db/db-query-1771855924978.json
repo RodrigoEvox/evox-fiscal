@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id FROM colaboradores ORDER BY id ASC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id FROM colaboradores ORDER BY id ASC LIMIT 20;",
+  "rows": [
+    {
+      "id": "1"
+    },
+    {
+      "id": "2"
+    },
+    {
+      "id": "3"
+    },
+    {
+      "id": "4"
+    },
+    {
+      "id": "5"
+    },
+    {
+      "id": "30001"
+    },
+    {
+      "id": "30002"
+    },
+    {
+      "id": "30003"
+    },
+    {
+      "id": "30004"
+    },
+    {
+      "id": "30005"
+    },
+    {
+      "id": "30006"
+    },
+    {
+      "id": "30007"
+    },
+    {
+      "id": "30008"
+    },
+    {
+      "id": "30009"
+    },
+    {
+      "id": "30010"
+    },
+    {
+      "id": "30011"
+    },
+    {
+      "id": "30012"
+    },
+    {
+      "id": "30013"
+    },
+    {
+      "id": "30014"
+    },
+    {
+      "id": "30015"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n1\n2\n3\n4\n5\n30001\n30002\n30003\n30004\n30005\n30006\n30007\n30008\n30009\n30010\n30011\n30012\n30013\n30014\n30015\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

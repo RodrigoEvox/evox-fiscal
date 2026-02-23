@@ -1,1602 +1,1342 @@
-import {
-  int, mysqlEnum, mysqlTable, text, timestamp, varchar,
-  boolean, bigint, json, decimal
-} from "drizzle-orm/mysql-core";
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, decimal, text, timestamp, mysqlEnum, json, index, bigint, tinyint, boolean } from "drizzle-orm/mysql-core"
+import { sql } from "drizzle-orm"
 
-// ---- SETORES (Departamentos) ----
-export const setores = mysqlTable("setores", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  cor: varchar("cor", { length: 7 }).default("#3B82F6"),
-  icone: varchar("icone", { length: 50 }).default("Building2"),
-  setorPaiId: int("setorPaiId"),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const academiaBeneficio = mysqlTable("academia_beneficio", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	nomeAcademia: varchar({ length: 255 }).notNull(),
+	plano: varchar({ length: 255 }),
+	valorPlano: decimal({ precision: 12, scale: 2 }).notNull(),
+	descontoFolha: tinyint().default(0),
+	valorDesconto: decimal({ precision: 12, scale: 2 }),
+	dataEntrada: varchar({ length: 10 }),
+	fidelidade: tinyint().default(0),
+	fidelidadeMeses: int(),
+	ativo: tinyint().default(1).notNull(),
+	observacao: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type Setor = typeof setores.$inferSelect;
-export type InsertSetor = typeof setores.$inferInsert;
-
-// ---- USERS (auth + hierarquia CRM) ----
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  apelido: varchar("apelido", { length: 100 }),
-  email: varchar("email", { length: 320 }),
-  cpf: varchar("cpf", { length: 14 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  nivelAcesso: mysqlEnum("nivelAcesso", ["diretor", "gerente", "coordenador", "supervisor", "analista_fiscal"]).default("analista_fiscal").notNull(),
-  cargo: varchar("cargo", { length: 255 }),
-  telefone: varchar("telefone", { length: 20 }),
-  avatar: varchar("avatar", { length: 500 }),
-  setorPrincipalId: int("setorPrincipalId"),
-  supervisorId: int("supervisorId"),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-
-// ---- USUARIO_SETORES (N:N - usuário pode pertencer a múltiplos setores) ----
-export const usuarioSetores = mysqlTable("usuario_setores", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  setorId: int("setorId").notNull(),
-  papelNoSetor: mysqlEnum("papelNoSetor", ["responsavel", "membro", "observador"]).default("membro").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type UsuarioSetor = typeof usuarioSetores.$inferSelect;
-export type InsertUsuarioSetor = typeof usuarioSetores.$inferInsert;
-
-// ---- PARCEIROS ----
-export const parceiros = mysqlTable("parceiros", {
-  id: int("id").autoincrement().primaryKey(),
-  // Tipo de pessoa
-  tipoPessoa: mysqlEnum("tipoPessoa", ["pf", "pj"]).default("pj").notNull(),
-  apelido: varchar("apelido", { length: 255 }), // nome de exibição no sistema
-  // Dados PF
-  nomeCompleto: varchar("nomeCompleto", { length: 255 }).notNull(),
-  cpf: varchar("cpf", { length: 14 }),
-  rg: varchar("rg", { length: 20 }),
-  // Dados PJ
-  cnpj: varchar("cnpj", { length: 20 }),
-  razaoSocial: varchar("razaoSocial", { length: 500 }),
-  nomeFantasia: varchar("nomeFantasia", { length: 500 }),
-  situacaoCadastral: varchar("situacaoCadastral", { length: 50 }),
-  quadroSocietario: json("quadroSocietario").$type<{nome: string; qualificacao: string; faixaEtaria?: string}[]>(),
-  // Sócio responsável pela parceria (PJ)
-  socioNome: varchar("socioNome", { length: 255 }),
-  socioCpf: varchar("socioCpf", { length: 14 }),
-  socioRg: varchar("socioRg", { length: 20 }),
-  socioEmail: varchar("socioEmail", { length: 320 }),
-  socioTelefone: varchar("socioTelefone", { length: 20 }),
-  // Contato
-  telefone: varchar("telefone", { length: 20 }),
-  email: varchar("email", { length: 320 }),
-  // Endereço completo
-  cep: varchar("cep", { length: 10 }),
-  logradouro: varchar("logradouro", { length: 500 }),
-  numero: varchar("numero", { length: 20 }),
-  complemento: varchar("complemento", { length: 500 }),
-  bairro: varchar("bairro", { length: 255 }),
-  cidade: varchar("cidade", { length: 255 }),
-  estado: varchar("estado", { length: 2 }),
-  // Dados bancários
-  banco: varchar("banco", { length: 100 }),
-  agencia: varchar("agencia", { length: 20 }),
-  conta: varchar("conta", { length: 30 }),
-  tipoConta: mysqlEnum("tipoConta", ["corrente", "poupanca"]),
-  titularConta: varchar("titularConta", { length: 255 }),
-  cpfCnpjConta: varchar("cpfCnpjConta", { length: 20 }),
-  chavePix: varchar("chavePix", { length: 255 }),
-  tipoChavePix: mysqlEnum("tipoChavePix", ["cpf", "cnpj", "email", "telefone", "aleatoria"]),
-  // Parceria
-  modeloParceriaId: int("modeloParceriaId"), // Diamante, Ouro, Prata
-  executivoComercialId: int("executivoComercialId"), // Executivo Comercial responsável
-  // Hierarquia parceiro/subparceiro
-  ehSubparceiro: boolean("ehSubparceiro").default(false).notNull(),
-  parceiroPaiId: int("parceiroPaiId"), // para subparceiros
-  percentualRepasseSubparceiro: decimal("percentualRepasseSubparceiro", { precision: 5, scale: 2 }),
-  // Observações
-  observacoes: text("observacoes"),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Parceiro = typeof parceiros.$inferSelect;
-export type InsertParceiro = typeof parceiros.$inferInsert;
-
-// ---- CLIENTES ----
-export const clientes = mysqlTable("clientes", {
-  id: int("id").autoincrement().primaryKey(),
-  cnpj: varchar("cnpj", { length: 20 }).notNull(),
-  tipoPessoa: mysqlEnum("tipoPessoa", ["juridica", "fisica"]).default("juridica").notNull(),
-  cpf: varchar("cpf", { length: 14 }),
-  razaoSocial: varchar("razaoSocial", { length: 500 }).notNull(),
-  nomeFantasia: varchar("nomeFantasia", { length: 500 }),
-  dataAbertura: varchar("dataAbertura", { length: 20 }),
-  regimeTributario: mysqlEnum("regimeTributario", ["simples_nacional", "lucro_presumido", "lucro_real"]).notNull(),
-  situacaoCadastral: mysqlEnum("situacaoCadastral", ["ativa", "baixada", "inapta", "suspensa", "nula"]).default("ativa").notNull(),
-  // Classificação Novo/Base
-  classificacaoCliente: mysqlEnum("classificacaoCliente", ["novo", "base"]).default("novo").notNull(),
-  dataConversaoBase: timestamp("dataConversaoBase"), // quando converteu de novo para base
-  cnaePrincipal: varchar("cnaePrincipal", { length: 20 }),
-  cnaePrincipalDescricao: text("cnaePrincipalDescricao"),
-  cnaesSecundarios: json("cnaesSecundarios").$type<{codigo: string; descricao: string}[]>(),
-  segmentoEconomico: varchar("segmentoEconomico", { length: 255 }),
-  naturezaJuridica: varchar("naturezaJuridica", { length: 255 }),
-  quadroSocietario: json("quadroSocietario").$type<{nome: string; qualificacao: string; faixaEtaria?: string}[]>(),
-  endereco: text("endereco"),
-  complemento: varchar("complemento", { length: 500 }),
-  estado: varchar("estado", { length: 2 }),
-  cidade: varchar("cidade", { length: 255 }),
-  ativo: boolean("ativo").default(true).notNull(),
-  industrializa: boolean("industrializa").default(false).notNull(),
-  comercializa: boolean("comercializa").default(false).notNull(),
-  prestaServicos: boolean("prestaServicos").default(false).notNull(),
-  contribuinteICMS: boolean("contribuinteICMS").default(false).notNull(),
-  contribuinteIPI: boolean("contribuinteIPI").default(false).notNull(),
-  regimeMonofasico: boolean("regimeMonofasico").default(false).notNull(),
-  folhaPagamentoMedia: decimal("folhaPagamentoMedia", { precision: 15, scale: 2 }).default("0"),
-  faturamentoMedioMensal: decimal("faturamentoMedioMensal", { precision: 15, scale: 2 }).default("0"),
-  valorMedioGuias: decimal("valorMedioGuias", { precision: 15, scale: 2 }).default("0"),
-  processosJudiciaisAtivos: boolean("processosJudiciaisAtivos").default(false).notNull(),
-  parcelamentosAtivos: boolean("parcelamentosAtivos").default(false).notNull(),
-  atividadePrincipalDescritivo: text("atividadePrincipalDescritivo"),
-  parceiroId: int("parceiroId"),
-  procuracaoHabilitada: boolean("procuracaoHabilitada").default(false).notNull(),
-  procuracaoCertificado: varchar("procuracaoCertificado", { length: 100 }),
-  procuracaoValidade: varchar("procuracaoValidade", { length: 20 }),
-  excecoesEspecificidades: text("excecoesEspecificidades"),
-  prioridade: mysqlEnum("prioridade", ["alta", "media", "baixa"]).default("media").notNull(),
-  scoreOportunidade: int("scoreOportunidade").default(0),
-  redFlags: json("redFlags").$type<any[]>(),
-  alertasInformacao: json("alertasInformacao").$type<any[]>(),
-  usuarioCadastroId: int("usuarioCadastroId"),
-  usuarioCadastroNome: varchar("usuarioCadastroNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Cliente = typeof clientes.$inferSelect;
-export type InsertCliente = typeof clientes.$inferInsert;
-
-// ---- TESES ----
-export const teses = mysqlTable("teses", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 500 }).notNull(),
-  tributoEnvolvido: varchar("tributoEnvolvido", { length: 100 }).notNull(),
-  tipo: mysqlEnum("tipo", ["exclusao_base", "credito_presumido", "recuperacao_indebito", "tese_judicial", "tese_administrativa"]).notNull(),
-  classificacao: mysqlEnum("classificacao", ["pacificada", "judicial", "administrativa", "controversa"]).notNull(),
-  potencialFinanceiro: mysqlEnum("potencialFinanceiro", ["muito_alto", "alto", "medio", "baixo"]).notNull(),
-  potencialMercadologico: mysqlEnum("potencialMercadologico", ["muito_alto", "alto", "medio", "baixo"]).notNull(),
-  requisitosObjetivos: json("requisitosObjetivos").$type<string[]>(),
-  requisitosImpeditivos: json("requisitosImpeditivos").$type<string[]>(),
-  fundamentacaoLegal: text("fundamentacaoLegal"),
-  jurisprudenciaRelevante: text("jurisprudenciaRelevante"),
-  parecerTecnicoJuridico: text("parecerTecnicoJuridico"),
-  prazoPrescricional: varchar("prazoPrescricional", { length: 50 }),
-  necessidadeAcaoJudicial: boolean("necessidadeAcaoJudicial").default(false).notNull(),
-  viaAdministrativa: boolean("viaAdministrativa").default(false).notNull(),
-  grauRisco: mysqlEnum("grauRisco", ["baixo", "medio", "alto"]).notNull(),
-  documentosNecessarios: json("documentosNecessarios").$type<string[]>(),
-  formulaEstimativaCredito: text("formulaEstimativaCredito"),
-  aplicavelComercio: boolean("aplicavelComercio").default(false).notNull(),
-  aplicavelIndustria: boolean("aplicavelIndustria").default(false).notNull(),
-  aplicavelServico: boolean("aplicavelServico").default(false).notNull(),
-  aplicavelContribuinteICMS: boolean("aplicavelContribuinteICMS").default(false).notNull(),
-  aplicavelContribuinteIPI: boolean("aplicavelContribuinteIPI").default(false).notNull(),
-  aplicavelLucroReal: boolean("aplicavelLucroReal").default(false).notNull(),
-  aplicavelLucroPresumido: boolean("aplicavelLucroPresumido").default(false).notNull(),
-  aplicavelSimplesNacional: boolean("aplicavelSimplesNacional").default(false).notNull(),
-  versao: int("versao").default(1).notNull(),
-  ativa: boolean("ativa").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Tese = typeof teses.$inferSelect;
-export type InsertTese = typeof teses.$inferInsert;
-
-// ---- FILA DE APURAÇÃO ----
-export const filaApuracao = mysqlTable("fila_apuracao", {
-  id: int("id").autoincrement().primaryKey(),
-  clienteId: int("clienteId").notNull(),
-  status: mysqlEnum("status", ["a_fazer", "fazendo", "concluido"]).default("a_fazer").notNull(),
-  ordem: int("ordem").default(0).notNull(),
-  prioridadeManual: boolean("prioridadeManual").default(false).notNull(),
-  analistaId: int("analistaId"),
-  analistaNome: varchar("analistaNome", { length: 255 }),
-  tempoGastoMs: bigint("tempoGastoMs", { mode: "number" }).default(0),
-  dataInicioApuracao: timestamp("dataInicioApuracao"),
-  dataConclusao: timestamp("dataConclusao"),
-  historico: json("historico").$type<any[]>(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type FilaApuracao = typeof filaApuracao.$inferSelect;
-export type InsertFilaApuracao = typeof filaApuracao.$inferInsert;
-
-// ---- RELATÓRIOS DE ANÁLISE ----
-export const relatorios = mysqlTable("relatorios", {
-  id: int("id").autoincrement().primaryKey(),
-  clienteId: int("clienteId").notNull(),
-  clienteNome: varchar("clienteNome", { length: 500 }).notNull(),
-  diagnosticoTributario: text("diagnosticoTributario"),
-  tesesAplicaveis: json("tesesAplicaveis").$type<any[]>(),
-  tesesDescartadas: json("tesesDescartadas").$type<any[]>(),
-  scoreOportunidade: int("scoreOportunidade").default(0),
-  recomendacaoGeral: text("recomendacaoGeral"),
-  redFlags: json("redFlags").$type<any[]>(),
-  prioridade: mysqlEnum("prioridade", ["alta", "media", "baixa"]).default("media").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Relatorio = typeof relatorios.$inferSelect;
-export type InsertRelatorio = typeof relatorios.$inferInsert;
-
-// ---- NOTIFICAÇÕES ----
-export const notificacoes = mysqlTable("notificacoes", {
-  id: int("id").autoincrement().primaryKey(),
-  tipo: mysqlEnum("tipo", ["procuracao_vencendo", "procuracao_vencida", "analise_concluida", "nova_tese", "tarefa_atribuida", "tarefa_sla_vencendo", "tarefa_comentario", "geral", "avaliacao_ciclo_aberto", "avaliacao_pendente"]).notNull(),
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  mensagem: text("mensagem").notNull(),
-  lida: boolean("lida").default(false).notNull(),
-  usuarioId: int("usuarioId"),
-  clienteId: int("clienteId"),
-  tarefaId: int("tarefaId"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Notificacao = typeof notificacoes.$inferSelect;
-export type InsertNotificacao = typeof notificacoes.$inferInsert;
-
-// ---- TAREFAS (Sistema de tarefas estilo ClickUp) ----
-export const tarefas = mysqlTable("tarefas", {
-  id: int("id").autoincrement().primaryKey(),
-  codigo: varchar("codigo", { length: 20 }).notNull(), // e.g. EVX-001
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  tipo: mysqlEnum("tipo", ["tarefa", "bug", "melhoria", "reuniao", "documento", "outro"]).default("tarefa").notNull(),
-  status: mysqlEnum("status", ["backlog", "a_fazer", "em_andamento", "revisao", "concluido", "cancelado"]).default("a_fazer").notNull(),
-  prioridade: mysqlEnum("prioridade", ["urgente", "alta", "media", "baixa"]).default("media").notNull(),
-  // Relacionamentos
-  setorId: int("setorId"),
-  responsavelId: int("responsavelId"),
-  criadorId: int("criadorId"),
-  clienteId: int("clienteId"),
-  tarefaPaiId: int("tarefaPaiId"), // para subtarefas
-  // SLA
-  dataInicio: timestamp("dataInicio"),
-  dataVencimento: timestamp("dataVencimento"),
-  dataConclusao: timestamp("dataConclusao"),
-  slaHoras: int("slaHoras"), // SLA em horas
-  slaStatus: mysqlEnum("slaStatus", ["dentro_prazo", "atencao", "vencido"]).default("dentro_prazo"),
-  // Metadados
-  tags: json("tags").$type<string[]>(),
-  setoresEnvolvidos: json("setoresEnvolvidos").$type<number[]>(), // IDs dos setores envolvidos (multisetorial)
-  estimativaHoras: decimal("estimativaHoras", { precision: 6, scale: 1 }),
-  horasGastas: decimal("horasGastas", { precision: 6, scale: 1 }).default("0"),
-  progresso: int("progresso").default(0), // 0-100%
-  ordem: int("ordem").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Tarefa = typeof tarefas.$inferSelect;
-export type InsertTarefa = typeof tarefas.$inferInsert;
-
-// ---- COMENTÁRIOS DE TAREFAS ----
-export const tarefaComentarios = mysqlTable("tarefa_comentarios", {
-  id: int("id").autoincrement().primaryKey(),
-  tarefaId: int("tarefaId").notNull(),
-  autorId: int("autorId").notNull(),
-  autorNome: varchar("autorNome", { length: 255 }).notNull(),
-  conteudo: text("conteudo").notNull(),
-  mencoes: json("mencoes").$type<number[]>(), // IDs de usuários mencionados
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type TarefaComentario = typeof tarefaComentarios.$inferSelect;
-export type InsertTarefaComentario = typeof tarefaComentarios.$inferInsert;
-
-// ---- ARQUIVOS (Armazenamento de documentos) ----
-export const arquivos = mysqlTable("arquivos", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 500 }).notNull(),
-  nomeOriginal: varchar("nomeOriginal", { length: 500 }).notNull(),
-  mimeType: varchar("mimeType", { length: 100 }).notNull(),
-  tamanhoBytes: bigint("tamanhoBytes", { mode: "number" }).notNull(),
-  storageKey: varchar("storageKey", { length: 500 }).notNull(),
-  storageUrl: varchar("storageUrl", { length: 1000 }).notNull(),
-  // Vinculação polimórfica
-  entidadeTipo: mysqlEnum("entidadeTipo", ["cliente", "tarefa", "tese", "parceiro", "relatorio", "geral"]).notNull(),
-  entidadeId: int("entidadeId"),
-  // Versionamento
-  versao: int("versao").default(1).notNull(),
-  arquivoPaiId: int("arquivoPaiId"), // para versões anteriores
-  // Metadados
-  descricao: text("descricao"),
-  tags: json("tags").$type<string[]>(),
-  uploadPorId: int("uploadPorId"),
-  uploadPorNome: varchar("uploadPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Arquivo = typeof arquivos.$inferSelect;
-export type InsertArquivo = typeof arquivos.$inferInsert;
-
-// ---- AUDIT LOG (Rastreabilidade) ----
-export const auditLog = mysqlTable("audit_log", {
-  id: int("id").autoincrement().primaryKey(),
-  acao: mysqlEnum("acao", [
-    "criar", "editar", "excluir", "visualizar", "login", "logout",
-    "atribuir", "concluir", "comentar", "upload", "download", "exportar",
-    "ativar", "inativar"
-  ]).notNull(),
-  entidadeTipo: varchar("entidadeTipo", { length: 50 }).notNull(), // 'cliente', 'tarefa', 'tese', etc.
-  entidadeId: int("entidadeId"),
-  entidadeNome: varchar("entidadeNome", { length: 500 }),
-  detalhes: json("detalhes").$type<Record<string, any>>(),
-  usuarioId: int("usuarioId"),
-  usuarioNome: varchar("usuarioNome", { length: 255 }),
-  ip: varchar("ip", { length: 45 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type AuditLog = typeof auditLog.$inferSelect;
-export type InsertAuditLog = typeof auditLog.$inferInsert;
-
-// ---- API KEYS (Para integrações externas) ----
-export const apiKeys = mysqlTable("api_keys", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  chave: varchar("chave", { length: 64 }).notNull().unique(),
-  descricao: text("descricao"),
-  permissoes: json("permissoes").$type<string[]>(), // ['clientes:read', 'clientes:write', 'tarefas:read', etc.]
-  ativo: boolean("ativo").default(true).notNull(),
-  ultimoUso: timestamp("ultimoUso"),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  expiresAt: timestamp("expiresAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ApiKey = typeof apiKeys.$inferSelect;
-export type InsertApiKey = typeof apiKeys.$inferInsert;
-
-// ---- SERVIÇOS POR SETOR ----
-export const servicos = mysqlTable("servicos", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  setorId: int("setorId"), // setor principal (pode ser null se multisetorial)
-  setoresIds: json("setoresIds").$type<number[]>(), // setores envolvidos na execução
-  responsaveisIds: json("responsaveisIds").$type<number[]>(), // pessoas responsáveis
-  percentualHonorariosComercial: decimal("percentualHonorariosComercial", { precision: 5, scale: 2 }).default("0"),
-  // Honorários ao cliente
-  percentualHonorariosCliente: decimal("percentualHonorariosCliente", { precision: 5, scale: 2 }).default("0"),
-  formaCobrancaHonorarios: mysqlEnum("formaCobrancaHonorarios", [
-    "percentual_credito", "valor_fixo", "mensalidade", "exito", "hibrido",
-    "entrada_exito", "valor_fixo_parcelado"
-  ]).default("percentual_credito").notNull(),
-  valorFixo: decimal("valorFixo", { precision: 15, scale: 2 }),
-  // Entrada + Êxito
-  valorEntrada: decimal("valorEntrada", { precision: 15, scale: 2 }),
-  percentualExito: decimal("percentualExito", { precision: 5, scale: 2 }),
-  // Valor fixo parcelado
-  quantidadeParcelas: int("quantidadeParcelas"),
-  valorParcela: decimal("valorParcela", { precision: 15, scale: 2 }),
-  // Comissão padrão por modelo de parceria
-  comissaoPadraoDiamante: decimal("comissaoPadraoDiamante", { precision: 5, scale: 2 }),
-  comissaoPadraoOuro: decimal("comissaoPadraoOuro", { precision: 5, scale: 2 }),
-  comissaoPadraoPrata: decimal("comissaoPadraoPrata", { precision: 5, scale: 2 }),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Servico = typeof servicos.$inferSelect;
-export type InsertServico = typeof servicos.$inferInsert;
-
-// ---- CONFIGURAÇÃO DE SETOR (submenus, workflow, etc.) ----
-export const setorConfig = mysqlTable("setor_config", {
-  id: int("id").autoincrement().primaryKey(),
-  setorId: int("setorId").notNull(),
-  sigla: varchar("sigla", { length: 10 }).notNull(), // SPC, RCT, DPT, JUR, RT, CT, FIN, MKT, RH
-  submenus: json("submenus").$type<{ key: string; label: string; rota: string }[]>(),
-  workflowStatuses: json("workflowStatuses").$type<string[]>(), // status padrão do setor
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SetorConfig = typeof setorConfig.$inferSelect;
-export type InsertSetorConfig = typeof setorConfig.$inferInsert;
-
-// ---- MODELOS DE PARCERIA (Diamante, Ouro, Prata) ----
-export const modelosParceria = mysqlTable("modelos_parceria", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 100 }).notNull(), // Diamante, Ouro, Prata
-  descricao: text("descricao"),
-  ordem: int("ordem").default(0).notNull(), // para ordenação
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ModeloParceria = typeof modelosParceria.$inferSelect;
-export type InsertModeloParceria = typeof modelosParceria.$inferInsert;
-
-// ---- COMISSÕES POR SERVIÇO E MODELO DE PARCERIA ----
-export const comissoesServico = mysqlTable("comissoes_servico", {
-  id: int("id").autoincrement().primaryKey(),
-  servicoId: int("servicoId").notNull(),
-  modeloParceriaId: int("modeloParceriaId").notNull(),
-  percentualComissao: decimal("percentualComissao", { precision: 5, scale: 2 }).notNull(),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ComissaoServico = typeof comissoesServico.$inferSelect;
-export type InsertComissaoServico = typeof comissoesServico.$inferInsert;
-
-// ---- PARCEIRO-SERVIÇO (serviços que o parceiro trabalha + comissão customizada) ----
-export const parceiroServicos = mysqlTable("parceiro_servicos", {
-  id: int("id").autoincrement().primaryKey(),
-  parceiroId: int("parceiroId").notNull(),
-  servicoId: int("servicoId").notNull(),
-  percentualCustomizado: decimal("percentualCustomizado", { precision: 5, scale: 2 }), // null = usa padrão
-  aprovadoPorId: int("aprovadoPorId"), // se precisou aprovação do diretor
-  aprovadoEm: timestamp("aprovadoEm"),
-  statusAprovacao: mysqlEnum("statusAprovacao", ["aprovado", "pendente", "rejeitado"]).default("aprovado"),
-  observacao: text("observacao"),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ParceiroServico = typeof parceiroServicos.$inferSelect;
-export type InsertParceiroServico = typeof parceiroServicos.$inferInsert;
-
-// ---- SLA CONFIGURÁVEL (Admin define SLA padrão por tipo de tarefa) ----
-export const slaConfiguracoes = mysqlTable("sla_configuracoes", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(), // ex: "Análise de Crédito", "Revisão Jurídica"
-  descricao: text("descricao"),
-  setorId: int("setorId"),
-  slaHoras: int("slaHoras").notNull(), // SLA padrão em horas
-  prioridade: mysqlEnum("prioridade", ["urgente", "alta", "media", "baixa"]).default("media").notNull(),
-  ativo: boolean("ativo").default(true).notNull(),
-  criadoPorId: int("criadoPorId"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SlaConfiguracao = typeof slaConfiguracoes.$inferSelect;
-export type InsertSlaConfiguracao = typeof slaConfiguracoes.$inferInsert;
-
-// ---- ETAPAS DE SERVIÇO (tarefas padrão que são geradas ao atribuir serviço a cliente) ----
-export const servicoEtapas = mysqlTable("servico_etapas", {
-  id: int("id").autoincrement().primaryKey(),
-  servicoId: int("servicoId").notNull(),
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  setorResponsavelId: int("setorResponsavelId"), // setor que executa esta etapa
-  ordem: int("ordem").default(0).notNull(),
-  slaHoras: int("slaHoras"), // SLA específico desta etapa
-  obrigatoria: boolean("obrigatoria").default(true).notNull(),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ServicoEtapa = typeof servicoEtapas.$inferSelect;
-export type InsertServicoEtapa = typeof servicoEtapas.$inferInsert;
-
-// ---- CLIENTE-SERVIÇO (serviços atribuídos a clientes com automação de tarefas) ----
-export const clienteServicos = mysqlTable("cliente_servicos", {
-  id: int("id").autoincrement().primaryKey(),
-  clienteId: int("clienteId").notNull(),
-  servicoId: int("servicoId").notNull(),
-  status: mysqlEnum("status", ["ativo", "em_execucao", "concluido", "cancelado"]).default("ativo").notNull(),
-  atribuidoPorId: int("atribuidoPorId"),
-  dataInicio: timestamp("dataInicio"),
-  dataConclusao: timestamp("dataConclusao"),
-  observacao: text("observacao"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ClienteServico = typeof clienteServicos.$inferSelect;
-export type InsertClienteServico = typeof clienteServicos.$inferInsert;
-
-// ---- EXECUTIVOS COMERCIAIS (internos da Evox) ----
-export const executivosComerciais = mysqlTable("executivos_comerciais", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }),
-  telefone: varchar("telefone", { length: 20 }),
-  cargo: varchar("cargo", { length: 255 }),
-  userId: int("userId"), // link to users table (optional)
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ExecutivoComercial = typeof executivosComerciais.$inferSelect;
-export type InsertExecutivoComercial = typeof executivosComerciais.$inferInsert;
-
-// ---- RATEIO DE COMISSÃO (parceiro + subparceiro por serviço) ----
-export const rateioComissao = mysqlTable("rateio_comissao", {
-  id: int("id").autoincrement().primaryKey(),
-  parceiroId: int("parceiroId").notNull(), // subparceiro
-  parceiroPaiId: int("parceiroPaiId").notNull(), // parceiro principal
-  servicoId: int("servicoId").notNull(),
-  percentualParceiro: decimal("percentualParceiro", { precision: 5, scale: 2 }).notNull(), // % do parceiro pai
-  percentualSubparceiro: decimal("percentualSubparceiro", { precision: 5, scale: 2 }).notNull(), // % do subparceiro
-  percentualMaximo: decimal("percentualMaximo", { precision: 5, scale: 2 }).notNull(), // teto do modelo
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type RateioComissao = typeof rateioComissao.$inferSelect;
-export type InsertRateioComissao = typeof rateioComissao.$inferInsert;
-
-// ---- TAREFAS DE APROVAÇÃO DE COMISSÃO ----
-export const aprovacaoComissao = mysqlTable("aprovacao_comissao", {
-  id: int("id").autoincrement().primaryKey(),
-  parceiroId: int("parceiroId").notNull(),
-  servicoId: int("servicoId").notNull(),
-  percentualSolicitado: decimal("percentualSolicitado", { precision: 5, scale: 2 }).notNull(),
-  percentualPadrao: decimal("percentualPadrao", { precision: 5, scale: 2 }).notNull(),
-  modeloParceriaId: int("modeloParceriaId").notNull(),
-  solicitadoPorId: int("solicitadoPorId").notNull(),
-  solicitadoEm: timestamp("solicitadoEm").defaultNow().notNull(),
-  status: mysqlEnum("status", ["pendente", "aprovado", "rejeitado"]).default("pendente").notNull(),
-  aprovadoPorId: int("aprovadoPorId"),
-  aprovadoEm: timestamp("aprovadoEm"),
-  observacao: text("observacao"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AprovacaoComissao = typeof aprovacaoComissao.$inferSelect;
-export type InsertAprovacaoComissao = typeof aprovacaoComissao.$inferInsert;
-
-// ---- METAS DE COMISSÕES POR PARCEIRO ----
-export const metasComissoes = mysqlTable("metas_comissoes", {
-  id: int("id").autoincrement().primaryKey(),
-  parceiroId: int("parceiroId").notNull(),
-  tipo: mysqlEnum("tipo", ["mensal", "trimestral", "semestral", "anual"]).notNull().default("mensal"),
-  ano: int("ano").notNull(),
-  mes: int("mes"), // 1-12 for mensal, null for trimestral/semestral/anual
-  trimestre: int("trimestre"), // 1-4 for trimestral
-  valorMeta: decimal("valorMeta", { precision: 12, scale: 2 }).notNull(),
-  observacao: text("observacao"),
-  criadoPor: int("criadoPor"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MetaComissao = typeof metasComissoes.$inferSelect;
-export type InsertMetaComissao = typeof metasComissoes.$inferInsert;
-
-// ---- HISTÓRICO DE USUÁRIOS ----
-export const userHistory = mysqlTable("user_history", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  acao: mysqlEnum("acao", ["criacao", "edicao", "ativacao", "inativacao", "exclusao"]).notNull(),
-  campo: varchar("campo", { length: 255 }),
-  valorAnterior: text("valorAnterior"),
-  valorNovo: text("valorNovo"),
-  realizadoPorId: int("realizadoPorId"),
-  realizadoPorNome: varchar("realizadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type UserHistory = typeof userHistory.$inferSelect;
-export type InsertUserHistory = typeof userHistory.$inferInsert;
-
-// ---- CHAT: CANAIS ----
-export const chatChannels = mysqlTable("chat_channels", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  tipo: mysqlEnum("tipo", ["geral", "setor", "projeto", "dm"]).default("setor").notNull(),
-  // For DM channels: store the two user IDs
-  dmUser1Id: int("dmUser1Id"),
-  dmUser2Id: int("dmUser2Id"),
-  setorId: int("setorId"),
-  cor: varchar("cor", { length: 7 }).default("#3B82F6"),
-  icone: varchar("icone", { length: 50 }).default("MessageCircle"),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  status: mysqlEnum("status", ["active", "inactive", "deleted"]).default("active").notNull(),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ChatChannel = typeof chatChannels.$inferSelect;
-export type InsertChatChannel = typeof chatChannels.$inferInsert;
-
-// ---- CHAT: MENSAGENS ----
-export const chatMessages = mysqlTable("chat_messages", {
-  id: int("id").autoincrement().primaryKey(),
-  channelId: int("channelId").notNull(),
-  userId: int("userId").notNull(),
-  userName: varchar("userName", { length: 255 }).notNull(),
-  userAvatar: varchar("userAvatar", { length: 500 }),
-  content: text("content").notNull(),
-  mentions: json("mentions").$type<{type: 'user' | 'client'; id: number; name: string}[]>(),
-  // File attachment fields
-  fileUrl: varchar("fileUrl", { length: 1000 }),
-  fileName: varchar("fileName", { length: 500 }),
-  fileType: varchar("fileType", { length: 100 }),
-  fileSize: int("fileSize"),
-  pinned: boolean("pinned").default(false).notNull(),
-  pinnedBy: int("pinnedBy"),
-  pinnedByName: varchar("pinnedByName", { length: 255 }),
-  pinnedAt: timestamp("pinnedAt"),
-  deletedAt: timestamp("deletedAt"),
-  deletedBy: int("deletedBy"),
-  // Thread / reply
-  replyToId: int("replyToId"),
-  // Edit tracking
-  editedAt: timestamp("editedAt"),
-  editedContent: text("editedContent"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ChatMessage = typeof chatMessages.$inferSelect;
-export type InsertChatMessage = typeof chatMessages.$inferInsert;
-
-// ---- CHAT: PRESENÇA ONLINE ----
-export const userPresence = mysqlTable("user_presence", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  userName: varchar("userName", { length: 255 }).notNull(),
-  userAvatar: varchar("userAvatar", { length: 500 }),
-  lastSeen: timestamp("lastSeen").defaultNow().notNull(),
-  status: mysqlEnum("status", ["online", "away", "offline"]).default("online").notNull(),
-});
-
-export type UserPresence = typeof userPresence.$inferSelect;
-export type InsertUserPresence = typeof userPresence.$inferInsert;
-
-// ---- CHAT: NOTIFICAÇÕES ----
-export const chatNotifications = mysqlTable("chat_notifications", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  messageId: int("messageId").notNull(),
-  channelId: int("channelId").notNull(),
-  tipo: mysqlEnum("tipo", ["mencao", "mensagem"]).default("mencao").notNull(),
-  remetenteNome: varchar("remetenteNome", { length: 255 }).notNull(),
-  preview: varchar("preview", { length: 500 }),
-  lida: boolean("lida").default(false).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ChatNotification = typeof chatNotifications.$inferSelect;
-export type InsertChatNotification = typeof chatNotifications.$inferInsert;
-
-// ---- CHAT: REAÇÕES ----
-export const chatReactions = mysqlTable("chat_reactions", {
-  id: int("id").autoincrement().primaryKey(),
-  messageId: int("messageId").notNull(),
-  userId: int("userId").notNull(),
-  userName: varchar("userName", { length: 255 }).notNull(),
-  emoji: varchar("emoji", { length: 20 }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ChatReaction = typeof chatReactions.$inferSelect;
-export type InsertChatReaction = typeof chatReactions.$inferInsert;
-
-// ---- CHAT: INDICADOR DE DIGITAÇÃO ----
-export const chatTypingIndicators = mysqlTable("chat_typing_indicators", {
-  id: int("id").autoincrement().primaryKey(),
-  channelId: int("channelId").notNull(),
-  userId: int("userId").notNull(),
-  userName: varchar("userName", { length: 255 }).notNull(),
-  userAvatar: varchar("userAvatar", { length: 500 }),
-  startedAt: timestamp("startedAt").defaultNow().notNull(),
-});
-
-export type ChatTypingIndicator = typeof chatTypingIndicators.$inferSelect;
-export type InsertChatTypingIndicator = typeof chatTypingIndicators.$inferInsert;
-
-// ============================================================
-// MÓDULO RH — GENTE & GESTÃO
-// ============================================================
-
-// ---- COLABORADORES ----
-export const colaboradores = mysqlTable("colaboradores", {
-  id: int("id").autoincrement().primaryKey(),
-  // Dados Pessoais
-  nomeCompleto: varchar("nomeCompleto", { length: 500 }).notNull(),
-  dataNascimento: varchar("dataNascimento", { length: 10 }),
-  cpf: varchar("cpf", { length: 14 }).notNull(),
-  rgNumero: varchar("rgNumero", { length: 20 }),
-  rgOrgaoEmissor: varchar("rgOrgaoEmissor", { length: 50 }),
-  rgDataEmissao: varchar("rgDataEmissao", { length: 10 }),
-  ctpsNumero: varchar("ctpsNumero", { length: 50 }),
-  ctpsUfEmissao: varchar("ctpsUfEmissao", { length: 2 }),
-  pisPasep: varchar("pisPasep", { length: 20 }),
-  nomeMae: varchar("nomeMae", { length: 500 }),
-  nomePai: varchar("nomePai", { length: 500 }),
-  nacionalidade: varchar("nacionalidade", { length: 100 }).default("Brasileira"),
-  naturalidade: varchar("naturalidade", { length: 255 }),
-  estadoCivil: mysqlEnum("estadoCivil", ["solteiro", "casado", "divorciado", "viuvo", "uniao_estavel"]),
-  tituloEleitor: varchar("tituloEleitor", { length: 20 }),
-  tituloEleitorZona: varchar("tituloEleitorZona", { length: 10 }),
-  tituloEleitorSecao: varchar("tituloEleitorSecao", { length: 10 }),
-  certificadoReservista: varchar("certificadoReservista", { length: 20 }),
-  sexo: mysqlEnum("sexo", ["masculino", "feminino", "outro"]),
-  // Grau de Instrução
-  grauInstrucao: mysqlEnum("grauInstrucao", ["fundamental_incompleto", "fundamental_completo", "medio_incompleto", "medio_completo", "superior_incompleto", "superior_completo", "pos_graduacao", "mestrado", "doutorado"]),
-  formacaoAcademica: text("formacaoAcademica"), // descrição de formação, pós, cursos
-  // Contato de Emergência
-  contatoEmergenciaNome: varchar("contatoEmergenciaNome", { length: 255 }),
-  contatoEmergenciaTelefone: varchar("contatoEmergenciaTelefone", { length: 20 }),
-  contatoEmergenciaParentesco: varchar("contatoEmergenciaParentesco", { length: 100 }),
-  // Pensão e Contribuição
-  pagaPensaoAlimenticia: boolean("pagaPensaoAlimenticia").default(false),
-  valorPensaoAlimenticia: decimal("valorPensaoAlimenticia", { precision: 12, scale: 2 }),
-  temContribuicaoAssistencial: boolean("temContribuicaoAssistencial").default(false),
-  valorContribuicaoAssistencial: decimal("valorContribuicaoAssistencial", { precision: 12, scale: 2 }),
-  // Endereço
-  cep: varchar("cep", { length: 10 }),
-  logradouro: varchar("logradouro", { length: 500 }),
-  numero: varchar("numero", { length: 20 }),
-  complemento: varchar("complemento", { length: 500 }),
-  bairro: varchar("bairro", { length: 255 }),
-  cidade: varchar("cidade", { length: 255 }),
-  estado: varchar("estado", { length: 2 }),
-  // Contato Pessoal
-  telefone: varchar("telefone", { length: 20 }),
-  email: varchar("email", { length: 320 }),
-  // Contato Corporativo
-  telefoneCorporativo: varchar("telefoneCorporativo", { length: 20 }),
-  emailCorporativo: varchar("emailCorporativo", { length: 320 }),
-  // Dados Profissionais
-  dataAdmissao: varchar("dataAdmissao", { length: 10 }).notNull(),
-  cargo: varchar("cargo", { length: 255 }).notNull(),
-  funcao: varchar("funcao", { length: 255 }),
-  salarioBase: decimal("salarioBase", { precision: 12, scale: 2 }).notNull(),
-  comissoes: decimal("comissoes", { precision: 12, scale: 2 }).default("0"),
-  recebeComissao: boolean("recebeComissao").default(false),
-  adicionais: decimal("adicionais", { precision: 12, scale: 2 }).default("0"),
-  jornadaEntrada: varchar("jornadaEntrada", { length: 5 }),
-  jornadaSaida: varchar("jornadaSaida", { length: 5 }),
-  jornadaIntervalo: varchar("jornadaIntervalo", { length: 20 }),
-  cargaHoraria: varchar("cargaHoraria", { length: 10 }),
-  tipoContrato: mysqlEnum("tipoContrato", ["clt", "pj", "contrato_trabalho"]).default("clt").notNull(),
-  periodoExperiencia1Inicio: varchar("periodoExperiencia1Inicio", { length: 10 }),
-  periodoExperiencia1Fim: varchar("periodoExperiencia1Fim", { length: 10 }),
-  periodoExperiencia2Inicio: varchar("periodoExperiencia2Inicio", { length: 10 }),
-  periodoExperiencia2Fim: varchar("periodoExperiencia2Fim", { length: 10 }),
-  localTrabalho: mysqlEnum("localTrabalho", ["home_office", "barueri", "uberaba"]).default("barueri"),
-  valeTransporte: boolean("valeTransporte").default(false).notNull(),
-  // Dados Bancários
-  banco: varchar("banco", { length: 100 }),
-  agencia: varchar("agencia", { length: 20 }),
-  conta: varchar("conta", { length: 30 }),
-  tipoConta: mysqlEnum("tipoConta", ["corrente", "poupanca"]),
-  chavePix: varchar("chavePix", { length: 255 }),
-  // Jornada - dias da semana (JSON array)
-  jornadaDias: json("jornadaDias").$type<string[]>(),
-  // Saúde
-  asoAdmissionalApto: boolean("asoAdmissionalApto").default(true),
-  asoAdmissionalData: varchar("asoAdmissionalData", { length: 10 }),
-  // Dependentes (JSON array)
-  dependentes: json("dependentes").$type<{nome: string; cpf: string; dataNascimento: string; parentesco: string; dependenteIR?: boolean; dependentePlanoSaude?: boolean}[]>(),
-  // Vínculo com setor
-  setorId: int("setorId"),
-  nivelHierarquico: mysqlEnum("nivelHierarquico", ["estagiario", "auxiliar", "assistente", "analista_jr", "analista_pl", "analista_sr", "coordenador", "supervisor", "gerente", "diretor"]),
-  // Vínculo com user (opcional)
-  userId: int("userId"),
-  foto: varchar("foto", { length: 500 }),
-  statusColaborador: mysqlEnum("statusColaborador", ["ativo", "inativo", "afastado", "licenca", "atestado", "desligado", "ferias", "experiencia", "aviso_previo"]).default("ativo").notNull(),
-  ativo: boolean("ativo").default(true).notNull(),
-  dataDesligamento: varchar("dataDesligamento", { length: 10 }),
-  motivoDesligamento: text("motivoDesligamento"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Colaborador = typeof colaboradores.$inferSelect;
-export type InsertColaborador = typeof colaboradores.$inferInsert;
-
-// ---- FÉRIAS ----
-export const ferias = mysqlTable("ferias", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  // Período aquisitivo
-  periodoAquisitivoInicio: varchar("periodoAquisitivoInicio", { length: 10 }).notNull(),
-  periodoAquisitivoFim: varchar("periodoAquisitivoFim", { length: 10 }).notNull(),
-  // Período concessivo
-  periodoConcessivoFim: varchar("periodoConcessivoFim", { length: 10 }).notNull(),
-  // Férias programadas (pode ser fracionada em até 3 períodos)
-  periodo1Inicio: varchar("periodo1Inicio", { length: 10 }),
-  periodo1Fim: varchar("periodo1Fim", { length: 10 }),
-  periodo1Dias: int("periodo1Dias"),
-  periodo2Inicio: varchar("periodo2Inicio", { length: 10 }),
-  periodo2Fim: varchar("periodo2Fim", { length: 10 }),
-  periodo2Dias: int("periodo2Dias"),
-  periodo3Inicio: varchar("periodo3Inicio", { length: 10 }),
-  periodo3Fim: varchar("periodo3Fim", { length: 10 }),
-  periodo3Dias: int("periodo3Dias"),
-  diasTotais: int("diasTotais").default(30),
-  faltasInjustificadas: int("faltasInjustificadas").default(0),
-  diasDireito: int("diasDireito").default(30), // calculado com base nas faltas
-  status: mysqlEnum("status", ["pendente", "programada", "em_gozo", "concluida", "vencida"]).default("pendente").notNull(),
-  avisoPrevioData: varchar("avisoPrevioData", { length: 10 }), // 30 dias antes
-  alertas: json("alertas").$type<{tipo: string; mensagem: string; gravidade: string}[]>(),
-  observacao: text("observacao"),
-  aprovadoPorId: int("aprovadoPorId"),
-  aprovadoEm: timestamp("aprovadoEm"),
-  // Fluxo de aprovação gestor + diretoria
-  aprovadorGestorId: int("aprovadorGestorId"),
-  aprovadorGestorStatus: mysqlEnum("aprovadorGestorStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorGestorEm: timestamp("aprovadorGestorEm"),
-  aprovadorDiretoriaId: int("aprovadorDiretoriaId"),
-  aprovadorDiretoriaStatus: mysqlEnum("aprovadorDiretoriaStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorDiretoriaEm: timestamp("aprovadorDiretoriaEm"),
-  justificativaRecusa: text("justificativaRecusa"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Ferias = typeof ferias.$inferSelect;
-export type InsertFerias = typeof ferias.$inferInsert;
-
-// ---- SOLICITAÇÕES DE FOLGA/FÉRIAS ----
-export const solicitacoesFolga = mysqlTable("solicitacoes_folga", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  tipo: mysqlEnum("tipo", ["ferias", "folga", "abono", "compensacao"]).notNull(),
-  dataInicio: varchar("dataInicio", { length: 10 }).notNull(),
-  dataFim: varchar("dataFim", { length: 10 }).notNull(),
-  diasSolicitados: int("diasSolicitados").notNull(),
-  motivo: text("motivo"),
-  status: mysqlEnum("status", ["pendente", "aprovada", "recusada"]).default("pendente").notNull(),
-  // Aprovação hierárquica
-  aprovadorRhId: int("aprovadorRhId"),
-  aprovadorRhStatus: mysqlEnum("aprovadorRhStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorRhEm: timestamp("aprovadorRhEm"),
-  aprovadorChefeId: int("aprovadorChefeId"), // coordenador/gerente/diretor
-  aprovadorChefeStatus: mysqlEnum("aprovadorChefeStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorChefeEm: timestamp("aprovadorChefeEm"),
-  justificativaRecusa: text("justificativaRecusa"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SolicitacaoFolga = typeof solicitacoesFolga.$inferSelect;
-export type InsertSolicitacaoFolga = typeof solicitacoesFolga.$inferInsert;
-
-// ---- TAREFAS DO SETOR (Nova Tarefa) ----
-export const tarefasSetor = mysqlTable("tarefas_setor", {
-  id: int("id").autoincrement().primaryKey(),
-  setorId: int("setorId").notNull(),
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  responsavelId: int("responsavelId"),
-  responsavelNome: varchar("responsavelNome", { length: 255 }),
-  prioridade: mysqlEnum("prioridade", ["baixa", "media", "alta", "urgente"]).default("media").notNull(),
-  status: mysqlEnum("status", ["a_fazer", "em_andamento", "concluida", "cancelada"]).default("a_fazer").notNull(),
-  dataInicio: varchar("dataInicio", { length: 10 }),
-  dataFim: varchar("dataFim", { length: 10 }),
-  dataConclusao: varchar("dataConclusao", { length: 10 }),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  observacao: text("observacao"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type TarefaSetor = typeof tarefasSetor.$inferSelect;
-export type InsertTarefaSetor = typeof tarefasSetor.$inferInsert;
-
-// ---- AÇÕES E BENEFÍCIOS ----
 export const acoesBeneficios = mysqlTable("acoes_beneficios", {
-  id: int("id").autoincrement().primaryKey(),
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  tipo: mysqlEnum("tipo", ["fit", "solidaria", "engajamento", "doacao_sangue", "sustentabilidade", "outro"]).notNull(),
-  descricao: text("descricao"),
-  dataInicio: varchar("dataInicio", { length: 10 }),
-  dataFim: varchar("dataFim", { length: 10 }),
-  status: mysqlEnum("status", ["planejada", "ativa", "concluida", "cancelada"]).default("planejada").notNull(),
-  participantes: json("participantes").$type<{colaboradorId: number; nome: string; confirmado: boolean}[]>(),
-  metaParticipacao: int("metaParticipacao"),
-  engajamentoScore: int("engajamentoScore"),
-  observacao: text("observacao"),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  horario: varchar("horario", { length: 20 }),
-  local: varchar("local", { length: 500 }),
-  arteConviteUrl: varchar("arteConviteUrl", { length: 500 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	tipo: mysqlEnum(['fit','solidaria','engajamento','doacao_sangue','sustentabilidade','outro']).notNull(),
+	descricao: text(),
+	dataInicio: varchar({ length: 10 }),
+	dataFim: varchar({ length: 10 }),
+	status: mysqlEnum(['planejada','ativa','concluida','cancelada']).default('planejada').notNull(),
+	participantes: json(),
+	metaParticipacao: int(),
+	engajamentoScore: int(),
+	observacao: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	horario: varchar({ length: 20 }),
+	local: varchar({ length: 500 }),
+	arteConviteUrl: varchar({ length: 500 }),
 });
 
-export type AcaoBeneficio = typeof acoesBeneficios.$inferSelect;
-export type InsertAcaoBeneficio = typeof acoesBeneficios.$inferInsert;
+export const apiKeys = mysqlTable("api_keys", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	chave: varchar({ length: 64 }).notNull(),
+	descricao: text(),
+	permissoes: json(),
+	ativo: tinyint().default(1).notNull(),
+	ultimoUso: timestamp({ mode: 'string' }),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	expiresAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("chave").on(table.chave),
+]);
 
-// ---- ATESTADOS E LICENÇAS ----
+export const apontamentosFolha = mysqlTable("apontamentos_folha", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	mesReferencia: int().notNull(),
+	anoReferencia: int().notNull(),
+	tipo: mysqlEnum(['vale_transporte','academia','comissao','reajuste_sindical','reajuste_dois_anos','pensao_alimenticia','contribuicao_assistencial','banco_horas','outro']).notNull(),
+	descricao: varchar({ length: 500 }),
+	valor: decimal({ precision: 12, scale: 2 }).notNull(),
+	natureza: mysqlEnum(['provento','desconto']).default('provento').notNull(),
+	origemId: int(),
+	origemTabela: varchar({ length: 100 }),
+	observacao: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const aprovacaoComissao = mysqlTable("aprovacao_comissao", {
+	id: int().autoincrement().notNull(),
+	parceiroId: int().notNull(),
+	servicoId: int().notNull(),
+	percentualSolicitado: decimal({ precision: 5, scale: 2 }).notNull(),
+	percentualPadrao: decimal({ precision: 5, scale: 2 }).notNull(),
+	modeloParceriaId: int().notNull(),
+	solicitadoPorId: int().notNull(),
+	solicitadoEm: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	status: mysqlEnum(['pendente','aprovado','rejeitado']).default('pendente').notNull(),
+	aprovadoPorId: int(),
+	aprovadoEm: timestamp({ mode: 'string' }),
+	observacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const arquivos = mysqlTable("arquivos", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 500 }).notNull(),
+	nomeOriginal: varchar({ length: 500 }).notNull(),
+	mimeType: varchar({ length: 100 }).notNull(),
+	tamanhoBytes: bigint({ mode: "number" }).notNull(),
+	storageKey: varchar({ length: 500 }).notNull(),
+	storageUrl: varchar({ length: 1000 }).notNull(),
+	entidadeTipo: mysqlEnum(['cliente','tarefa','tese','parceiro','relatorio','geral']).notNull(),
+	entidadeId: int(),
+	versao: int().default(1).notNull(),
+	arquivoPaiId: int(),
+	descricao: text(),
+	tags: json(),
+	uploadPorId: int(),
+	uploadPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
 export const atestadosLicencas = mysqlTable("atestados_licencas", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  tipo: mysqlEnum("tipo", ["atestado_medico", "licenca_maternidade", "licenca_paternidade", "licenca_casamento", "licenca_obito", "licenca_medica", "licenca_militar", "licenca_vestibular", "doacao_sangue", "acompanhamento_medico", "mesario", "day_off", "outro"]).notNull(),
-  dataInicio: varchar("dataInicio", { length: 10 }).notNull(),
-  dataFim: varchar("dataFim", { length: 10 }).notNull(),
-  diasAfastamento: int("diasAfastamento").notNull(),
-  cid: varchar("cid", { length: 10 }),
-  medico: varchar("medico", { length: 255 }),
-  crm: varchar("crm", { length: 20 }),
-  observacao: text("observacao"),
-  documentoUrl: varchar("documentoUrl", { length: 500 }),
-  status: mysqlEnum("status", ["ativo", "encerrado", "cancelado"]).default("ativo").notNull(),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	tipo: mysqlEnum(['atestado_medico','licenca_maternidade','licenca_paternidade','licenca_casamento','licenca_obito','licenca_medica','licenca_militar','licenca_vestibular','doacao_sangue','acompanhamento_medico','mesario','day_off','outro']).notNull(),
+	dataInicio: varchar({ length: 10 }).notNull(),
+	dataFim: varchar({ length: 10 }).notNull(),
+	diasAfastamento: int().notNull(),
+	cid: varchar({ length: 10 }),
+	medico: varchar({ length: 255 }),
+	crm: varchar({ length: 20 }),
+	observacao: text(),
+	documentoUrl: varchar({ length: 500 }),
+	status: mysqlEnum(['ativo','encerrado','cancelado']).default('ativo').notNull(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type AtestadoLicenca = typeof atestadosLicencas.$inferSelect;
-export type InsertAtestadoLicenca = typeof atestadosLicencas.$inferInsert;
-
-// ---- PLANOS DE CARREIRA & DESENVOLVIMENTO ----
-export const planosCarreira = mysqlTable("planos_carreira", {
-  id: int("id").autoincrement().primaryKey(),
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  colaboradorId: int("colaboradorId"),
-  setorId: int("setorId"),
-  nivelAtual: varchar("nivelAtual", { length: 100 }),
-  nivelAlvo: varchar("nivelAlvo", { length: 100 }),
-  prazoMeses: int("prazoMeses"),
-  status: mysqlEnum("status", ["em_andamento", "concluido", "pausado", "cancelado"]).default("em_andamento").notNull(),
-  metas: json("metas").$type<{descricao: string; concluida: boolean; prazo?: string}[]>(),
-  competencias: json("competencias").$type<{nome: string; nivelAtual: number; nivelAlvo: number}[]>(),
-  treinamentos: json("treinamentos").$type<{nome: string; concluido: boolean; data?: string}[]>(),
-  observacao: text("observacao"),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const auditLog = mysqlTable("audit_log", {
+	id: int().autoincrement().notNull(),
+	acao: mysqlEnum(['criar','editar','excluir','visualizar','login','logout','atribuir','concluir','comentar','upload','download','exportar','ativar','inativar']).notNull(),
+	entidadeTipo: varchar({ length: 50 }).notNull(),
+	entidadeId: int(),
+	entidadeNome: varchar({ length: 500 }),
+	detalhes: json(),
+	usuarioId: int(),
+	usuarioNome: varchar({ length: 255 }),
+	ip: varchar({ length: 45 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
-
-export type PlanoCarreira = typeof planosCarreira.$inferSelect;
-export type InsertPlanoCarreira = typeof planosCarreira.$inferInsert;
-
-
-// ---- AVALIAÇÃO DE DESEMPENHO 360° ----
-export const ciclosAvaliacao = mysqlTable("ciclos_avaliacao", {
-  id: int("id").autoincrement().primaryKey(),
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  dataInicio: varchar("dataInicio", { length: 10 }).notNull(),
-  dataFim: varchar("dataFim", { length: 10 }).notNull(),
-  status: mysqlEnum("status", ["rascunho", "em_andamento", "encerrado"]).default("rascunho").notNull(),
-  criterios: json("criterios").$type<{nome: string; peso: number; descricao?: string}[]>(),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CicloAvaliacao = typeof ciclosAvaliacao.$inferSelect;
-export type InsertCicloAvaliacao = typeof ciclosAvaliacao.$inferInsert;
 
 export const avaliacoes = mysqlTable("avaliacoes", {
-  id: int("id").autoincrement().primaryKey(),
-  cicloId: int("cicloId").notNull(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }),
-  avaliadorId: int("avaliadorId").notNull(),
-  avaliadorNome: varchar("avaliadorNome", { length: 500 }),
-  tipoAvaliador: mysqlEnum("tipoAvaliador", ["gestor", "par", "autoavaliacao", "subordinado"]).notNull(),
-  notas: json("notas").$type<{criterio: string; nota: number; comentario?: string}[]>(),
-  notaGeral: decimal("notaGeral", { precision: 4, scale: 2 }),
-  comentarioGeral: text("comentarioGeral"),
-  pontosFortes: text("pontosFortes"),
-  pontosDesenvolvimento: text("pontosDesenvolvimento"),
-  status: mysqlEnum("status", ["pendente", "em_andamento", "concluida"]).default("pendente").notNull(),
-  planoCarreiraId: int("planoCarreiraId"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	cicloId: int().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }),
+	avaliadorId: int().notNull(),
+	avaliadorNome: varchar({ length: 500 }),
+	tipoAvaliador: mysqlEnum(['gestor','par','autoavaliacao','subordinado']).notNull(),
+	notas: json(),
+	notaGeral: decimal({ precision: 4, scale: 2 }),
+	comentarioGeral: text(),
+	pontosFortes: text(),
+	pontosDesenvolvimento: text(),
+	status: mysqlEnum(['pendente','em_andamento','concluida']).default('pendente').notNull(),
+	planoCarreiraId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type Avaliacao = typeof avaliacoes.$inferSelect;
-export type InsertAvaliacao = typeof avaliacoes.$inferInsert;
+export const bancoHoras = mysqlTable("banco_horas", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	tipo: mysqlEnum(['extra','compensacao','ajuste_positivo','ajuste_negativo']).default('extra').notNull(),
+	data: varchar({ length: 10 }).notNull(),
+	horas: decimal({ precision: 6, scale: 2 }).notNull(),
+	motivo: text(),
+	aprovado: tinyint().default(0).notNull(),
+	aprovadoPorId: int(),
+	aprovadoPorNome: varchar({ length: 255 }),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
 
-// ---- DOCUMENTOS DO COLABORADOR ----
+export const beneficiosCustom = mysqlTable("beneficios_custom", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	icone: varchar({ length: 50 }).default('Gift'),
+	cor: varchar({ length: 7 }).default('#3B82F6'),
+	rota: varchar({ length: 255 }),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const birthdayAdvanceNotifications = mysqlTable("birthday_advance_notifications", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	ano: int().notNull(),
+	diasAntes: int().notNull(),
+	enviadoEm: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+},
+(table) => [
+	index("unique_notif").on(table.colaboradorId, table.ano, table.diasAntes),
+]);
+
+export const chatChannels = mysqlTable("chat_channels", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	tipo: mysqlEnum(['geral','setor','projeto','dm']).default('setor').notNull(),
+	setorId: int(),
+	cor: varchar({ length: 7 }).default('#3B82F6'),
+	icone: varchar({ length: 50 }).default('MessageCircle'),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	status: mysqlEnum(['active','inactive','deleted']).default('active').notNull(),
+	dmUser1Id: int(),
+	dmUser2Id: int(),
+},
+(table) => [
+	index("idx_dm_users").on(table.dmUser1Id, table.dmUser2Id),
+]);
+
+export const chatMessages = mysqlTable("chat_messages", {
+	id: int().autoincrement().notNull(),
+	channelId: int().default(1).notNull(),
+	userId: int().notNull(),
+	userName: varchar({ length: 255 }).notNull(),
+	userAvatar: varchar({ length: 500 }),
+	content: text().notNull(),
+	mentions: json(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	deletedAt: timestamp({ mode: 'string' }),
+	deletedBy: int(),
+	pinned: tinyint().default(0).notNull(),
+	pinnedBy: int(),
+	pinnedByName: varchar({ length: 255 }),
+	pinnedAt: timestamp({ mode: 'string' }),
+	fileUrl: varchar({ length: 1000 }),
+	fileName: varchar({ length: 500 }),
+	fileType: varchar({ length: 100 }),
+	fileSize: int(),
+	replyToId: int(),
+	editedAt: timestamp({ mode: 'string' }),
+	editedContent: text(),
+});
+
+export const chatNotifications = mysqlTable("chat_notifications", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	messageId: int().notNull(),
+	channelId: int().notNull(),
+	tipo: mysqlEnum(['mencao','mensagem']).default('mencao').notNull(),
+	remetenteNome: varchar({ length: 255 }).notNull(),
+	preview: varchar({ length: 500 }),
+	lida: tinyint().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_user_lida").on(table.userId, table.lida),
+	index("idx_channel").on(table.channelId),
+]);
+
+export const chatReactions = mysqlTable("chat_reactions", {
+	id: int().autoincrement().notNull(),
+	messageId: int().notNull(),
+	userId: int().notNull(),
+	userName: varchar({ length: 255 }).notNull(),
+	emoji: varchar({ length: 20 }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_reactions_message").on(table.messageId),
+	index("idx_reactions_user").on(table.userId),
+]);
+
+export const chatTypingIndicators = mysqlTable("chat_typing_indicators", {
+	id: int().autoincrement().notNull(),
+	channelId: int().notNull(),
+	userId: int().notNull(),
+	userName: varchar({ length: 255 }).notNull(),
+	userAvatar: varchar({ length: 500 }),
+	startedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_typing_channel").on(table.channelId),
+	index("idx_typing_user").on(table.userId),
+]);
+
+export const ciclosAvaliacao = mysqlTable("ciclos_avaliacao", {
+	id: int().autoincrement().notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	dataInicio: varchar({ length: 10 }).notNull(),
+	dataFim: varchar({ length: 10 }).notNull(),
+	status: mysqlEnum(['rascunho','em_andamento','encerrado']).default('rascunho').notNull(),
+	criterios: json(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const clienteServicos = mysqlTable("cliente_servicos", {
+	id: int().autoincrement().notNull(),
+	clienteId: int().notNull(),
+	servicoId: int().notNull(),
+	status: mysqlEnum(['ativo','em_execucao','concluido','cancelado']).default('ativo'),
+	atribuidoPorId: int(),
+	dataInicio: timestamp({ mode: 'string' }),
+	dataConclusao: timestamp({ mode: 'string' }),
+	observacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const clientes = mysqlTable("clientes", {
+	id: int().autoincrement().notNull(),
+	cnpj: varchar({ length: 20 }).notNull(),
+	razaoSocial: varchar({ length: 500 }).notNull(),
+	nomeFantasia: varchar({ length: 500 }),
+	dataAbertura: varchar({ length: 20 }),
+	regimeTributario: mysqlEnum(['simples_nacional','lucro_presumido','lucro_real']).notNull(),
+	situacaoCadastral: mysqlEnum(['ativa','baixada','inapta','suspensa','nula']).default('ativa').notNull(),
+	classificacaoCliente: mysqlEnum(['novo','base']).default('novo').notNull(),
+	dataConversaoBase: timestamp({ mode: 'string' }),
+	cnaePrincipal: varchar({ length: 20 }),
+	cnaePrincipalDescricao: text(),
+	cnaesSecundarios: json(),
+	segmentoEconomico: varchar({ length: 255 }),
+	naturezaJuridica: varchar({ length: 255 }),
+	quadroSocietario: json(),
+	endereco: text(),
+	complemento: varchar({ length: 500 }),
+	estado: varchar({ length: 2 }),
+	industrializa: tinyint().default(0).notNull(),
+	comercializa: tinyint().default(0).notNull(),
+	prestaServicos: tinyint().default(0).notNull(),
+	contribuinteIcms: tinyint().default(0).notNull(),
+	contribuinteIpi: tinyint().default(0).notNull(),
+	regimeMonofasico: tinyint().default(0).notNull(),
+	folhaPagamentoMedia: decimal({ precision: 15, scale: 2 }).default('0'),
+	faturamentoMedioMensal: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorMedioGuias: decimal({ precision: 15, scale: 2 }).default('0'),
+	processosJudiciaisAtivos: tinyint().default(0).notNull(),
+	parcelamentosAtivos: tinyint().default(0).notNull(),
+	atividadePrincipalDescritivo: text(),
+	parceiroId: int(),
+	procuracaoHabilitada: tinyint().default(0).notNull(),
+	procuracaoCertificado: varchar({ length: 100 }),
+	procuracaoValidade: varchar({ length: 20 }),
+	excecoesEspecificidades: text(),
+	prioridade: mysqlEnum(['alta','media','baixa']).default('media').notNull(),
+	scoreOportunidade: int().default(0),
+	redFlags: json(),
+	alertasInformacao: json(),
+	usuarioCadastroId: int(),
+	usuarioCadastroNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	tipoPessoa: mysqlEnum(['juridica','fisica']).default('juridica').notNull(),
+	cpf: varchar({ length: 14 }),
+	cidade: varchar({ length: 255 }),
+	ativo: tinyint().default(1).notNull(),
+});
+
 export const colaboradorDocumentos = mysqlTable("colaborador_documentos", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  tipo: mysqlEnum("tipo", ["foto", "rg", "ctps", "aso", "contrato", "comprovante_residencia", "outro"]).notNull(),
-  nomeArquivo: varchar("nomeArquivo", { length: 500 }).notNull(),
-  url: varchar("url", { length: 1000 }).notNull(),
-  fileKey: varchar("fileKey", { length: 500 }).notNull(),
-  mimeType: varchar("mimeType", { length: 100 }),
-  tamanho: int("tamanho"), // bytes
-  enviadoPorId: int("enviadoPorId"),
-  enviadoPorNome: varchar("enviadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	tipo: mysqlEnum(['foto','rg','ctps','aso','contrato','comprovante_residencia','outro']).notNull(),
+	nomeArquivo: varchar({ length: 500 }).notNull(),
+	url: varchar({ length: 1000 }).notNull(),
+	fileKey: varchar({ length: 500 }).notNull(),
+	mimeType: varchar({ length: 100 }),
+	tamanho: int(),
+	enviadoPorId: int(),
+	enviadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type ColaboradorDocumento = typeof colaboradorDocumentos.$inferSelect;
-export type InsertColaboradorDocumento = typeof colaboradorDocumentos.$inferInsert;
-
-// ---- METAS INDIVIDUAIS (KPIs) ----
-export const metasIndividuais = mysqlTable("metas_individuais", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }),
-  cicloId: int("cicloId"), // vínculo com ciclo de avaliação
-  titulo: varchar("titulo", { length: 500 }).notNull(),
-  descricao: text("descricao"),
-  categoria: mysqlEnum("categoria", ["produtividade", "qualidade", "financeiro", "desenvolvimento", "cliente", "processo", "outro"]).default("outro").notNull(),
-  unidadeMedida: varchar("unidadeMedida", { length: 50 }), // %, R$, unidades, etc.
-  valorMeta: decimal("valorMeta", { precision: 12, scale: 2 }).notNull(), // meta alvo
-  valorAtual: decimal("valorAtual", { precision: 12, scale: 2 }).default("0"), // progresso atual
-  peso: int("peso").default(1), // peso da meta no cálculo geral
-  dataInicio: varchar("dataInicio", { length: 10 }),
-  dataFim: varchar("dataFim", { length: 10 }),
-  status: mysqlEnum("status", ["nao_iniciada", "em_andamento", "concluida", "cancelada"]).default("nao_iniciada").notNull(),
-  observacao: text("observacao"),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const colaboradores = mysqlTable("colaboradores", {
+	id: int().autoincrement().notNull(),
+	nomeCompleto: varchar({ length: 500 }).notNull(),
+	dataNascimento: varchar({ length: 10 }),
+	cpf: varchar({ length: 14 }).notNull(),
+	rgNumero: varchar({ length: 20 }),
+	rgOrgaoEmissor: varchar({ length: 50 }),
+	rgDataEmissao: varchar({ length: 10 }),
+	ctpsNumero: varchar({ length: 50 }),
+	pisPasep: varchar({ length: 20 }),
+	nomeMae: varchar({ length: 500 }),
+	nomePai: varchar({ length: 500 }),
+	nacionalidade: varchar({ length: 100 }).default('Brasileira'),
+	naturalidade: varchar({ length: 255 }),
+	estadoCivil: mysqlEnum(['solteiro','casado','divorciado','viuvo','uniao_estavel']),
+	tituloEleitor: varchar({ length: 20 }),
+	certificadoReservista: varchar({ length: 20 }),
+	sexo: mysqlEnum(['masculino','feminino','outro']),
+	cep: varchar({ length: 10 }),
+	logradouro: varchar({ length: 500 }),
+	numero: varchar({ length: 20 }),
+	complemento: varchar({ length: 500 }),
+	bairro: varchar({ length: 255 }),
+	cidade: varchar({ length: 255 }),
+	estado: varchar({ length: 2 }),
+	telefone: varchar({ length: 20 }),
+	email: varchar({ length: 320 }),
+	dataAdmissao: varchar({ length: 10 }).notNull(),
+	cargo: varchar({ length: 255 }).notNull(),
+	funcao: varchar({ length: 255 }),
+	salarioBase: decimal({ precision: 12, scale: 2 }).notNull(),
+	comissoes: decimal({ precision: 12, scale: 2 }).default('0'),
+	adicionais: decimal({ precision: 12, scale: 2 }).default('0'),
+	jornadaEntrada: varchar({ length: 5 }),
+	jornadaSaida: varchar({ length: 5 }),
+	jornadaIntervalo: varchar({ length: 20 }),
+	cargaHoraria: varchar({ length: 10 }),
+	tipoContrato: mysqlEnum(['clt','pj','contrato_trabalho']).default('clt').notNull(),
+	localTrabalho: mysqlEnum(['home_office','barueri','uberaba']).default('barueri'),
+	valeTransporte: tinyint().default(0).notNull(),
+	banco: varchar({ length: 100 }),
+	agencia: varchar({ length: 20 }),
+	conta: varchar({ length: 30 }),
+	tipoConta: mysqlEnum(['corrente','poupanca']),
+	asoAdmissionalApto: tinyint().default(1),
+	asoAdmissionalData: varchar({ length: 10 }),
+	dependentes: json(),
+	setorId: int(),
+	nivelHierarquico: mysqlEnum(['estagiario','auxiliar','assistente','analista_jr','analista_pl','analista_sr','coordenador','supervisor','gerente','diretor']),
+	userId: int(),
+	foto: varchar({ length: 500 }),
+	ativo: tinyint().default(1).notNull(),
+	dataDesligamento: varchar({ length: 10 }),
+	motivoDesligamento: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	chavePix: varchar({ length: 255 }),
+	jornadaDias: json(),
+	statusColaborador: mysqlEnum(['ativo','inativo','afastado','licenca','atestado','desligado','ferias','experiencia','aviso_previo']).default('ativo').notNull(),
+	ctpsUfEmissao: varchar({ length: 2 }),
+	tituloEleitorZona: varchar({ length: 10 }),
+	tituloEleitorSecao: varchar({ length: 10 }),
+	grauInstrucao: mysqlEnum(['fundamental_incompleto','fundamental_completo','medio_incompleto','medio_completo','superior_incompleto','superior_completo','pos_graduacao','mestrado','doutorado']),
+	formacaoAcademica: text(),
+	contatoEmergenciaNome: varchar({ length: 255 }),
+	contatoEmergenciaTelefone: varchar({ length: 20 }),
+	contatoEmergenciaParentesco: varchar({ length: 100 }),
+	pagaPensaoAlimenticia: tinyint().default(0),
+	valorPensaoAlimenticia: decimal({ precision: 12, scale: 2 }),
+	temContribuicaoAssistencial: tinyint().default(0),
+	valorContribuicaoAssistencial: decimal({ precision: 12, scale: 2 }),
+	periodoExperiencia1Inicio: varchar({ length: 10 }),
+	periodoExperiencia1Fim: varchar({ length: 10 }),
+	periodoExperiencia2Inicio: varchar({ length: 10 }),
+	periodoExperiencia2Fim: varchar({ length: 10 }),
+	recebeComissao: tinyint().default(0),
+	telefoneCorporativo: varchar({ length: 20 }),
+	emailCorporativo: varchar({ length: 320 }),
 });
 
-export type MetaIndividual = typeof metasIndividuais.$inferSelect;
-export type InsertMetaIndividual = typeof metasIndividuais.$inferInsert;
+export const comissaoRh = mysqlTable("comissao_rh", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	tipo: mysqlEnum(['evox_monitor','dpt','credito','outro']).notNull(),
+	descricao: text(),
+	mesReferencia: int().notNull(),
+	anoReferencia: int().notNull(),
+	valorBase: decimal({ precision: 12, scale: 2 }).notNull(),
+	percentual: decimal({ precision: 5, scale: 2 }),
+	valorComissao: decimal({ precision: 12, scale: 2 }).notNull(),
+	observacao: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
 
-// ---- HISTÓRICO DE STATUS DO COLABORADOR ----
+export const comissoesServico = mysqlTable("comissoes_servico", {
+	id: int().autoincrement().notNull(),
+	servicoId: int().notNull(),
+	modeloParceriaId: int().notNull(),
+	percentualComissao: decimal({ precision: 5, scale: 2 }).notNull(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const dayOff = mysqlTable("day_off", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	dataAniversario: varchar({ length: 10 }).notNull(),
+	dataOriginal: varchar({ length: 10 }).notNull(),
+	dataEfetiva: varchar({ length: 10 }).notNull(),
+	alterado: tinyint().default(0).notNull(),
+	motivoAlteracao: text(),
+	status: mysqlEnum(['pendente','aprovado','recusado','utilizado']).default('pendente').notNull(),
+	aprovadorGestorId: int(),
+	aprovadorGestorStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorGestorEm: timestamp({ mode: 'string' }),
+	aprovadorRhId: int(),
+	aprovadorRhStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorRhEm: timestamp({ mode: 'string' }),
+	aprovadorDiretoriaId: int(),
+	aprovadorDiretoriaStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorDiretoriaEm: timestamp({ mode: 'string' }),
+	observacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const doacaoSangue = mysqlTable("doacao_sangue", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	dataDoacao: varchar({ length: 10 }).notNull(),
+	prazoFolga: varchar({ length: 10 }).notNull(),
+	dataFolga: varchar({ length: 10 }),
+	comprovanteUrl: varchar({ length: 500 }),
+	status: mysqlEnum(['pendente','aprovado','recusado','utilizado']).default('pendente').notNull(),
+	aprovadorGestorId: int(),
+	aprovadorGestorStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorGestorEm: timestamp({ mode: 'string' }),
+	aprovadorRhId: int(),
+	aprovadorRhStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorRhEm: timestamp({ mode: 'string' }),
+	aprovadorDiretoriaId: int(),
+	aprovadorDiretoriaStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorDiretoriaEm: timestamp({ mode: 'string' }),
+	observacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const emailAniversarianteConfig = mysqlTable("email_aniversariante_config", {
+	id: int().autoincrement().notNull(),
+	assunto: varchar({ length: 500 }).default('Feliz Aniversário!').notNull(),
+	mensagem: text().notNull(),
+	assinatura: varchar({ length: 500 }).default('Equipe Evox').notNull(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow(),
+});
+
+export const emailAniversarianteLog = mysqlTable("email_aniversariante_log", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	ano: int().notNull(),
+	enviadoEm: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+},
+(table) => [
+	index("unique_colab_ano").on(table.colaboradorId, table.ano),
+]);
+
+export const emailsCorporativos = mysqlTable("emails_corporativos", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	email: varchar({ length: 320 }).notNull(),
+	tipoEmail: mysqlEnum('tipoEmail', ['principal','secundario']).default('principal').notNull(),
+	tipoUso: mysqlEnum('tipoUso', ['individual','compartilhado']).default('individual').notNull(),
+	colaboradoresVinculados: json('colaboradoresVinculados').$type<{id: number; nome: string}[]>(),
+	statusEmail: mysqlEnum('statusEmail', ['ativo','desativado','suspenso']).default('ativo').notNull(),
+	dataCriacao: varchar({ length: 10 }),
+	dataDesativacao: varchar({ length: 10 }),
+	observacoes: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const equipamentosColaborador = mysqlTable("equipamentos_colaborador", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	tipo: mysqlEnum(['notebook','celular','desktop','monitor','headset','teclado','mouse','webcam','impressora','tablet','telefone_fixo','ramal','email_corporativo','telefone_corporativo','outro']).notNull(),
+	marca: varchar({ length: 255 }),
+	modelo: varchar({ length: 255 }),
+	numeroSerie: varchar({ length: 255 }),
+	patrimonio: varchar({ length: 100 }),
+	descricao: text(),
+	dataEntrega: varchar({ length: 10 }),
+	dataDevolucao: varchar({ length: 10 }),
+	statusEquipamento: mysqlEnum(['em_uso','devolvido','manutencao','perdido','descartado']).default('em_uso').notNull(),
+	observacoes: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const executivosComerciais = mysqlTable("executivos_comerciais", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	email: varchar({ length: 320 }),
+	telefone: varchar({ length: 20 }),
+	cargo: varchar({ length: 255 }),
+	userId: int(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const ferias = mysqlTable("ferias", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	periodoAquisitivoInicio: varchar({ length: 10 }).notNull(),
+	periodoAquisitivoFim: varchar({ length: 10 }).notNull(),
+	periodoConcessivoFim: varchar({ length: 10 }).notNull(),
+	periodo1Inicio: varchar({ length: 10 }),
+	periodo1Fim: varchar({ length: 10 }),
+	periodo1Dias: int(),
+	periodo2Inicio: varchar({ length: 10 }),
+	periodo2Fim: varchar({ length: 10 }),
+	periodo2Dias: int(),
+	periodo3Inicio: varchar({ length: 10 }),
+	periodo3Fim: varchar({ length: 10 }),
+	periodo3Dias: int(),
+	diasTotais: int().default(30),
+	faltasInjustificadas: int().default(0),
+	diasDireito: int().default(30),
+	status: mysqlEnum(['pendente','programada','em_gozo','concluida','vencida']).default('pendente').notNull(),
+	avisoPrevioData: varchar({ length: 10 }),
+	alertas: json(),
+	observacao: text(),
+	aprovadoPorId: int(),
+	aprovadoEm: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	abonoConvertido: tinyint().default(0),
+	aprovadorGestorId: int(),
+	aprovadorGestorStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorGestorEm: timestamp({ mode: 'string' }),
+	aprovadorDiretoriaId: int(),
+	aprovadorDiretoriaStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorDiretoriaEm: timestamp({ mode: 'string' }),
+	justificativaRecusa: text(),
+	enviadoParaAprovacao: tinyint().default(0),
+	enviadoEm: timestamp({ mode: 'string' }),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	alertasCltCct: json(),
+});
+
+export const filaApuracao = mysqlTable("fila_apuracao", {
+	id: int().autoincrement().notNull(),
+	clienteId: int().notNull(),
+	status: mysqlEnum(['a_fazer','fazendo','concluido']).default('a_fazer').notNull(),
+	ordem: int().default(0).notNull(),
+	prioridadeManual: tinyint().default(0).notNull(),
+	analistaId: int(),
+	analistaNome: varchar({ length: 255 }),
+	tempoGastoMs: bigint({ mode: "number" }),
+	dataInicioApuracao: timestamp({ mode: 'string' }),
+	dataConclusao: timestamp({ mode: 'string' }),
+	historico: json(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
 export const historicoStatusColaborador = mysqlTable("historico_status_colaborador", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  statusAnterior: varchar("statusAnterior", { length: 50 }).notNull(),
-  statusNovo: varchar("statusNovo", { length: 50 }).notNull(),
-  motivo: text("motivo"),
-  origemModulo: varchar("origemModulo", { length: 50 }), // 'ferias', 'atestado', 'manual', 'desligamento'
-  origemRegistroId: int("origemRegistroId"), // ID do registro que originou a mudança
-  alteradoPorId: int("alteradoPorId"),
-  alteradoPorNome: varchar("alteradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	statusAnterior: varchar({ length: 50 }).notNull(),
+	statusNovo: varchar({ length: 50 }).notNull(),
+	motivo: text(),
+	origemModulo: varchar({ length: 50 }),
+	origemRegistroId: int(),
+	alteradoPorId: int(),
+	alteradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
-export type HistoricoStatusColaborador = typeof historicoStatusColaborador.$inferSelect;
-export type InsertHistoricoStatusColaborador = typeof historicoStatusColaborador.$inferInsert;
+export const metasComissoes = mysqlTable("metas_comissoes", {
+	id: int().autoincrement().notNull(),
+	parceiroId: int().notNull(),
+	tipo: mysqlEnum(['mensal','trimestral','semestral','anual']).default('mensal').notNull(),
+	ano: int().notNull(),
+	mes: int(),
+	trimestre: int(),
+	valorMeta: decimal({ precision: 12, scale: 2 }).notNull(),
+	observacao: text(),
+	criadoPor: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_metas_parceiro").on(table.parceiroId),
+	index("idx_metas_periodo").on(table.ano, table.mes, table.trimestre),
+]);
 
-
-// ---- ONBOARDING DIGITAL ----
-export const onboardingTemplates = mysqlTable("onboarding_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  ativo: boolean("ativo").default(true).notNull(),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const metasIndividuais = mysqlTable("metas_individuais", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }),
+	cicloId: int(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	categoria: mysqlEnum(['produtividade','qualidade','financeiro','desenvolvimento','cliente','processo','outro']).default('outro').notNull(),
+	unidadeMedida: varchar({ length: 50 }),
+	valorMeta: decimal({ precision: 12, scale: 2 }).notNull(),
+	valorAtual: decimal({ precision: 12, scale: 2 }).default('0'),
+	peso: int().default(1),
+	dataInicio: varchar({ length: 10 }),
+	dataFim: varchar({ length: 10 }),
+	status: mysqlEnum(['nao_iniciada','em_andamento','concluida','cancelada']).default('nao_iniciada').notNull(),
+	observacao: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type OnboardingTemplate = typeof onboardingTemplates.$inferSelect;
-export type InsertOnboardingTemplate = typeof onboardingTemplates.$inferInsert;
-
-export const onboardingEtapasTemplate = mysqlTable("onboarding_etapas_template", {
-  id: int("id").autoincrement().primaryKey(),
-  templateId: int("templateId").notNull(),
-  titulo: varchar("titulo", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  categoria: mysqlEnum("categoria", ["documentos", "treinamentos", "acessos", "equipamentos", "integracao", "outros"]).default("outros").notNull(),
-  ordem: int("ordem").default(0).notNull(),
-  obrigatoria: boolean("obrigatoria").default(true).notNull(),
-  prazoEmDias: int("prazoEmDias").default(7),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+export const modelosParceria = mysqlTable("modelos_parceria", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 100 }).notNull(),
+	descricao: text(),
+	ordem: int().default(0).notNull(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type OnboardingEtapaTemplate = typeof onboardingEtapasTemplate.$inferSelect;
-export type InsertOnboardingEtapaTemplate = typeof onboardingEtapasTemplate.$inferInsert;
+export const niveisCargo = mysqlTable("niveis_cargo", {
+	id: int().autoincrement().notNull(),
+	setorId: int().notNull(),
+	cargo: varchar({ length: 255 }).notNull(),
+	nivel: int().default(1).notNull(),
+	descricaoNivel: varchar({ length: 255 }),
+	salarioMinimo: decimal({ precision: 12, scale: 2 }),
+	salarioMaximo: decimal({ precision: 12, scale: 2 }),
+	grauInstrucaoMinimo: mysqlEnum(['fundamental_incompleto','fundamental_completo','medio_incompleto','medio_completo','superior_incompleto','superior_completo','pos_graduacao','mestrado','doutorado']),
+	requisitos: text(),
+	competencias: text(),
+	tempoMinimoMeses: int(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const notificacoes = mysqlTable("notificacoes", {
+	id: int().autoincrement().notNull(),
+	tipo: mysqlEnum(['procuracao_vencendo','procuracao_vencida','analise_concluida','nova_tese','tarefa_atribuida','tarefa_sla_vencendo','tarefa_comentario','geral','avaliacao_ciclo_aberto','avaliacao_pendente']).notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	mensagem: text().notNull(),
+	lida: tinyint().default(0).notNull(),
+	usuarioId: int(),
+	clienteId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	tarefaId: int(),
+});
 
 export const onboardingColaborador = mysqlTable("onboarding_colaborador", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  templateId: int("templateId"),
-  templateNome: varchar("templateNome", { length: 255 }),
-  status: mysqlEnum("status", ["pendente", "em_andamento", "concluido", "cancelado"]).default("pendente").notNull(),
-  dataInicio: varchar("dataInicio", { length: 10 }),
-  dataConclusao: varchar("dataConclusao", { length: 10 }),
-  observacao: text("observacao"),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	templateId: int(),
+	templateNome: varchar({ length: 255 }),
+	status: mysqlEnum(['pendente','em_andamento','concluido','cancelado']).default('pendente').notNull(),
+	dataInicio: varchar({ length: 10 }),
+	dataConclusao: varchar({ length: 10 }),
+	observacao: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
-
-export type OnboardingColaborador = typeof onboardingColaborador.$inferSelect;
-export type InsertOnboardingColaborador = typeof onboardingColaborador.$inferInsert;
 
 export const onboardingEtapas = mysqlTable("onboarding_etapas", {
-  id: int("id").autoincrement().primaryKey(),
-  onboardingId: int("onboardingId").notNull(),
-  titulo: varchar("titulo", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  categoria: mysqlEnum("categoria", ["documentos", "treinamentos", "acessos", "equipamentos", "integracao", "outros"]).default("outros").notNull(),
-  ordem: int("ordem").default(0).notNull(),
-  obrigatoria: boolean("obrigatoria").default(true).notNull(),
-  prazoEmDias: int("prazoEmDias").default(7),
-  status: mysqlEnum("status", ["pendente", "em_andamento", "concluida", "nao_aplicavel"]).default("pendente").notNull(),
-  dataConclusao: varchar("dataConclusao", { length: 10 }),
-  concluidoPorId: int("concluidoPorId"),
-  concluidoPorNome: varchar("concluidoPorNome", { length: 255 }),
-  observacao: text("observacao"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	onboardingId: int().notNull(),
+	titulo: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	categoria: mysqlEnum(['documentos','treinamentos','acessos','equipamentos','integracao','outros']).default('outros').notNull(),
+	ordem: int().default(0).notNull(),
+	obrigatoria: tinyint().default(1).notNull(),
+	prazoEmDias: int().default(7),
+	status: mysqlEnum(['pendente','em_andamento','concluida','nao_aplicavel']).default('pendente').notNull(),
+	dataConclusao: varchar({ length: 10 }),
+	concluidoPorId: int(),
+	concluidoPorNome: varchar({ length: 255 }),
+	observacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type OnboardingEtapa = typeof onboardingEtapas.$inferSelect;
-export type InsertOnboardingEtapa = typeof onboardingEtapas.$inferInsert;
-
-// ---- PESQUISA DE CLIMA ORGANIZACIONAL ----
-export const pesquisasClima = mysqlTable("pesquisas_clima", {
-  id: int("id").autoincrement().primaryKey(),
-  titulo: varchar("titulo", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  status: mysqlEnum("status", ["rascunho", "ativa", "encerrada", "cancelada"]).default("rascunho").notNull(),
-  anonima: boolean("anonima").default(true).notNull(),
-  dataInicio: varchar("dataInicio", { length: 10 }),
-  dataFim: varchar("dataFim", { length: 10 }),
-  totalRespostas: int("totalRespostas").default(0),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const onboardingEtapasTemplate = mysqlTable("onboarding_etapas_template", {
+	id: int().autoincrement().notNull(),
+	templateId: int().notNull(),
+	titulo: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	categoria: mysqlEnum(['documentos','treinamentos','acessos','equipamentos','integracao','outros']).default('outros').notNull(),
+	ordem: int().default(0).notNull(),
+	obrigatoria: tinyint().default(1).notNull(),
+	prazoEmDias: int().default(7),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
-export type PesquisaClima = typeof pesquisasClima.$inferSelect;
-export type InsertPesquisaClima = typeof pesquisasClima.$inferInsert;
+export const onboardingTemplates = mysqlTable("onboarding_templates", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const parceiroServicos = mysqlTable("parceiro_servicos", {
+	id: int().autoincrement().notNull(),
+	parceiroId: int().notNull(),
+	servicoId: int().notNull(),
+	percentualCustomizado: decimal({ precision: 5, scale: 2 }),
+	aprovadoPorId: int(),
+	aprovadoEm: timestamp({ mode: 'string' }),
+	statusAprovacao: mysqlEnum(['aprovado','pendente','rejeitado']).default('aprovado'),
+	observacao: text(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const parceiros = mysqlTable("parceiros", {
+	id: int().autoincrement().notNull(),
+	tipoPessoa: mysqlEnum(['pf','pj']).default('pj').notNull(),
+	apelido: varchar({ length: 255 }),
+	nomeCompleto: varchar({ length: 255 }).notNull(),
+	cpf: varchar({ length: 14 }),
+	rg: varchar({ length: 20 }),
+	cnpj: varchar({ length: 20 }),
+	razaoSocial: varchar({ length: 500 }),
+	nomeFantasia: varchar({ length: 500 }),
+	situacaoCadastral: varchar({ length: 50 }),
+	quadroSocietario: json(),
+	socioNome: varchar({ length: 255 }),
+	socioCpf: varchar({ length: 14 }),
+	socioRg: varchar({ length: 20 }),
+	socioEmail: varchar({ length: 320 }),
+	socioTelefone: varchar({ length: 20 }),
+	cpfCnpj: varchar({ length: 20 }),
+	telefone: varchar({ length: 20 }),
+	email: varchar({ length: 320 }),
+	cep: varchar({ length: 10 }),
+	logradouro: varchar({ length: 500 }),
+	numero: varchar({ length: 20 }),
+	complemento: varchar({ length: 500 }),
+	bairro: varchar({ length: 255 }),
+	cidade: varchar({ length: 255 }),
+	estado: varchar({ length: 2 }),
+	banco: varchar({ length: 100 }),
+	agencia: varchar({ length: 20 }),
+	conta: varchar({ length: 30 }),
+	tipoConta: mysqlEnum(['corrente','poupanca']),
+	titularConta: varchar({ length: 255 }),
+	cpfCnpjConta: varchar({ length: 20 }),
+	chavePix: varchar({ length: 255 }),
+	tipoChavePix: mysqlEnum(['cpf','cnpj','email','telefone','aleatoria']),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	modeloParceriaId: int(),
+	parceiroPaiId: int(),
+	percentualRepasseSubparceiro: decimal({ precision: 5, scale: 2 }),
+	ehSubparceiro: tinyint().default(0).notNull(),
+	observacoes: text(),
+	executivoComercialId: int(),
+});
 
 export const perguntasClima = mysqlTable("perguntas_clima", {
-  id: int("id").autoincrement().primaryKey(),
-  pesquisaId: int("pesquisaId").notNull(),
-  texto: text("texto").notNull(),
-  tipo: mysqlEnum("tipo", ["escala", "multipla_escolha", "texto_livre", "sim_nao"]).default("escala").notNull(),
-  opcoes: json("opcoes"), // array of options for multipla_escolha
-  ordem: int("ordem").default(0).notNull(),
-  obrigatoria: boolean("obrigatoria").default(true).notNull(),
-  categoria: varchar("categoria", { length: 100 }), // liderança, ambiente, benefícios, etc.
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+	id: int().autoincrement().notNull(),
+	pesquisaId: int().notNull(),
+	texto: text().notNull(),
+	tipo: mysqlEnum(['escala','multipla_escolha','texto_livre','sim_nao']).default('escala').notNull(),
+	opcoes: json(),
+	ordem: int().default(0).notNull(),
+	obrigatoria: tinyint().default(1).notNull(),
+	categoria: varchar({ length: 100 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
-export type PerguntaClima = typeof perguntasClima.$inferSelect;
-export type InsertPerguntaClima = typeof perguntasClima.$inferInsert;
+export const pesquisasClima = mysqlTable("pesquisas_clima", {
+	id: int().autoincrement().notNull(),
+	titulo: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	status: mysqlEnum(['rascunho','ativa','encerrada','cancelada']).default('rascunho').notNull(),
+	anonima: tinyint().default(1).notNull(),
+	dataInicio: varchar({ length: 10 }),
+	dataFim: varchar({ length: 10 }),
+	totalRespostas: int().default(0),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const planosCarreira = mysqlTable("planos_carreira", {
+	id: int().autoincrement().notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	colaboradorId: int(),
+	setorId: int(),
+	nivelAtual: varchar({ length: 100 }),
+	nivelAlvo: varchar({ length: 100 }),
+	prazoMeses: int(),
+	status: mysqlEnum(['em_andamento','concluido','pausado','cancelado']).default('em_andamento').notNull(),
+	metas: json(),
+	competencias: json(),
+	treinamentos: json(),
+	observacao: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const programasCarreira = mysqlTable("programas_carreira", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	icone: varchar({ length: 50 }).default('GraduationCap'),
+	cor: varchar({ length: 7 }).default('#8B5CF6'),
+	rota: varchar({ length: 255 }),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const rateioComissao = mysqlTable("rateio_comissao", {
+	id: int().autoincrement().notNull(),
+	parceiroId: int().notNull(),
+	parceiroPaiId: int().notNull(),
+	servicoId: int().notNull(),
+	percentualParceiro: decimal({ precision: 5, scale: 2 }).notNull(),
+	percentualSubparceiro: decimal({ precision: 5, scale: 2 }).notNull(),
+	percentualMaximo: decimal({ precision: 5, scale: 2 }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const reajustesSalariais = mysqlTable("reajustes_salariais", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	tipo: mysqlEnum(['dois_anos','sindical','promocao','merito','outro']).notNull(),
+	percentual: decimal({ precision: 5, scale: 2 }).notNull(),
+	salarioAnterior: decimal({ precision: 12, scale: 2 }).notNull(),
+	salarioNovo: decimal({ precision: 12, scale: 2 }).notNull(),
+	dataEfetivacao: varchar({ length: 10 }).notNull(),
+	mesReferencia: int(),
+	anoReferencia: int(),
+	automatico: tinyint().default(0).notNull(),
+	observacao: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const relatorios = mysqlTable("relatorios", {
+	id: int().autoincrement().notNull(),
+	clienteId: int().notNull(),
+	clienteNome: varchar({ length: 500 }).notNull(),
+	diagnosticoTributario: text(),
+	tesesAplicaveis: json(),
+	tesesDescartadas: json(),
+	scoreOportunidade: int().default(0),
+	recomendacaoGeral: text(),
+	redFlags: json(),
+	prioridade: mysqlEnum(['alta','media','baixa']).default('media').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const rescisoes = mysqlTable("rescisoes", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	dataDesligamento: varchar({ length: 10 }).notNull(),
+	tipoDesligamento: mysqlEnum(['sem_justa_causa','justa_causa','pedido_demissao','termino_experiencia_1','termino_experiencia_2','acordo_mutuo']).notNull(),
+	dataAdmissao: varchar({ length: 10 }).notNull(),
+	salarioBase: decimal({ precision: 12, scale: 2 }).notNull(),
+	tipoContrato: varchar({ length: 50 }),
+	periodoExperiencia1Inicio: varchar({ length: 10 }),
+	periodoExperiencia1Fim: varchar({ length: 10 }),
+	periodoExperiencia2Inicio: varchar({ length: 10 }),
+	periodoExperiencia2Fim: varchar({ length: 10 }),
+	saldoSalario: decimal({ precision: 12, scale: 2 }).default('0'),
+	avisoPrevio: decimal({ precision: 12, scale: 2 }).default('0'),
+	avisoPrevioDias: int().default(0),
+	decimoTerceiroProporcional: decimal({ precision: 12, scale: 2 }).default('0'),
+	decimoTerceiroMeses: int().default(0),
+	feriasProporcionais: decimal({ precision: 12, scale: 2 }).default('0'),
+	feriasMeses: int().default(0),
+	tercoConstitucional: decimal({ precision: 12, scale: 2 }).default('0'),
+	feriasVencidas: decimal({ precision: 12, scale: 2 }).default('0'),
+	fgtsDepositado: decimal({ precision: 12, scale: 2 }).default('0'),
+	multaFgts: decimal({ precision: 12, scale: 2 }).default('0'),
+	multaFgtsPercentual: decimal({ precision: 5, scale: 2 }).default('0'),
+	totalProventos: decimal({ precision: 12, scale: 2 }).default('0'),
+	totalDescontos: decimal({ precision: 12, scale: 2 }).default('0'),
+	totalLiquido: decimal({ precision: 12, scale: 2 }).default('0'),
+	observacao: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
 
 export const respostasClima = mysqlTable("respostas_clima", {
-  id: int("id").autoincrement().primaryKey(),
-  pesquisaId: int("pesquisaId").notNull(),
-  perguntaId: int("perguntaId").notNull(),
-  respondentId: int("respondentId"), // null if anonymous
-  valorEscala: int("valorEscala"), // 1-5 for escala type
-  valorTexto: text("valorTexto"), // for texto_livre
-  valorOpcao: varchar("valorOpcao", { length: 255 }), // for multipla_escolha or sim_nao
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+	id: int().autoincrement().notNull(),
+	pesquisaId: int().notNull(),
+	perguntaId: int().notNull(),
+	respondentId: int(),
+	valorEscala: int(),
+	valorTexto: text(),
+	valorOpcao: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
-export type RespostaClima = typeof respostasClima.$inferSelect;
-export type InsertRespostaClima = typeof respostasClima.$inferInsert;
-
-// ---- BANCO DE HORAS ----
-export const bancoHoras = mysqlTable("banco_horas", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  tipo: mysqlEnum("tipo", ["extra", "compensacao", "ajuste_positivo", "ajuste_negativo"]).default("extra").notNull(),
-  data: varchar("data", { length: 10 }).notNull(),
-  horas: decimal("horas", { precision: 6, scale: 2 }).notNull(), // always positive, tipo determines sign
-  motivo: text("motivo"),
-  aprovado: boolean("aprovado").default(false).notNull(),
-  aprovadoPorId: int("aprovadoPorId"),
-  aprovadoPorNome: varchar("aprovadoPorNome", { length: 255 }),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type BancoHoras = typeof bancoHoras.$inferSelect;
-export type InsertBancoHoras = typeof bancoHoras.$inferInsert;
-
-
-// ---- VALE TRANSPORTE ----
-export const valeTransporte = mysqlTable("vale_transporte", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  mesReferencia: int("mesReferencia").notNull(),
-  anoReferencia: int("anoReferencia").notNull(),
-  diasUteis: int("diasUteis").notNull(),
-  passagensPorDia: int("passagensPorDia").notNull().default(2),
-  valorPassagem: decimal("valorPassagem", { precision: 8, scale: 2 }).notNull(),
-  cidadePassagem: mysqlEnum("cidadePassagem", ["sp", "barueri"]).notNull().default("sp"),
-  valorTotal: decimal("valorTotal", { precision: 12, scale: 2 }).notNull(),
-  descontoFolha: decimal("descontoFolha", { precision: 12, scale: 2 }).default("0"),
-  observacao: text("observacao"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ValeTransporte = typeof valeTransporte.$inferSelect;
-export type InsertValeTransporte = typeof valeTransporte.$inferInsert;
-
-// ---- ACADEMIA BENEFÍCIO ----
-export const academiaBeneficio = mysqlTable("academia_beneficio", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  nomeAcademia: varchar("nomeAcademia", { length: 255 }).notNull(),
-  plano: varchar("plano", { length: 255 }),
-  valorPlano: decimal("valorPlano", { precision: 12, scale: 2 }).notNull(),
-  descontoFolha: boolean("descontoFolha").default(false),
-  valorDesconto: decimal("valorDesconto", { precision: 12, scale: 2 }),
-  dataEntrada: varchar("dataEntrada", { length: 10 }),
-  fidelidade: boolean("fidelidade").default(false),
-  fidelidadeMeses: int("fidelidadeMeses"),
-  ativo: boolean("ativo").default(true).notNull(),
-  observacao: text("observacao"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AcademiaBeneficio = typeof academiaBeneficio.$inferSelect;
-export type InsertAcademiaBeneficio = typeof academiaBeneficio.$inferInsert;
-
-// ---- COMISSÃO RH ----
-export const comissaoRh = mysqlTable("comissao_rh", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  tipo: mysqlEnum("tipo", ["evox_monitor", "dpt", "credito", "outro"]).notNull(),
-  descricao: text("descricao"),
-  mesReferencia: int("mesReferencia").notNull(),
-  anoReferencia: int("anoReferencia").notNull(),
-  valorBase: decimal("valorBase", { precision: 12, scale: 2 }).notNull(),
-  percentual: decimal("percentual", { precision: 5, scale: 2 }),
-  valorComissao: decimal("valorComissao", { precision: 12, scale: 2 }).notNull(),
-  observacao: text("observacao"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ComissaoRh = typeof comissaoRh.$inferSelect;
-export type InsertComissaoRh = typeof comissaoRh.$inferInsert;
-
-// ---- DAY OFF (ANIVERSÁRIO) ----
-export const dayOff = mysqlTable("day_off", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  dataAniversario: varchar("dataAniversario", { length: 10 }).notNull(),
-  dataOriginal: varchar("dataOriginal", { length: 10 }).notNull(),
-  dataEfetiva: varchar("dataEfetiva", { length: 10 }).notNull(),
-  alterado: boolean("alterado").default(false).notNull(),
-  motivoAlteracao: text("motivoAlteracao"),
-  status: mysqlEnum("status", ["pendente", "aprovado", "recusado", "utilizado"]).notNull().default("pendente"),
-  aprovadorGestorId: int("aprovadorGestorId"),
-  aprovadorGestorStatus: mysqlEnum("aprovadorGestorStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorGestorEm: timestamp("aprovadorGestorEm"),
-  aprovadorRhId: int("aprovadorRhId"),
-  aprovadorRhStatus: mysqlEnum("aprovadorRhStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorRhEm: timestamp("aprovadorRhEm"),
-  aprovadorDiretoriaId: int("aprovadorDiretoriaId"),
-  aprovadorDiretoriaStatus: mysqlEnum("aprovadorDiretoriaStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorDiretoriaEm: timestamp("aprovadorDiretoriaEm"),
-  observacao: text("observacao"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type DayOff = typeof dayOff.$inferSelect;
-export type InsertDayOff = typeof dayOff.$inferInsert;
-
-// ---- DOAÇÃO DE SANGUE ----
-export const doacaoSangue = mysqlTable("doacao_sangue", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  dataDoacao: varchar("dataDoacao", { length: 10 }).notNull(),
-  prazoFolga: varchar("prazoFolga", { length: 10 }).notNull(),
-  dataFolga: varchar("dataFolga", { length: 10 }),
-  comprovanteUrl: varchar("comprovanteUrl", { length: 500 }),
-  status: mysqlEnum("status", ["pendente", "aprovado", "recusado", "utilizado"]).notNull().default("pendente"),
-  aprovadorGestorId: int("aprovadorGestorId"),
-  aprovadorGestorStatus: mysqlEnum("aprovadorGestorStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorGestorEm: timestamp("aprovadorGestorEm"),
-  aprovadorRhId: int("aprovadorRhId"),
-  aprovadorRhStatus: mysqlEnum("aprovadorRhStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorRhEm: timestamp("aprovadorRhEm"),
-  aprovadorDiretoriaId: int("aprovadorDiretoriaId"),
-  aprovadorDiretoriaStatus: mysqlEnum("aprovadorDiretoriaStatus", ["pendente", "aprovado", "recusado"]).default("pendente"),
-  aprovadorDiretoriaEm: timestamp("aprovadorDiretoriaEm"),
-  observacao: text("observacao"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type DoacaoSangue = typeof doacaoSangue.$inferSelect;
-export type InsertDoacaoSangue = typeof doacaoSangue.$inferInsert;
-
-// ---- REAJUSTES SALARIAIS ----
-export const reajustesSalariais = mysqlTable("reajustes_salariais", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  tipo: mysqlEnum("tipo", ["dois_anos", "sindical", "promocao", "merito", "outro"]).notNull(),
-  percentual: decimal("percentual", { precision: 5, scale: 2 }).notNull(),
-  salarioAnterior: decimal("salarioAnterior", { precision: 12, scale: 2 }).notNull(),
-  salarioNovo: decimal("salarioNovo", { precision: 12, scale: 2 }).notNull(),
-  dataEfetivacao: varchar("dataEfetivacao", { length: 10 }).notNull(),
-  mesReferencia: int("mesReferencia"),
-  anoReferencia: int("anoReferencia"),
-  automatico: boolean("automatico").default(false).notNull(),
-  observacao: text("observacao"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ReajusteSalarial = typeof reajustesSalariais.$inferSelect;
-export type InsertReajusteSalarial = typeof reajustesSalariais.$inferInsert;
-
-// ---- APONTAMENTOS DA FOLHA ----
-export const apontamentosFolha = mysqlTable("apontamentos_folha", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 255 }).notNull(),
-  mesReferencia: int("mesReferencia").notNull(),
-  anoReferencia: int("anoReferencia").notNull(),
-  tipo: mysqlEnum("tipo", ["vale_transporte", "academia", "comissao", "reajuste_sindical", "reajuste_dois_anos", "pensao_alimenticia", "contribuicao_assistencial", "banco_horas", "outro"]).notNull(),
-  descricao: varchar("descricao", { length: 500 }),
-  valor: decimal("valor", { precision: 12, scale: 2 }).notNull(),
-  natureza: mysqlEnum("natureza", ["provento", "desconto"]).notNull().default("provento"),
-  origemId: int("origemId"),
-  origemTabela: varchar("origemTabela", { length: 100 }),
-  observacao: text("observacao"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ApontamentoFolha = typeof apontamentosFolha.$inferSelect;
-export type InsertApontamentoFolha = typeof apontamentosFolha.$inferInsert;
-
-// ---- NÍVEIS DE CARGO ----
-export const niveisCargo = mysqlTable("niveis_cargo", {
-  id: int("id").autoincrement().primaryKey(),
-  setorId: int("setorId").notNull(),
-  cargo: varchar("cargo", { length: 255 }).notNull(),
-  nivel: int("nivel").notNull().default(1),
-  descricaoNivel: varchar("descricaoNivel", { length: 255 }),
-  salarioMinimo: decimal("salarioMinimo", { precision: 12, scale: 2 }),
-  salarioMaximo: decimal("salarioMaximo", { precision: 12, scale: 2 }),
-  grauInstrucaoMinimo: mysqlEnum("grauInstrucaoMinimo", ["fundamental_incompleto", "fundamental_completo", "medio_incompleto", "medio_completo", "superior_incompleto", "superior_completo", "pos_graduacao", "mestrado", "doutorado"]),
-  requisitos: text("requisitos"),
-  competencias: text("competencias"),
-  tempoMinimoMeses: int("tempoMinimoMeses"),
-  ativo: boolean("ativo").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type NivelCargo = typeof niveisCargo.$inferSelect;
-export type InsertNivelCargo = typeof niveisCargo.$inferInsert;
-
-// ---- BENEFÍCIOS CUSTOMIZADOS ----
-export const beneficiosCustom = mysqlTable("beneficios_custom", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  icone: varchar("icone", { length: 50 }).default("Gift"),
-  cor: varchar("cor", { length: 7 }).default("#3B82F6"),
-  rota: varchar("rota", { length: 255 }),
-  ativo: boolean("ativo").default(true).notNull(),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type BeneficioCustom = typeof beneficiosCustom.$inferSelect;
-export type InsertBeneficioCustom = typeof beneficiosCustom.$inferInsert;
-
-// ---- PROGRAMAS DE CARREIRA CUSTOMIZADOS ----
-export const programasCarreira = mysqlTable("programas_carreira", {
-  id: int("id").autoincrement().primaryKey(),
-  nome: varchar("nome", { length: 255 }).notNull(),
-  descricao: text("descricao"),
-  icone: varchar("icone", { length: 50 }).default("GraduationCap"),
-  cor: varchar("cor", { length: 7 }).default("#8B5CF6"),
-  rota: varchar("rota", { length: 255 }),
-  ativo: boolean("ativo").default(true).notNull(),
-  criadoPorId: int("criadoPorId"),
-  criadoPorNome: varchar("criadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProgramaCarreira = typeof programasCarreira.$inferSelect;
-export type InsertProgramaCarreira = typeof programasCarreira.$inferInsert;
-
-// ---- RESCISÕES ----
-export const rescisoes = mysqlTable("rescisoes", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
-  dataDesligamento: varchar("dataDesligamento", { length: 10 }).notNull(),
-  tipoDesligamento: mysqlEnum("tipoDesligamento", [
-    "sem_justa_causa",
-    "justa_causa",
-    "pedido_demissao",
-    "termino_experiencia_1",
-    "termino_experiencia_2",
-    "acordo_mutuo"
-  ]).notNull(),
-  // Dados do colaborador no momento da rescisão
-  dataAdmissao: varchar("dataAdmissao", { length: 10 }).notNull(),
-  salarioBase: decimal("salarioBase", { precision: 12, scale: 2 }).notNull(),
-  tipoContrato: varchar("tipoContrato", { length: 50 }),
-  periodoExperiencia1Inicio: varchar("periodoExperiencia1Inicio", { length: 10 }),
-  periodoExperiencia1Fim: varchar("periodoExperiencia1Fim", { length: 10 }),
-  periodoExperiencia2Inicio: varchar("periodoExperiencia2Inicio", { length: 10 }),
-  periodoExperiencia2Fim: varchar("periodoExperiencia2Fim", { length: 10 }),
-  // Verbas calculadas
-  saldoSalario: decimal("saldoSalario", { precision: 12, scale: 2 }).default("0"),
-  avisoPrevio: decimal("avisoPrevio", { precision: 12, scale: 2 }).default("0"),
-  avisoPrevioDias: int("avisoPrevioDias").default(0),
-  decimoTerceiroProporcional: decimal("decimoTerceiroProporcional", { precision: 12, scale: 2 }).default("0"),
-  decimoTerceiroMeses: int("decimoTerceiroMeses").default(0),
-  feriasProporcionais: decimal("feriasProporcionais", { precision: 12, scale: 2 }).default("0"),
-  feriasMeses: int("feriasMeses").default(0),
-  tercoConstitucional: decimal("tercoConstitucional", { precision: 12, scale: 2 }).default("0"),
-  feriasVencidas: decimal("feriasVencidas", { precision: 12, scale: 2 }).default("0"),
-  fgtsDepositado: decimal("fgtsDepositado", { precision: 12, scale: 2 }).default("0"),
-  multaFgts: decimal("multaFgts", { precision: 12, scale: 2 }).default("0"),
-  multaFgtsPercentual: decimal("multaFgtsPercentual", { precision: 5, scale: 2 }).default("0"),
-  // Totais
-  totalProventos: decimal("totalProventos", { precision: 12, scale: 2 }).default("0"),
-  totalDescontos: decimal("totalDescontos", { precision: 12, scale: 2 }).default("0"),
-  totalLiquido: decimal("totalLiquido", { precision: 12, scale: 2 }).default("0"),
-  observacao: text("observacao"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Rescisao = typeof rescisoes.$inferSelect;
-export type InsertRescisao = typeof rescisoes.$inferInsert;
-
-// ---- EQUIPAMENTOS DO COLABORADOR ----
-export const equipamentosColaborador = mysqlTable("equipamentos_colaborador", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
-  tipo: mysqlEnum("tipo", [
-    "notebook", "celular", "desktop", "monitor", "headset", "teclado",
-    "mouse", "webcam", "impressora", "tablet", "telefone_fixo", "ramal",
-    "email_corporativo", "telefone_corporativo", "outro"
-  ]).notNull(),
-  marca: varchar("marca", { length: 255 }),
-  modelo: varchar("modelo", { length: 255 }),
-  numeroSerie: varchar("numeroSerie", { length: 255 }),
-  patrimonio: varchar("patrimonio", { length: 100 }),
-  descricao: text("descricao"),
-  dataEntrega: varchar("dataEntrega", { length: 10 }),
-  dataDevolucao: varchar("dataDevolucao", { length: 10 }),
-  status: mysqlEnum("statusEquipamento", ["em_uso", "devolvido", "manutencao", "perdido", "descartado"]).default("em_uso").notNull(),
-  observacoes: text("observacoes"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type EquipamentoColaborador = typeof equipamentosColaborador.$inferSelect;
-export type InsertEquipamentoColaborador = typeof equipamentosColaborador.$inferInsert;
-
-// ---- SENHAS E AUTORIZAÇÕES DO COLABORADOR ----
-export const senhasAutorizacoes = mysqlTable("senhas_autorizacoes", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
-  tipo: mysqlEnum("tipoSenhaAuth", [
-    "email", "computador", "celular", "alarme_escritorio", "sistema_interno",
-    "vpn", "wifi", "cofre", "chave_empresa", "chave_sala", "chave_armario",
-    "veiculo_empresa", "estacionamento", "cartao_acesso", "biometria", "outro"
-  ]).notNull(),
-  descricao: varchar("descricao", { length: 500 }),
-  // Para senhas: valor criptografado (ou apenas indicação de que possui)
-  possuiSenha: boolean("possuiSenha").default(false),
-  senhaValor: varchar("senhaValor", { length: 500 }), // senha real do colaborador (mascarada na UI)
-  senhaObs: text("senhaObs"), // observações sobre a senha (ex: "senha padrão inicial")
-  // Para autorizações: detalhes
-  autorizado: boolean("autorizado").default(false),
-  dataAutorizacao: varchar("dataAutorizacao", { length: 10 }),
-  dataRevogacao: varchar("dataRevogacao", { length: 10 }),
-  autorizadoPorId: int("autorizadoPorId"),
-  autorizadoPorNome: varchar("autorizadoPorNome", { length: 255 }),
-  // Detalhes específicos
-  identificador: varchar("identificador", { length: 255 }), // ex: placa do veículo, número da chave
-  status: mysqlEnum("statusSenhaAuth", ["ativo", "revogado", "expirado", "pendente"]).default("ativo").notNull(),
-  observacoes: text("observacoes"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SenhaAutorizacao = typeof senhasAutorizacoes.$inferSelect;
-export type InsertSenhaAutorizacao = typeof senhasAutorizacoes.$inferInsert;
-
-// ---- EMAILS CORPORATIVOS ----
-export const emailsCorporativos = mysqlTable("emails_corporativos", {
-  id: int("id").autoincrement().primaryKey(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  tipo: mysqlEnum("tipoEmail", ["principal", "alias", "compartilhado", "grupo"]).default("principal").notNull(),
-  status: mysqlEnum("statusEmail", ["ativo", "desativado", "suspenso"]).default("ativo").notNull(),
-  dataCriacao: varchar("dataCriacao", { length: 10 }),
-  dataDesativacao: varchar("dataDesativacao", { length: 10 }),
-  observacoes: text("observacoes"),
-  registradoPorId: int("registradoPorId"),
-  registradoPorNome: varchar("registradoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type EmailCorporativo = typeof emailsCorporativos.$inferSelect;
-export type InsertEmailCorporativo = typeof emailsCorporativos.$inferInsert;
-
-// ---- HISTÓRICO DE SENHAS E ACESSOS ----
 export const senhaHistorico = mysqlTable("senha_historico", {
-  id: int("id").autoincrement().primaryKey(),
-  senhaAutorizacaoId: int("senhaAutorizacaoId").notNull(),
-  colaboradorId: int("colaboradorId").notNull(),
-  colaboradorNome: varchar("colaboradorNome", { length: 500 }).notNull(),
-  acao: mysqlEnum("acao", ["criado", "atualizado", "revogado", "reativado", "transferido", "senha_alterada"]).notNull(),
-  detalhes: text("detalhes"), // description of what changed
-  realizadoPorId: int("realizadoPorId"),
-  realizadoPorNome: varchar("realizadoPorNome", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+	id: int().autoincrement().notNull(),
+	senhaAutorizacaoId: int().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	acao: mysqlEnum(['criado','atualizado','revogado','reativado','transferido','senha_alterada']).notNull(),
+	detalhes: text(),
+	realizadoPorId: int(),
+	realizadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
-export type SenhaHistoricoRow = typeof senhaHistorico.$inferSelect;
-export type InsertSenhaHistorico = typeof senhaHistorico.$inferInsert;
+export const senhasAutorizacoes = mysqlTable("senhas_autorizacoes", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	tipoSenhaAuth: mysqlEnum('tipoSenhaAuth', ['email','computador','celular','alarme_escritorio','sistema_interno','vpn','wifi','cofre','chave_empresa','chave_sala','chave_armario','veiculo_empresa','estacionamento','cartao_acesso','biometria','outro']).notNull(),
+	descricao: varchar({ length: 500 }),
+	possuiSenha: tinyint().default(0),
+	senhaValor: varchar({ length: 500 }),
+	senhaObs: text(),
+	tipoUso: mysqlEnum('tipoUsoSenha', ['individual','comum','compartilhado']).default('individual').notNull(),
+	colaboradoresVinculados: json('colaboradoresVinculadosSenha').$type<{id: number; nome: string}[]>(),
+	autorizado: tinyint().default(0),
+	dataAutorizacao: varchar({ length: 10 }),
+	dataRevogacao: varchar({ length: 10 }),
+	autorizadoPorId: int(),
+	autorizadoPorNome: varchar({ length: 255 }),
+	identificador: varchar({ length: 255 }),
+	statusSenhaAuth: mysqlEnum('statusSenhaAuth', ['ativo','revogado','expirado','pendente']).default('ativo').notNull(),
+	observacoes: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const servicoEtapas = mysqlTable("servico_etapas", {
+	id: int().autoincrement().notNull(),
+	servicoId: int().notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	setorResponsavelId: int(),
+	ordem: int().default(0).notNull(),
+	slaHoras: int(),
+	obrigatoria: tinyint().default(1).notNull(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const servicos = mysqlTable("servicos", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	setorId: int(),
+	percentualHonorariosComercial: decimal({ precision: 5, scale: 2 }).default('0'),
+	formaCobrancaHonorarios: mysqlEnum(['percentual_credito','valor_fixo','mensalidade','exito','hibrido','entrada_exito','valor_fixo_parcelado']).default('percentual_credito').notNull(),
+	valorFixo: decimal({ precision: 15, scale: 2 }),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	setoresIds: json(),
+	responsaveisIds: json(),
+	comissaoPadraoDiamante: decimal({ precision: 5, scale: 2 }),
+	comissaoPadraoOuro: decimal({ precision: 5, scale: 2 }),
+	comissaoPadraoPrata: decimal({ precision: 5, scale: 2 }),
+	percentualHonorariosCliente: decimal({ precision: 5, scale: 2 }).default('0'),
+	valorEntrada: decimal({ precision: 15, scale: 2 }),
+	percentualExito: decimal({ precision: 5, scale: 2 }),
+	quantidadeParcelas: int(),
+	valorParcela: decimal({ precision: 15, scale: 2 }),
+});
+
+export const setorConfig = mysqlTable("setor_config", {
+	id: int().autoincrement().notNull(),
+	setorId: int().notNull(),
+	sigla: varchar({ length: 10 }).notNull(),
+	submenus: json(),
+	workflowStatuses: json(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const setores = mysqlTable("setores", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	cor: varchar({ length: 7 }).default('#3B82F6'),
+	icone: varchar({ length: 50 }).default('Building2'),
+	setorPaiId: int(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const slaConfiguracoes = mysqlTable("sla_configuracoes", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	setorId: int(),
+	slaHoras: int().notNull(),
+	prioridade: mysqlEnum(['urgente','alta','media','baixa']).default('media'),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const solicitacoesFolga = mysqlTable("solicitacoes_folga", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	tipo: mysqlEnum(['ferias','folga','abono','compensacao']).notNull(),
+	dataInicio: varchar({ length: 10 }).notNull(),
+	dataFim: varchar({ length: 10 }).notNull(),
+	diasSolicitados: int().notNull(),
+	motivo: text(),
+	status: mysqlEnum(['pendente','aprovada','recusada']).default('pendente').notNull(),
+	aprovadorRhId: int(),
+	aprovadorRhStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorRhEm: timestamp({ mode: 'string' }),
+	aprovadorChefeId: int(),
+	aprovadorChefeStatus: mysqlEnum(['pendente','aprovado','recusado']).default('pendente'),
+	aprovadorChefeEm: timestamp({ mode: 'string' }),
+	justificativaRecusa: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const tarefaComentarios = mysqlTable("tarefa_comentarios", {
+	id: int().autoincrement().notNull(),
+	tarefaId: int().notNull(),
+	autorId: int().notNull(),
+	autorNome: varchar({ length: 255 }).notNull(),
+	conteudo: text().notNull(),
+	mencoes: json(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const tarefas = mysqlTable("tarefas", {
+	id: int().autoincrement().notNull(),
+	codigo: varchar({ length: 20 }).notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	tipo: mysqlEnum(['tarefa','bug','melhoria','reuniao','documento','outro']).default('tarefa').notNull(),
+	status: mysqlEnum(['backlog','a_fazer','em_andamento','revisao','concluido','cancelado']).default('a_fazer').notNull(),
+	prioridade: mysqlEnum(['urgente','alta','media','baixa']).default('media').notNull(),
+	setorId: int(),
+	responsavelId: int(),
+	criadorId: int(),
+	clienteId: int(),
+	tarefaPaiId: int(),
+	dataInicio: timestamp({ mode: 'string' }),
+	dataVencimento: timestamp({ mode: 'string' }),
+	dataConclusao: timestamp({ mode: 'string' }),
+	slaHoras: int(),
+	slaStatus: mysqlEnum(['dentro_prazo','atencao','vencido']).default('dentro_prazo'),
+	tags: json(),
+	setoresEnvolvidos: json(),
+	estimativaHoras: decimal({ precision: 6, scale: 1 }),
+	horasGastas: decimal({ precision: 6, scale: 1 }).default('0'),
+	progresso: int().default(0),
+	ordem: int().default(0),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const tarefasSetor = mysqlTable("tarefas_setor", {
+	id: int().autoincrement().notNull(),
+	setorId: int().notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	responsavelId: int(),
+	responsavelNome: varchar({ length: 255 }),
+	prioridade: mysqlEnum(['baixa','media','alta','urgente']).default('media').notNull(),
+	status: mysqlEnum(['a_fazer','em_andamento','concluida','cancelada']).default('a_fazer').notNull(),
+	dataInicio: varchar({ length: 10 }),
+	dataFim: varchar({ length: 10 }),
+	dataConclusao: varchar({ length: 10 }),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	observacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const teses = mysqlTable("teses", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 500 }).notNull(),
+	tributoEnvolvido: varchar({ length: 100 }).notNull(),
+	tipo: mysqlEnum(['exclusao_base','credito_presumido','recuperacao_indebito','tese_judicial','tese_administrativa']).notNull(),
+	classificacao: mysqlEnum(['pacificada','judicial','administrativa','controversa']).notNull(),
+	potencialFinanceiro: mysqlEnum(['muito_alto','alto','medio','baixo']).notNull(),
+	potencialMercadologico: mysqlEnum(['muito_alto','alto','medio','baixo']).notNull(),
+	requisitosObjetivos: json(),
+	requisitosImpeditivos: json(),
+	fundamentacaoLegal: text(),
+	jurisprudenciaRelevante: text(),
+	parecerTecnicoJuridico: text(),
+	prazoPrescricional: varchar({ length: 50 }),
+	necessidadeAcaoJudicial: tinyint().default(0).notNull(),
+	viaAdministrativa: tinyint().default(0).notNull(),
+	grauRisco: mysqlEnum(['baixo','medio','alto']).notNull(),
+	documentosNecessarios: json(),
+	formulaEstimativaCredito: text(),
+	aplicavelComercio: tinyint().default(0).notNull(),
+	aplicavelIndustria: tinyint().default(0).notNull(),
+	aplicavelServico: tinyint().default(0).notNull(),
+	aplicavelContribuinteIcms: tinyint().default(0).notNull(),
+	aplicavelContribuinteIpi: tinyint().default(0).notNull(),
+	aplicavelLucroReal: tinyint().default(0).notNull(),
+	aplicavelLucroPresumido: tinyint().default(0).notNull(),
+	aplicavelSimplesNacional: tinyint().default(0).notNull(),
+	versao: int().default(1).notNull(),
+	ativa: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const userHistory = mysqlTable("user_history", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	acao: mysqlEnum(['criacao','edicao','ativacao','inativacao','exclusao']).notNull(),
+	campo: varchar({ length: 255 }),
+	valorAnterior: text(),
+	valorNovo: text(),
+	realizadoPorId: int(),
+	realizadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const userPresence = mysqlTable("user_presence", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	userName: varchar({ length: 255 }).notNull(),
+	userAvatar: varchar({ length: 500 }),
+	lastSeen: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	status: mysqlEnum(['online','away','offline']).default('online').notNull(),
+},
+(table) => [
+	index("unique_user").on(table.userId),
+]);
+
+export const users = mysqlTable("users", {
+	id: int().autoincrement().notNull(),
+	openId: varchar({ length: 64 }).notNull(),
+	name: text(),
+	apelido: varchar({ length: 100 }),
+	email: varchar({ length: 320 }),
+	cpf: varchar({ length: 14 }),
+	loginMethod: varchar({ length: 64 }),
+	role: mysqlEnum(['user','admin']).default('user').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	lastSignedIn: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	nivelAcesso: mysqlEnum(['diretor','gerente','coordenador','supervisor','analista_fiscal']).default('analista_fiscal').notNull(),
+	ativo: tinyint().default(1).notNull(),
+	cargo: varchar({ length: 255 }),
+	telefone: varchar({ length: 20 }),
+	avatar: varchar({ length: 500 }),
+	setorPrincipalId: int(),
+	supervisorId: int(),
+},
+(table) => [
+	index("users_openId_unique").on(table.openId),
+]);
+
+export const usuarioSetores = mysqlTable("usuario_setores", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	setorId: int().notNull(),
+	papelNoSetor: mysqlEnum(['responsavel','membro','observador']).default('membro').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const valeTransporte = mysqlTable("vale_transporte", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 255 }).notNull(),
+	mesReferencia: int().notNull(),
+	anoReferencia: int().notNull(),
+	diasUteis: int().notNull(),
+	passagensPorDia: int().default(2).notNull(),
+	valorPassagem: decimal({ precision: 8, scale: 2 }).notNull(),
+	cidadePassagem: mysqlEnum(['sp','barueri']).default('sp').notNull(),
+	valorTotal: decimal({ precision: 12, scale: 2 }).notNull(),
+	descontoFolha: decimal({ precision: 12, scale: 2 }).default('0'),
+	observacao: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const workflowRenovacaoContrato = mysqlTable("workflow_renovacao_contrato", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	cargo: varchar({ length: 255 }).notNull(),
+	dataVencimento: varchar({ length: 10 }).notNull(),
+	diasRestantes: int().notNull(),
+	tarefaId: int(),
+	criadoPorId: int().notNull(),
+	status: mysqlEnum(['pendente','resolvido','cancelado']).default('pendente').notNull(),
+	decisao: mysqlEnum(['renovar','desligar','converter_clt']),
+	observacao: text(),
+	resolvidoEm: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow(),
+});

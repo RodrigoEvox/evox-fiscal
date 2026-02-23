@@ -39,16 +39,44 @@ function validateFeriasCLT(dataInicio:string,dataFim:string,diasPeriodo:number,p
   if(!dataInicio||!dataFim)return alerts;
   const inicio=new Date(dataInicio+'T12:00:00'),hoje=new Date();
   const diaSemana=inicio.getDay();
+
+  // CLT Art. 134 §3º: Início das férias não pode coincidir com DSR ou feriado
   if(diaSemana===0||diaSemana===6) alerts.push({tipo:'erro',msg:'CLT Art. 134 §3º: O início das férias não pode coincidir com repouso semanal remunerado (sábado/domingo).'});
   if(isFeriado(dataInicio)) alerts.push({tipo:'erro',msg:'CLT Art. 134 §3º: O início das férias não pode coincidir com feriado nacional.'});
-  for(let i=1;i<=2;i++){const p=new Date(inicio);p.setDate(p.getDate()+i);const ps=p.getDay(),pStr=p.toISOString().split('T')[0];if(ps===0||ps===6||isFeriado(pStr)){alerts.push({tipo:'aviso',msg:`CLT Art. 134 §3º: O início das férias está a ${i} dia(s) de feriado/DSR.`});break;}}
+
+  // CLT Art. 134 §3º: Proibido iniciar 2 dias antes de feriado ou final de semana
+  for(let i=1;i<=2;i++){
+    const proxDia=new Date(inicio);
+    proxDia.setDate(proxDia.getDate()+i);
+    const proxDiaSemana=proxDia.getDay();
+    const proxDiaStr=proxDia.toISOString().split('T')[0];
+    if(proxDiaSemana===0||proxDiaSemana===6){
+      alerts.push({tipo:'erro',msg:`CLT Art. 134 §3º: Proibido iniciar férias ${i} dia(s) antes do repouso semanal (${proxDiaSemana===6?'sábado':'domingo'} ${proxDia.toLocaleDateString('pt-BR')}).`});
+      break;
+    }
+    if(isFeriado(proxDiaStr)){
+      alerts.push({tipo:'erro',msg:`CLT Art. 134 §3º: Proibido iniciar férias ${i} dia(s) antes de feriado (${proxDia.toLocaleDateString('pt-BR')}).`});
+      break;
+    }
+  }
+
+  // CLT Art. 135: Aviso de férias com 30 dias de antecedência
   const diasAte=Math.round((inicio.getTime()-hoje.getTime())/(864e5));
   if(diasAte<30) alerts.push({tipo:'aviso',msg:`CLT Art. 135: Aviso de férias deve ser feito com 30 dias de antecedência. Faltam ${diasAte} dias.`});
+
+  // CLT Art. 145: Pagamento até 2 dias antes
   const dataPag=new Date(inicio);dataPag.setDate(dataPag.getDate()-2);
   if(dataPag<hoje) alerts.push({tipo:'aviso',msg:`CLT Art. 145: Pagamento deve ocorrer até 2 dias antes. Prazo: ${dataPag.toLocaleDateString('pt-BR')}.`});
+
+  // CLT Art. 134 §1º: Fracionamento
   if(periodoNum===1&&diasPeriodo<14) alerts.push({tipo:'erro',msg:'CLT Art. 134 §1º: 1º período não pode ser inferior a 14 dias.'});
   if(periodoNum>1&&diasPeriodo<5) alerts.push({tipo:'erro',msg:'CLT Art. 134 §1º: Nenhum período pode ser inferior a 5 dias.'});
   if(periodoNum>3) alerts.push({tipo:'erro',msg:'CLT Art. 134 §1º: Máximo 3 períodos de fracionamento.'});
+
+  // CCT 2026 - Cláusula 14: Comissionistas - férias com base na média dos últimos 12 meses
+  // (Alerta informativo - cálculo feito no simulador)
+  alerts.push({tipo:'aviso',msg:'CCT 2026 Cl. 14: Para comissionistas, a remuneração de férias deve considerar a média dos últimos 12 meses de comissões (verificar no simulador financeiro).'});
+
   return alerts;
 }
 
@@ -119,9 +147,10 @@ export default function FeriasGEG() {
   const ferias = trpc.ferias.list.useQuery();
   const dayOffs = trpc.dayOff.list.useQuery();
   const solicitacoes = trpc.solicitacoesFolga.list.useQuery();
-  const createFerias = trpc.ferias.create.useMutation({onSuccess:()=>{ferias.refetch();setShowForm(false);resetForm();toast.success('Férias programadas!');}});
+  const createFerias = trpc.ferias.create.useMutation({onSuccess:()=>{ferias.refetch();setShowForm(false);resetForm();toast.success('Férias salvas!');}});
   const updateFerias = trpc.ferias.update.useMutation({onSuccess:()=>{ferias.refetch();setShowForm(false);resetForm();toast.success('Férias atualizadas!');}});
   const deleteFerias = trpc.ferias.delete.useMutation({onSuccess:()=>{ferias.refetch();toast.success('Férias excluídas!');}});
+  const enviarAprovacao = trpc.ferias.enviarParaAprovacao.useMutation({onSuccess:()=>{ferias.refetch();toast.success('Férias enviadas para aprovação!');}});
   const aprovarGestor = trpc.ferias.aprovarGestor.useMutation({onSuccess:()=>{ferias.refetch();toast.success('Aprovação do gestor registrada!');}});
   const aprovarDiretoria = trpc.ferias.aprovarDiretoria.useMutation({onSuccess:()=>{ferias.refetch();toast.success('Aprovação da diretoria registrada!');}});
   const createSolicitacao = trpc.solicitacoesFolga.create.useMutation({onSuccess:()=>{solicitacoes.refetch();setShowSolicitacao(false);toast.success('Solicitação enviada!');}});
@@ -175,13 +204,15 @@ export default function FeriasGEG() {
     const aVencer = concessivosAVencer.length;
     const saldoMedio = totalColabs > 0 ? Math.round(colabComFerias.reduce((s, c) => s + c.saldo.saldoDias, 0) / totalColabs) : 0;
     const solPendentes = solList.filter(s => s.status === 'pendente').length;
+    const feriasPendentesAprovacao = feriasList.filter(f => f.enviadoParaAprovacao && (f.aprovadorGestorStatus === 'pendente' || f.aprovadorDiretoriaStatus === 'pendente')).length;
+    const feriasRascunho = feriasList.filter(f => !f.enviadoParaAprovacao && f.status !== 'cancelada').length;
 
     // Férias no período filtrado
     let feriasNoPeriodo = feriasList;
     if (filterPeriodoInicio) feriasNoPeriodo = feriasNoPeriodo.filter(f => (f.periodo1Inicio || f.dataInicio) >= filterPeriodoInicio);
     if (filterPeriodoFim) feriasNoPeriodo = feriasNoPeriodo.filter(f => (f.periodo1Inicio || f.dataInicio) <= filterPeriodoFim);
 
-    return { totalColabs, feriasAgendadas, folgasAgendadas, dayOffsAgendados, vencidos, aVencer, saldoMedio, solPendentes, feriasNoPeriodo: feriasNoPeriodo.length };
+    return { totalColabs, feriasAgendadas, folgasAgendadas, dayOffsAgendados, vencidos, aVencer, saldoMedio, solPendentes, feriasPendentesAprovacao, feriasRascunho, feriasNoPeriodo: feriasNoPeriodo.length };
   }, [colabComFerias, feriasList, dayOffList, solList, concessivosVencidos, concessivosAVencer, filterPeriodoInicio, filterPeriodoFim]);
 
   // ─── Filtered colaboradores ─────────────────────────────────────
@@ -258,6 +289,9 @@ export default function FeriasGEG() {
     });
   };
 
+  // Ref to track if user wants to send for approval
+  const [sendForApproval, setSendForApproval] = useState(false);
+
   const doSaveFerias = () => {
     const periodo = calcPeriodoAquisitivo(selectedColab?.dataAdmissao || '');
     const payload = {
@@ -268,22 +302,41 @@ export default function FeriasGEG() {
       periodo1Inicio:form.dataInicio,periodo1Fim:form.dataFim,periodo1Dias:form.diasPeriodo,
       diasTotais:form.diasPeriodo,status:(form.status||'programada') as any,
       abonoConvertido:form.abonoConvertido,observacao:form.observacao,
+      enviadoParaAprovacao: sendForApproval,
     };
-    if (editId) updateFerias.mutate({id:editId,data:payload});
-    else createFerias.mutate(payload);
+    if (editId) {
+      updateFerias.mutate({id:editId,data:payload});
+      // Se marcou enviar para aprovação e está editando, enviar separadamente
+      if (sendForApproval) {
+        enviarAprovacao.mutate({id:editId});
+      }
+    } else {
+      createFerias.mutate(payload);
+    }
   };
 
-  const handleSaveFerias = () => {
+  const validateAndSave = (forApproval: boolean) => {
+    setSendForApproval(forApproval);
     if (!form.colaboradorId) {toast.error('Selecione o colaborador');return;}
     if (!form.dataInicio || !form.dataFim) {toast.error('Informe as datas');return;}
     if (form.diasPeriodo <= 0) {toast.error('Período inválido');return;}
     const saldo = calcSaldo(form.colaboradorId);
     if (form.diasPeriodo > saldo.saldoDias) {toast.error(`Saldo insuficiente! Restam ${saldo.saldoDias} dias.`);return;}
     if (saldo.periodosRestantes <= 0 && !editId) {toast.error('Limite de 3 períodos atingido.');return;}
+    // Validação CLT Art. 134 §3º aprimorada: proibido iniciar 2 dias antes de feriado ou final de semana
     const alerts = validateFeriasCLT(form.dataInicio,form.dataFim,form.diasPeriodo,form.periodoNum);
+    // Se for enviar para aprovação, erros são bloqueantes
+    if (forApproval && alerts.some(a => a.tipo === 'erro')) {
+      setCltAlerts(alerts);
+      toast.error('Corrija os erros CLT/CCT antes de enviar para aprovação.');
+      return;
+    }
     if (alerts.length > 0 && !confirmClt) {setCltAlerts(alerts);return;}
     checkSectorOverlap(form.colaboradorId, form.dataInicio, form.dataFim, doSaveFerias);
   };
+
+  const handleSaveFerias = () => validateAndSave(false);
+  const handleSaveAndSend = () => validateAndSave(true);
 
   const saldoSelected = selectedColab ? calcSaldo(selectedColab.id) : null;
 
@@ -412,6 +465,20 @@ export default function FeriasGEG() {
             <div className="flex items-center gap-2 text-yellow-700 font-semibold mb-2"><Clock className="w-5 h-5" /> Períodos Concessivos a Vencer — Próximos 6 Meses ({concessivosAVencer.length})</div>
             <div className="space-y-1">{concessivosAVencer.slice(0, 5).map(c => (<p key={c.id} className="text-sm text-yellow-600">{c.nomeCompleto} ({c.setor || 'Sem setor'}) — Vence em {c.periodo?.diasParaVencer} dias ({formatDateBR(c.periodo?.fimConcessivo||'')})</p>))}</div>
             {concessivosAVencer.length > 5 && <p className="text-xs text-yellow-500 mt-1">+ {concessivosAVencer.length - 5} colaborador(es)</p>}
+          </CardContent>
+        </Card>
+      )}
+      {kpis.feriasPendentesAprovacao > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-blue-700 font-semibold"><ShieldCheck className="w-5 h-5" /> {kpis.feriasPendentesAprovacao} férias aguardando aprovação (gestor e/ou diretoria)</div>
+          </CardContent>
+        </Card>
+      )}
+      {kpis.feriasRascunho > 0 && (
+        <Card className="border-gray-200 bg-gray-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-gray-600 font-semibold"><Edit2 className="w-5 h-5" /> {kpis.feriasRascunho} férias salvas como rascunho (sem validade para gozo até envio e aprovação)</div>
           </CardContent>
         </Card>
       )}
@@ -546,36 +613,72 @@ export default function FeriasGEG() {
                                 <p className="text-xs text-muted-foreground italic">Nenhuma férias registrada.</p>
                               ) : (
                                 <div className="space-y-1.5">
-                                  {c.ferias.map((f:any) => (
-                                    <div key={f.id} className="flex items-center gap-2 text-xs bg-blue-50 rounded p-2">
-                                      <CalendarDays className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                      <span>{formatDateBR(f.periodo1Inicio||f.dataInicio)} a {formatDateBR(f.periodo1Fim||f.dataFim)}</span>
-                                      <span className="text-muted-foreground">({f.periodo1Dias||f.diasTotais} dias)</span>
-                                      <Badge variant="outline" className="text-[10px]">{f.status}</Badge>
-                                      {f.aprovadorGestorStatus && f.aprovadorGestorStatus !== 'pendente' && (
-                                        <Badge variant="outline" className={`text-[10px] ${f.aprovadorGestorStatus==='aprovado'?'bg-green-50 text-green-700 border-green-200':'bg-red-50 text-red-700 border-red-200'}`}>
-                                          Gestor: {f.aprovadorGestorStatus==='aprovado'?'✓':'✗'}
-                                        </Badge>
+                                  {c.ferias.map((f:any) => {
+                                    const isRascunho = !f.enviadoParaAprovacao;
+                                    const isEnviado = !!f.enviadoParaAprovacao;
+                                    const gestorAprovado = f.aprovadorGestorStatus === 'aprovado';
+                                    const diretoriaAprovada = f.aprovadorDiretoriaStatus === 'aprovado';
+                                    const totalmenteAprovado = gestorAprovado && diretoriaAprovada;
+                                    const recusado = f.aprovadorGestorStatus === 'recusado' || f.aprovadorDiretoriaStatus === 'recusado';
+                                    return (
+                                    <div key={f.id} className={`text-xs rounded p-3 border ${isRascunho ? 'bg-gray-50 border-gray-200' : totalmenteAprovado ? 'bg-green-50 border-green-200' : recusado ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <CalendarDays className={`w-3.5 h-3.5 flex-shrink-0 ${isRascunho ? 'text-gray-400' : 'text-blue-500'}`} />
+                                        <span className="font-medium">{formatDateBR(f.periodo1Inicio||f.dataInicio)} a {formatDateBR(f.periodo1Fim||f.dataFim)}</span>
+                                        <span className="text-muted-foreground">({f.periodo1Dias||f.diasTotais} dias)</span>
+                                        {/* Status badge */}
+                                        {isRascunho && <Badge variant="outline" className="text-[10px] bg-gray-100 text-gray-600 border-gray-300">Rascunho</Badge>}
+                                        {isEnviado && !totalmenteAprovado && !recusado && <Badge variant="outline" className="text-[10px] bg-yellow-100 text-yellow-700 border-yellow-300">Aguardando Aprovação</Badge>}
+                                        {totalmenteAprovado && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-300">Aprovada ✓</Badge>}
+                                        {recusado && <Badge variant="outline" className="text-[10px] bg-red-100 text-red-700 border-red-300">Recusada</Badge>}
+                                        <Badge variant="outline" className="text-[10px]">{f.status}</Badge>
+                                      </div>
+                                      {/* Workflow de aprovação */}
+                                      {isEnviado && (
+                                        <div className="flex items-center gap-3 mt-2 text-[10px]">
+                                          <div className={`flex items-center gap-1 ${f.aprovadorGestorStatus==='aprovado'?'text-green-700':f.aprovadorGestorStatus==='recusado'?'text-red-700':'text-yellow-700'}`}>
+                                            <ShieldCheck className="w-3 h-3" />
+                                            Gestor: {f.aprovadorGestorStatus==='aprovado'?'✓ Aprovado':f.aprovadorGestorStatus==='recusado'?'✗ Recusado':'Pendente'}
+                                          </div>
+                                          <div className={`flex items-center gap-1 ${f.aprovadorDiretoriaStatus==='aprovado'?'text-green-700':f.aprovadorDiretoriaStatus==='recusado'?'text-red-700':'text-yellow-700'}`}>
+                                            <ShieldAlert className="w-3 h-3" />
+                                            Diretoria: {f.aprovadorDiretoriaStatus==='aprovado'?'✓ Aprovada':f.aprovadorDiretoriaStatus==='recusado'?'✗ Recusada':'Pendente'}
+                                          </div>
+                                        </div>
                                       )}
-                                      {f.aprovadorDiretoriaStatus && f.aprovadorDiretoriaStatus !== 'pendente' && (
-                                        <Badge variant="outline" className={`text-[10px] ${f.aprovadorDiretoriaStatus==='aprovado'?'bg-green-50 text-green-700 border-green-200':'bg-red-50 text-red-700 border-red-200'}`}>
-                                          Diretoria: {f.aprovadorDiretoriaStatus==='aprovado'?'✓':'✗'}
-                                        </Badge>
-                                      )}
-                                      <div className="ml-auto flex gap-1">
-                                        {f.aprovadorGestorStatus === 'pendente' && (
-                                          <button onClick={() => aprovarGestor.mutate({id:f.id,aprovado:true})} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Gestor)"><ShieldCheck className="w-3.5 h-3.5 text-green-600" /></button>
+                                      {f.justificativaRecusa && <p className="text-[10px] text-red-600 mt-1">Motivo recusa: {f.justificativaRecusa}</p>}
+                                      {/* Ações */}
+                                      <div className="flex items-center gap-1 mt-2">
+                                        {/* Enviar para aprovação se for rascunho */}
+                                        {isRascunho && (
+                                          <Button size="sm" variant="outline" className="h-6 text-[10px] text-green-600 border-green-300" onClick={() => enviarAprovacao.mutate({id:f.id})} disabled={enviarAprovacao.isPending}>
+                                            <Send className="w-3 h-3 mr-1" /> Enviar para Aprovação
+                                          </Button>
                                         )}
-                                        {f.aprovadorGestorStatus === 'aprovado' && f.aprovadorDiretoriaStatus === 'pendente' && (
-                                          <button onClick={() => aprovarDiretoria.mutate({id:f.id,aprovado:true})} className="p-1 hover:bg-green-100 rounded" title="Aprovar (Diretoria)"><ShieldAlert className="w-3.5 h-3.5 text-blue-600" /></button>
+                                        {/* Aprovar gestor */}
+                                        {isEnviado && f.aprovadorGestorStatus === 'pendente' && (
+                                          <>
+                                            <Button size="sm" variant="outline" className="h-6 text-[10px] text-green-600" onClick={() => aprovarGestor.mutate({id:f.id,aprovado:true})}><ShieldCheck className="w-3 h-3 mr-1" /> Aprovar Gestor</Button>
+                                            <Button size="sm" variant="outline" className="h-6 text-[10px] text-red-600" onClick={() => {const j=prompt('Justificativa da recusa:');if(j)aprovarGestor.mutate({id:f.id,aprovado:false,justificativa:j});}}><XCircle className="w-3 h-3 mr-1" /> Recusar</Button>
+                                          </>
                                         )}
-                                        <button onClick={() => {setEditId(f.id);setSelectedColab(c);setForm({colaboradorId:c.id,dataInicio:f.periodo1Inicio||'',dataFim:f.periodo1Fim||'',diasPeriodo:f.periodo1Dias||f.diasTotais||0,periodoNum:1,abonoConvertido:f.abonoConvertido||false,observacao:f.observacao||'',status:f.status||'programada'});setShowForm(true);}} className="p-1 hover:bg-blue-100 rounded" title="Editar"><Edit2 className="w-3.5 h-3.5 text-blue-600" /></button>
-                                        {f.status !== 'em_gozo' && (
-                                          <button onClick={() => {if(confirm('Excluir férias?'))deleteFerias.mutate({id:f.id});}} className="p-1 hover:bg-red-100 rounded" title="Excluir"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                                        {/* Aprovar diretoria */}
+                                        {isEnviado && gestorAprovado && f.aprovadorDiretoriaStatus === 'pendente' && (
+                                          <>
+                                            <Button size="sm" variant="outline" className="h-6 text-[10px] text-blue-600" onClick={() => aprovarDiretoria.mutate({id:f.id,aprovado:true})}><ShieldAlert className="w-3 h-3 mr-1" /> Aprovar Diretoria</Button>
+                                            <Button size="sm" variant="outline" className="h-6 text-[10px] text-red-600" onClick={() => {const j=prompt('Justificativa da recusa:');if(j)aprovarDiretoria.mutate({id:f.id,aprovado:false,justificativa:j});}}><XCircle className="w-3 h-3 mr-1" /> Recusar</Button>
+                                          </>
                                         )}
+                                        <div className="ml-auto flex gap-1">
+                                          <button onClick={() => {setEditId(f.id);setSelectedColab(c);setForm({colaboradorId:c.id,dataInicio:f.periodo1Inicio||'',dataFim:f.periodo1Fim||'',diasPeriodo:f.periodo1Dias||f.diasTotais||0,periodoNum:1,abonoConvertido:f.abonoConvertido||false,observacao:f.observacao||'',status:f.status||'programada'});setShowForm(true);}} className="p-1 hover:bg-blue-100 rounded" title="Editar"><Edit2 className="w-3.5 h-3.5 text-blue-600" /></button>
+                                          {f.status !== 'em_gozo' && (
+                                            <button onClick={() => {if(confirm('Excluir férias?'))deleteFerias.mutate({id:f.id});}} className="p-1 hover:bg-red-100 rounded" title="Excluir"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -693,11 +796,11 @@ export default function FeriasGEG() {
       {/* ─── CLT ALERT DIALOG ─────────────────────────────────────── */}
       <Dialog open={cltAlerts.length > 0 && !confirmClt} onOpenChange={() => setCltAlerts([])}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-yellow-500" /> Alertas CLT</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-yellow-500" /> Alertas CLT / CCT 2026</DialogTitle></DialogHeader>
           <div className="space-y-3">{cltAlerts.map((a,i) => (<div key={i} className={`p-3 rounded-lg text-sm ${a.tipo==='erro'?'bg-red-50 text-red-700 border border-red-200':'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>{a.msg}</div>))}</div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCltAlerts([])}>Cancelar</Button>
-            <Button variant="destructive" onClick={() => {setConfirmClt(true);setCltAlerts([]);setTimeout(()=>handleSaveFerias(),100);}}>Prosseguir Mesmo Assim</Button>
+            <Button variant="destructive" onClick={() => {setConfirmClt(true);setCltAlerts([]);setTimeout(()=>validateAndSave(sendForApproval),100);}}>Prosseguir Mesmo Assim</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -781,9 +884,23 @@ export default function FeriasGEG() {
             </label>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e=>setForm(f=>({...f,observacao:e.target.value}))} rows={2} /></div>
           </div>
-          <DialogFooter>
+          {/* Alerta sobre validade */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Sobre a validade das férias:</p>
+              <p>Férias salvas como <strong>rascunho</strong> ficam registradas no sistema mas <strong>não têm validade para gozo</strong>. Para que as férias tenham validade, é necessário <strong>salvar e enviar para aprovação</strong>, e ser <strong>aprovada</strong> pelo gestor e diretoria.</p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => {resetForm();setShowForm(false);}}>Cancelar</Button>
-            <Button onClick={handleSaveFerias} disabled={createFerias.isPending||updateFerias.isPending||(saldoSelected?.saldoDias||0)<=0}>{editId?'Salvar':'Programar Férias'}</Button>
+            <Button variant="secondary" onClick={handleSaveFerias} disabled={createFerias.isPending||updateFerias.isPending||(saldoSelected?.saldoDias||0)<=0}>
+              {editId ? 'Salvar Alterações' : 'Salvar Rascunho'}
+            </Button>
+            <Button onClick={handleSaveAndSend} disabled={createFerias.isPending||updateFerias.isPending||enviarAprovacao.isPending||(saldoSelected?.saldoDias||0)<=0} className="bg-green-600 hover:bg-green-700">
+              <Send className="w-4 h-4 mr-2" />
+              {editId ? 'Salvar e Enviar para Aprovação' : 'Salvar e Enviar para Aprovação'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

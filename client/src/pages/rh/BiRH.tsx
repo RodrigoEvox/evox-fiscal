@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import {
   Users, TrendingUp, TrendingDown, DollarSign, Calendar, AlertTriangle,
-  Target, Activity, BarChart3, PieChart as PieChartIcon, Download, FileSpreadsheet, FileText, ArrowLeft} from 'lucide-react';
+  Target, Activity, BarChart3, PieChart as PieChartIcon, Download, FileSpreadsheet, FileText, ArrowLeft, Building2, MapPin} from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
@@ -250,7 +250,29 @@ export default function BiRH() {
     ];
   }, [metricas, metasResumo]);
 
-  // Custo x Headcount combined
+  // Custo por Local
+  const custoLocalData = useMemo(() => {
+    if (!dashboard) return [];
+    const d = dashboard as any;
+    return Object.entries(d.custoPorLocal || {}).map(([local, valor]) => ({
+      local: local.length > 15 ? local.substring(0, 15) + "…" : local,
+      localFull: local,
+      valor: Number(valor),
+    })).sort((a, b) => b.valor - a.valor);
+  }, [dashboard]);
+
+  // Headcount por Local
+  const headcountLocalData = useMemo(() => {
+    if (!dashboard) return [];
+    const d = dashboard as any;
+    return Object.entries(d.headcountPorLocal || {}).map(([local, count]) => ({
+      local: local.length > 15 ? local.substring(0, 15) + "…" : local,
+      localFull: local,
+      quantidade: Number(count),
+    })).sort((a, b) => b.quantidade - a.quantidade);
+  }, [dashboard]);
+
+  // Custo x Headcount combined (por Setor)
   const custoHeadcountCombo = useMemo(() => {
     if (!dashboard) return [];
     const d = dashboard as any;
@@ -262,6 +284,21 @@ export default function BiRH() {
       setor: setor.length > 12 ? setor.substring(0, 12) + "…" : setor,
       headcount: (d.headcountPorSetor || {})[setor] || 0,
       custo: ((d.custoPorSetor || {})[setor] || 0) / 1000,
+    })).sort((a, b) => b.headcount - a.headcount).slice(0, 10);
+  }, [dashboard]);
+
+  // Custo x Headcount combined (por Local)
+  const custoHeadcountLocalCombo = useMemo(() => {
+    if (!dashboard) return [];
+    const d = dashboard as any;
+    const locais = new Set([
+      ...Object.keys(d.headcountPorLocal || {}),
+      ...Object.keys(d.custoPorLocal || {}),
+    ]);
+    return Array.from(locais).map(local => ({
+      local: local.length > 12 ? local.substring(0, 12) + "…" : local,
+      headcount: (d.headcountPorLocal || {})[local] || 0,
+      custo: ((d.custoPorLocal || {})[local] || 0) / 1000,
     })).sort((a, b) => b.headcount - a.headcount).slice(0, 10);
   }, [dashboard]);
 
@@ -527,85 +564,138 @@ export default function BiRH() {
 
         {/* CUSTOS */}
         <TabsContent value="custos" className="space-y-6 mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Custo por Setor */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <DollarSign className="w-4 h-4" />
-                  Custo Salarial por Setor
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={custoSetorData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="setor" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
-                    <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: any) => [Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), "Custo"]} />
-                    <Bar dataKey="valor" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Custo x Headcount Combo */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Custo (R$ mil) x Headcount por Setor
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                  <ComposedChart data={custoHeadcountCombo}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="setor" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="headcount" name="Headcount" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="custo" name="Custo (R$ mil)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Resumo de Custos */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base">Resumo de Custos Salariais</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase">Custo Total Mensal</p>
-                    <p className="text-xl font-bold mt-1">
-                      {((dashboard as any)?.custoSalarialTotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase">Custo Anual Estimado</p>
-                    <p className="text-xl font-bold mt-1">
-                      {(((dashboard as any)?.custoSalarialTotal || 0) * 12).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase">Custo Médio/Colaborador</p>
-                    <p className="text-xl font-bold mt-1">
-                      {(metricas?.custoMedio || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-muted/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground uppercase">Setores Ativos</p>
-                    <p className="text-xl font-bold mt-1">{headcountSetorData.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* --- VISÃO POR SETOR --- */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Visão por Setor
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Custo Salarial por Setor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={custoSetorData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="setor" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
+                      <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: any) => [Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), "Custo"]} />
+                      <Bar dataKey="valor" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Custo (R$ mil) x Headcount por Setor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart data={custoHeadcountCombo}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="setor" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="headcount" name="Headcount" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="custo" name="Custo (R$ mil)" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
           </div>
+
+          {/* --- VISÃO POR LOCAL --- */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+              <MapPin className="w-4 h-4" /> Visão por Local de Trabalho
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Custo Salarial por Local
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={custoLocalData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="local" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
+                      <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: any) => [Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), "Custo"]} />
+                      <Bar dataKey="valor" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Custo (R$ mil) x Headcount por Local
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart data={custoHeadcountLocalCombo}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="local" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="headcount" name="Headcount" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="custo" name="Custo (R$ mil)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Resumo de Custos */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Resumo de Custos Salariais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground uppercase">Custo Total Mensal</p>
+                  <p className="text-xl font-bold mt-1">
+                    {((dashboard as any)?.custoSalarialTotal || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground uppercase">Custo Anual Estimado</p>
+                  <p className="text-xl font-bold mt-1">
+                    {(((dashboard as any)?.custoSalarialTotal || 0) * 12).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground uppercase">Custo Médio/Colaborador</p>
+                  <p className="text-xl font-bold mt-1">
+                    {(metricas?.custoMedio || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground uppercase">Setores Ativos</p>
+                  <p className="text-xl font-bold mt-1">{headcountSetorData.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* METAS & KPIs */}

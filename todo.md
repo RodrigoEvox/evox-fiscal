@@ -1513,3 +1513,73 @@
 - [x] Organograma hierárquico automático em Cargos e Salários a partir dos colaboradores cadastrados por setor
 - [x] Reestruturar Férias & Folgas: painel informativo com KPIs, alertas de férias vencidas/próximas, filtro por período
 - [x] Condensar Férias & Folgas em aba única com informações gerais, colaboradores e solicitações (sem visão calendário)
+
+## v54 — Correções Relatórios, PDFs Reais, Excel, Integração Módulos, Paginação, Dados Teste
+
+### Relatórios BI vs Visão Analítica
+- [ ] Corrigir exportação BI para trazer dados específicos (turnover, absenteísmo, custo, metas)
+- [ ] Corrigir exportação Visão Analítica para trazer dados específicos (distribuição, tendências, comparativos)
+- [ ] Garantir que cada relatório contenha informações distintas do seu campo
+
+### PDFs Reais
+- [ ] Converter todas as exportações PDF de HTML para formato PDF real (jsPDF)
+- [ ] Garantir formatação profissional nos PDFs gerados
+
+### Exportação Excel
+- [ ] Adicionar exportação Excel em todos os campos com dados em lista que ainda não possuem
+
+### Integração Módulos com Colaboradores
+- [ ] Benefícios: vincular dados de colaboradores ativos para cálculos em tempo real
+- [ ] Comissões: vincular colaboradores comissionados automaticamente
+- [ ] Projeção Financeira: usar dados reais de salários e benefícios para projeção da folha
+
+### Paginação Férias
+- [ ] Adicionar paginação na lista de colaboradores em Férias & Folgas
+
+### Dados de Teste
+- [ ] Reduzir para 20 registros de teste em GEG refletindo em todos os campos
+- [ ] Dashboard Headcount: mostrar apenas por setor (remover opção Por Local)
+- [ ] BI Custos: corrigir agrupamento por setor (estava por local de trabalho)
+- [ ] BI Custos: adicionar duas visões separadas na mesma tela (Por Setor e Por Local)
+- [ ] Formação Acadêmica: autocomplete com cursos superiores do Brasil
+- [ ] Formação Acadêmica: possibilidade de inserir múltiplas formações superiores
+- [ ] Formação Acadêmica: possibilidade de inserir formações de nível técnico (uma ou mais)
+- [ ] Formação Acadêmica: possibilidade de inserir experiências/habilidades adicionais sem certificação
+- [ ] Corrigir sobreposição do texto "Preencha a data de admissão" no campo Início do período de experiência
+
+## v55 — Módulo CCT (Convenção Coletiva de Trabalho)
+- [ ] Schema: tabela ccts com campos para vigência, sindicato, regras extraídas, arquivo PDF, status
+- [ ] Schema: tabela cct_regras para regras individuais extraídas da CCT
+- [ ] Upload de PDF da CCT com armazenamento S3
+- [ ] Leitura e interpretação automática da CCT via LLM
+- [ ] Extração de regras (piso salarial, reajuste, benefícios, jornada, etc.)
+- [ ] Histórico de CCTs com download dos anexos
+- [ ] Alerta de vencimento da CCT (quando expirada ou próxima de expirar)
+- [ ] Aplicação das regras CCT junto com CLT dentro de GEG
+- [ ] Página CCT no hub de GEG com gestão completa
+
+## v55b — Workflow de Férias com Aprovação + Validações CLT/CCT 2026
+- [x] Workflow de aprovação: botões "Salvar Rascunho" e "Salvar e Enviar para Aprovação"
+- [x] Férias só tem validade para gozo se salva, enviada e aprovada
+- [x] Rascunho salvo sem envio não tem validade para gozo
+- [x] Quem criou a programação pode editar ou excluir (mesmo após envio)
+- [x] Validação automática: proibido iniciar férias 2 dias antes de feriado ou final de semana (CLT art. 134 §3º)
+- [x] Alerta automático de conflito: verificar se outro colaborador do mesmo setor tem férias no mesmo período
+- [x] Aplicar regras CCT 2026 para férias (cláusula 14 - cálculo comissionista, data-base retroativa)
+- [x] Feriados nacionais 2026 cadastrados para validação automática
+- [x] Painel de aprovação para gestor/diretoria com aprovar/rejeitar
+
+## v55c — Melhorias E-mails Corporativos e Senhas & Acessos
+- [x] E-mails: Tipos simplificados para "Principal" e "Secundário" (remover Alias, Compartilhado, Grupo)
+- [x] E-mails: Campo de uso "Individual" ou "Compartilhado"
+- [x] E-mails: Se compartilhado, opção de vincular a outros colaboradores
+- [x] Senhas: Campo de uso "Individual", "Comum" ou "Compartilhado"
+- [x] Senhas: Se "Comum", entende-se que é acesso/uso de todos
+- [x] Senhas: Se "Compartilhado", opção de vincular a colaboradores específicos
+- [x] Atualizar schema do banco para novos campos
+- [x] Atualizar backend (routers) para novos campos
+- [x] Atualizar frontend (formulários e listagem) para novos campos
+
+## v55d — Renomear tela Cargos e Salários
+- [x] Renomear título de "Cargos e Salários" para "Custo Salarial"
+- [x] Alterar subtítulo para "Visão analítica da estrutura de custo com pessoal"

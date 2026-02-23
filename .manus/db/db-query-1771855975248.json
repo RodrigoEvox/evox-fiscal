@@ -1,0 +1,85 @@
+{
+  "query": "SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME LIKE '%colaborador%' AND TABLE_SCHEMA = DATABASE() AND TABLE_NAME != 'colaboradores';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME LIKE '%colaborador%' AND TABLE_SCHEMA = DATABASE() AND TABLE_NAME != 'colaboradores';",
+  "rows": [
+    {
+      "TABLE_NAME": "onboarding_colaborador"
+    },
+    {
+      "TABLE_NAME": "vale_transporte"
+    },
+    {
+      "TABLE_NAME": "senhas_autorizacoes"
+    },
+    {
+      "TABLE_NAME": "metas_individuais"
+    },
+    {
+      "TABLE_NAME": "birthday_advance_notifications"
+    },
+    {
+      "TABLE_NAME": "solicitacoes_folga"
+    },
+    {
+      "TABLE_NAME": "colaborador_documentos"
+    },
+    {
+      "TABLE_NAME": "historico_status_colaborador"
+    },
+    {
+      "TABLE_NAME": "workflow_renovacao_contrato"
+    },
+    {
+      "TABLE_NAME": "banco_horas"
+    },
+    {
+      "TABLE_NAME": "atestados_licencas"
+    },
+    {
+      "TABLE_NAME": "academia_beneficio"
+    },
+    {
+      "TABLE_NAME": "day_off"
+    },
+    {
+      "TABLE_NAME": "senha_historico"
+    },
+    {
+      "TABLE_NAME": "ferias"
+    },
+    {
+      "TABLE_NAME": "comissao_rh"
+    },
+    {
+      "TABLE_NAME": "doacao_sangue"
+    },
+    {
+      "TABLE_NAME": "rescisoes"
+    },
+    {
+      "TABLE_NAME": "equipamentos_colaborador"
+    },
+    {
+      "TABLE_NAME": "email_aniversariante_log"
+    },
+    {
+      "TABLE_NAME": "reajustes_salariais"
+    },
+    {
+      "TABLE_NAME": "apontamentos_folha"
+    },
+    {
+      "TABLE_NAME": "emails_corporativos"
+    },
+    {
+      "TABLE_NAME": "planos_carreira"
+    },
+    {
+      "TABLE_NAME": "avaliacoes"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\nonboarding_colaborador\nvale_transporte\nsenhas_autorizacoes\nmetas_individuais\nbirthday_advance_notifications\nsolicitacoes_folga\ncolaborador_documentos\nhistorico_status_colaborador\nworkflow_renovacao_contrato\nbanco_horas\natestados_licencas\nacademia_beneficio\nday_off\nsenha_historico\nferias\ncomissao_rh\ndoacao_sangue\nrescisoes\nequipamentos_colaborador\nemail_aniversariante_log\nreajustes_salariais\napontamentos_folha\nemails_corporativos\nplanos_carreira\navaliacoes\n",
+  "stderr": "",
+  "execution_time_ms": 89
+}

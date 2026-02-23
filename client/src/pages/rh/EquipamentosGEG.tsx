@@ -20,7 +20,7 @@ import {
   Lock, Key, Car, ParkingCircle, CreditCard, Fingerprint,
   Bell, Server, Wifi, Shield, ShieldCheck, ShieldX, ShieldAlert,
   AtSign, CheckCircle2, AlertCircle, UserCheck, Loader2, Eye, EyeOff,
-  Download, FileSpreadsheet, FileText, History, Clock
+  Download, FileSpreadsheet, FileText, History, Clock, Users, Globe
 } from 'lucide-react';
 
 // ===================== EXPORT HELPERS =====================
@@ -120,9 +120,18 @@ const SENHA_STATUS_LABELS: Record<string, { label: string; icon: any; color: str
 
 const EMAIL_TIPO_LABELS: Record<string, { label: string; color: string }> = {
   principal: { label: 'Principal', color: 'bg-blue-100 text-blue-700' },
-  alias: { label: 'Alias', color: 'bg-purple-100 text-purple-700' },
-  compartilhado: { label: 'Compartilhado', color: 'bg-orange-100 text-orange-700' },
-  grupo: { label: 'Grupo', color: 'bg-teal-100 text-teal-700' },
+  secundario: { label: 'Secundário', color: 'bg-purple-100 text-purple-700' },
+};
+
+const EMAIL_USO_LABELS: Record<string, { label: string; color: string; icon: any }> = {
+  individual: { label: 'Individual', color: 'bg-slate-100 text-slate-700', icon: UserCheck },
+  compartilhado: { label: 'Compartilhado', color: 'bg-orange-100 text-orange-700', icon: Users },
+};
+
+const SENHA_USO_LABELS: Record<string, { label: string; color: string; icon: any }> = {
+  individual: { label: 'Individual', color: 'bg-slate-100 text-slate-700', icon: UserCheck },
+  comum: { label: 'Comum (Todos)', color: 'bg-teal-100 text-teal-700', icon: Globe },
+  compartilhado: { label: 'Compartilhado', color: 'bg-orange-100 text-orange-700', icon: Users },
 };
 
 const EMAIL_STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -589,6 +598,8 @@ function EmailsTab() {
     colaboradorNome: '',
     email: '',
     tipoEmail: 'principal' as string,
+    tipoUso: 'individual' as string,
+    colaboradoresVinculados: [] as { id: number; nome: string }[],
     statusEmail: 'ativo' as string,
     dataCriacao: '',
     dataDesativacao: '',
@@ -676,20 +687,28 @@ function EmailsTab() {
   const handleSubmit = () => {
     if (!form.colaboradorId || !form.email) { toast.error('Selecione o colaborador e informe o e-mail'); return; }
     if (!form.email.includes('@')) { toast.error('E-mail inválido'); return; }
+    const payload = {
+      ...form,
+      colaboradoresVinculados: form.tipoUso === 'compartilhado' ? form.colaboradoresVinculados : undefined,
+    };
     if (editId) {
-      const { colaboradorId, colaboradorNome, ...data } = form;
+      const { colaboradorId, colaboradorNome, ...data } = payload;
       updateMut.mutate({ id: editId, data: data as any });
     } else {
-      createMut.mutate(form as any);
+      createMut.mutate(payload as any);
     }
   };
 
   const openEdit = (e: any) => {
+    let vinculados: { id: number; nome: string }[] = [];
+    try { vinculados = typeof e.colaboradoresVinculados === 'string' ? JSON.parse(e.colaboradoresVinculados) : e.colaboradoresVinculados || []; } catch { vinculados = []; }
     setForm({
       colaboradorId: e.colaboradorId,
       colaboradorNome: e.colaboradorNome,
       email: e.email || '',
       tipoEmail: e.tipoEmail || 'principal',
+      tipoUso: e.tipoUso || 'individual',
+      colaboradoresVinculados: vinculados,
       statusEmail: e.statusEmail || 'ativo',
       dataCriacao: e.dataCriacao || '',
       dataDesativacao: e.dataDesativacao || '',
@@ -703,8 +722,7 @@ function EmailsTab() {
 
   const totalAtivos = filtered.filter(e => e.statusEmail === 'ativo').length;
   const totalDesativados = filtered.filter(e => e.statusEmail === 'desativado').length;
-  const totalPrincipal = filtered.filter(e => e.tipoEmail === 'principal').length;
-  const totalCompartilhado = filtered.filter(e => e.tipoEmail === 'compartilhado' || e.tipoEmail === 'grupo').length;
+  const totalCompartilhado = filtered.filter(e => e.tipoUso === 'compartilhado').length;
 
   return (
     <div className="space-y-4">
@@ -723,7 +741,7 @@ function EmailsTab() {
           <p className="text-2xl font-bold text-gray-500">{totalDesativados}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase">Compartilhados/Grupo</p>
+          <p className="text-xs text-muted-foreground uppercase">Compartilhados</p>
           <p className="text-2xl font-bold text-purple-600">{totalCompartilhado}</p>
         </CardContent></Card>
       </div>
@@ -795,6 +813,7 @@ function EmailsTab() {
                   <th className="text-left p-3 font-medium">Colaborador</th>
                   <th className="text-left p-3 font-medium">E-mail</th>
                   <th className="text-left p-3 font-medium">Tipo</th>
+                  <th className="text-left p-3 font-medium">Uso</th>
                   <th className="text-left p-3 font-medium">Criação</th>
                   <th className="text-left p-3 font-medium">Status</th>
                   <th className="text-right p-3 font-medium">Ações</th>
@@ -802,7 +821,7 @@ function EmailsTab() {
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="text-center p-8 text-muted-foreground">Nenhum e-mail corporativo encontrado</td></tr>
+                  <tr><td colSpan={7} className="text-center p-8 text-muted-foreground">Nenhum e-mail corporativo encontrado</td></tr>
                 )}
                 {filtered.map(em => {
                   const tipoCfg = EMAIL_TIPO_LABELS[em.tipoEmail] || EMAIL_TIPO_LABELS.principal;
@@ -817,6 +836,26 @@ function EmailsTab() {
                         </div>
                       </td>
                       <td className="p-3"><Badge variant="outline" className={tipoCfg.color}>{tipoCfg.label}</Badge></td>
+                      <td className="p-3">
+                        {(() => {
+                          const usoCfg = EMAIL_USO_LABELS[em.tipoUso] || EMAIL_USO_LABELS.individual;
+                          const UsoIcon = usoCfg.icon;
+                          let vinculados: any[] = [];
+                          try { vinculados = typeof em.colaboradoresVinculados === 'string' ? JSON.parse(em.colaboradoresVinculados) : em.colaboradoresVinculados || []; } catch { vinculados = []; }
+                          return (
+                            <div>
+                              <Badge variant="outline" className={`gap-1 ${usoCfg.color}`}>
+                                <UsoIcon className="w-3 h-3" /> {usoCfg.label}
+                              </Badge>
+                              {vinculados.length > 0 && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {vinculados.map((v: any) => v.nome).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="p-3">{em.dataCriacao ? new Date(em.dataCriacao + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
                       <td className="p-3"><Badge variant="outline" className={statusCfg.color}>{statusCfg.label}</Badge></td>
                       <td className="p-3 text-right">
@@ -914,15 +953,54 @@ function EmailsTab() {
               </div>
             )}
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Tipo</label>
-              <Select value={form.tipoEmail} onValueChange={v => setForm(f => ({ ...f, tipoEmail: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(EMAIL_TIPO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Tipo</label>
+                <Select value={form.tipoEmail} onValueChange={v => setForm(f => ({ ...f, tipoEmail: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(EMAIL_TIPO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Uso</label>
+                <Select value={form.tipoUso} onValueChange={v => setForm(f => ({ ...f, tipoUso: v, colaboradoresVinculados: v === 'individual' ? [] : f.colaboradoresVinculados }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(EMAIL_USO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            {form.tipoUso === 'compartilhado' && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">Colaboradores Vinculados</label>
+                <div className="space-y-2">
+                  <Select onValueChange={v => {
+                    const c = colabOptions.find(o => o.id === Number(v));
+                    if (c && !form.colaboradoresVinculados.some(cv => cv.id === c.id)) {
+                      setForm(f => ({ ...f, colaboradoresVinculados: [...f.colaboradoresVinculados, { id: c.id, nome: c.nome }] }));
+                    }
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Adicionar colaborador..." /></SelectTrigger>
+                    <SelectContent>
+                      {colabOptions.filter(c => c.id !== form.colaboradorId && !form.colaboradoresVinculados.some(cv => cv.id === c.id)).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {form.colaboradoresVinculados.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {form.colaboradoresVinculados.map(cv => (
+                        <Badge key={cv.id} variant="outline" className="gap-1 pr-1">
+                          {cv.nome}
+                          <button type="button" onClick={() => setForm(f => ({ ...f, colaboradoresVinculados: f.colaboradoresVinculados.filter(x => x.id !== cv.id) }))} className="ml-1 hover:text-red-500"><XCircle className="w-3 h-3" /></button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-sm font-medium mb-1 block">Data Criação</label><Input type="date" value={form.dataCriacao} onChange={e => setForm(f => ({ ...f, dataCriacao: e.target.value }))} /></div>
               <div><label className="text-sm font-medium mb-1 block">Data Desativação</label><Input type="date" value={form.dataDesativacao} onChange={e => setForm(f => ({ ...f, dataDesativacao: e.target.value }))} /></div>
@@ -967,6 +1045,8 @@ function SenhasTab() {
     possuiSenha: false,
     senhaValor: '',
     senhaObs: '',
+    tipoUso: 'individual' as string,
+    colaboradoresVinculados: [] as { id: number; nome: string }[],
     autorizado: false,
     dataAutorizacao: '',
     dataRevogacao: '',
@@ -1027,15 +1107,23 @@ function SenhasTab() {
 
   const handleSubmit = () => {
     if (!form.colaboradorId || !form.tipoSenhaAuth) { toast.error('Selecione o colaborador e o tipo'); return; }
+    // Map frontend field names to backend field names
+    const payload = {
+      ...form,
+      tipoUso: form.tipoUso as any,
+      colaboradoresVinculados: form.tipoUso === 'compartilhado' ? form.colaboradoresVinculados : undefined,
+    };
     if (editId) {
-      const { colaboradorId, colaboradorNome, ...data } = form;
+      const { colaboradorId, colaboradorNome, ...data } = payload;
       updateMut.mutate({ id: editId, data: data as any });
     } else {
-      createMut.mutate(form as any);
+      createMut.mutate(payload as any);
     }
   };
 
   const openEdit = (e: any) => {
+    let vinculados: { id: number; nome: string }[] = [];
+    try { vinculados = typeof e.colaboradoresVinculadosSenha === 'string' ? JSON.parse(e.colaboradoresVinculadosSenha) : e.colaboradoresVinculadosSenha || []; } catch { vinculados = []; }
     setForm({
       colaboradorId: e.colaboradorId,
       colaboradorNome: e.colaboradorNome,
@@ -1044,6 +1132,8 @@ function SenhasTab() {
       possuiSenha: e.possuiSenha || false,
       senhaValor: e.senhaValor || '',
       senhaObs: e.senhaObs || '',
+      tipoUso: e.tipoUsoSenha || 'individual',
+      colaboradoresVinculados: vinculados,
       autorizado: e.autorizado || false,
       dataAutorizacao: e.dataAutorizacao || '',
       dataRevogacao: e.dataRevogacao || '',
@@ -1171,6 +1261,7 @@ function SenhasTab() {
                 <tr className="border-b">
                   <th className="text-left p-2.5 font-medium text-xs text-muted-foreground">Tipo</th>
                   <th className="text-left p-2.5 font-medium text-xs text-muted-foreground">Descrição</th>
+                  <th className="text-left p-2.5 font-medium text-xs text-muted-foreground">Uso</th>
                   <th className="text-left p-2.5 font-medium text-xs text-muted-foreground">Identificador</th>
                   <th className="text-left p-2.5 font-medium text-xs text-muted-foreground">Autorizado</th>
                   <th className="text-left p-2.5 font-medium text-xs text-muted-foreground">Status</th>
@@ -1190,6 +1281,26 @@ function SenhasTab() {
                         </Badge>
                       </td>
                       <td className="p-2.5">{s.descricao || '—'}</td>
+                      <td className="p-2.5">
+                        {(() => {
+                          const usoCfg = SENHA_USO_LABELS[s.tipoUsoSenha] || SENHA_USO_LABELS.individual;
+                          const UsoIcon = usoCfg.icon;
+                          let vinculados: any[] = [];
+                          try { vinculados = typeof s.colaboradoresVinculadosSenha === 'string' ? JSON.parse(s.colaboradoresVinculadosSenha) : s.colaboradoresVinculadosSenha || []; } catch { vinculados = []; }
+                          return (
+                            <div>
+                              <Badge variant="outline" className={`gap-1 text-[10px] ${usoCfg.color}`}>
+                                <UsoIcon className="w-3 h-3" /> {usoCfg.label}
+                              </Badge>
+                              {vinculados.length > 0 && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {vinculados.map((v: any) => v.nome).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="p-2.5 font-mono text-xs">{s.identificador || '—'}</td>
                       <td className="p-2.5">
                         {s.autorizado
@@ -1247,6 +1358,48 @@ function SenhasTab() {
             </div>
             <div><label className="text-sm font-medium mb-1 block">Descrição</label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Ex: Senha do sistema ERP" /></div>
             <div><label className="text-sm font-medium mb-1 block">Identificador</label><Input value={form.identificador} onChange={e => setForm(f => ({ ...f, identificador: e.target.value }))} placeholder="Ex: Placa ABC-1234, Chave nº 5" /></div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Tipo de Uso</label>
+              <Select value={form.tipoUso} onValueChange={v => setForm(f => ({ ...f, tipoUso: v, colaboradoresVinculados: v === 'individual' || v === 'comum' ? [] : f.colaboradoresVinculados }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SENHA_USO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.tipoUso === 'individual' && 'Acesso exclusivo deste colaborador'}
+                {form.tipoUso === 'comum' && 'Acesso/uso de todos os colaboradores'}
+                {form.tipoUso === 'compartilhado' && 'Acesso compartilhado com colaboradores específicos'}
+              </p>
+            </div>
+            {form.tipoUso === 'compartilhado' && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">Colaboradores Vinculados</label>
+                <div className="space-y-2">
+                  <Select onValueChange={v => {
+                    const c = colabOptions.find(o => o.id === Number(v));
+                    if (c && !form.colaboradoresVinculados.some(cv => cv.id === c.id)) {
+                      setForm(f => ({ ...f, colaboradoresVinculados: [...f.colaboradoresVinculados, { id: c.id, nome: c.nome }] }));
+                    }
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Adicionar colaborador..." /></SelectTrigger>
+                    <SelectContent>
+                      {colabOptions.filter(c => c.id !== form.colaboradorId && !form.colaboradoresVinculados.some(cv => cv.id === c.id)).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {form.colaboradoresVinculados.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {form.colaboradoresVinculados.map(cv => (
+                        <Badge key={cv.id} variant="outline" className="gap-1 pr-1">
+                          {cv.nome}
+                          <button type="button" onClick={() => setForm(f => ({ ...f, colaboradoresVinculados: f.colaboradoresVinculados.filter(x => x.id !== cv.id) }))} className="ml-1 hover:text-red-500"><XCircle className="w-3 h-3" /></button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={form.possuiSenha} onChange={e => setForm(f => ({ ...f, possuiSenha: e.target.checked }))} className="h-4 w-4 rounded" />

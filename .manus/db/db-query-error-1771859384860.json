@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE emails_corporativos MODIFY COLUMN tipoEmail enum('principal','secundario') NOT NULL DEFAULT 'principal', ADD COLUMN tipoUso enum('individual','compartilhado') NOT NULL DEFAULT 'individual' AFTER tipoEmail, ADD COLUMN colaboradoresVinculados json DEFAULT NULL AFTER tipoUso;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE emails_corporativos MODIFY COLUMN tipoEmail enum('principal','secundario') NOT NULL DEFAULT 'principal', ADD COLUMN tipoUso enum('individual','compartilhado') NOT NULL DEFAULT 'individual' AFTER tipoEmail, ADD COLUMN colaboradoresVinculados json DEFAULT NULL AFTER tipoUso;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'tipouso' in 'emails_corporativos'"
+  ]
+}

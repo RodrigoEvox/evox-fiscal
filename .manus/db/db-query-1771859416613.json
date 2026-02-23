@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE emails_corporativos MODIFY COLUMN tipoEmail enum('principal','secundario') NOT NULL DEFAULT 'principal'; ALTER TABLE emails_corporativos ADD COLUMN `tipoUso` enum('individual','compartilhado') NOT NULL DEFAULT 'individual'; ALTER TABLE emails_corporativos ADD COLUMN `colaboradoresVinculados` json DEFAULT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE emails_corporativos MODIFY COLUMN tipoEmail enum('principal','secundario') NOT NULL DEFAULT 'principal'; ALTER TABLE emails_corporativos ADD COLUMN `tipoUso` enum('individual','compartilhado') NOT NULL DEFAULT 'individual'; ALTER TABLE emails_corporativos ADD COLUMN `colaboradoresVinculados` json DEFAULT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 663
+}

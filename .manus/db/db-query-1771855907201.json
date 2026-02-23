@@ -1,0 +1,110 @@
+{
+  "query": "SELECT id, nomeCompleto FROM colaboradores ORDER BY id ASC LIMIT 25;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, nomeCompleto FROM colaboradores ORDER BY id ASC LIMIT 25;",
+  "rows": [
+    {
+      "id": "1",
+      "nomeCompleto": "Ana Paula Ferreira da Silva"
+    },
+    {
+      "id": "2",
+      "nomeCompleto": "Carlos Eduardo Mendes Ribeiro"
+    },
+    {
+      "id": "3",
+      "nomeCompleto": "Juliana Costa Oliveira"
+    },
+    {
+      "id": "4",
+      "nomeCompleto": "Rafael Santos Pereira"
+    },
+    {
+      "id": "5",
+      "nomeCompleto": "Beatriz Almeida Souza"
+    },
+    {
+      "id": "30001",
+      "nomeCompleto": "Teste Status Default"
+    },
+    {
+      "id": "30002",
+      "nomeCompleto": "Teste Status Experiencia"
+    },
+    {
+      "id": "30003",
+      "nomeCompleto": "Teste Status Afastado"
+    },
+    {
+      "id": "30004",
+      "nomeCompleto": "Teste Update Status"
+    },
+    {
+      "id": "30005",
+      "nomeCompleto": "Teste Status ativo"
+    },
+    {
+      "id": "30006",
+      "nomeCompleto": "Teste Status inativo"
+    },
+    {
+      "id": "30007",
+      "nomeCompleto": "Teste Status afastado"
+    },
+    {
+      "id": "30008",
+      "nomeCompleto": "Teste Status licenca"
+    },
+    {
+      "id": "30009",
+      "nomeCompleto": "Teste Status atestado"
+    },
+    {
+      "id": "30010",
+      "nomeCompleto": "Teste Status desligado"
+    },
+    {
+      "id": "30011",
+      "nomeCompleto": "Teste Status ferias"
+    },
+    {
+      "id": "30012",
+      "nomeCompleto": "Teste Status experiencia"
+    },
+    {
+      "id": "30013",
+      "nomeCompleto": "Teste Status aviso_previo"
+    },
+    {
+      "id": "30014",
+      "nomeCompleto": "Teste Com Dependentes"
+    },
+    {
+      "id": "30015",
+      "nomeCompleto": "Teste Status Default"
+    },
+    {
+      "id": "30016",
+      "nomeCompleto": "Teste Status Experiencia"
+    },
+    {
+      "id": "30017",
+      "nomeCompleto": "Teste Status Afastado"
+    },
+    {
+      "id": "30018",
+      "nomeCompleto": "Teste Update Status"
+    },
+    {
+      "id": "30019",
+      "nomeCompleto": "Teste Status ativo"
+    },
+    {
+      "id": "30020",
+      "nomeCompleto": "Teste Status inativo"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnomeCompleto\n1\tAna Paula Ferreira da Silva\n2\tCarlos Eduardo Mendes Ribeiro\n3\tJuliana Costa Oliveira\n4\tRafael Santos Pereira\n5\tBeatriz Almeida Souza\n30001\tTeste Status Default\n30002\tTeste Status Experiencia\n30003\tTeste Status Afastado\n30004\tTeste Update Status\n30005\tTeste Status ativo\n30006\tTeste Status inativo\n30007\tTeste Status afastado\n30008\tTeste Status licenca\n30009\tTeste Status atestado\n30010\tTeste Status desligado\n30011\tTeste Status ferias\n30012\tTeste Status experiencia\n30013\tTeste Status aviso_previo\n30014\tTeste Com Dependentes\n30015\tTeste Status Default\n30016\tTeste Status Experiencia\n30017\tTeste Status Afastado\n30018\tTeste Update Status\n30019\tTeste Status ativo\n30020\tTeste Status inativo\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}

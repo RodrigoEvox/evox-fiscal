@@ -1,0 +1,26 @@
+{
+  "query": "SHOW COLUMNS FROM clientes WHERE Field LIKE 'contribuinte%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM clientes WHERE Field LIKE 'contribuinte%';",
+  "rows": [
+    {
+      "Field": "contribuinteICMS",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "contribuinteIPI",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\ncontribuinteICMS\ttinyint(1)\tNO\t\t0\t\ncontribuinteIPI\ttinyint(1)\tNO\t\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 88
+}

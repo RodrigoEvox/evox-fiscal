@@ -1,0 +1,114 @@
+{
+  "query": "SHOW COLUMNS FROM emails_corporativos;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM emails_corporativos;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "colaboradorId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "colaboradorNome",
+      "Type": "varchar(500)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "email",
+      "Type": "varchar(320)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "tipoEmail",
+      "Type": "enum('principal','alias','compartilhado','grupo')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "principal",
+      "Extra": ""
+    },
+    {
+      "Field": "statusEmail",
+      "Type": "enum('ativo','desativado','suspenso')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "ativo",
+      "Extra": ""
+    },
+    {
+      "Field": "dataCriacao",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "dataDesativacao",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "observacoes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "registradoPorId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "registradoPorNome",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ncolaboradorId\tint\tNO\t\tNULL\t\ncolaboradorNome\tvarchar(500)\tNO\t\tNULL\t\nemail\tvarchar(320)\tNO\t\tNULL\t\ntipoEmail\tenum('principal','alias','compartilhado','grupo')\tNO\t\tprincipal\t\nstatusEmail\tenum('ativo','desativado','suspenso')\tNO\t\tativo\t\ndataCriacao\tvarchar(10)\tYES\t\tNULL\t\ndataDesativacao\tvarchar(10)\tYES\t\tNULL\t\nobservacoes\ttext\tYES\t\tNULL\t\nregistradoPorId\tint\tYES\t\tNULL\t\nregistradoPorNome\tvarchar(255)\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 65
+}

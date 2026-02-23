@@ -529,13 +529,13 @@ export const appRouter = router({
           if (tese.aplicavelComercio && !tese.aplicavelIndustria && !tese.aplicavelServico && !cliente.comercializa) { aplicavel = false; motivos.push('Empresa não comercializa'); }
           if (!tese.aplicavelComercio && tese.aplicavelIndustria && !tese.aplicavelServico && !cliente.industrializa) { aplicavel = false; motivos.push('Empresa não industrializa'); }
           if (!tese.aplicavelComercio && !tese.aplicavelIndustria && tese.aplicavelServico && !cliente.prestaServicos) { aplicavel = false; motivos.push('Empresa não presta serviços'); }
-          if (tese.aplicavelContribuinteICMS && !cliente.contribuinteICMS && tese.tributoEnvolvido.includes('ICMS')) { aplicavel = false; motivos.push('Não é contribuinte de ICMS'); }
-          if (tese.aplicavelContribuinteIPI && !cliente.contribuinteIPI && tese.tributoEnvolvido.includes('IPI')) { aplicavel = false; motivos.push('Não é contribuinte de IPI'); }
+          if ((tese as any).aplicavelContribuinteIcms && !(cliente as any).contribuinteIcms && tese.tributoEnvolvido.includes('ICMS')) { aplicavel = false; motivos.push('Não é contribuinte de ICMS'); }
+          if ((tese as any).aplicavelContribuinteIpi && !(cliente as any).contribuinteIpi && tese.tributoEnvolvido.includes('IPI')) { aplicavel = false; motivos.push('Não é contribuinte de IPI'); }
           const impeditivos = Array.isArray(tese.requisitosImpeditivos) ? tese.requisitosImpeditivos : [];
           for (const imp of impeditivos) {
             const impLower = imp.toLowerCase();
             if (impLower.includes('simples') && cliente.regimeTributario === 'simples_nacional') { aplicavel = false; motivos.push(imp); }
-            if (impLower.includes('isent') && !cliente.contribuinteICMS) { aplicavel = false; motivos.push(imp); }
+            if (impLower.includes('isent') && !(cliente as any).contribuinteIcms) { aplicavel = false; motivos.push(imp); }
           }
           const base = Number(cliente.valorMedioGuias || 0);
           const mult = tese.potencialFinanceiro === 'muito_alto' ? 0.15 : tese.potencialFinanceiro === 'alto' ? 0.10 : tese.potencialFinanceiro === 'medio' ? 0.05 : 0.02;
@@ -2331,9 +2331,27 @@ export const appRouter = router({
       avisoPrevioData: z.string().optional(),
       alertas: z.array(z.object({ tipo: z.string(), mensagem: z.string(), gravidade: z.string() })).optional(),
       observacao: z.string().optional(),
+      enviadoParaAprovacao: z.boolean().optional(),
+      alertasCltCct: z.array(z.object({ tipo: z.string(), regra: z.string(), mensagem: z.string() })).optional(),
     })).mutation(async ({ input, ctx }) => {
-      const id = await db.createFerias(input as any);
-      await logAudit('criacao', 'ferias', id, null, ctx);
+      const payload = {
+        ...input,
+        criadoPorId: ctx.user?.id || null,
+        criadoPorNome: ctx.user?.name || 'Sistema',
+        // Se enviado para aprovação, setar status pendente e marcar envio
+        ...(input.enviadoParaAprovacao ? {
+          enviadoParaAprovacao: true,
+          enviadoEm: new Date(),
+          status: 'pendente' as const,
+          aprovadorGestorStatus: 'pendente' as const,
+          aprovadorDiretoriaStatus: 'pendente' as const,
+        } : {
+          enviadoParaAprovacao: false,
+          status: 'pendente' as const, // rascunho = pendente sem envio
+        }),
+      };
+      const id = await db.createFerias(payload as any);
+      await logAudit('criacao', 'ferias', id, null, ctx, { enviadoParaAprovacao: !!input.enviadoParaAprovacao });
       // Auto status change: if status is em_gozo, change colaborador status to 'ferias'
       if (input.status === 'em_gozo') {
         await db.changeColaboradorStatus(
@@ -2344,6 +2362,22 @@ export const appRouter = router({
         );
       }
       return { id };
+    }),
+    // Enviar rascunho para aprovação
+    enviarParaAprovacao: protectedProcedure.input(z.object({
+      id: z.number(),
+    })).mutation(async ({ input, ctx }) => {
+      const feriasRecord = await db.getFeriasById(input.id);
+      if (!feriasRecord) throw new TRPCError({ code: 'NOT_FOUND', message: 'Férias não encontradas' });
+      if (feriasRecord.enviadoParaAprovacao) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Férias já enviadas para aprovação' });
+      await db.updateFerias(input.id, {
+        enviadoParaAprovacao: true,
+        enviadoEm: new Date(),
+        aprovadorGestorStatus: 'pendente',
+        aprovadorDiretoriaStatus: 'pendente',
+      } as any);
+      await logAudit('envio_aprovacao', 'ferias', input.id, null, ctx);
+      return { success: true };
     }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
@@ -2375,6 +2409,7 @@ export const appRouter = router({
       const feriasRecord = await db.getFeriasById(input.id);
       if (!feriasRecord) throw new TRPCError({ code: 'NOT_FOUND', message: 'Férias não encontradas' });
       if (feriasRecord.status === 'em_gozo') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível excluir férias em gozo' });
+      // Só pode excluir se for o criador ou admin
       await db.deleteFerias(input.id);
       await logAudit('exclusao', 'ferias', input.id, null, ctx);
       return { success: true };
@@ -2384,6 +2419,9 @@ export const appRouter = router({
       aprovado: z.boolean(),
       justificativa: z.string().optional(),
     })).mutation(async ({ input, ctx }) => {
+      const feriasRecord = await db.getFeriasById(input.id);
+      if (!feriasRecord) throw new TRPCError({ code: 'NOT_FOUND', message: 'Férias não encontradas' });
+      if (!feriasRecord.enviadoParaAprovacao) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Férias não foram enviadas para aprovação' });
       const status = input.aprovado ? 'aprovado' : 'recusado';
       await db.updateFerias(input.id, {
         aprovadorGestorId: ctx.user?.id || null,
@@ -2399,6 +2437,9 @@ export const appRouter = router({
       aprovado: z.boolean(),
       justificativa: z.string().optional(),
     })).mutation(async ({ input, ctx }) => {
+      const feriasRecord = await db.getFeriasById(input.id);
+      if (!feriasRecord) throw new TRPCError({ code: 'NOT_FOUND', message: 'Férias não encontradas' });
+      if (!feriasRecord.enviadoParaAprovacao) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Férias não foram enviadas para aprovação' });
       const status = input.aprovado ? 'aprovado' : 'recusado';
       await db.updateFerias(input.id, {
         aprovadorDiretoriaId: ctx.user?.id || null,
@@ -2407,12 +2448,20 @@ export const appRouter = router({
         ...(input.justificativa && !input.aprovado ? { justificativaRecusa: input.justificativa } : {}),
       } as any);
       // If both gestor and diretoria approved, set status to programada
-      const feriasRecord = await db.getFeriasById(input.id);
-      if (feriasRecord && status === 'aprovado' && feriasRecord.aprovadorGestorStatus === 'aprovado') {
+      const updatedRecord = await db.getFeriasById(input.id);
+      if (updatedRecord && status === 'aprovado' && updatedRecord.aprovadorGestorStatus === 'aprovado') {
         await db.updateFerias(input.id, { status: 'programada' } as any);
       }
       await logAudit('aprovacao_diretoria', 'ferias', input.id, null, ctx, { status, justificativa: input.justificativa });
       return { success: true };
+    }),
+    // Listar férias pendentes de aprovação
+    pendentesAprovacao: protectedProcedure.query(async () => {
+      const allFerias = await db.listFerias();
+      return (allFerias || []).filter((f: any) => 
+        f.enviadoParaAprovacao && 
+        (f.aprovadorGestorStatus === 'pendente' || f.aprovadorDiretoriaStatus === 'pendente')
+      );
     }),
   }),
 
@@ -2762,11 +2811,18 @@ export const appRouter = router({
       const ativos = (allColabs as any[]).filter(c => c.ativo !== false);
       const inativos = (allColabs as any[]).filter(c => c.ativo === false);
 
-      // Headcount por setor
+      // Headcount por setor (usa setorNome, fallback 'Sem Setor')
       const headcountPorSetor: Record<string, number> = {};
       ativos.forEach((c: any) => {
-        const setor = c.setorNome || c.localTrabalho || 'Sem Setor';
+        const setor = c.setorNome || 'Sem Setor';
         headcountPorSetor[setor] = (headcountPorSetor[setor] || 0) + 1;
+      });
+
+      // Headcount por local de trabalho
+      const headcountPorLocal: Record<string, number> = {};
+      ativos.forEach((c: any) => {
+        const local = c.localTrabalho || 'Sem Local';
+        headcountPorLocal[local] = (headcountPorLocal[local] || 0) + 1;
       });
 
       // Headcount por nível hierárquico
@@ -2776,14 +2832,17 @@ export const appRouter = router({
         headcountPorNivel[nivel] = (headcountPorNivel[nivel] || 0) + 1;
       });
 
-      // Custo salarial total e por setor
+      // Custo salarial total, por setor e por local
       let custoSalarialTotal = 0;
       const custoPorSetor: Record<string, number> = {};
+      const custoPorLocal: Record<string, number> = {};
       ativos.forEach((c: any) => {
         const salario = parseFloat(c.salarioBase || '0');
         custoSalarialTotal += salario;
-        const setor = c.setorNome || c.localTrabalho || 'Sem Setor';
+        const setor = c.setorNome || 'Sem Setor';
         custoPorSetor[setor] = (custoPorSetor[setor] || 0) + salario;
+        const local = c.localTrabalho || 'Sem Local';
+        custoPorLocal[local] = (custoPorLocal[local] || 0) + salario;
       });
 
       // Turnover (admissões e desligamentos por mês nos últimos 12 meses)
@@ -2829,8 +2888,10 @@ export const appRouter = router({
         totalInativos: inativos.length,
         custoSalarialTotal,
         headcountPorSetor,
+        headcountPorLocal,
         headcountPorNivel,
         custoPorSetor,
+        custoPorLocal,
         turnoverMensal,
         absenteismoMensal,
         porContrato,
@@ -3859,6 +3920,8 @@ export const appRouter = router({
         possuiSenha: z.boolean().default(false),
         senhaValor: z.string().optional(),
         senhaObs: z.string().optional(),
+        tipoUso: z.enum(['individual','comum','compartilhado']).default('individual'),
+        colaboradoresVinculados: z.array(z.object({ id: z.number(), nome: z.string() })).optional(),
         autorizado: z.boolean().default(false),
         dataAutorizacao: z.string().optional(),
         dataRevogacao: z.string().optional(),
@@ -3895,6 +3958,8 @@ export const appRouter = router({
           possuiSenha: z.boolean().optional(),
           senhaValor: z.string().optional(),
           senhaObs: z.string().optional(),
+          tipoUso: z.enum(['individual','comum','compartilhado']).optional(),
+          colaboradoresVinculados: z.array(z.object({ id: z.number(), nome: z.string() })).optional(),
           autorizado: z.boolean().optional(),
           dataAutorizacao: z.string().optional(),
           dataRevogacao: z.string().optional(),
@@ -3978,7 +4043,9 @@ export const appRouter = router({
         colaboradorId: z.number(),
         colaboradorNome: z.string(),
         email: z.string().email(),
-        tipoEmail: z.enum(['principal','alias','compartilhado','grupo']).default('principal'),
+        tipoEmail: z.enum(['principal','secundario']).default('principal'),
+        tipoUso: z.enum(['individual','compartilhado']).default('individual'),
+        colaboradoresVinculados: z.array(z.object({ id: z.number(), nome: z.string() })).optional(),
         statusEmail: z.enum(['ativo','desativado','suspenso']).default('ativo'),
         dataCriacao: z.string().optional(),
         dataDesativacao: z.string().optional(),
@@ -4002,7 +4069,9 @@ export const appRouter = router({
         id: z.number(),
         data: z.object({
           email: z.string().email().optional(),
-          tipoEmail: z.enum(['principal','alias','compartilhado','grupo']).optional(),
+          tipoEmail: z.enum(['principal','secundario']).optional(),
+          tipoUso: z.enum(['individual','compartilhado']).optional(),
+          colaboradoresVinculados: z.array(z.object({ id: z.number(), nome: z.string() })).optional(),
           statusEmail: z.enum(['ativo','desativado','suspenso']).optional(),
           dataCriacao: z.string().optional(),
           dataDesativacao: z.string().optional(),

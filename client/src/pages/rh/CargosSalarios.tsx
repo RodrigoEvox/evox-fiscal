@@ -205,8 +205,8 @@ export default function CargosSalarios() {
         <div className="flex items-center gap-3 mb-2">
           <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">Cargos e Salários</h1>
-            <p className="text-muted-foreground">Visão analítica da estrutura de colaboradores, custos salariais e organograma hierárquico</p>
+            <h1 className="text-2xl font-bold">Custo Salarial</h1>
+            <p className="text-muted-foreground">Visão analítica da estrutura de custo com pessoal</p>
           </div>
         </div>
         {/* View toggle */}

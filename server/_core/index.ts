@@ -372,9 +372,126 @@ async function startServer() {
       res.status(500).json({ error: err.message });
     }
   });
-  // PDF Export endpoint for RH Reports
+  // ---- BI INDICADORES PDF ----
+  app.get('/api/bi-rh/pdf', async (req: any, res: any) => {
+    try {
+      const { createPDF, addHeader, addKPIs, addSectionTitle, addTable, addFooter, fmtCurrency } = await import('../pdfGenerator');
+      const db = await import('../db');
+      const dashboardData = await db.getDashboardGEG();
+      const allColabs = await db.listColaboradores();
+      const allMetas = await db.listMetasIndividuais();
+      const d = dashboardData as any;
+      const colabList = (allColabs || []) as any[];
+      const metasList = (allMetas || []) as any[];
+
+      const totalColabs = d.totalAtivos + d.totalInativos;
+      const taxaTurnover = totalColabs > 0
+        ? ((d.turnoverMensal || []).reduce((s: number, m: any) => s + m.desligamentos, 0) / totalColabs * 100).toFixed(1)
+        : '0.0';
+      const totalAbsenteismo = (d.absenteismoMensal || []).reduce((s: number, m: any) => s + m.diasAfastamento, 0);
+      const custoMedio = d.totalAtivos > 0 ? (d.custoSalarialTotal / d.totalAtivos) : 0;
+
+      const doc = createPDF();
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => {
+        const pdfBuf = Buffer.concat(chunks);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="bi-indicadores-rh-${new Date().toISOString().slice(0,10)}.pdf"`);
+        res.send(pdfBuf);
+      });
+
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      addHeader(doc, 'BI — Indicadores de RH', `Evox Fiscal — Gente & Gestão | Gerado em ${dataHora}`);
+
+      addKPIs(doc, [
+        { label: 'Colaboradores Ativos', value: String(d.totalAtivos), sub: `${d.totalInativos} inativos`, color: '#3B82F6' },
+        { label: 'Taxa Turnover', value: `${taxaTurnover}%`, sub: 'Últimos 12 meses', color: '#F59E0B' },
+        { label: 'Dias Absenteísmo', value: String(totalAbsenteismo), sub: 'Acumulado', color: '#EF4444' },
+        { label: 'Custo Médio/Colab', value: fmtCurrency(custoMedio), sub: `Total: ${fmtCurrency(d.custoSalarialTotal)}`, color: '#10B981' },
+      ]);
+
+      // Headcount por Setor
+      addSectionTitle(doc, 'Headcount por Setor');
+      const headcountEntries = Object.entries(d.headcountPorSetor || {}).sort((a: any, b: any) => b[1] - a[1]);
+      addTable(doc,
+        [{ header: 'Setor', key: 'setor', width: 3 }, { header: 'Quantidade', key: 'qtd', align: 'right', width: 1 }, { header: '% Total', key: 'pct', align: 'right', width: 1 }],
+        [...headcountEntries.map(([setor, count]: any) => ({
+          setor, qtd: count, pct: d.totalAtivos > 0 ? ((count / d.totalAtivos) * 100).toFixed(1) + '%' : '0%'
+        })), { setor: 'Total', qtd: d.totalAtivos, pct: '100%', isTotal: true }]
+      );
+
+      // Custo Salarial por Setor
+      addSectionTitle(doc, 'Custo Salarial por Setor');
+      const custoEntries = Object.entries(d.custoPorSetor || {}).sort((a: any, b: any) => b[1] - a[1]);
+      addTable(doc,
+        [{ header: 'Setor', key: 'setor', width: 3 }, { header: 'Valor (R$)', key: 'valor', align: 'right', width: 2 }],
+        [...custoEntries.map(([setor, valor]: any) => ({ setor, valor: fmtCurrency(valor) })),
+         { setor: 'Total', valor: fmtCurrency(d.custoSalarialTotal), isTotal: true }]
+      );
+
+      // Turnover Mensal
+      addSectionTitle(doc, 'Turnover Mensal (Últimos 12 Meses)');
+      const turnoverData = (d.turnoverMensal || []).slice(-12);
+      addTable(doc,
+        [{ header: 'Mês', key: 'mes', width: 2 }, { header: 'Admissões', key: 'adm', align: 'right', width: 1 }, { header: 'Desligamentos', key: 'desl', align: 'right', width: 1 }, { header: 'Saldo', key: 'saldo', align: 'right', width: 1 }],
+        turnoverData.map((m: any) => ({
+          mes: new Date(m.mes + '-01').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          adm: m.admissoes, desl: m.desligamentos, saldo: m.admissoes - m.desligamentos,
+        }))
+      );
+
+      // Distribuição por Status
+      addSectionTitle(doc, 'Distribuição por Status');
+      const statusLabels: Record<string, string> = {
+        ativo: 'Ativo', inativo: 'Inativo', afastado: 'Afastado', licenca: 'Licença',
+        atestado: 'Atestado', desligado: 'Desligado', ferias: 'Férias',
+        experiencia: 'Experiência', aviso_previo: 'Aviso Prévio',
+      };
+      const statusCounts: Record<string, number> = {};
+      colabList.forEach((c: any) => {
+        const st = c.statusColaborador || 'ativo';
+        statusCounts[st] = (statusCounts[st] || 0) + 1;
+      });
+      addTable(doc,
+        [{ header: 'Status', key: 'status', width: 2 }, { header: 'Quantidade', key: 'qtd', align: 'right', width: 1 }, { header: '% Total', key: 'pct', align: 'right', width: 1 }],
+        Object.entries(statusCounts).filter(([_, v]) => v > 0).map(([k, v]) => ({
+          status: statusLabels[k] || k, qtd: v, pct: colabList.length > 0 ? ((v / colabList.length) * 100).toFixed(1) + '%' : '0%'
+        }))
+      );
+
+      // Metas & KPIs
+      addSectionTitle(doc, 'Metas & KPIs');
+      const concluidas = metasList.filter((m: any) => m.status === 'concluida').length;
+      const emAndamento = metasList.filter((m: any) => m.status === 'em_andamento').length;
+      const atrasadas = metasList.filter((m: any) => {
+        if (m.status === 'concluida' || m.status === 'cancelada') return false;
+        return m.prazo && new Date(m.prazo) < new Date();
+      }).length;
+      const taxa = metasList.length > 0 ? Math.round((concluidas / metasList.length) * 100) : 0;
+      addTable(doc,
+        [{ header: 'Indicador', key: 'ind', width: 3 }, { header: 'Valor', key: 'val', align: 'right', width: 1 }],
+        [
+          { ind: 'Total de Metas', val: metasList.length },
+          { ind: 'Concluídas', val: concluidas },
+          { ind: 'Em Andamento', val: emAndamento },
+          { ind: 'Atrasadas', val: atrasadas },
+          { ind: 'Taxa de Conclusão', val: `${taxa}%` },
+        ]
+      );
+
+      addFooter(doc);
+      doc.end();
+    } catch (err: any) {
+      console.error('[BI PDF Export Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ---- VISÃO ANALÍTICA PDF ----
   app.get('/api/relatorios-rh/pdf', async (req: any, res: any) => {
     try {
+      const { createPDF, addHeader, addKPIs, addSectionTitle, addTable, addFooter, fmtCurrency, fmtDate } = await import('../pdfGenerator');
       const db = await import('../db');
       const allColabs = await db.listColaboradores();
       const allAtestados = await db.listAtestadosLicencas();
@@ -384,31 +501,77 @@ async function startServer() {
       const atestadosList = (allAtestados || []) as any[];
       const setoresList = (allSetores || []) as any[];
 
-      const ativos = colabList.filter(c => c.ativo !== false);
-      const inativos = colabList.filter(c => c.ativo === false);
-      const totalHeadcount = ativos.length;
+      const efetivos = colabList.filter(c => {
+        const st = c.statusColaborador || (c.ativo === false ? 'desligado' : 'ativo');
+        return st !== 'desligado' && st !== 'inativo';
+      });
+      const desligados = colabList.filter(c => {
+        const st = c.statusColaborador || (c.ativo === false ? 'desligado' : 'ativo');
+        return st === 'desligado' || st === 'inativo';
+      });
+      const totalHeadcount = efetivos.length;
 
       const hoje = new Date();
       const umAnoAtras = new Date(hoje);
       umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
-      const desligados12m = inativos.filter(c => {
+      const desligados12m = desligados.filter(c => {
         if (!c.dataDesligamento) return false;
-        const d = new Date(c.dataDesligamento + 'T12:00:00');
-        return d >= umAnoAtras;
+        return new Date(c.dataDesligamento + 'T12:00:00') >= umAnoAtras;
       });
+      const admitidos12m = colabList.filter(c => new Date(c.dataAdmissao + 'T12:00:00') >= umAnoAtras);
       const turnoverRate = totalHeadcount > 0 ? ((desligados12m.length / ((totalHeadcount + desligados12m.length) / 2)) * 100).toFixed(1) : '0.0';
 
       const totalDiasAfastamento = atestadosList.reduce((sum: number, a: any) => sum + (a.diasAfastamento || 0), 0);
       const absenteeismRate = totalHeadcount > 0 ? ((totalDiasAfastamento / (totalHeadcount * 22 * 12)) * 100).toFixed(2) : '0.00';
 
-      const custoSalarialTotal = ativos.reduce((sum: number, c: any) => {
+      const custoSalarialTotal = efetivos.reduce((sum: number, c: any) => {
         return sum + Number(c.salarioBase || 0) + Number(c.comissoes || 0) + Number(c.adicionais || 0);
       }, 0);
       const salarioMedio = totalHeadcount > 0 ? custoSalarialTotal / totalHeadcount : 0;
 
-      // By sector
+      const doc = createPDF();
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => {
+        const pdfBuf = Buffer.concat(chunks);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="visao-analitica-rh-${new Date().toISOString().slice(0,10)}.pdf"`);
+        res.send(pdfBuf);
+      });
+
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      addHeader(doc, 'Visão Analítica — Relatórios RH', `Evox Fiscal — Gente & Gestão | Gerado em ${dataHora}`);
+
+      addKPIs(doc, [
+        { label: 'Headcount Efetivo', value: String(totalHeadcount), sub: `${desligados.length} desligados/inativos`, color: '#3B82F6' },
+        { label: 'Turnover (12m)', value: `${turnoverRate}%`, sub: `${desligados12m.length} desligados`, color: Number(turnoverRate) > 10 ? '#EF4444' : '#10B981' },
+        { label: 'Absenteísmo', value: `${absenteeismRate}%`, sub: `${totalDiasAfastamento} dias afastamento`, color: Number(absenteeismRate) > 3 ? '#F59E0B' : '#10B981' },
+        { label: 'Custo Salarial', value: fmtCurrency(custoSalarialTotal), sub: `Média: ${fmtCurrency(salarioMedio)}`, color: '#8B5CF6' },
+      ]);
+
+      // Distribuição por Status
+      addSectionTitle(doc, 'Distribuição por Status');
+      const statusLabels: Record<string, string> = {
+        ativo: 'Ativo', inativo: 'Inativo', afastado: 'Afastado', licenca: 'Licença',
+        atestado: 'Atestado', desligado: 'Desligado', ferias: 'Férias',
+        experiencia: 'Experiência', aviso_previo: 'Aviso Prévio',
+      };
+      const statusCounts: Record<string, number> = {};
+      colabList.forEach((c: any) => {
+        const st = c.statusColaborador || (c.ativo === false ? 'desligado' : 'ativo');
+        statusCounts[st] = (statusCounts[st] || 0) + 1;
+      });
+      addTable(doc,
+        [{ header: 'Status', key: 'status', width: 2 }, { header: 'Quantidade', key: 'qtd', align: 'right', width: 1 }, { header: '% Total', key: 'pct', align: 'right', width: 1 }],
+        Object.entries(statusCounts).filter(([_, v]) => v > 0).map(([k, v]) => ({
+          status: statusLabels[k] || k, qtd: v, pct: colabList.length > 0 ? ((v / colabList.length) * 100).toFixed(1) + '%' : '0%'
+        }))
+      );
+
+      // Resumo por Setor
+      addSectionTitle(doc, 'Resumo por Setor');
       const setorMap = new Map<number, { nome: string; count: number; custo: number; atestados: number }>();
-      ativos.forEach((c: any) => {
+      efetivos.forEach((c: any) => {
         const setorId = c.setorId || 0;
         const setor = setoresList.find((s: any) => s.id === setorId);
         const existing = setorMap.get(setorId) || { nome: setor?.nome || 'Sem Setor', count: 0, custo: 0, atestados: 0 };
@@ -425,86 +588,113 @@ async function startServer() {
         }
       });
       const porSetor = Array.from(setorMap.entries()).sort((a, b) => b[1].count - a[1].count);
+      addTable(doc,
+        [
+          { header: 'Setor', key: 'setor', width: 3 },
+          { header: 'Headcount', key: 'count', align: 'right', width: 1 },
+          { header: '% Total', key: 'pct', align: 'right', width: 1 },
+          { header: 'Custo Salarial', key: 'custo', align: 'right', width: 2 },
+          { header: 'Dias Afastamento', key: 'atestados', align: 'right', width: 1 },
+        ],
+        [...porSetor.map(([_, data]) => ({
+          setor: data.nome, count: data.count,
+          pct: totalHeadcount > 0 ? ((data.count / totalHeadcount) * 100).toFixed(1) + '%' : '0%',
+          custo: fmtCurrency(data.custo), atestados: `${data.atestados}d`,
+        })),
+        { setor: 'Total', count: totalHeadcount, pct: '100%', custo: fmtCurrency(custoSalarialTotal), atestados: `${totalDiasAfastamento}d`, isTotal: true }]
+      );
 
-      // Turnover mensal
+      // Distribuição por Nível Hierárquico
+      addSectionTitle(doc, 'Distribuição por Nível Hierárquico');
+      const nivelLabels: Record<string, string> = {
+        estagiario: 'Estagiário', auxiliar: 'Auxiliar', assistente: 'Assistente',
+        analista_jr: 'Analista Jr', analista_pl: 'Analista Pl', analista_sr: 'Analista Sr',
+        coordenador: 'Coordenador', supervisor: 'Supervisor', gerente: 'Gerente', diretor: 'Diretor',
+      };
+      const nivelMap = new Map<string, { count: number; custo: number }>();
+      efetivos.forEach((c: any) => {
+        const nivel = c.nivelHierarquico || 'sem_nivel';
+        const existing = nivelMap.get(nivel) || { count: 0, custo: 0 };
+        existing.count += 1;
+        existing.custo += Number(c.salarioBase || 0);
+        nivelMap.set(nivel, existing);
+      });
+      addTable(doc,
+        [{ header: 'Nível', key: 'nivel', width: 2 }, { header: 'Quantidade', key: 'count', align: 'right', width: 1 }, { header: 'Custo Salarial', key: 'custo', align: 'right', width: 2 }],
+        Array.from(nivelMap.entries()).sort((a, b) => b[1].custo - a[1].custo).map(([k, v]) => ({
+          nivel: nivelLabels[k] || k, count: v.count, custo: fmtCurrency(v.custo),
+        }))
+      );
+
+      // Tipo de Contrato
+      addSectionTitle(doc, 'Tipo de Contrato');
+      const contratoMap = new Map<string, number>();
+      efetivos.forEach((c: any) => {
+        const tipo = c.tipoContrato || 'clt';
+        contratoMap.set(tipo, (contratoMap.get(tipo) || 0) + 1);
+      });
+      addTable(doc,
+        [{ header: 'Tipo', key: 'tipo', width: 2 }, { header: 'Quantidade', key: 'qtd', align: 'right', width: 1 }, { header: '% Total', key: 'pct', align: 'right', width: 1 }],
+        Array.from(contratoMap.entries()).map(([tipo, count]) => ({
+          tipo: tipo === 'clt' ? 'CLT' : tipo === 'pj' ? 'PJ' : tipo,
+          qtd: count,
+          pct: totalHeadcount > 0 ? ((count / totalHeadcount) * 100).toFixed(1) + '%' : '0%',
+        }))
+      );
+
+      // Admissões Recentes
+      addSectionTitle(doc, 'Admissões Recentes (Últimos 12 Meses)');
+      const recentAdm = [...admitidos12m].sort((a, b) => (b.dataAdmissao || '').localeCompare(a.dataAdmissao || '')).slice(0, 10);
+      addTable(doc,
+        [{ header: 'Colaborador', key: 'nome', width: 3 }, { header: 'Data Admissão', key: 'data', align: 'right', width: 1 }],
+        recentAdm.map((c: any) => ({ nome: c.nomeCompleto, data: fmtDate(c.dataAdmissao) }))
+      );
+
+      // Desligamentos Recentes
+      addSectionTitle(doc, 'Desligamentos Recentes (Últimos 12 Meses)');
+      const recentDesl = [...desligados12m].sort((a, b) => (b.dataDesligamento || '').localeCompare(a.dataDesligamento || '')).slice(0, 10);
+      addTable(doc,
+        [{ header: 'Colaborador', key: 'nome', width: 3 }, { header: 'Data Desligamento', key: 'data', align: 'right', width: 1 }],
+        recentDesl.map((c: any) => ({ nome: c.nomeCompleto, data: fmtDate(c.dataDesligamento) }))
+      );
+
+      // Turnover Mensal
+      addSectionTitle(doc, 'Turnover Mensal (Últimos 12 Meses)');
       const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
       const turnoverMensal = [];
       for (let i = 11; i >= 0; i--) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        const mesStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        const label = `${meses[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
+        const dt = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const mesStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+        const label = `${meses[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`;
         const adm = colabList.filter((c: any) => c.dataAdmissao?.startsWith(mesStr)).length;
-        const desl = inativos.filter((c: any) => c.dataDesligamento?.startsWith(mesStr)).length;
+        const desl = desligados.filter((c: any) => c.dataDesligamento?.startsWith(mesStr)).length;
         turnoverMensal.push({ mes: label, admissoes: adm, desligamentos: desl });
       }
+      addTable(doc,
+        [{ header: 'Mês', key: 'mes', width: 2 }, { header: 'Admissões', key: 'adm', align: 'right', width: 1 }, { header: 'Desligamentos', key: 'desl', align: 'right', width: 1 }],
+        turnoverMensal
+      );
 
-      const fmtCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      // Absenteísmo Mensal
+      addSectionTitle(doc, 'Absenteísmo Mensal (Últimos 12 Meses)');
+      const absenteismoMensal = [];
+      for (let i = 11; i >= 0; i--) {
+        const dt = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const mesStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+        const label = `${meses[dt.getMonth()]}/${String(dt.getFullYear()).slice(2)}`;
+        const atMes = atestadosList.filter((a: any) => a.dataInicio?.startsWith(mesStr));
+        const dias = atMes.reduce((s: number, a: any) => s + (a.diasAfastamento || 0), 0);
+        absenteismoMensal.push({ mes: label, atestados: atMes.length, dias });
+      }
+      addTable(doc,
+        [{ header: 'Mês', key: 'mes', width: 2 }, { header: 'Atestados', key: 'atestados', align: 'right', width: 1 }, { header: 'Dias Afastamento', key: 'dias', align: 'right', width: 1 }],
+        absenteismoMensal
+      );
 
-      // Build HTML for PDF
-      const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><style>
-  body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a2e; font-size: 13px; }
-  h1 { color: #1e3a5f; font-size: 22px; border-bottom: 3px solid #3B82F6; padding-bottom: 8px; margin-bottom: 4px; }
-  .subtitle { color: #6b7280; font-size: 12px; margin-bottom: 24px; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-  .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; border-left: 4px solid; }
-  .kpi-card.blue { border-left-color: #3B82F6; } .kpi-card.green { border-left-color: #10B981; }
-  .kpi-card.yellow { border-left-color: #F59E0B; } .kpi-card.purple { border-left-color: #8B5CF6; }
-  .kpi-label { font-size: 10px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; }
-  .kpi-value { font-size: 24px; font-weight: 700; margin: 4px 0; }
-  .kpi-sub { font-size: 11px; color: #9ca3af; }
-  h2 { font-size: 16px; color: #1e3a5f; margin-top: 28px; margin-bottom: 12px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  th { background: #1e3a5f; color: white; padding: 8px 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
-  td { padding: 7px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
-  tr:nth-child(even) { background: #f8fafc; }
-  .total-row { background: #e8f0fe !important; font-weight: 700; }
-  .right { text-align: right; }
-  .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #9ca3af; text-align: center; }
-  .turnover-table td, .turnover-table th { text-align: center; padding: 5px 8px; }
-</style></head>
-<body>
-  <h1>Relat\u00f3rio de Recursos Humanos</h1>
-  <div class="subtitle">Evox Fiscal \u2014 Gente & Gest\u00e3o | Gerado em ${dataHora}</div>
-
-  <div class="kpi-grid">
-    <div class="kpi-card blue"><div class="kpi-label">Headcount Ativo</div><div class="kpi-value">${totalHeadcount}</div><div class="kpi-sub">${inativos.length} inativos</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Turnover (12m)</div><div class="kpi-value">${turnoverRate}%</div><div class="kpi-sub">${desligados12m.length} desligados</div></div>
-    <div class="kpi-card yellow"><div class="kpi-label">Absente\u00edsmo</div><div class="kpi-value">${absenteeismRate}%</div><div class="kpi-sub">${totalDiasAfastamento} dias afastamento</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Custo Salarial</div><div class="kpi-value" style="font-size:18px">${fmtCurrency(custoSalarialTotal)}</div><div class="kpi-sub">M\u00e9dia: ${fmtCurrency(salarioMedio)}</div></div>
-  </div>
-
-  <h2>Distribui\u00e7\u00e3o por Setor</h2>
-  <table>
-    <thead><tr><th>Setor</th><th class="right">Headcount</th><th class="right">% Total</th><th class="right">Custo Salarial</th><th class="right">Dias Afastamento</th></tr></thead>
-    <tbody>
-      ${porSetor.map(([id, data]) => {
-        const pct = totalHeadcount > 0 ? ((data.count / totalHeadcount) * 100).toFixed(1) : '0.0';
-        return `<tr><td>${data.nome}</td><td class="right">${data.count}</td><td class="right">${pct}%</td><td class="right">${fmtCurrency(data.custo)}</td><td class="right">${data.atestados}d</td></tr>`;
-      }).join('')}
-      <tr class="total-row"><td>Total</td><td class="right">${totalHeadcount}</td><td class="right">100%</td><td class="right">${fmtCurrency(custoSalarialTotal)}</td><td class="right">${totalDiasAfastamento}d</td></tr>
-    </tbody>
-  </table>
-
-  <h2>Turnover Mensal (\u00daltimos 12 Meses)</h2>
-  <table class="turnover-table">
-    <thead><tr><th>M\u00eas</th>${turnoverMensal.map(t => `<th>${t.mes}</th>`).join('')}</tr></thead>
-    <tbody>
-      <tr><td style="font-weight:600">Admiss\u00f5es</td>${turnoverMensal.map(t => `<td style="color:#10B981;font-weight:600">${t.admissoes}</td>`).join('')}</tr>
-      <tr><td style="font-weight:600">Desligamentos</td>${turnoverMensal.map(t => `<td style="color:#EF4444;font-weight:600">${t.desligamentos}</td>`).join('')}</tr>
-    </tbody>
-  </table>
-
-  <div class="footer">Relat\u00f3rio gerado automaticamente pelo sistema Evox Fiscal \u2014 Gente & Gest\u00e3o</div>
-</body></html>`;
-
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="relatorio-rh.html"');
-      res.send(html);
+      addFooter(doc);
+      doc.end();
     } catch (err: any) {
-      console.error('[PDF Export Error]', err);
+      console.error('[Visão Analítica PDF Export Error]', err);
       res.status(500).json({ error: err.message });
     }
   });

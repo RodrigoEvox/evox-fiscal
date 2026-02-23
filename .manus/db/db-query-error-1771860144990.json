@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE ferias ADD COLUMN enviadoParaAprovacao TINYINT DEFAULT 0, ADD COLUMN enviadoEm TIMESTAMP NULL, ADD COLUMN criadoPorId INT NULL, ADD COLUMN criadoPorNome VARCHAR(255) NULL, ADD COLUMN alertasCltCct JSON NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE ferias ADD COLUMN enviadoParaAprovacao TINYINT DEFAULT 0, ADD COLUMN enviadoEm TIMESTAMP NULL, ADD COLUMN criadoPorId INT NULL, ADD COLUMN criadoPorNome VARCHAR(255) NULL, ADD COLUMN alertasCltCct JSON NULL;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'enviadoParaAprovacao'"
+  ]
+}
