@@ -1594,3 +1594,14 @@
 - [x] Relatório consolidado de ativos por colaborador (equipamentos + e-mails + senhas/acessos)
 - [x] Exportar relatório de ativos em formato adequado para auditoria
 - [x] Histórico de entregas/devoluções por equipamento
+
+## v57 — Correções Formulário Novo Colaborador
+- [x] Bug: campos perdem foco ao digitar (só permite 1 caractere por vez)
+- [x] Bug: menus suspensos sobrepõem campos laterais quando texto é maior que o campo
+- [x] Bug: campos pequenos demais para informação desejada (ex: nome em dependentes)
+- [x] Redimensionar campos para tamanho compatível com informação; se necessário criar linha abaixo
+- [x] Formação acadêmica: menu suspenso com autocomplete de cursos superiores brasileiros
+- [x] Formação acadêmica: possibilidade de inserir mais de uma formação superior
+- [x] Formação acadêmica: possibilidade de inserir formações de nível técnico (uma ou mais)
+- [x] Formação acadêmica: possibilidade de inserir demais experiências/habilidades sem certificação
+- [x] Bug: mensagem "preencha a data de admissão" sobrepondo campo de início em período de experiência

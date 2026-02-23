@@ -27,6 +27,9 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts';
+import { CURSOS_SUPERIORES, TIPOS_HABILIDADE } from '@/data/cursosBrasil';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // ---- Helpers ----
 function validarCPF(cpf: string): boolean {
@@ -129,6 +132,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; b
 };
 
 type Dependente = { nome: string; cpf: string; dataNascimento: string; parentesco: string; dependenteIR?: boolean; dependentePlanoSaude?: boolean };
+type FormacaoSuperior = { curso: string; instituicao: string; anoConclusao: string; status: string };
+type FormacaoTecnica = { curso: string; instituicao: string; anoConclusao: string };
+type HabilidadeExtra = { descricao: string; tipo: string };
 
 const GRAUS_INSTRUCAO = [
   { value: 'fundamental_incompleto', label: 'Fundamental Incompleto' },
@@ -150,11 +156,70 @@ const NIVEIS_LABEL: Record<string, string> = {
 
 const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
+// Moved outside component to prevent re-creation on every render (fixes input focus loss)
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <div className="border-b border-primary/20 pb-1.5 mt-8 mb-4 first:mt-0">
+    <h4 className="font-semibold text-sm text-primary tracking-wide uppercase">{children}</h4>
+  </div>
+);
+
+const Field = ({ label, children, span = 1, required = false }: { label: string; children: React.ReactNode; span?: number; required?: boolean }) => (
+  <div className={span === 2 ? 'md:col-span-2' : span === 3 ? 'md:col-span-3' : ''}>
+    <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+      {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+    </Label>
+    {children}
+  </div>
+);
+
+// Autocomplete component for Brazilian higher education courses
+function CursoAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const filtered = useMemo(() => {
+    if (!search) return CURSOS_SUPERIORES.slice(0, 30);
+    const lower = search.toLowerCase();
+    return CURSOS_SUPERIORES.filter(c => c.toLowerCase().includes(lower)).slice(0, 30);
+  }, [search]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="h-8 w-full justify-between text-xs font-normal truncate">
+          {value || 'Selecionar curso...'}
+          <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Buscar curso..." value={search} onValueChange={setSearch} className="h-8 text-xs" />
+          <CommandList>
+            <CommandEmpty>Nenhum curso encontrado.</CommandEmpty>
+            <CommandGroup>
+              {filtered.map(c => (
+                <CommandItem key={c} value={c} onSelect={() => { onChange(c); setOpen(false); setSearch(''); }} className="text-xs">
+                  {c}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+        <div className="border-t p-2">
+          <Input className="h-7 text-xs" placeholder="Ou digite manualmente..." value={value} onChange={e => onChange(e.target.value)} />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const EMPTY_FORM = {
   nomeCompleto: '', cpf: '', dataNascimento: '', rgNumero: '', rgOrgaoEmissor: '', rgDataEmissao: '',
   ctpsNumero: '', ctpsUfEmissao: '' as string, pisPasep: '', nomeMae: '', nomePai: '', nacionalidade: 'Brasileira', naturalidade: '',
   estadoCivil: '' as string, tituloEleitor: '', tituloEleitorZona: '', tituloEleitorSecao: '', certificadoReservista: '', sexo: '' as string,
   grauInstrucao: '' as string, formacaoAcademica: '',
+  formacoesSuperior: [] as FormacaoSuperior[],
+  formacoesTecnicas: [] as FormacaoTecnica[],
+  habilidadesExtras: [] as HabilidadeExtra[],
   contatoEmergenciaNome: '', contatoEmergenciaTelefone: '', contatoEmergenciaParentesco: '',
   pagaPensaoAlimenticia: false, valorPensaoAlimenticia: '',
   temContribuicaoAssistencial: false, valorContribuicaoAssistencial: '',
@@ -964,7 +1029,7 @@ function ExperienciaSection({ form, setForm, markDirty }: { form: any; setForm: 
           <div>
             <Label className="text-xs text-muted-foreground mb-1 block">Início</Label>
             <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm">
-              {form.periodoExperiencia1Inicio ? formatDateBR(form.periodoExperiencia1Inicio) : <span className="text-muted-foreground">Preencha a data de admissão</span>}
+              {form.periodoExperiencia1Inicio ? formatDateBR(form.periodoExperiencia1Inicio) : <span className="text-[10px] text-muted-foreground truncate block overflow-hidden whitespace-nowrap">Admissão</span>}
             </div>
           </div>
           <div>
@@ -987,7 +1052,7 @@ function ExperienciaSection({ form, setForm, markDirty }: { form: any; setForm: 
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">Início</Label>
                 <div className="h-9 flex items-center px-3 bg-background border rounded-md text-sm">
-                  {form.periodoExperiencia1Inicio ? formatDateBR(form.periodoExperiencia1Inicio) : <span className="text-muted-foreground">Preencha a data de admissão</span>}
+                  {form.periodoExperiencia1Inicio ? formatDateBR(form.periodoExperiencia1Inicio) : <span className="text-[10px] text-muted-foreground truncate block overflow-hidden whitespace-nowrap">Admissão</span>}
                 </div>
               </div>
               <div>
@@ -1187,6 +1252,9 @@ export default function ColaboradoresGEG() {
       grauInstrucao: (form.grauInstrucao || undefined) as any,
       valorPensaoAlimenticia: form.valorPensaoAlimenticia || undefined,
       valorContribuicaoAssistencial: form.valorContribuicaoAssistencial || undefined,
+      formacoesSuperior: form.formacoesSuperior?.length ? JSON.stringify(form.formacoesSuperior) : undefined,
+      formacoesTecnicas: form.formacoesTecnicas?.length ? JSON.stringify(form.formacoesTecnicas) : undefined,
+      habilidadesExtras: form.habilidadesExtras?.length ? JSON.stringify(form.habilidadesExtras) : undefined,
     };
 
     if (editId) {
@@ -1197,10 +1265,18 @@ export default function ColaboradoresGEG() {
   };
 
   const openEdit = (c: any) => {
+    const parseJSON = (v: any, fallback: any[] = []) => {
+      if (!v) return fallback;
+      if (typeof v === 'string') try { return JSON.parse(v); } catch { return fallback; }
+      return v;
+    };
     setForm({
       ...EMPTY_FORM, ...c,
-      jornadaDias: c.jornadaDias ? (typeof c.jornadaDias === 'string' ? JSON.parse(c.jornadaDias) : c.jornadaDias) : ['seg', 'ter', 'qua', 'qui', 'sex'],
-      dependentes: c.dependentes ? (typeof c.dependentes === 'string' ? JSON.parse(c.dependentes) : c.dependentes) : [],
+      jornadaDias: parseJSON(c.jornadaDias, ['seg', 'ter', 'qua', 'qui', 'sex']),
+      dependentes: parseJSON(c.dependentes, []),
+      formacoesSuperior: parseJSON(c.formacoesSuperior, []),
+      formacoesTecnicas: parseJSON(c.formacoesTecnicas, []),
+      habilidadesExtras: parseJSON(c.habilidadesExtras, []),
       chavePix: c.chavePix || '',
       statusColaborador: c.statusColaborador || 'ativo',
     });
@@ -1410,20 +1486,7 @@ export default function ColaboradoresGEG() {
     </th>
   );
 
-  const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <div className="border-b border-primary/20 pb-1.5 mt-8 mb-4 first:mt-0">
-      <h4 className="font-semibold text-sm text-primary tracking-wide uppercase">{children}</h4>
-    </div>
-  );
-
-  const Field = ({ label, children, span = 1, required = false }: { label: string; children: React.ReactNode; span?: number; required?: boolean }) => (
-    <div className={span === 2 ? 'md:col-span-2' : span === 3 ? 'md:col-span-3' : ''}>
-      <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </Label>
-      {children}
-    </div>
-  );
+  // SectionTitle and Field moved outside component to fix input focus loss
 
   const getStatusBadge = (status: string) => {
     const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
@@ -1802,7 +1865,7 @@ export default function ColaboradoresGEG() {
               </Field>
               <Field label="Sexo">
                 <Select value={form.sexo} onValueChange={v => { setForm(f => ({ ...f, sexo: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="masculino">Masculino</SelectItem>
                     <SelectItem value="feminino">Feminino</SelectItem>
@@ -1812,7 +1875,7 @@ export default function ColaboradoresGEG() {
               </Field>
               <Field label="Estado Civil">
                 <Select value={form.estadoCivil} onValueChange={v => { setForm(f => ({ ...f, estadoCivil: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="solteiro">Solteiro(a)</SelectItem>
                     <SelectItem value="casado">Casado(a)</SelectItem>
@@ -1839,7 +1902,7 @@ export default function ColaboradoresGEG() {
               <Field label="CTPS (Número/Série)"><Input value={form.ctpsNumero} onChange={e => { setForm(f => ({ ...f, ctpsNumero: e.target.value })); markDirty(); }} placeholder="Número e série" /></Field>
               <Field label="CTPS UF Emissão">
                 <Select value={form.ctpsUfEmissao} onValueChange={v => { setForm(f => ({ ...f, ctpsUfEmissao: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="UF" /></SelectTrigger>
                   <SelectContent>{UFS_BRASIL.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
@@ -1855,13 +1918,123 @@ export default function ColaboradoresGEG() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
               <Field label="Grau de Instrução">
                 <Select value={form.grauInstrucao} onValueChange={v => { setForm(f => ({ ...f, grauInstrucao: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>{GRAUS_INSTRUCAO.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
-              <Field label="Formação / Curso">
+              <Field label="Formação / Curso (principal)">
                 <Input value={form.formacaoAcademica} onChange={e => { setForm(f => ({ ...f, formacaoAcademica: e.target.value })); markDirty(); }} placeholder="Ex: Administração de Empresas" />
               </Field>
+            </div>
+
+            {/* Formações Superiores */}
+            <div className="mt-4 border border-dashed border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-xs font-semibold flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Formações Superiores</h5>
+                <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setForm(f => ({ ...f, formacoesSuperior: [...f.formacoesSuperior, { curso: '', instituicao: '', anoConclusao: '', status: 'concluido' }] })); markDirty(); }}>
+                  <Plus className="w-3 h-3" /> Adicionar
+                </Button>
+              </div>
+              {form.formacoesSuperior.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma formação superior adicional cadastrada.</p>}
+              {form.formacoesSuperior.map((fs: FormacaoSuperior, idx: number) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2 mb-3 p-3 bg-muted/30 rounded-md border border-border/50">
+                  <div className="md:col-span-5">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Curso</Label>
+                    <CursoAutocomplete
+                      value={fs.curso}
+                      onChange={(v) => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], curso: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }}
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Instituição</Label>
+                    <Input className="h-8 text-sm" value={fs.instituicao} onChange={e => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], instituicao: e.target.value }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }} placeholder="Nome da instituição" />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Ano</Label>
+                    <Input className="h-8 text-sm" value={fs.anoConclusao} onChange={e => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], anoConclusao: e.target.value }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }} placeholder="2024" maxLength={4} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Status</Label>
+                    <Select value={fs.status} onValueChange={v => { setForm(f => { const arr = [...f.formacoesSuperior]; arr[idx] = { ...arr[idx], status: v }; return { ...f, formacoesSuperior: arr }; }); markDirty(); }}>
+                      <SelectTrigger className="h-8 text-xs w-full truncate"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="concluido">Concluído</SelectItem>
+                        <SelectItem value="cursando">Cursando</SelectItem>
+                        <SelectItem value="trancado">Trancado</SelectItem>
+                        <SelectItem value="incompleto">Incompleto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-1 flex items-end">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, formacoesSuperior: f.formacoesSuperior.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Formações Técnicas */}
+            <div className="mt-4 border border-dashed border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-xs font-semibold flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Formações Técnicas</h5>
+                <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setForm(f => ({ ...f, formacoesTecnicas: [...f.formacoesTecnicas, { curso: '', instituicao: '', anoConclusao: '' }] })); markDirty(); }}>
+                  <Plus className="w-3 h-3" /> Adicionar
+                </Button>
+              </div>
+              {form.formacoesTecnicas.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma formação técnica cadastrada.</p>}
+              {form.formacoesTecnicas.map((ft: FormacaoTecnica, idx: number) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2 mb-3 p-3 bg-muted/30 rounded-md border border-border/50">
+                  <div className="md:col-span-5">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Curso Técnico</Label>
+                    <Input className="h-8 text-sm" value={ft.curso} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], curso: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Ex: Técnico em Contabilidade" />
+                  </div>
+                  <div className="md:col-span-5">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Instituição</Label>
+                    <Input className="h-8 text-sm" value={ft.instituicao} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], instituicao: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="Nome da instituição" />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Ano</Label>
+                    <Input className="h-8 text-sm" value={ft.anoConclusao} onChange={e => { setForm(f => { const arr = [...f.formacoesTecnicas]; arr[idx] = { ...arr[idx], anoConclusao: e.target.value }; return { ...f, formacoesTecnicas: arr }; }); markDirty(); }} placeholder="2024" maxLength={4} />
+                  </div>
+                  <div className="md:col-span-1 flex items-end">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, formacoesTecnicas: f.formacoesTecnicas.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Habilidades e Experiências Extras */}
+            <div className="mt-4 border border-dashed border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-xs font-semibold flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Demais Experiências & Habilidades</h5>
+                <Button variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setForm(f => ({ ...f, habilidadesExtras: [...f.habilidadesExtras, { descricao: '', tipo: 'Certificação' }] })); markDirty(); }}>
+                  <Plus className="w-3 h-3" /> Adicionar
+                </Button>
+              </div>
+              {form.habilidadesExtras.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma habilidade ou experiência adicional cadastrada. Isso ajuda a mapear competências além da formação principal.</p>}
+              {form.habilidadesExtras.map((he: HabilidadeExtra, idx: number) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2 mb-3 p-3 bg-muted/30 rounded-md border border-border/50">
+                  <div className="md:col-span-8">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Descrição</Label>
+                    <Input className="h-8 text-sm" value={he.descricao} onChange={e => { setForm(f => { const arr = [...f.habilidadesExtras]; arr[idx] = { ...arr[idx], descricao: e.target.value }; return { ...f, habilidadesExtras: arr }; }); markDirty(); }} placeholder="Ex: Certificação CPA-20, Excel Avançado, Inglês Fluente..." />
+                  </div>
+                  <div className="md:col-span-3">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Tipo</Label>
+                    <Select value={he.tipo} onValueChange={v => { setForm(f => { const arr = [...f.habilidadesExtras]; arr[idx] = { ...arr[idx], tipo: v }; return { ...f, habilidadesExtras: arr }; }); markDirty(); }}>
+                      <SelectTrigger className="h-8 text-xs w-full truncate"><SelectValue /></SelectTrigger>
+                      <SelectContent>{TIPOS_HABILIDADE.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-1 flex items-end">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => { setForm(f => ({ ...f, habilidadesExtras: f.habilidadesExtras.filter((_: any, i: number) => i !== idx) })); markDirty(); }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* ===== CONTATO DE EMERGÊNCIA ===== */}
@@ -1871,8 +2044,8 @@ export default function ColaboradoresGEG() {
               <Field label="Telefone"><Input value={form.contatoEmergenciaTelefone} onChange={e => { setForm(f => ({ ...f, contatoEmergenciaTelefone: maskPhone(e.target.value) })); markDirty(); }} placeholder="(00) 00000-0000" /></Field>
               <Field label="Parentesco">
                 <Select value={form.contatoEmergenciaParentesco} onValueChange={v => { setForm(f => ({ ...f, contatoEmergenciaParentesco: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  <SelectContent>{PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>{PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
             </div>
@@ -2057,7 +2230,7 @@ export default function ColaboradoresGEG() {
               <Field label="Conta"><Input value={form.conta} onChange={e => { setForm(f => ({ ...f, conta: e.target.value })); markDirty(); }} /></Field>
               <Field label="Tipo de Conta">
                 <Select value={form.tipoConta} onValueChange={v => { setForm(f => ({ ...f, tipoConta: v })); markDirty(); }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="corrente">Corrente</SelectItem>
                     <SelectItem value="poupanca">Poupança</SelectItem>
@@ -2107,13 +2280,15 @@ export default function ColaboradoresGEG() {
             {/* Add dependente form */}
             <div className="border border-dashed border-border rounded-lg p-4">
               <h5 className="text-xs font-semibold mb-3">Adicionar Dependente</h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-                <Field label="Nome" required><Input value={depForm.nome} onChange={e => setDepForm(f => ({ ...f, nome: e.target.value }))} /></Field>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3">
+                <Field label="Nome" span={2} required><Input value={depForm.nome} onChange={e => setDepForm(f => ({ ...f, nome: e.target.value }))} placeholder="Nome completo do dependente" /></Field>
                 <Field label="CPF"><Input value={depForm.cpf} onChange={e => setDepForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))} placeholder="000.000.000-00" /></Field>
                 <Field label="Data Nascimento"><Input type="date" value={depForm.dataNascimento} onChange={e => setDepForm(f => ({ ...f, dataNascimento: e.target.value }))} /></Field>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3 mt-3">
                 <Field label="Parentesco" required>
                   <Select value={depForm.parentesco} onValueChange={v => setDepForm(f => ({ ...f, parentesco: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                     <SelectContent>{PARENTESCOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                   </Select>
                 </Field>
