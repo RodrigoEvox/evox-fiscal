@@ -3726,22 +3726,44 @@ export const appRouter = router({
     }),
     create: protectedProcedure.input(z.object({
       setorId: z.number(),
-      setorNome: z.string(),
-      cargo: z.string(),
-      nivel: z.number(),
-      descricao: z.string().optional(),
+      cargo: z.string().min(1),
+      funcao: z.string().optional(),
+      nivel: z.number().default(1),
+      descricaoNivel: z.string().optional(),
       salarioMinimo: z.string().optional(),
       salarioMaximo: z.string().optional(),
-      requisitosGrauInstrucao: z.string().optional(),
-      requisitosExperiencia: z.string().optional(),
-      requisitosAdicionais: z.string().optional(),
+      salarioBase: z.string().optional(),
+      grauInstrucaoMinimo: z.string().optional(),
+      requisitos: z.string().optional(),
+      requisitosFormacao: z.string().optional(),
+      competencias: z.string().optional(),
+      comissionado: z.number().default(0),
+      cargoConfianca: z.number().default(0),
+      tempoMinimoMeses: z.number().optional(),
     })).mutation(async ({ input }) => {
       const id = await db.createNivelCargo(input as any);
       return { id };
     }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
-      data: z.record(z.string(), z.any()),
+      data: z.object({
+        setorId: z.number().optional(),
+        cargo: z.string().optional(),
+        funcao: z.string().optional().nullable(),
+        nivel: z.number().optional(),
+        descricaoNivel: z.string().optional().nullable(),
+        salarioMinimo: z.string().optional().nullable(),
+        salarioMaximo: z.string().optional().nullable(),
+        salarioBase: z.string().optional().nullable(),
+        grauInstrucaoMinimo: z.string().optional().nullable(),
+        requisitos: z.string().optional().nullable(),
+        requisitosFormacao: z.string().optional().nullable(),
+        competencias: z.string().optional().nullable(),
+        comissionado: z.number().optional(),
+        cargoConfianca: z.number().optional(),
+        tempoMinimoMeses: z.number().optional().nullable(),
+        ativo: z.number().optional(),
+      }),
     })).mutation(async ({ input }) => {
       await db.updateNivelCargo(input.id, input.data as any);
       return { success: true };

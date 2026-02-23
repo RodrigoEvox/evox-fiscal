@@ -1638,3 +1638,10 @@
 - [x] Organograma por setor
 - [x] Análise salarial atual por setor com custo salarial baseado em colaboradores
 - [x] Memória de cálculo ao clicar em valores com exportação PDF e Excel
+
+## v62 — Reestruturação Cargos e Salários
+- [x] Remover aba "Níveis e Funções" da página Cargos e Salários
+- [x] Aba Cadastro: CRUD completo de cargos com nome, função, setor (dropdown), grau instrução mínimo, salário base, comissionado (sim/não), cargo de confiança (sim/não), requisitos de formação
+- [x] Criar/atualizar tabela cargos_salarios no banco de dados
+- [x] Backend: rotas CRUD para cargos_salarios
+- [x] Integrar auto-fill de cargo/salário no cadastro de colaboradores

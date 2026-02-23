@@ -11,12 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import {
   BarChart3, Users, DollarSign, Building2, TrendingUp, ArrowLeft,
   ChevronDown, ChevronRight, User, GitBranch, Plus, Layers, Trash2,
   Loader2, GraduationCap, Download, FileText, FileSpreadsheet, Calculator,
-  Briefcase, ArrowUpCircle, Edit2, Eye, X
+  Briefcase, ArrowUpCircle, Edit2, Eye, X, Search, Check, XCircle
 } from 'lucide-react';
 
 // ===== CONSTANTS =====
@@ -48,6 +49,13 @@ const GRAU_LABELS: Record<string, string> = {
   tecnico: 'Técnico', superior_incompleto: 'Superior Incompleto',
   superior_completo: 'Superior Completo', pos_graduacao: 'Pós-Graduação',
   mestrado: 'Mestrado', doutorado: 'Doutorado',
+};
+
+const EMPTY_CARGO_FORM = {
+  cargo: '', funcao: '', setorId: 0, salarioBase: '',
+  salarioMinimo: '', salarioMaximo: '', grauInstrucaoMinimo: 'medio_completo',
+  comissionado: 0, cargoConfianca: 0, requisitosFormacao: '',
+  requisitos: '', competencias: '', nivel: 1, descricaoNivel: '',
 };
 
 // ===== HELPERS =====
@@ -121,26 +129,25 @@ function SetorOrganograma({ nome, colaboradores }: { nome: string; colaboradores
     });
     return NIVEL_ORDER
       .filter(n => map.has(n))
-      .map(n => ({ nivel: n, colabs: map.get(n)!.sort((a: any, b: any) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || '')) }))
-      .concat(map.has('nao_definido') ? [{ nivel: 'nao_definido', colabs: map.get('nao_definido')! }] : []);
+      .map(n => ({ nivel: n, colabs: map.get(n)! }))
+      .concat(
+        Array.from(map.entries())
+          .filter(([k]) => !NIVEL_ORDER.includes(k))
+          .map(([k, v]) => ({ nivel: k, colabs: v }))
+      );
   }, [colaboradores]);
-
-  const custoTotal = colaboradores.reduce((sum, c) => sum + parseSalario(c.salarioBase), 0);
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <button onClick={() => setExpanded(p => !p)} className="flex items-center justify-between w-full text-left">
+      <CardHeader className="pb-2 cursor-pointer" onClick={() => setExpanded(p => !p)}>
+        <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-primary" />
+            <Building2 className="w-4 h-4 text-primary" />
             {nome.replace(/^[A-Z]+\s*[–-]\s*/, '')}
+            <Badge variant="secondary" className="text-[10px]">{colaboradores.length} colaboradores</Badge>
           </CardTitle>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline">{colaboradores.length} colaborador{colaboradores.length !== 1 ? 'es' : ''}</Badge>
-            <span className="text-sm font-medium text-muted-foreground">{formatCurrency(custoTotal)}/mês</span>
-            {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-          </div>
-        </button>
+          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </div>
       </CardHeader>
       {expanded && (
         <CardContent className="pt-2">
@@ -222,7 +229,6 @@ function MemoriaCalculoDialog({ open, onClose, setor, colaboradores }: {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Summary */}
           <div className="grid grid-cols-3 gap-3">
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-3 text-center">
@@ -244,7 +250,6 @@ function MemoriaCalculoDialog({ open, onClose, setor, colaboradores }: {
             </Card>
           </div>
 
-          {/* Detailed Table */}
           <div className="border rounded-lg overflow-hidden">
             <Table>
               <TableHeader>
@@ -283,7 +288,6 @@ function MemoriaCalculoDialog({ open, onClose, setor, colaboradores }: {
             </Table>
           </div>
 
-          {/* Breakdown by nivel */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Composição por Nível Hierárquico</CardTitle>
@@ -333,28 +337,132 @@ export default function CargosSalarios() {
   const utils = trpc.useUtils();
   const [activeTab, setActiveTab] = useState('cadastro');
   const [memoriaSetor, setMemoriaSetor] = useState<{ nome: string; colaboradores: any[] } | null>(null);
+  const [searchCargo, setSearchCargo] = useState('');
+  const [filterSetor, setFilterSetor] = useState('todos');
 
-  // Niveis CRUD
-  const [showNivelDialog, setShowNivelDialog] = useState(false);
-  const [nivelForm, setNivelForm] = useState({
-    cargoId: 0, setorId: 0, nivel: 1, titulo: '', descricao: '',
-    salarioMinimo: '', salarioMaximo: '', grauInstrucaoMinimo: 'medio_completo',
-    requisitosFormacao: '',
-  });
-  const createNivel = trpc.niveisCargo.create.useMutation({
-    onSuccess: () => { utils.niveisCargo.list.invalidate(); toast.success('Nível criado!'); setShowNivelDialog(false); },
+  // Cargo CRUD state
+  const [showCargoDialog, setShowCargoDialog] = useState(false);
+  const [editingCargoId, setEditingCargoId] = useState<number | null>(null);
+  const [viewingCargo, setViewingCargo] = useState<any | null>(null);
+  const [cargoForm, setCargoForm] = useState({ ...EMPTY_CARGO_FORM });
+
+  const createCargo = trpc.niveisCargo.create.useMutation({
+    onSuccess: () => { utils.niveisCargo.list.invalidate(); toast.success('Cargo cadastrado com sucesso!'); setShowCargoDialog(false); resetForm(); },
     onError: (e) => toast.error(e.message),
   });
-  const deleteNivel = trpc.niveisCargo.delete.useMutation({
-    onSuccess: () => { utils.niveisCargo.list.invalidate(); toast.success('Nível removido'); },
+  const updateCargo = trpc.niveisCargo.update.useMutation({
+    onSuccess: () => { utils.niveisCargo.list.invalidate(); toast.success('Cargo atualizado!'); setShowCargoDialog(false); resetForm(); },
+    onError: (e) => toast.error(e.message),
   });
+  const deleteCargo = trpc.niveisCargo.delete.useMutation({
+    onSuccess: () => { utils.niveisCargo.list.invalidate(); toast.success('Cargo removido'); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  function resetForm() {
+    setCargoForm({ ...EMPTY_CARGO_FORM });
+    setEditingCargoId(null);
+  }
+
+  function openNewCargo() {
+    resetForm();
+    setShowCargoDialog(true);
+  }
+
+  function openEditCargo(cargo: any) {
+    setEditingCargoId(cargo.id);
+    setCargoForm({
+      cargo: cargo.cargo || '',
+      funcao: cargo.funcao || '',
+      setorId: cargo.setorId || 0,
+      salarioBase: cargo.salarioBase ? String(cargo.salarioBase) : '',
+      salarioMinimo: cargo.salarioMinimo ? String(cargo.salarioMinimo) : '',
+      salarioMaximo: cargo.salarioMaximo ? String(cargo.salarioMaximo) : '',
+      grauInstrucaoMinimo: cargo.grauInstrucaoMinimo || 'medio_completo',
+      comissionado: cargo.comissionado || 0,
+      cargoConfianca: cargo.cargoConfianca || 0,
+      requisitosFormacao: cargo.requisitosFormacao || '',
+      requisitos: cargo.requisitos || '',
+      competencias: cargo.competencias || '',
+      nivel: cargo.nivel || 1,
+      descricaoNivel: cargo.descricaoNivel || '',
+    });
+    setShowCargoDialog(true);
+  }
+
+  function handleSaveCargo() {
+    if (!cargoForm.cargo.trim()) {
+      toast.error('O nome do cargo é obrigatório'); return;
+    }
+    if (!cargoForm.setorId) {
+      toast.error('Selecione o setor'); return;
+    }
+    if (!cargoForm.salarioBase) {
+      toast.error('Informe o salário base'); return;
+    }
+
+    if (editingCargoId) {
+      updateCargo.mutate({
+        id: editingCargoId,
+        data: {
+          cargo: cargoForm.cargo,
+          funcao: cargoForm.funcao || null,
+          setorId: cargoForm.setorId,
+          salarioBase: cargoForm.salarioBase || null,
+          salarioMinimo: cargoForm.salarioMinimo || null,
+          salarioMaximo: cargoForm.salarioMaximo || null,
+          grauInstrucaoMinimo: cargoForm.grauInstrucaoMinimo || null,
+          comissionado: cargoForm.comissionado,
+          cargoConfianca: cargoForm.cargoConfianca,
+          requisitosFormacao: cargoForm.requisitosFormacao || null,
+          requisitos: cargoForm.requisitos || null,
+          competencias: cargoForm.competencias || null,
+          nivel: cargoForm.nivel,
+          descricaoNivel: cargoForm.descricaoNivel || null,
+        },
+      });
+    } else {
+      createCargo.mutate({
+        cargo: cargoForm.cargo,
+        funcao: cargoForm.funcao || undefined,
+        setorId: cargoForm.setorId,
+        salarioBase: cargoForm.salarioBase || undefined,
+        salarioMinimo: cargoForm.salarioMinimo || undefined,
+        salarioMaximo: cargoForm.salarioMaximo || undefined,
+        grauInstrucaoMinimo: cargoForm.grauInstrucaoMinimo || undefined,
+        comissionado: cargoForm.comissionado,
+        cargoConfianca: cargoForm.cargoConfianca,
+        requisitosFormacao: cargoForm.requisitosFormacao || undefined,
+        requisitos: cargoForm.requisitos || undefined,
+        competencias: cargoForm.competencias || undefined,
+        nivel: cargoForm.nivel,
+        descricaoNivel: cargoForm.descricaoNivel || undefined,
+      });
+    }
+  }
 
   const colabList = ((colaboradores.data || []) as any[]).filter(c => c.ativo !== false);
   const setoresList = useMemo(() => {
     const raw = setores.data;
     return ((raw as any)?.setores || raw || []) as any[];
   }, [setores.data]);
-  const niveis = niveisQuery.data || [];
+  const niveis = (niveisQuery.data || []) as any[];
+
+  // Filter cargos
+  const filteredCargos = useMemo(() => {
+    let list = [...niveis];
+    if (searchCargo) {
+      const term = searchCargo.toLowerCase();
+      list = list.filter(c => 
+        (c.cargo || '').toLowerCase().includes(term) ||
+        (c.funcao || '').toLowerCase().includes(term)
+      );
+    }
+    if (filterSetor !== 'todos') {
+      list = list.filter(c => String(c.setorId) === filterSetor);
+    }
+    return list.sort((a, b) => (a.cargo || '').localeCompare(b.cargo || ''));
+  }, [niveis, searchCargo, filterSetor]);
 
   // Analytics by setor
   const porSetor = useMemo(() => {
@@ -403,57 +511,6 @@ export default function CargosSalarios() {
   const mediaSalarial = totalColaboradores > 0 ? custoTotalMensal / totalColaboradores : 0;
   const maxBarSetor = porSetor.length > 0 ? Math.max(...porSetor.map(s => s.custoTotal)) : 1;
   const maxBarNivel = porNivel.length > 0 ? Math.max(...porNivel.map(n => n.custoTotal)) : 1;
-
-  // Niveis grouped
-  const niveisGrouped = useMemo(() => {
-    return (niveis || []).reduce((acc: Record<string, typeof niveis>, n) => {
-      const key = n.cargo || 'Sem Cargo';
-      if (!acc[key]) acc[key] = [];
-      acc[key]!.push(n);
-      return acc;
-    }, {} as Record<string, typeof niveis>);
-  }, [niveis]);
-
-  function handleSaveNivel() {
-    if (!nivelForm.titulo || !nivelForm.salarioMinimo) {
-      toast.error('Preencha os campos obrigatórios'); return;
-    }
-    const setor = setoresList.find((s: any) => s.id === nivelForm.setorId);
-    createNivel.mutate({
-      setorId: nivelForm.setorId,
-      setorNome: setor?.nome || setor?.sigla || '',
-      cargo: nivelForm.titulo,
-      nivel: nivelForm.nivel,
-      descricao: nivelForm.descricao || undefined,
-      salarioMinimo: nivelForm.salarioMinimo || undefined,
-      salarioMaximo: nivelForm.salarioMaximo || undefined,
-      requisitosGrauInstrucao: nivelForm.grauInstrucaoMinimo || undefined,
-      requisitosExperiencia: nivelForm.requisitosFormacao || undefined,
-    });
-  }
-
-  // Cargos únicos (from colaboradores)
-  const cargosUnicos = useMemo(() => {
-    const map = new Map<string, { cargo: string; count: number; salarios: number[]; setores: Set<string> }>();
-    colabList.forEach(c => {
-      const cargo = c.cargo || 'Sem Cargo';
-      if (!map.has(cargo)) map.set(cargo, { cargo, count: 0, salarios: [], setores: new Set() });
-      const entry = map.get(cargo)!;
-      entry.count++;
-      entry.salarios.push(parseSalario(c.salarioBase));
-      const setor = setoresList.find(s => s.id === c.setorId);
-      if (setor) entry.setores.add(setor.nome || setor.sigla || '');
-    });
-    return Array.from(map.values())
-      .map(e => ({
-        ...e,
-        media: e.salarios.length > 0 ? e.salarios.reduce((a, b) => a + b, 0) / e.salarios.length : 0,
-        min: e.salarios.length > 0 ? Math.min(...e.salarios) : 0,
-        max: e.salarios.length > 0 ? Math.max(...e.salarios) : 0,
-        setoresArr: Array.from(e.setores),
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [colabList, setoresList]);
 
   return (
     <div className="space-y-6">
@@ -508,19 +565,18 @@ export default function CargosSalarios() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center"><Layers className="w-5 h-5 text-teal-600" /></div>
-              <div><p className="text-2xl font-bold">{cargosUnicos.length}</p><p className="text-xs text-muted-foreground">Cargos</p></div>
+              <div><p className="text-2xl font-bold">{niveis.length}</p><p className="text-xs text-muted-foreground">Cargos Cadastrados</p></div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - 3 tabs only */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="cadastro" className="gap-2"><Briefcase className="w-4 h-4" /> Cadastro</TabsTrigger>
           <TabsTrigger value="organograma" className="gap-2"><GitBranch className="w-4 h-4" /> Organograma</TabsTrigger>
           <TabsTrigger value="analise" className="gap-2"><BarChart3 className="w-4 h-4" /> Análise Salarial</TabsTrigger>
-          <TabsTrigger value="niveis" className="gap-2"><Layers className="w-4 h-4" /> Níveis e Funções</TabsTrigger>
         </TabsList>
 
         {/* ===== ABA CADASTRO ===== */}
@@ -528,59 +584,119 @@ export default function CargosSalarios() {
           <Card className="bg-muted/30">
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">
-                Visão consolidada dos cargos existentes com base nos colaboradores cadastrados. Os cargos e funções são derivados automaticamente do cadastro de colaboradores.
+                Cadastre a estrutura de cargos e salários da Evox Fiscal. Ao cadastrar um colaborador, o sistema buscará automaticamente as informações de cargo e salário desta base.
               </p>
             </CardContent>
           </Card>
 
-          {cargosUnicos.length === 0 ? (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum cargo cadastrado</CardContent></Card>
+          {/* Filters + Add button */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <div className="flex gap-3 flex-1 w-full sm:w-auto">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cargo ou função..."
+                  value={searchCargo}
+                  onChange={e => setSearchCargo(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={filterSetor} onValueChange={setFilterSetor}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filtrar por setor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Setores</SelectItem>
+                  {setoresList.map((s: any) => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.nome || s.sigla}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={openNewCargo} className="gap-2 shrink-0">
+              <Plus className="w-4 h-4" /> Novo Cargo
+            </Button>
+          </div>
+
+          {/* Cargos Table */}
+          {niveisQuery.isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>
+          ) : filteredCargos.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                {niveis.length === 0 ? 'Nenhum cargo cadastrado. Clique em "Novo Cargo" para começar.' : 'Nenhum cargo encontrado com os filtros aplicados.'}
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-muted/50">
                         <TableHead className="font-semibold">Cargo</TableHead>
-                        <TableHead className="text-center font-semibold">Qtd</TableHead>
-                        <TableHead className="font-semibold">Setores</TableHead>
-                        <TableHead className="text-right font-semibold">Menor Salário</TableHead>
-                        <TableHead className="text-right font-semibold">Média</TableHead>
-                        <TableHead className="text-right font-semibold">Maior Salário</TableHead>
-                        <TableHead className="text-right font-semibold">Custo Total/mês</TableHead>
+                        <TableHead className="font-semibold">Função</TableHead>
+                        <TableHead className="font-semibold">Setor</TableHead>
+                        <TableHead className="font-semibold text-center">Grau Mín.</TableHead>
+                        <TableHead className="font-semibold text-right">Salário Base</TableHead>
+                        <TableHead className="font-semibold text-center">Comissionado</TableHead>
+                        <TableHead className="font-semibold text-center">Confiança</TableHead>
+                        <TableHead className="font-semibold text-center w-28">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {cargosUnicos.map((c, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{c.cargo}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="secondary">{c.count}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {c.setoresArr.slice(0, 3).map((s, j) => (
-                                <Badge key={j} variant="outline" className="text-[10px]">{s.replace(/^[A-Z]+\s*[–-]\s*/, '')}</Badge>
-                              ))}
-                              {c.setoresArr.length > 3 && <Badge variant="outline" className="text-[10px]">+{c.setoresArr.length - 3}</Badge>}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">{formatCurrency(c.min)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(c.media)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(c.max)}</TableCell>
-                          <TableCell className="text-right font-semibold">{formatCurrency(c.salarios.reduce((a, b) => a + b, 0))}</TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="font-bold border-t-2">
-                        <TableCell>Total</TableCell>
-                        <TableCell className="text-center">{totalColaboradores}</TableCell>
-                        <TableCell />
-                        <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right">{formatCurrency(mediaSalarial)}</TableCell>
-                        <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right">{formatCurrency(custoTotalMensal)}</TableCell>
-                      </TableRow>
+                      {filteredCargos.map((c: any) => {
+                        const setor = setoresList.find((s: any) => s.id === c.setorId);
+                        return (
+                          <TableRow key={c.id} className="hover:bg-muted/30">
+                            <TableCell className="font-medium">{c.cargo}</TableCell>
+                            <TableCell className="text-muted-foreground">{c.funcao || '—'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[10px]">
+                                {setor?.nome || setor?.sigla || `Setor ${c.setorId}`}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge className="bg-blue-50 text-blue-700 border-blue-200" variant="outline">
+                                <GraduationCap className="w-3 h-3 mr-1" />
+                                {GRAU_LABELS[c.grauInstrucaoMinimo || ''] || c.grauInstrucaoMinimo || '—'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {c.salarioBase ? formatCurrency(Number(c.salarioBase)) : '—'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {c.comissionado ? (
+                                <Badge className="bg-green-50 text-green-700 border-green-200" variant="outline"><Check className="w-3 h-3 mr-1" /> Sim</Badge>
+                              ) : (
+                                <Badge className="bg-gray-50 text-gray-500 border-gray-200" variant="outline"><XCircle className="w-3 h-3 mr-1" /> Não</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {c.cargoConfianca ? (
+                                <Badge className="bg-amber-50 text-amber-700 border-amber-200" variant="outline"><Check className="w-3 h-3 mr-1" /> Sim</Badge>
+                              ) : (
+                                <Badge className="bg-gray-50 text-gray-500 border-gray-200" variant="outline"><XCircle className="w-3 h-3 mr-1" /> Não</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingCargo(c)}>
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditCargo(c)}>
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => {
+                                  if (confirm(`Remover o cargo "${c.cargo}"?`)) deleteCargo.mutate({ id: c.id });
+                                }}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -593,256 +709,117 @@ export default function CargosSalarios() {
         <TabsContent value="organograma" className="space-y-4 mt-4">
           <Card className="bg-muted/30">
             <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">
-                O organograma é gerado automaticamente a partir dos colaboradores cadastrados, agrupados por setor e organizados pela hierarquia definida no nível hierárquico de cada colaborador.
-              </p>
+              <p className="text-sm text-muted-foreground">Organograma hierárquico por setor, baseado nos colaboradores cadastrados e seus níveis hierárquicos.</p>
             </CardContent>
           </Card>
-          {porSetor.length === 0 && (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum colaborador cadastrado para gerar o organograma</CardContent></Card>
+          {porSetor.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum colaborador cadastrado</CardContent></Card>
+          ) : (
+            porSetor.map((s, idx) => (
+              <SetorOrganograma key={idx} nome={s.nome} colaboradores={s.colaboradores} />
+            ))
           )}
-          {porSetor.map((s, idx) => (
-            <SetorOrganograma key={idx} nome={s.nome} colaboradores={s.colaboradores} />
-          ))}
         </TabsContent>
 
         {/* ===== ABA ANÁLISE SALARIAL ===== */}
         <TabsContent value="analise" className="space-y-6 mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Custo por Setor */}
-            <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4" /> Custo Salarial por Setor</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {porSetor.map((s, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-sm items-center">
-                      <span className="font-medium truncate max-w-[200px]">{s.nome.replace(/^[A-Z]+\s*[–-]\s*/, '')}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">{s.colaboradores.length} col. — {formatCurrency(s.custoTotal)}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-7 h-7"
-                          onClick={() => setMemoriaSetor({ nome: s.nome, colaboradores: s.colaboradores })}
-                          title="Ver memória de cálculo"
-                        >
-                          <Calculator className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(s.custoTotal / maxBarSetor) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Custo por Nível */}
-            <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Custo Salarial por Nível</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {porNivel.map((n, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium">{n.label} ({n.count})</span>
-                      <span className="text-muted-foreground">{formatCurrency(n.custoTotal)}</span>
-                    </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${(n.custoTotal / maxBarNivel) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Detailed Table */}
-          <Card>
-            <CardHeader><CardTitle className="text-base">Detalhamento por Nível Hierárquico</CardTitle></CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nível</TableHead>
-                    <TableHead className="text-right">Qtd</TableHead>
-                    <TableHead className="text-right">Menor Salário</TableHead>
-                    <TableHead className="text-right">Média</TableHead>
-                    <TableHead className="text-right">Maior Salário</TableHead>
-                    <TableHead className="text-right">Custo Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {porNivel.map((n, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium">{n.label}</TableCell>
-                      <TableCell className="text-right">{n.count}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(n.min)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(n.media)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(n.max)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(n.custoTotal)}</TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="font-bold border-t-2">
-                    <TableCell>Total</TableCell>
-                    <TableCell className="text-right">{totalColaboradores}</TableCell>
-                    <TableCell className="text-right">—</TableCell>
-                    <TableCell className="text-right">{formatCurrency(mediaSalarial)}</TableCell>
-                    <TableCell className="text-right">—</TableCell>
-                    <TableCell className="text-right">{formatCurrency(custoTotalMensal)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+          <Card className="bg-muted/30">
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">Análise salarial por setor e nível hierárquico, com custo total e memória de cálculo detalhada.</p>
             </CardContent>
           </Card>
 
-          {/* Colaboradores por Setor - with Memória de Cálculo */}
-          {porSetor.map((s, idx) => (
-            <Card key={idx}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">{s.nome.replace(/^[A-Z]+\s*[–-]\s*/, '')} — {s.colaboradores.length} colaborador(es)</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setMemoriaSetor({ nome: s.nome, colaboradores: s.colaboradores })}
-                >
-                  <Calculator className="w-4 h-4" /> Memória de Cálculo
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Nível</TableHead>
-                      <TableHead className="text-right">Salário Base</TableHead>
-                      <TableHead>Contrato</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {s.colaboradores.map((c: any) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.nomeCompleto}</TableCell>
-                        <TableCell>{c.cargo}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px]">{NIVEL_LABELS[c.nivelHierarquico] || 'N/D'}</Badge></TableCell>
-                        <TableCell className="text-right">{formatCurrency(c.salarioNum)}</TableCell>
-                        <TableCell><Badge variant="secondary" className="text-[10px]">{c.tipoContrato?.toUpperCase() || 'CLT'}</Badge></TableCell>
+          {/* Por Setor */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary" /> Custo Salarial por Setor
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {porSetor.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado disponível</p>
+              ) : (
+                <div className="space-y-3">
+                  {porSetor.map((s, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <span className="text-sm w-40 truncate font-medium">{s.nome.replace(/^[A-Z]+\s*[–-]\s*/, '')}</span>
+                      <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden relative">
+                        <div
+                          className="h-full bg-primary/50 rounded-full transition-all"
+                          style={{ width: `${(s.custoTotal / maxBarSetor) * 100}%` }}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium">
+                          {s.colaboradores.length} colab.
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setMemoriaSetor({ nome: s.nome, colaboradores: s.colaboradores })}
+                        className="text-sm font-semibold text-primary hover:underline cursor-pointer w-32 text-right"
+                        title="Clique para ver memória de cálculo"
+                      >
+                        {formatCurrency(s.custoTotal)}
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-3 pt-2 border-t font-bold">
+                    <span className="text-sm w-40">TOTAL</span>
+                    <div className="flex-1" />
+                    <span className="text-sm w-32 text-right">{formatCurrency(custoTotalMensal)}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Por Nível */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ArrowUpCircle className="w-4 h-4 text-primary" /> Custo por Nível Hierárquico
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {porNivel.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado disponível</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-semibold">Nível</TableHead>
+                        <TableHead className="text-center font-semibold">Qtd</TableHead>
+                        <TableHead className="text-right font-semibold">Menor</TableHead>
+                        <TableHead className="text-right font-semibold">Média</TableHead>
+                        <TableHead className="text-right font-semibold">Maior</TableHead>
+                        <TableHead className="text-right font-semibold">Custo Total</TableHead>
+                        <TableHead className="font-semibold">Distribuição</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        {/* ===== ABA NÍVEIS E FUNÇÕES ===== */}
-        <TabsContent value="niveis" className="space-y-4 mt-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Definição de níveis por cargo/setor com requisitos de formação e faixas salariais</p>
-            <Button onClick={() => {
-              setNivelForm({ cargoId: 0, setorId: 0, nivel: 1, titulo: '', descricao: '', salarioMinimo: '', salarioMaximo: '', grauInstrucaoMinimo: 'medio_completo', requisitosFormacao: '' });
-              setShowNivelDialog(true);
-            }}>
-              <Plus className="w-4 h-4 mr-2" /> Novo Nível
-            </Button>
-          </div>
-
-          {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-teal-200 bg-teal-50/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-3">
-                  <Layers className="w-8 h-8 text-teal-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total Níveis</p>
-                    <p className="text-2xl font-bold text-teal-700">{niveis?.length || 0}</p>
-                  </div>
+                    </TableHeader>
+                    <TableBody>
+                      {porNivel.map(n => (
+                        <TableRow key={n.nivel}>
+                          <TableCell className="font-medium">
+                            <Badge className={`${NIVEL_COLORS[n.nivel] || 'bg-gray-100 text-gray-800'} text-[10px]`}>{n.label}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">{n.count}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(n.min)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(n.media)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(n.max)}</TableCell>
+                          <TableCell className="text-right font-semibold">{formatCurrency(n.custoTotal)}</TableCell>
+                          <TableCell>
+                            <div className="w-24 h-3 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-primary/50 rounded-full" style={{ width: `${(n.custoTotal / maxBarNivel) * 100}%` }} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-3">
-                  <GraduationCap className="w-8 h-8 text-blue-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Cargos com Níveis</p>
-                    <p className="text-2xl font-bold text-blue-700">{Object.keys(niveisGrouped).length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-green-200 bg-green-50/50">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-3">
-                  <ArrowUpCircle className="w-8 h-8 text-green-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Nível Máximo</p>
-                    <p className="text-2xl font-bold text-green-700">{niveis?.length ? Math.max(...niveis.map(n => n.nivel)) : 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Tabela agrupada */}
-          {niveisQuery.isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>
-          ) : !niveis?.length ? (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum nível de cargo cadastrado</CardContent></Card>
-          ) : (
-            Object.entries(niveisGrouped).map(([cargoNome, items]) => (
-              <Card key={cargoNome}>
-                <CardContent className="p-0">
-                  <div className="px-4 py-3 bg-muted/50 border-b">
-                    <h3 className="font-semibold text-sm">{cargoNome}</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-center px-4 py-2 font-medium w-16">Nível</th>
-                          <th className="text-left px-4 py-2 font-medium">Título</th>
-                          <th className="text-left px-4 py-2 font-medium">Setor</th>
-                          <th className="text-center px-4 py-2 font-medium">Grau Mín.</th>
-                          <th className="text-right px-4 py-2 font-medium">Faixa Salarial</th>
-                          <th className="text-center px-4 py-2 font-medium w-16">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(items || []).sort((a, b) => a.nivel - b.nivel).map(n => (
-                          <tr key={n.id} className="border-b hover:bg-muted/30">
-                            <td className="px-4 py-2 text-center">
-                              <Badge variant="outline" className="font-bold">{n.nivel}</Badge>
-                            </td>
-                            <td className="px-4 py-2 font-medium">{n.descricaoNivel || `Nível ${n.nivel}`}</td>
-                            <td className="px-4 py-2 text-muted-foreground">{setoresList.find(s => s.id === n.setorId)?.nome || `Setor ${n.setorId}`}</td>
-                            <td className="px-4 py-2 text-center">
-                              <Badge className="bg-blue-50 text-blue-700 border-blue-200" variant="outline">
-                                <GraduationCap className="w-3 h-3 mr-1" />
-                                {GRAU_LABELS[n.grauInstrucaoMinimo || ''] || n.grauInstrucaoMinimo || '-'}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <span className="text-muted-foreground">{formatCurrency(Number(n.salarioMinimo || 0))}</span>
-                              {n.salarioMaximo && <span className="text-muted-foreground"> — {formatCurrency(Number(n.salarioMaximo || 0))}</span>}
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              <Button variant="ghost" size="icon" className="text-red-500" onClick={() => { if (confirm('Remover?')) deleteNivel.mutate({ id: n.id }); }}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -856,20 +833,118 @@ export default function CargosSalarios() {
         />
       )}
 
-      {/* Nivel Dialog */}
-      <Dialog open={showNivelDialog} onOpenChange={setShowNivelDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Layers className="w-5 h-5" /> Novo Nível de Cargo</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+      {/* View Cargo Dialog */}
+      <Dialog open={!!viewingCargo} onOpenChange={() => setViewingCargo(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-primary" /> Detalhes do Cargo
+            </DialogTitle>
+          </DialogHeader>
+          {viewingCargo && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Cargo</p>
+                  <p className="font-semibold">{viewingCargo.cargo}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Função</p>
+                  <p className="font-medium">{viewingCargo.funcao || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Setor</p>
+                  <p className="font-medium">{setoresList.find((s: any) => s.id === viewingCargo.setorId)?.nome || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Grau de Instrução Mínimo</p>
+                  <p className="font-medium">{GRAU_LABELS[viewingCargo.grauInstrucaoMinimo || ''] || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Salário Base</p>
+                  <p className="font-semibold text-green-700">{viewingCargo.salarioBase ? formatCurrency(Number(viewingCargo.salarioBase)) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Faixa Salarial</p>
+                  <p className="font-medium">
+                    {viewingCargo.salarioMinimo ? formatCurrency(Number(viewingCargo.salarioMinimo)) : '—'}
+                    {viewingCargo.salarioMaximo ? ` — ${formatCurrency(Number(viewingCargo.salarioMaximo))}` : ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Comissionado</p>
+                  <Badge className={viewingCargo.comissionado ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'} variant="outline">
+                    {viewingCargo.comissionado ? 'Sim' : 'Não'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Cargo de Confiança</p>
+                  <Badge className={viewingCargo.cargoConfianca ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-500'} variant="outline">
+                    {viewingCargo.cargoConfianca ? 'Sim' : 'Não'}
+                  </Badge>
+                </div>
+              </div>
+              {viewingCargo.requisitosFormacao && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Requisitos de Formação</p>
+                  <p className="text-sm bg-muted/50 p-3 rounded-lg">{viewingCargo.requisitosFormacao}</p>
+                </div>
+              )}
+              {viewingCargo.competencias && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Competências</p>
+                  <p className="text-sm bg-muted/50 p-3 rounded-lg">{viewingCargo.competencias}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingCargo(null)}>Fechar</Button>
+            <Button onClick={() => { openEditCargo(viewingCargo); setViewingCargo(null); }}>
+              <Edit2 className="w-4 h-4 mr-2" /> Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create/Edit Cargo Dialog */}
+      <Dialog open={showCargoDialog} onOpenChange={(open) => { if (!open) { setShowCargoDialog(false); resetForm(); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              {editingCargoId ? 'Editar Cargo' : 'Novo Cargo'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            {/* Row 1: Cargo + Função */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Cargo *</Label>
-                <Input value={nivelForm.titulo} onChange={e => setNivelForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ex: Analista Fiscal" />
+                <Label className="text-sm font-medium">Nome do Cargo <span className="text-red-500">*</span></Label>
+                <Input
+                  value={cargoForm.cargo}
+                  onChange={e => setCargoForm(f => ({ ...f, cargo: e.target.value }))}
+                  placeholder="Ex: Analista Fiscal"
+                  className="mt-1"
+                />
               </div>
               <div>
-                <Label>Setor</Label>
-                <Select value={nivelForm.setorId ? String(nivelForm.setorId) : ''} onValueChange={v => setNivelForm(f => ({ ...f, setorId: Number(v) }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <Label className="text-sm font-medium">Função</Label>
+                <Input
+                  value={cargoForm.funcao}
+                  onChange={e => setCargoForm(f => ({ ...f, funcao: e.target.value }))}
+                  placeholder="Ex: Análise de tributos"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Setor + Grau Instrução */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Setor <span className="text-red-500">*</span></Label>
+                <Select value={cargoForm.setorId ? String(cargoForm.setorId) : ''} onValueChange={v => setCargoForm(f => ({ ...f, setorId: Number(v) }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o setor..." /></SelectTrigger>
                   <SelectContent>
                     {setoresList.map((s: any) => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.nome || s.sigla}</SelectItem>
@@ -877,47 +952,125 @@ export default function CargosSalarios() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Nível *</Label>
-                <Input type="number" value={nivelForm.nivel} onChange={e => setNivelForm(f => ({ ...f, nivel: Number(e.target.value) }))} min={1} />
-              </div>
-              <div>
-                <Label>Título do Nível</Label>
-                <Input value={nivelForm.descricao} onChange={e => setNivelForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Ex: Júnior, Pleno, Sênior" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Salário Mínimo (R$) *</Label>
-                <Input type="number" step="0.01" value={nivelForm.salarioMinimo} onChange={e => setNivelForm(f => ({ ...f, salarioMinimo: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Salário Máximo (R$)</Label>
-                <Input type="number" step="0.01" value={nivelForm.salarioMaximo} onChange={e => setNivelForm(f => ({ ...f, salarioMaximo: e.target.value }))} />
+                <Label className="text-sm font-medium">Grau de Instrução Mínimo</Label>
+                <Select value={cargoForm.grauInstrucaoMinimo} onValueChange={v => setCargoForm(f => ({ ...f, grauInstrucaoMinimo: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(GRAU_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+
+            {/* Row 3: Salário Base + Faixa */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Salário Base (R$) <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cargoForm.salarioBase}
+                  onChange={e => setCargoForm(f => ({ ...f, salarioBase: e.target.value }))}
+                  placeholder="0,00"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Salário Mínimo (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cargoForm.salarioMinimo}
+                  onChange={e => setCargoForm(f => ({ ...f, salarioMinimo: e.target.value }))}
+                  placeholder="Faixa mín."
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Salário Máximo (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cargoForm.salarioMaximo}
+                  onChange={e => setCargoForm(f => ({ ...f, salarioMaximo: e.target.value }))}
+                  placeholder="Faixa máx."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* Row 4: Comissionado + Cargo de Confiança */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="border">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium">Cargo Comissionado</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">Este cargo recebe comissão?</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-sm font-medium ${!cargoForm.comissionado ? 'text-foreground' : 'text-muted-foreground'}`}>Não</span>
+                      <Switch
+                        checked={!!cargoForm.comissionado}
+                        onCheckedChange={checked => setCargoForm(f => ({ ...f, comissionado: checked ? 1 : 0 }))}
+                      />
+                      <span className={`text-sm font-medium ${cargoForm.comissionado ? 'text-green-600' : 'text-muted-foreground'}`}>Sim</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium">Cargo de Confiança</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">Este é um cargo de confiança?</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-sm font-medium ${!cargoForm.cargoConfianca ? 'text-foreground' : 'text-muted-foreground'}`}>Não</span>
+                      <Switch
+                        checked={!!cargoForm.cargoConfianca}
+                        onCheckedChange={checked => setCargoForm(f => ({ ...f, cargoConfianca: checked ? 1 : 0 }))}
+                      />
+                      <span className={`text-sm font-medium ${cargoForm.cargoConfianca ? 'text-amber-600' : 'text-muted-foreground'}`}>Sim</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Row 5: Requisitos de Formação */}
             <div>
-              <Label>Grau de Instrução Mínimo</Label>
-              <Select value={nivelForm.grauInstrucaoMinimo} onValueChange={v => setNivelForm(f => ({ ...f, grauInstrucaoMinimo: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(GRAU_LABELS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-medium">Requisitos de Formação</Label>
+              <Textarea
+                value={cargoForm.requisitosFormacao}
+                onChange={e => setCargoForm(f => ({ ...f, requisitosFormacao: e.target.value }))}
+                rows={2}
+                placeholder="Ex: Graduação em Administração, Contabilidade ou áreas afins"
+                className="mt-1"
+              />
             </div>
+
+            {/* Row 6: Competências */}
             <div>
-              <Label>Requisitos de Formação</Label>
-              <Textarea value={nivelForm.requisitosFormacao} onChange={e => setNivelForm(f => ({ ...f, requisitosFormacao: e.target.value }))} rows={2} placeholder="Ex: Graduação em Administração ou áreas afins" />
+              <Label className="text-sm font-medium">Competências / Requisitos Adicionais</Label>
+              <Textarea
+                value={cargoForm.competencias}
+                onChange={e => setCargoForm(f => ({ ...f, competencias: e.target.value }))}
+                rows={2}
+                placeholder="Ex: Excel avançado, conhecimento em legislação tributária"
+                className="mt-1"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNivelDialog(false)}>Cancelar</Button>
-            <Button onClick={handleSaveNivel} disabled={createNivel.isPending}>
-              {createNivel.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Salvar
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setShowCargoDialog(false); resetForm(); }}>Cancelar</Button>
+            <Button onClick={handleSaveCargo} disabled={createCargo.isPending || updateCargo.isPending}>
+              {(createCargo.isPending || updateCargo.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingCargoId ? 'Salvar Alterações' : 'Cadastrar Cargo'}
             </Button>
           </DialogFooter>
         </DialogContent>

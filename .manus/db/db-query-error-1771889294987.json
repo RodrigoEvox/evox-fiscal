@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE niveis_cargo \n  ADD COLUMN funcao VARCHAR(255) DEFAULT NULL AFTER cargo,\n  ADD COLUMN salario_base DECIMAL(12,2) DEFAULT NULL AFTER salarioMaximo,\n  ADD COLUMN comissionado TINYINT DEFAULT 0 NOT NULL AFTER salario_base,\n  ADD COLUMN cargo_confianca TINYINT DEFAULT 0 NOT NULL AFTER comissionado,\n  ADD COLUMN requisitos_formacao TEXT DEFAULT NULL AFTER cargo_confianca;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE niveis_cargo \n  ADD COLUMN funcao VARCHAR(255) DEFAULT NULL AFTER cargo,\n  ADD COLUMN salario_base DECIMAL(12,2) DEFAULT NULL AFTER salarioMaximo,\n  ADD COLUMN comissionado TINYINT DEFAULT 0 NOT NULL AFTER salario_base,\n  ADD COLUMN cargo_confianca TINYINT DEFAULT 0 NOT NULL AFTER comissionado,\n  ADD COLUMN requisitos_formacao TEXT DEFAULT NULL AFTER cargo_confianca;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'salario_base' in 'niveis_cargo'"
+  ]
+}

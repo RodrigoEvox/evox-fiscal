@@ -1399,10 +1399,14 @@ export default function ColaboradoresGEG() {
     setForm(f => ({
       ...f,
       cargo: cargoNome,
-      salarioBase: nc?.salarioMinimo || nc?.salarioMaximo || f.salarioBase,
+      salarioBase: nc?.salarioBase || nc?.salarioMinimo || nc?.salarioMaximo || f.salarioBase,
+      funcao: nc?.funcao || f.funcao,
       setorId: nc?.setorId || f.setorId,
       nivelHierarquico: f.nivelHierarquico || '',
     }));
+    if (nc?.salarioBase) {
+      toast.info(`Salário base preenchido automaticamente: R$ ${Number(nc.salarioBase).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+    }
     markDirty();
   };
 
@@ -2261,7 +2265,7 @@ export default function ColaboradoresGEG() {
                     <SelectContent>
                       {cargosBySetor.map((nc: any) => {
                         const setorNome = setoresList.find((s: any) => s.id === nc.setorId)?.nome || '';
-                        const faixa = nc.salarioMinimo ? `R$ ${Number(nc.salarioMinimo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
+                        const faixa = nc.salarioBase ? `R$ ${Number(nc.salarioBase).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : (nc.salarioMinimo ? `R$ ${Number(nc.salarioMinimo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '');
                         return (
                           <SelectItem key={nc.id} value={nc.cargo}>
                             <span>{nc.cargo}</span>
