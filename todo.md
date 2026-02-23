@@ -1629,3 +1629,12 @@
 - [x] Busca por letra inicial no dropdown de cursos: índice alfabético lateral (A, B, C...)
 - [x] Indicador de formação na listagem de colaboradores: badge/ícone do grau de instrução na tabela
 - [x] Validação de duplicidade de formações: alertar ao adicionar mesmo curso duas vezes
+
+## v61 — CCT Descrição, Voltar Administração, Cargos e Salários Unificado
+- [x] Atualizar descrição da CCT no hub Administração: "Gestão de convenções coletivas com análise automática por IA"
+- [x] Corrigir botão Voltar nos submenus de Administração para retornar ao menu anterior (não ao Dashboard)
+- [x] Unificar Custo Salarial + Cargos e Níveis em "Cargos e Salários" com descrição atualizada
+- [x] Cadastro base de cargos, salários, funções e níveis por setor
+- [x] Organograma por setor
+- [x] Análise salarial atual por setor com custo salarial baseado em colaboradores
+- [x] Memória de cálculo ao clicar em valores com exportação PDF e Excel

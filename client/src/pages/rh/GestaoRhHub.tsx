@@ -13,5 +13,5 @@ const ITEMS = [
 ];
 
 export default function GestaoRhHub() {
-  return <GegHubPage title="Gestão RH" grupo="Gestão RH" items={ITEMS} />;
+  return <GegHubPage title="Gestão RH" grupo="Gestão RH" items={ITEMS} backRoute="/rh/geg" />;
 }

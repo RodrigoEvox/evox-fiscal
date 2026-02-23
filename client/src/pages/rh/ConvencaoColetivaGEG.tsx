@@ -161,7 +161,7 @@ export default function ConvencaoColetivaGEG() {
   // Filtered list
   const filteredList = useMemo(() => {
     if (!cctList.data) return [];
-    const list = cctList.data as CCTRecord[];
+    const list = cctList.data as unknown as CCTRecord[];
     if (!searchTerm) return list;
     const term = searchTerm.toLowerCase();
     return list.filter(c =>
@@ -173,7 +173,7 @@ export default function ConvencaoColetivaGEG() {
   // KPIs
   const kpis = useMemo(() => {
     if (!cctList.data) return { total: 0, vigentes: 0, vencidas: 0, alertas: 0 };
-    const list = cctList.data as CCTRecord[];
+    const list = cctList.data as unknown as CCTRecord[];
     const vigentes = list.filter(c => c.cctStatus === 'vigente' && diasParaVencer(c.vigenciaFim) > 90).length;
     const vencidas = list.filter(c => c.cctStatus === 'vencida' || diasParaVencer(c.vigenciaFim) < 0).length;
     const alertas = list.filter(c => {
@@ -249,7 +249,7 @@ export default function ConvencaoColetivaGEG() {
       utils.cct.list.invalidate();
       // Refresh selected CCT
       const updated = await utils.cct.list.fetch();
-      const refreshed = (updated as CCTRecord[])?.find(c => c.id === cct.id);
+      const refreshed = (updated as unknown as CCTRecord[])?.find(c => c.id === cct.id);
       if (refreshed) setSelectedCCT(refreshed);
     } catch (err: any) {
       toast.error('Erro na análise: ' + err.message);

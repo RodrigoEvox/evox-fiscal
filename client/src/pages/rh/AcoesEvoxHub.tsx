@@ -8,5 +8,5 @@ const ITEMS = [
 ];
 
 export default function AcoesEvoxHub() {
-  return <GegHubPage title="Ações Evox" grupo="Ações Evox" items={ITEMS} />;
+  return <GegHubPage title="Ações Evox" grupo="Ações Evox" items={ITEMS} backRoute="/rh/geg" />;
 }

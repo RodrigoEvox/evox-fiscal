@@ -1,8 +1,7 @@
 import GegHubPage from './GegHubPage';
 
 const ITEMS = [
-  { key: 'cargos-salarios', label: 'Custo Salarial', rota: '/rh/cargos-salarios' },
-  { key: 'niveis-cargo', label: 'Cargos e Níveis', rota: '/rh/niveis-cargo' },
+  { key: 'cargos-salarios', label: 'Cargos e Salários', rota: '/rh/cargos-salarios' },
   { key: 'apontamentos-folha', label: 'Apontamentos da Folha', rota: '/rh/apontamentos-folha' },
   { key: 'rescisao', label: 'Rescisão', rota: '/rh/rescisao' },
   { key: 'comissao-rh', label: 'Comissões e Prêmios', rota: '/rh/comissao-rh' },
@@ -13,5 +12,5 @@ const ITEMS = [
 ];
 
 export default function AdministracaoHub() {
-  return <GegHubPage title="Administração" grupo="Administração" items={ITEMS} />;
+  return <GegHubPage title="Administração" grupo="Administração" items={ITEMS} backRoute="/rh/geg" />;
 }

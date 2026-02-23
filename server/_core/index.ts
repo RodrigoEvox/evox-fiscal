@@ -1031,6 +1031,125 @@ async function startServer() {
     }
   });
 
+  // ---- MEMÓRIA DE CÁLCULO PDF ----
+  app.get('/api/cargos-salarios/memoria-calculo-pdf', async (req: any, res: any) => {
+    try {
+      const { createPDF, addHeader, addKPIs, addSectionTitle, addTable, addFooter, fmtCurrency } = await import('../pdfGenerator');
+      const db = await import('../db');
+      const setorNome = (req.query.setor || '') as string;
+      const allColabs = await db.listColaboradores();
+      const allSetores = await db.listSetores();
+      const setoresList = (allSetores || []) as any[];
+      const colabList = ((allColabs || []) as any[]).filter(c => c.ativo !== false);
+
+      // Find setor by name
+      let filteredColabs = colabList;
+      if (setorNome && setorNome !== 'Sem Setor') {
+        const setor = setoresList.find(s => s.nome === setorNome || s.sigla === setorNome);
+        if (setor) {
+          filteredColabs = colabList.filter(c => c.setorId === setor.id);
+        }
+      } else if (setorNome === 'Sem Setor') {
+        filteredColabs = colabList.filter(c => !c.setorId);
+      }
+
+      const NIVEL_LABELS: Record<string, string> = {
+        estagiario: 'Estagiário', auxiliar: 'Auxiliar', assistente: 'Assistente',
+        analista_jr: 'Analista Jr', analista_pl: 'Analista Pleno', analista_sr: 'Analista Sênior',
+        coordenador: 'Coordenador', supervisor: 'Supervisor', gerente: 'Gerente', diretor: 'Diretor',
+      };
+
+      const custoTotal = filteredColabs.reduce((sum: number, c: any) => {
+        const sal = Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        return sum + sal;
+      }, 0);
+      const media = filteredColabs.length > 0 ? custoTotal / filteredColabs.length : 0;
+
+      const doc = createPDF();
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => {
+        const pdfBuf = Buffer.concat(chunks);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="memoria-calculo-${setorNome.replace(/\s/g, '-').toLowerCase()}.pdf"`);
+        res.send(pdfBuf);
+      });
+
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      const setorLabel = setorNome.replace(/^[A-Z]+\s*[–-]\s*/, '');
+      addHeader(doc, `Memória de Cálculo — ${setorLabel}`, `Evox Fiscal — Cargos e Salários | Gerado em ${dataHora}`);
+
+      addKPIs(doc, [
+        { label: 'Colaboradores', value: String(filteredColabs.length), color: '#3B82F6' },
+        { label: 'Custo Mensal', value: fmtCurrency(custoTotal), color: '#10B981' },
+        { label: 'Custo Anual', value: fmtCurrency(custoTotal * 12), color: '#8B5CF6' },
+        { label: 'Média Salarial', value: fmtCurrency(media), color: '#F59E0B' },
+      ]);
+
+      addSectionTitle(doc, 'Detalhamento por Colaborador');
+      const columns = [
+        { header: '#', width: 25 },
+        { header: 'Nome', width: 140 },
+        { header: 'Cargo', width: 100 },
+        { header: 'Nível', width: 70 },
+        { header: 'Salário Base', width: 80 },
+        { header: 'Contrato', width: 50 },
+      ];
+      const sorted = [...filteredColabs].sort((a: any, b: any) => {
+        const sa = Number(String(a.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        const sb = Number(String(b.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        return sb - sa;
+      });
+      const rows = sorted.map((c: any, idx: number) => {
+        const sal = Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        return {
+          values: [
+            String(idx + 1),
+            c.nomeCompleto || '',
+            c.cargo || '',
+            NIVEL_LABELS[c.nivelHierarquico] || c.nivelHierarquico || 'N/D',
+            fmtCurrency(sal),
+            (c.tipoContrato || 'CLT').toUpperCase(),
+          ],
+        };
+      });
+      rows.push({ values: ['', 'TOTAL', '', `${filteredColabs.length} colaboradores`, fmtCurrency(custoTotal), ''] });
+      addTable(doc, columns, rows);
+
+      // Breakdown by nivel
+      addSectionTitle(doc, 'Composição por Nível Hierárquico');
+      const nivelMap = new Map<string, { count: number; custo: number }>();
+      filteredColabs.forEach((c: any) => {
+        const nivel = c.nivelHierarquico || 'nao_definido';
+        if (!nivelMap.has(nivel)) nivelMap.set(nivel, { count: 0, custo: 0 });
+        const entry = nivelMap.get(nivel)!;
+        entry.count++;
+        entry.custo += Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+      });
+      const nivelCols = [
+        { header: 'Nível', width: 120 },
+        { header: 'Qtd', width: 50 },
+        { header: 'Custo Total', width: 100 },
+        { header: '% do Total', width: 80 },
+      ];
+      const nivelRows = Array.from(nivelMap.entries()).map(([nivel, data]) => ({
+        values: [
+          NIVEL_LABELS[nivel] || 'Não Definido',
+          String(data.count),
+          fmtCurrency(data.custo),
+          custoTotal > 0 ? `${((data.custo / custoTotal) * 100).toFixed(1)}%` : '0.0%',
+        ],
+      }));
+      addTable(doc, nivelCols, nivelRows);
+
+      addFooter(doc);
+      doc.end();
+    } catch (err: any) {
+      console.error('[Memoria Calculo PDF Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Public REST API v1
   app.use("/api/v1", apiRouter);
   // tRPC API

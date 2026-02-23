@@ -366,7 +366,7 @@ export default function FeriasGEG() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/rh/dashboard"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
+          <Link href="/rh/gestao-rh"><Button variant="ghost" size="icon" className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button></Link>
           <div>
             <h1 className="text-2xl font-bold">Férias & Folgas — Gente & Gestão</h1>
             <p className="text-muted-foreground text-sm">Painel de gestão de férias, folgas, alertas CLT e controle de saldo</p>

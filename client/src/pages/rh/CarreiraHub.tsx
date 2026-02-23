@@ -8,5 +8,5 @@ const ITEMS = [
 ];
 
 export default function CarreiraHub() {
-  return <GegHubPage title="Carreira e Desenvolvimento" grupo="Carreira e Desenvolvimento" items={ITEMS} showAddNew addNewType="carreira" />;
+  return <GegHubPage title="Carreira e Desenvolvimento" grupo="Carreira e Desenvolvimento" items={ITEMS} showAddNew addNewType="carreira" backRoute="/rh/geg" />;
 }

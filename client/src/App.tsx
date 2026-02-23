@@ -154,7 +154,7 @@ function Router() {
         <Route path="/rh/doacao-sangue" component={DoacaoSangueGEG} />
         <Route path="/rh/reajustes" component={ReajustesGEG} />
         <Route path="/rh/apontamentos-folha" component={ApontamentosFolhaGEG} />
-        <Route path="/rh/niveis-cargo" component={NiveisCargoGEG} />
+        <Route path="/rh/niveis-cargo" component={CargosSalarios} />
         <Route path="/rh/cct" component={ConvencaoColetivaGEG} />
         <Route path="/rh/importacao-colaboradores" component={ImportacaoColaboradores} />
         {/* Setor pages with sub-routes */}

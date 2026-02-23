@@ -60,6 +60,7 @@ const ICON_MAP: Record<string, any> = {
   'equipamentos': Monitor,
   'senhas-autorizacoes': KeyRound,
   'bi-indicadores': PieChart,
+  'cct': Shield,
 };
 
 const AVAILABLE_ICONS = [
@@ -113,7 +114,6 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'avaliacao-desempenho': { desc: 'Avaliação 360° com ciclos e critérios' },
   'pesquisa-clima': { desc: 'Pesquisas de clima organizacional' },
   'cargos-salarios': { desc: 'Estrutura de cargos e faixas salariais' },
-  'niveis-cargo': { desc: 'Níveis de cargo com requisitos de formação' },
   'apontamentos-folha': { desc: 'Consolidação de apontamentos para folha' },
   'documentos': { desc: 'Documentos e arquivos por colaborador' },
   'relatorios-rh': { desc: 'Relatórios e indicadores analíticos' },
@@ -123,6 +123,7 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'contratos-vencendo': { desc: 'Workflow de renovação de contratos próximos ao vencimento' },
   'equipamentos': { desc: 'Gestão de equipamentos, e-mails corporativos (@grupoevox.com.br) e senhas/acessos' },
   'bi-indicadores': { desc: 'Business Intelligence com indicadores analíticos de RH' },
+  'cct': { desc: 'Gestão de convenções coletivas com análise automática por IA' },
 };
 
 export interface HubItem {
@@ -137,9 +138,10 @@ interface GegHubPageProps {
   items: HubItem[];
   showAddNew?: boolean;
   addNewType?: 'beneficio' | 'carreira';
+  backRoute?: string;
 }
 
-export default function GegHubPage({ title, grupo, items, showAddNew, addNewType }: GegHubPageProps) {
+export default function GegHubPage({ title, grupo, items, showAddNew, addNewType, backRoute }: GegHubPageProps) {
   const colorClass = COLOR_MAP[grupo] || COLOR_MAP['Administração'];
   const iconColor = ICON_COLOR_MAP[grupo] || 'text-slate-400';
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -249,7 +251,7 @@ export default function GegHubPage({ title, grupo, items, showAddNew, addNewType
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Link href="/rh/dashboard">
+        <Link href={backRoute || '/rh/dashboard'}>
           <Button variant="ghost" size="icon" className="shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
