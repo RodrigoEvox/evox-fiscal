@@ -1583,3 +1583,14 @@
 ## v55d — Renomear tela Cargos e Salários
 - [x] Renomear título de "Cargos e Salários" para "Custo Salarial"
 - [x] Alterar subtítulo para "Visão analítica da estrutura de custo com pessoal"
+
+## v56 — Controle de Entrega/Devolução de Equipamentos + Relatório de Ativos
+- [x] Schema: tabela termos_responsabilidade (equipamentoId, colaboradorId, tipo entrega/devolução, dataEvento, assinaturaDigital, observações, status)
+- [x] Backend: CRUD de termos de responsabilidade com upload de assinatura digital
+- [x] Frontend: Dialog de entrega com termo de responsabilidade e campo de assinatura digital (canvas)
+- [x] Frontend: Dialog de devolução com termo e assinatura digital
+- [x] Vincular entrega/devolução ao fluxo de admissão e desligamento
+- [x] Gerar PDF do termo de responsabilidade com assinatura
+- [x] Relatório consolidado de ativos por colaborador (equipamentos + e-mails + senhas/acessos)
+- [x] Exportar relatório de ativos em formato adequado para auditoria
+- [x] Histórico de entregas/devoluções por equipamento

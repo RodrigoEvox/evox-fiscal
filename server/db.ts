@@ -64,6 +64,7 @@ import {
   senhasAutorizacoes, InsertSenhaAutorizacao,
   emailsCorporativos, InsertEmailCorporativo,
   senhaHistorico, InsertSenhaHistorico,
+  termosResponsabilidade,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4071,4 +4072,67 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   if (!db) return false;
   const results = await db.select().from(emailsCorporativos).where(eq(emailsCorporativos.email, email));
   return results.length > 0;
+}
+
+// =============================================
+// ---- TERMOS DE RESPONSABILIDADE ----
+// =============================================
+
+export async function listTermosResponsabilidade(filters?: { colaboradorId?: number; equipamentoId?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (filters?.colaboradorId) conditions.push(eq(termosResponsabilidade.colaboradorId, filters.colaboradorId));
+  if (filters?.equipamentoId) conditions.push(eq(termosResponsabilidade.equipamentoId, filters.equipamentoId));
+  if (conditions.length > 0) {
+    return db.select().from(termosResponsabilidade).where(and(...conditions)).orderBy(desc(termosResponsabilidade.createdAt));
+  }
+  return db.select().from(termosResponsabilidade).orderBy(desc(termosResponsabilidade.createdAt));
+}
+
+export async function createTermoResponsabilidade(data: any) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(termosResponsabilidade).values(data);
+  return result[0].insertId;
+}
+
+export async function updateTermoResponsabilidade(id: number, data: any) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(termosResponsabilidade).set(data).where(eq(termosResponsabilidade.id, id));
+}
+
+export async function deleteTermoResponsabilidade(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(termosResponsabilidade).where(eq(termosResponsabilidade.id, id));
+}
+
+// ---- RELATÓRIO CONSOLIDADO DE ATIVOS POR COLABORADOR ----
+export async function getRelatorioAtivosColaborador(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return { equipamentos: [], emails: [], senhas: [], termos: [] };
+  
+  const conditions = colaboradorId ? [eq(equipamentosColaborador.colaboradorId, colaboradorId)] : [];
+  const conditionsEmail = colaboradorId ? [eq(emailsCorporativos.colaboradorId, colaboradorId)] : [];
+  const conditionsSenha = colaboradorId ? [eq(senhasAutorizacoes.colaboradorId, colaboradorId)] : [];
+  const conditionsTermos = colaboradorId ? [eq(termosResponsabilidade.colaboradorId, colaboradorId)] : [];
+  
+  const [equipamentos, emails, senhas, termos] = await Promise.all([
+    conditions.length > 0
+      ? db.select().from(equipamentosColaborador).where(and(...conditions)).orderBy(desc(equipamentosColaborador.createdAt))
+      : db.select().from(equipamentosColaborador).orderBy(desc(equipamentosColaborador.createdAt)),
+    conditionsEmail.length > 0
+      ? db.select().from(emailsCorporativos).where(and(...conditionsEmail)).orderBy(desc(emailsCorporativos.createdAt))
+      : db.select().from(emailsCorporativos).orderBy(desc(emailsCorporativos.createdAt)),
+    conditionsSenha.length > 0
+      ? db.select().from(senhasAutorizacoes).where(and(...conditionsSenha)).orderBy(desc(senhasAutorizacoes.createdAt))
+      : db.select().from(senhasAutorizacoes).orderBy(desc(senhasAutorizacoes.createdAt)),
+    conditionsTermos.length > 0
+      ? db.select().from(termosResponsabilidade).where(and(...conditionsTermos)).orderBy(desc(termosResponsabilidade.createdAt))
+      : db.select().from(termosResponsabilidade).orderBy(desc(termosResponsabilidade.createdAt)),
+  ]);
+  
+  return { equipamentos, emails, senhas, termos };
 }

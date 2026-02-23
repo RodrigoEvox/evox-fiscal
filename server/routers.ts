@@ -4107,6 +4107,66 @@ export const appRouter = router({
       }),
   }),
 
+  // ---- TERMOS DE RESPONSABILIDADE ----
+  termosResponsabilidade: router({
+    list: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional(), equipamentoId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.listTermosResponsabilidade(input || undefined);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        equipamentoId: z.number(),
+        colaboradorId: z.number(),
+        colaboradorNome: z.string(),
+        tipoTermo: z.enum(['entrega','devolucao']),
+        dataEvento: z.string(),
+        equipamentoDescricao: z.string().optional(),
+        equipamentoTipo: z.string().optional(),
+        equipamentoMarca: z.string().optional(),
+        equipamentoModelo: z.string().optional(),
+        equipamentoPatrimonio: z.string().optional(),
+        equipamentoNumeroSerie: z.string().optional(),
+        condicoesEquipamento: z.enum(['novo','bom','regular','ruim','defeituoso']).default('bom'),
+        observacoes: z.string().optional(),
+        assinaturaColaboradorUrl: z.string().optional(),
+        assinaturaResponsavelUrl: z.string().optional(),
+        termoAceito: z.boolean().default(false),
+        motivoDevolucao: z.enum(['desligamento','troca','manutencao','ferias','licenca','outro']).optional(),
+        motivoOutro: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await db.createTermoResponsabilidade({
+          ...input,
+          termoAceito: input.termoAceito ? 1 : 0,
+          registradoPorId: ctx.user?.id,
+          registradoPorNome: ctx.user?.name || 'Sistema',
+        });
+        // Update equipment status based on termo type
+        if (input.tipoTermo === 'entrega') {
+          await db.updateEquipamento(input.equipamentoId, { statusEquipamento: 'em_uso', dataEntrega: input.dataEvento } as any);
+        } else if (input.tipoTermo === 'devolucao') {
+          await db.updateEquipamento(input.equipamentoId, { statusEquipamento: 'devolvido', dataDevolucao: input.dataEvento } as any);
+        }
+        return { id };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTermoResponsabilidade(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ---- RELATÓRIO CONSOLIDADO DE ATIVOS ----
+  relatorioAtivos: router({
+    get: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return db.getRelatorioAtivosColaborador(input?.colaboradorId);
+      }),
+  }),
+
   dashboardGEG: router({
     get: protectedProcedure
       .input(z.object({

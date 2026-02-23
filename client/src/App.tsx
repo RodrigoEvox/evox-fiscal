@@ -75,6 +75,7 @@ const ProjecaoFinanceiraGEG = lazy(() => import("./pages/rh/ProjecaoFinanceiraGE
 const SimuladorFeriasGEG = lazy(() => import("./pages/rh/SimuladorFeriasGEG"));
 const EquipamentosGEG = lazy(() => import("./pages/rh/EquipamentosGEG"));
 const SenhasAutorizacoesGEG = lazy(() => import("./pages/rh/SenhasAutorizacoesGEG"));
+const RelatorioAtivos = lazy(() => import("./pages/rh/RelatorioAtivos"));
 
 function LazyFallback() {
   return (
@@ -146,6 +147,7 @@ function Router() {
         <Route path="/rh/comissao-rh" component={ComissaoRhGEG} />
         <Route path="/rh/day-off" component={DayOffGEG} />
         <Route path="/rh/equipamentos" component={EquipamentosGEG} />
+        <Route path="/rh/relatorio-ativos" component={RelatorioAtivos} />
         <Route path="/rh/senhas-autorizacoes" component={SenhasAutorizacoesGEG} />
         <Route path="/rh/doacao-sangue" component={DoacaoSangueGEG} />
         <Route path="/rh/reajustes" component={ReajustesGEG} />

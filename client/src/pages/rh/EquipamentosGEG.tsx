@@ -1,5 +1,5 @@
 import { Link } from 'wouter';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,8 @@ import {
   Lock, Key, Car, ParkingCircle, CreditCard, Fingerprint,
   Bell, Server, Wifi, Shield, ShieldCheck, ShieldX, ShieldAlert,
   AtSign, CheckCircle2, AlertCircle, UserCheck, Loader2, Eye, EyeOff,
-  Download, FileSpreadsheet, FileText, History, Clock, Users, Globe
+  Download, FileSpreadsheet, FileText, History, Clock, Users, Globe,
+  FileSignature, ClipboardCheck, Undo2, Pen, BarChart3, Eraser
 } from 'lucide-react';
 
 // ===================== EXPORT HELPERS =====================
@@ -190,6 +191,125 @@ function gerarSugestoesEmail(nomeCompleto: string, emailsExistentes: string[]): 
 // ===================== TABS =====================
 type TabType = 'equipamentos' | 'emails' | 'senhas';
 
+// ===================== SIGNATURE CANVAS =====================
+function SignatureCanvas({ onSave, label }: { onSave: (dataUrl: string) => void; label: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, []);
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    if ('touches' in e) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: (e as React.MouseEvent).clientX - rect.left, y: (e as React.MouseEvent).clientY - rect.top };
+  };
+
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    setIsDrawing(true);
+    const { x, y } = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    const { x, y } = getPos(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setHasContent(true);
+  };
+
+  const endDraw = () => { setIsDrawing(false); };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 2;
+    setHasContent(false);
+  };
+
+  const save = () => {
+    if (!hasContent) { toast.error('Desenhe a assinatura antes de confirmar'); return; }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    onSave(canvas.toDataURL('image/png'));
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium block">{label}</label>
+      <div className="border rounded-lg overflow-hidden bg-white">
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={150}
+          className="w-full cursor-crosshair touch-none"
+          onMouseDown={startDraw}
+          onMouseMove={draw}
+          onMouseUp={endDraw}
+          onMouseLeave={endDraw}
+          onTouchStart={startDraw}
+          onTouchMove={draw}
+          onTouchEnd={endDraw}
+        />
+      </div>
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={clear} className="gap-1">
+          <Eraser className="w-3 h-3" /> Limpar
+        </Button>
+        <Button type="button" size="sm" onClick={save} className="gap-1" disabled={!hasContent}>
+          <CheckCircle2 className="w-3 h-3" /> Confirmar Assinatura
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ===================== CONDIÇÕES LABELS =====================
+const CONDICAO_LABELS: Record<string, { label: string; color: string }> = {
+  novo: { label: 'Novo', color: 'bg-green-100 text-green-700' },
+  bom: { label: 'Bom', color: 'bg-blue-100 text-blue-700' },
+  regular: { label: 'Regular', color: 'bg-yellow-100 text-yellow-700' },
+  ruim: { label: 'Ruim', color: 'bg-orange-100 text-orange-700' },
+  defeituoso: { label: 'Defeituoso', color: 'bg-red-100 text-red-700' },
+};
+
+const MOTIVO_DEVOLUCAO_LABELS: Record<string, string> = {
+  desligamento: 'Desligamento',
+  troca: 'Troca de Equipamento',
+  manutencao: 'Manutenção',
+  ferias: 'Férias',
+  licenca: 'Licença',
+  outro: 'Outro',
+};
+
 // ===================== MAIN COMPONENT =====================
 export default function EquipamentosGEG() {
   const { user } = useAuth();
@@ -212,6 +332,11 @@ export default function EquipamentosGEG() {
             </p>
           </div>
         </div>
+        <Link href="/rh/relatorio-ativos">
+          <Button variant="outline" size="sm" className="gap-2">
+            <BarChart3 className="w-4 h-4" /> Relatório de Ativos
+          </Button>
+        </Link>
       </div>
 
       {/* Tab Navigation */}
@@ -268,6 +393,18 @@ function EquipamentosTab() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [showTermo, setShowTermo] = useState(false);
+  const [termoType, setTermoType] = useState<'entrega' | 'devolucao'>('entrega');
+  const [termoEquip, setTermoEquip] = useState<any>(null);
+  const [termoForm, setTermoForm] = useState({
+    dataEvento: new Date().toISOString().slice(0, 10),
+    condicoesEquipamento: 'bom' as string,
+    observacoes: '',
+    motivoDevolucao: '' as string,
+    motivoOutro: '',
+    assinaturaColaboradorUrl: '',
+    assinaturaResponsavelUrl: '',
+  });
 
   const EMPTY_FORM = {
     colaboradorId: 0,
@@ -287,6 +424,7 @@ function EquipamentosTab() {
 
   const equipQ = trpc.equipamentos.list.useQuery();
   const colabQ = trpc.colaboradores.list.useQuery();
+  const termosQ = trpc.termosResponsabilidade.list.useQuery();
   const utils = trpc.useUtils();
 
   const createMut = trpc.equipamentos.create.useMutation({
@@ -301,6 +439,110 @@ function EquipamentosTab() {
     onSuccess: () => { utils.equipamentos.list.invalidate(); toast.success('Equipamento removido'); },
     onError: (e) => toast.error(e.message),
   });
+  const createTermoMut = trpc.termosResponsabilidade.create.useMutation({
+    onSuccess: () => {
+      utils.termosResponsabilidade.list.invalidate();
+      utils.equipamentos.list.invalidate();
+      toast.success(termoType === 'entrega' ? 'Termo de entrega registrado!' : 'Termo de devolução registrado!');
+      setShowTermo(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openTermo = (eq: any, tipo: 'entrega' | 'devolucao') => {
+    setTermoEquip(eq);
+    setTermoType(tipo);
+    setTermoForm({
+      dataEvento: new Date().toISOString().slice(0, 10),
+      condicoesEquipamento: 'bom',
+      observacoes: '',
+      motivoDevolucao: '',
+      motivoOutro: '',
+      assinaturaColaboradorUrl: '',
+      assinaturaResponsavelUrl: '',
+    });
+    setShowTermo(true);
+  };
+
+  const handleSubmitTermo = () => {
+    if (!termoEquip) return;
+    if (!termoForm.assinaturaColaboradorUrl) { toast.error('A assinatura do colaborador é obrigatória'); return; }
+    if (termoType === 'devolucao' && !termoForm.motivoDevolucao) { toast.error('Selecione o motivo da devolução'); return; }
+    createTermoMut.mutate({
+      equipamentoId: termoEquip.id,
+      colaboradorId: termoEquip.colaboradorId,
+      colaboradorNome: termoEquip.colaboradorNome,
+      tipoTermo: termoType,
+      dataEvento: termoForm.dataEvento,
+      equipamentoDescricao: termoEquip.descricao || '',
+      equipamentoTipo: termoEquip.tipo,
+      equipamentoMarca: termoEquip.marca || '',
+      equipamentoModelo: termoEquip.modelo || '',
+      equipamentoPatrimonio: termoEquip.patrimonio || '',
+      equipamentoNumeroSerie: termoEquip.numeroSerie || '',
+      condicoesEquipamento: termoForm.condicoesEquipamento as any,
+      observacoes: termoForm.observacoes || undefined,
+      assinaturaColaboradorUrl: termoForm.assinaturaColaboradorUrl,
+      assinaturaResponsavelUrl: termoForm.assinaturaResponsavelUrl || undefined,
+      termoAceito: true,
+      motivoDevolucao: termoType === 'devolucao' && termoForm.motivoDevolucao ? termoForm.motivoDevolucao as any : undefined,
+      motivoOutro: termoForm.motivoOutro || undefined,
+    });
+  };
+
+  const printTermo = (termo: any, eq: any) => {
+    const tipoLabel = termo.tipoTermo === 'entrega' ? 'ENTREGA' : 'DEVOLUÇÃO';
+    const html = `<html><head><title>Termo de ${tipoLabel}</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 40px; font-size: 12px; color: #333; }
+      h1 { text-align: center; font-size: 18px; margin-bottom: 5px; }
+      h2 { text-align: center; font-size: 14px; color: #666; margin-bottom: 30px; }
+      .section { margin-bottom: 20px; }
+      .section h3 { font-size: 13px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 8px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+      th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+      th { background: #f5f5f5; width: 35%; }
+      .sig-area { display: flex; justify-content: space-between; margin-top: 60px; }
+      .sig-box { width: 45%; text-align: center; }
+      .sig-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 5px; }
+      .sig-img { max-height: 80px; margin-bottom: -10px; }
+      .footer { text-align: center; margin-top: 40px; font-size: 9px; color: #999; }
+    </style></head><body>
+    <h1>TERMO DE RESPONSABILIDADE — ${tipoLabel} DE EQUIPAMENTO</h1>
+    <h2>Evox Fiscal — Grupo Evox</h2>
+    <div class="section"><h3>Dados do Colaborador</h3>
+      <table><tr><th>Nome</th><td>${termo.colaboradorNome}</td></tr>
+      <tr><th>Data</th><td>${termo.dataEvento ? new Date(termo.dataEvento + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td></tr></table>
+    </div>
+    <div class="section"><h3>Dados do Equipamento</h3>
+      <table>
+        <tr><th>Tipo</th><td>${EQUIP_TIPO_LABELS[eq.tipo]?.label || eq.tipo}</td></tr>
+        <tr><th>Marca / Modelo</th><td>${[eq.marca, eq.modelo].filter(Boolean).join(' ') || '—'}</td></tr>
+        <tr><th>Patrimônio</th><td>${eq.patrimonio || '—'}</td></tr>
+        <tr><th>Nº Série</th><td>${eq.numeroSerie || '—'}</td></tr>
+        <tr><th>Condições</th><td>${CONDICAO_LABELS[termo.condicoesEquipamento]?.label || termo.condicoesEquipamento}</td></tr>
+        ${termo.tipoTermo === 'devolucao' ? `<tr><th>Motivo Devolução</th><td>${MOTIVO_DEVOLUCAO_LABELS[termo.motivoDevolucao] || termo.motivoDevolucao || '—'}</td></tr>` : ''}
+      </table>
+    </div>
+    ${termo.observacoes ? `<div class="section"><h3>Observações</h3><p>${termo.observacoes}</p></div>` : ''}
+    <div class="section"><h3>Declaração</h3>
+      <p>Declaro que ${termo.tipoTermo === 'entrega' ? 'recebi o equipamento acima descrito em perfeitas condições de uso e me comprometo a zelar pela sua conservação, utilizando-o exclusivamente para fins profissionais.' : 'devolvi o equipamento acima descrito nas condições indicadas.'}</p>
+    </div>
+    <div class="sig-area">
+      <div class="sig-box">
+        ${termo.assinaturaColaboradorUrl ? `<img src="${termo.assinaturaColaboradorUrl}" class="sig-img" />` : ''}
+        <div class="sig-line">${termo.colaboradorNome}<br/>Colaborador</div>
+      </div>
+      <div class="sig-box">
+        ${termo.assinaturaResponsavelUrl ? `<img src="${termo.assinaturaResponsavelUrl}" class="sig-img" />` : ''}
+        <div class="sig-line">Responsável RH<br/>Evox Fiscal</div>
+      </div>
+    </div>
+    <p class="footer">Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} — Evox Fiscal</p>
+    </body></html>`;
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500); }
+  };
 
   const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); };
 
@@ -493,6 +735,8 @@ function EquipamentosTab() {
                         <td className="p-3"><Badge variant="outline" className={statusCfg.color}>{statusCfg.label}</Badge></td>
                         <td className="p-3 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex gap-1 justify-end">
+                            <Button size="icon" variant="ghost" title="Termo de Entrega" onClick={() => openTermo(eq, 'entrega')}><FileSignature className="w-4 h-4 text-green-600" /></Button>
+                            <Button size="icon" variant="ghost" title="Termo de Devolução" onClick={() => openTermo(eq, 'devolucao')}><Undo2 className="w-4 h-4 text-blue-600" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => openEdit(eq)}><Edit2 className="w-4 h-4" /></Button>
                             <Button size="icon" variant="ghost" className="text-red-500" onClick={() => { if (confirm('Remover este registro?')) deleteMut.mutate({ id: eq.id }); }}><Trash2 className="w-4 h-4" /></Button>
                             {expanded ? <ChevronUp className="w-4 h-4 mt-2" /> : <ChevronDown className="w-4 h-4 mt-2" />}
@@ -508,6 +752,28 @@ function EquipamentosTab() {
                               <div><span className="text-muted-foreground">Data Devolução:</span> <span className="font-medium">{eq.dataDevolucao ? new Date(eq.dataDevolucao + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</span></div>
                               <div><span className="text-muted-foreground">Observações:</span> <span className="font-medium">{eq.observacoes || '—'}</span></div>
                             </div>
+                            {/* Termos deste equipamento */}
+                            {termosQ.data && (termosQ.data as any[]).filter((t: any) => t.equipamentoId === eq.id).length > 0 && (
+                              <div className="mt-3 pt-3 border-t">
+                                <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1"><FileSignature className="w-3 h-3" /> Termos de Responsabilidade</p>
+                                <div className="space-y-1">
+                                  {(termosQ.data as any[]).filter((t: any) => t.equipamentoId === eq.id).map((t: any) => (
+                                    <div key={t.id} className="flex items-center gap-2 text-xs bg-background rounded px-2 py-1">
+                                      <Badge variant="outline" className={t.tipoTermo === 'entrega' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}>
+                                        {t.tipoTermo === 'entrega' ? 'Entrega' : 'Devolução'}
+                                      </Badge>
+                                      <span>{t.dataEvento ? new Date(t.dataEvento + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</span>
+                                      <Badge variant="outline" className={CONDICAO_LABELS[t.condicoesEquipamento]?.color || ''}>
+                                        {CONDICAO_LABELS[t.condicoesEquipamento]?.label || t.condicoesEquipamento}
+                                      </Badge>
+                                      {t.termoAceito ? <CheckCircle2 className="w-3 h-3 text-green-600" /> : <AlertCircle className="w-3 h-3 text-yellow-600" />}
+                                      {t.assinaturaColaboradorUrl && <span title="Assinatura do colaborador"><Pen className="w-3 h-3 text-blue-600" /></span>}
+                                      <Button size="icon" variant="ghost" className="h-5 w-5 ml-auto" onClick={() => printTermo(t, eq)}><FileText className="w-3 h-3" /></Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )}
@@ -578,6 +844,140 @@ function EquipamentosTab() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Termo de Responsabilidade Dialog */}
+      <Dialog open={showTermo} onOpenChange={setShowTermo}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSignature className="w-5 h-5" />
+              Termo de {termoType === 'entrega' ? 'Entrega' : 'Devolução'} de Equipamento
+            </DialogTitle>
+          </DialogHeader>
+          {termoEquip && (
+            <div className="space-y-5">
+              {/* Dados do Equipamento */}
+              <Card>
+                <CardContent className="p-4">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Laptop className="w-4 h-4" /> Dados do Equipamento
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Colaborador:</span> <span className="font-medium">{termoEquip.colaboradorNome}</span></div>
+                    <div><span className="text-muted-foreground">Tipo:</span> <span className="font-medium">{EQUIP_TIPO_LABELS[termoEquip.tipo]?.label || termoEquip.tipo}</span></div>
+                    <div><span className="text-muted-foreground">Marca/Modelo:</span> <span className="font-medium">{[termoEquip.marca, termoEquip.modelo].filter(Boolean).join(' ') || '—'}</span></div>
+                    <div><span className="text-muted-foreground">Patrimônio:</span> <span className="font-mono font-medium">{termoEquip.patrimonio || '—'}</span></div>
+                    <div><span className="text-muted-foreground">Nº Série:</span> <span className="font-mono font-medium">{termoEquip.numeroSerie || '—'}</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Dados do Termo */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Data do Evento *</label>
+                  <Input type="date" value={termoForm.dataEvento} onChange={e => setTermoForm(f => ({ ...f, dataEvento: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Condições do Equipamento *</label>
+                  <Select value={termoForm.condicoesEquipamento} onValueChange={v => setTermoForm(f => ({ ...f, condicoesEquipamento: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(CONDICAO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {termoType === 'devolucao' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Motivo da Devolução *</label>
+                    <Select value={termoForm.motivoDevolucao} onValueChange={v => setTermoForm(f => ({ ...f, motivoDevolucao: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar motivo" /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(MOTIVO_DEVOLUCAO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {termoForm.motivoDevolucao === 'outro' && (
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Especificar Motivo</label>
+                      <Input value={termoForm.motivoOutro} onChange={e => setTermoForm(f => ({ ...f, motivoOutro: e.target.value }))} placeholder="Descreva o motivo" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Observações</label>
+                <Textarea value={termoForm.observacoes} onChange={e => setTermoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Observações adicionais sobre o equipamento..." />
+              </div>
+
+              {/* Assinaturas Digitais */}
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Pen className="w-4 h-4" /> Assinaturas Digitais
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    {termoForm.assinaturaColaboradorUrl ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium block">Assinatura do Colaborador</label>
+                        <div className="border rounded-lg p-2 bg-white flex items-center gap-3">
+                          <img src={termoForm.assinaturaColaboradorUrl} alt="Assinatura" className="h-16" />
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          <span className="text-sm text-green-700 font-medium">Assinatura confirmada</span>
+                          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setTermoForm(f => ({ ...f, assinaturaColaboradorUrl: '' }))}>
+                            Refazer
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <SignatureCanvas label="Assinatura do Colaborador *" onSave={(url) => setTermoForm(f => ({ ...f, assinaturaColaboradorUrl: url }))} />
+                    )}
+                  </div>
+                  <div>
+                    {termoForm.assinaturaResponsavelUrl ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium block">Assinatura do Responsável RH</label>
+                        <div className="border rounded-lg p-2 bg-white flex items-center gap-3">
+                          <img src={termoForm.assinaturaResponsavelUrl} alt="Assinatura" className="h-16" />
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          <span className="text-sm text-green-700 font-medium">Assinatura confirmada</span>
+                          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setTermoForm(f => ({ ...f, assinaturaResponsavelUrl: '' }))}>
+                            Refazer
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <SignatureCanvas label="Assinatura do Responsável RH (opcional)" onSave={(url) => setTermoForm(f => ({ ...f, assinaturaResponsavelUrl: url }))} />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Declaração */}
+              <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Declaração de Responsabilidade</p>
+                {termoType === 'entrega' ? (
+                  <p>Declaro que recebi o equipamento acima descrito em condições adequadas de uso e me comprometo a zelar pela sua conservação, utilizando-o exclusivamente para fins profissionais. Comprometo-me a devolver o equipamento nas mesmas condições em que o recebi, descontadas as depreciações normais de uso.</p>
+                ) : (
+                  <p>Declaro que devolvi o equipamento acima descrito nas condições indicadas neste termo. A empresa se compromete a verificar as condições do equipamento e dar a devida baixa no patrimônio.</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setShowTermo(false)}>Cancelar</Button>
+                <Button onClick={handleSubmitTermo} disabled={createTermoMut.isPending} className="gap-2">
+                  <ClipboardCheck className="w-4 h-4" />
+                  {createTermoMut.isPending ? 'Registrando...' : `Registrar Termo de ${termoType === 'entrega' ? 'Entrega' : 'Devolução'}`}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
