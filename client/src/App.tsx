@@ -78,6 +78,7 @@ const SenhasAutorizacoesGEG = lazy(() => import("./pages/rh/SenhasAutorizacoesGE
 const RelatorioAtivos = lazy(() => import("./pages/rh/RelatorioAtivos"));
 const ConvencaoColetivaGEG = lazy(() => import("./pages/rh/ConvencaoColetivaGEG"));
 const ImportacaoColaboradores = lazy(() => import("./pages/rh/ImportacaoColaboradores"));
+const OcorrenciasReversaoPage = lazy(() => import("./pages/rh/OcorrenciasReversaoPage"));
 
 function LazyFallback() {
   return (
@@ -157,6 +158,7 @@ function Router() {
         <Route path="/rh/niveis-cargo" component={CargosSalarios} />
         <Route path="/rh/cct" component={ConvencaoColetivaGEG} />
         <Route path="/rh/importacao-colaboradores" component={ImportacaoColaboradores} />
+        <Route path="/rh/ocorrencias-reversao" component={OcorrenciasReversaoPage} />
         {/* Setor pages with sub-routes */}
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />

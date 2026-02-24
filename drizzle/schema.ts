@@ -1418,3 +1418,79 @@ export const rescisaoAuditoria = mysqlTable("rescisao_auditoria", {
 	simuladoPorNome: varchar({ length: 255 }),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
+
+// ============================================================
+// Ocorrências e Plano de Reversão
+// ============================================================
+
+export const ocorrencias = mysqlTable("ocorrencias", {
+  id: int().autoincrement().notNull(),
+  colaboradorId: int().notNull(),
+  colaboradorNome: varchar({ length: 255 }).notNull(),
+  cargo: varchar({ length: 255 }),
+  setor: varchar({ length: 255 }),
+  tipo: mysqlEnum('tipo', ['falta_injustificada','atraso_frequente','falta_leve','falta_media','falta_grave','erro_trabalho','conduta_inapropriada','conflito_interno']).notNull(),
+  gravidade: mysqlEnum('gravidade', ['leve','media','grave','gravissima']).notNull(),
+  classificacao: mysqlEnum('classificacao', ['reversivel','irreversivel']).notNull(),
+  recomendacao: mysqlEnum('recomendacao', ['advertencia','suspensao','reversao','desligamento']).notNull(),
+  descricao: text().notNull(),
+  dataOcorrencia: varchar({ length: 10 }).notNull(),
+  evidencias: text(),
+  testemunhas: text(),
+  medidasTomadas: text(),
+  status: mysqlEnum('status', ['registrada','em_analise','resolvida','encaminhada_reversao','encaminhada_desligamento']).default('registrada').notNull(),
+  registradoPorId: int(),
+  registradoPorNome: varchar({ length: 255 }).notNull(),
+  planoReversaoId: int(),
+  createdAt: bigint({ mode: "number" }).notNull(),
+  updatedAt: bigint({ mode: "number" }).notNull(),
+});
+
+export const planoReversao = mysqlTable("plano_reversao", {
+  id: int().autoincrement().notNull(),
+  colaboradorId: int().notNull(),
+  colaboradorNome: varchar({ length: 255 }).notNull(),
+  cargo: varchar({ length: 255 }),
+  setor: varchar({ length: 255 }),
+  status: mysqlEnum('status', ['ativo','concluido_sucesso','concluido_fracasso','cancelado']).default('ativo').notNull(),
+  motivo: text().notNull(),
+  objetivos: text().notNull(),
+  dataInicio: varchar({ length: 10 }).notNull(),
+  dataFim: varchar({ length: 10 }).notNull(),
+  responsavel: varchar({ length: 255 }).notNull(),
+  frequenciaAcompanhamento: mysqlEnum('frequenciaAcompanhamento', ['semanal','quinzenal','mensal']).default('quinzenal').notNull(),
+  observacoes: text(),
+  resultadoFinal: text(),
+  criadoPorId: int(),
+  criadoPorNome: varchar({ length: 255 }).notNull(),
+  createdAt: bigint({ mode: "number" }).notNull(),
+  updatedAt: bigint({ mode: "number" }).notNull(),
+});
+
+export const planoReversaoEtapas = mysqlTable("plano_reversao_etapas", {
+  id: int().autoincrement().notNull(),
+  planoId: int().notNull(),
+  tipo: mysqlEnum('tipo', ['feedback_inicial','meta','acompanhamento','avaliacao_final']).default('meta').notNull(),
+  titulo: varchar({ length: 255 }).notNull(),
+  descricao: text(),
+  dataPrevista: varchar({ length: 10 }).notNull(),
+  dataConclusao: varchar({ length: 10 }),
+  status: mysqlEnum('status', ['pendente','em_andamento','concluida','atrasada']).default('pendente').notNull(),
+  responsavel: varchar({ length: 255 }),
+  observacoes: text(),
+  createdAt: bigint({ mode: "number" }).notNull(),
+  updatedAt: bigint({ mode: "number" }).notNull(),
+});
+
+export const planoReversaoFeedbacks = mysqlTable("plano_reversao_feedbacks", {
+  id: int().autoincrement().notNull(),
+  planoId: int().notNull(),
+  etapaId: int(),
+  dataFeedback: varchar({ length: 10 }).notNull(),
+  tipo: mysqlEnum('tipo', ['positivo','neutro','negativo','alerta']).default('neutro').notNull(),
+  descricao: text().notNull(),
+  evolucao: mysqlEnum('evolucao', ['melhorou','estavel','piorou']),
+  registradoPorId: int(),
+  registradoPorNome: varchar({ length: 255 }).notNull(),
+  createdAt: bigint({ mode: "number" }).notNull(),
+});

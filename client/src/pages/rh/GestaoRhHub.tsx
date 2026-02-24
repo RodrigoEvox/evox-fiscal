@@ -10,6 +10,7 @@ const ITEMS = [
   { key: 'aniversariantes', label: 'Aniversariantes', rota: '/rh/email-aniversariante' },
   { key: 'contratos-vencendo', label: 'Contratos Vencendo', rota: '/rh/workflow-renovacao' },
   { key: 'equipamentos', label: 'Equipamentos, E-mails & Acessos', rota: '/rh/equipamentos' },
+  { key: 'ocorrencias-reversao', label: 'Ocorrências e Plano de Reversão', rota: '/rh/ocorrencias-reversao' },
 ];
 
 export default function GestaoRhHub() {

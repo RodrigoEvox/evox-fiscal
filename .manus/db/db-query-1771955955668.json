@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `plano_reversao` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `colaboradorId` int NOT NULL,\n  `colaboradorNome` varchar(255) NOT NULL,\n  `cargo` varchar(255),\n  `setor` varchar(255),\n  `status` enum('ativo','concluido_sucesso','concluido_fracasso','cancelado') NOT NULL DEFAULT 'ativo',\n  `motivo` text NOT NULL,\n  `objetivos` text NOT NULL,\n  `dataInicio` varchar(10) NOT NULL,\n  `dataFim` varchar(10) NOT NULL,\n  `responsavel` varchar(255) NOT NULL,\n  `frequenciaAcompanhamento` enum('semanal','quinzenal','mensal') NOT NULL DEFAULT 'quinzenal',\n  `observacoes` text,\n  `resultadoFinal` text,\n  `criadoPorId` int,\n  `criadoPorNome` varchar(255) NOT NULL,\n  `createdAt` bigint NOT NULL,\n  `updatedAt` bigint NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute CREATE TABLE `plano_reversao` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `colaboradorId` int NOT NULL,\n  `colaboradorNome` varchar(255) NOT NULL,\n  `cargo` varchar(255),\n  `setor` varchar(255),\n  `status` enum('ativo','concluido_sucesso','concluido_fracasso','cancelado') NOT NULL DEFAULT 'ativo',\n  `motivo` text NOT NULL,\n  `objetivos` text NOT NULL,\n  `dataInicio` varchar(10) NOT NULL,\n  `dataFim` varchar(10) NOT NULL,\n  `responsavel` varchar(255) NOT NULL,\n  `frequenciaAcompanhamento` enum('semanal','quinzenal','mensal') NOT NULL DEFAULT 'quinzenal',\n  `observacoes` text,\n  `resultadoFinal` text,\n  `criadoPorId` int,\n  `criadoPorNome` varchar(255) NOT NULL,\n  `createdAt` bigint NOT NULL,\n  `updatedAt` bigint NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 125
+}

@@ -67,6 +67,10 @@ import {
   termosResponsabilidade,
   convencaoColetiva,
   rescisaoAuditoria,
+  ocorrencias,
+  planoReversao,
+  planoReversaoEtapas,
+  planoReversaoFeedbacks,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4207,4 +4211,213 @@ export async function listRescisaoAuditoria(limit = 50) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(rescisaoAuditoria).orderBy(desc(rescisaoAuditoria.createdAt)).limit(limit);
+}
+
+// ============================================================
+// Ocorrências e Plano de Reversão
+// ============================================================
+
+export function classificarOcorrencia(tipo: string, gravidade: string, reincidencias: number) {
+  // Mapa de classificação: reversível vs irreversível
+  const irreversiveis = new Set([
+    'falta_grave:gravissima',
+    'conduta_inapropriada:gravissima',
+    'conduta_inapropriada:grave',
+    'conflito_interno:gravissima',
+  ]);
+
+  const key = `${tipo}:${gravidade}`;
+  const isIrreversivel = irreversiveis.has(key) || (gravidade === 'gravissima') || (reincidencias >= 3 && gravidade !== 'leve');
+
+  const classificacao = isIrreversivel ? 'irreversivel' : 'reversivel';
+
+  // Recomendação automática
+  let recomendacao: string;
+  if (isIrreversivel) {
+    recomendacao = 'desligamento';
+  } else if (gravidade === 'grave' || reincidencias >= 2) {
+    recomendacao = 'reversao';
+  } else if (gravidade === 'media' || reincidencias === 1) {
+    recomendacao = 'suspensao';
+  } else {
+    recomendacao = 'advertencia';
+  }
+
+  return { classificacao, recomendacao };
+}
+
+// Ocorrências CRUD
+export async function listOcorrencias(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(ocorrencias)
+      .where(eq(ocorrencias.colaboradorId, colaboradorId))
+      .orderBy(desc(ocorrencias.createdAt));
+  }
+  return db.select().from(ocorrencias).orderBy(desc(ocorrencias.createdAt));
+}
+
+export async function getOcorrencia(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(ocorrencias).where(eq(ocorrencias.id, id)).limit(1);
+  return rows[0] || null;
+}
+
+export async function countOcorrenciasByColaborador(colaboradorId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db.select().from(ocorrencias)
+    .where(eq(ocorrencias.colaboradorId, colaboradorId));
+  return rows.length;
+}
+
+export async function createOcorrencia(data: any) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  const [result] = await db.insert(ocorrencias).values({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return result.insertId;
+}
+
+export async function updateOcorrencia(id: number, data: any) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(ocorrencias).set({ ...data, updatedAt: Date.now() }).where(eq(ocorrencias.id, id));
+}
+
+export async function deleteOcorrencia(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(ocorrencias).where(eq(ocorrencias.id, id));
+}
+
+// Plano de Reversão CRUD
+export async function listPlanosReversao(colaboradorId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (colaboradorId) {
+    return db.select().from(planoReversao)
+      .where(eq(planoReversao.colaboradorId, colaboradorId))
+      .orderBy(desc(planoReversao.createdAt));
+  }
+  return db.select().from(planoReversao).orderBy(desc(planoReversao.createdAt));
+}
+
+export async function getPlanoReversao(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(planoReversao).where(eq(planoReversao.id, id)).limit(1);
+  return rows[0] || null;
+}
+
+export async function createPlanoReversao(data: any) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  const [result] = await db.insert(planoReversao).values({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return result.insertId;
+}
+
+export async function updatePlanoReversao(id: number, data: any) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(planoReversao).set({ ...data, updatedAt: Date.now() }).where(eq(planoReversao.id, id));
+}
+
+export async function deletePlanoReversao(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(planoReversao).where(eq(planoReversao.id, id));
+}
+
+// Etapas do Plano de Reversão
+export async function listEtapasPlano(planoId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(planoReversaoEtapas)
+    .where(eq(planoReversaoEtapas.planoId, planoId))
+    .orderBy(planoReversaoEtapas.dataPrevista);
+}
+
+export async function createEtapaPlano(data: any) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  const [result] = await db.insert(planoReversaoEtapas).values({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return result.insertId;
+}
+
+export async function updateEtapaPlano(id: number, data: any) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(planoReversaoEtapas).set({ ...data, updatedAt: Date.now() }).where(eq(planoReversaoEtapas.id, id));
+}
+
+export async function deleteEtapaPlano(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(planoReversaoEtapas).where(eq(planoReversaoEtapas.id, id));
+}
+
+// Feedbacks do Plano de Reversão
+export async function listFeedbacksPlano(planoId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(planoReversaoFeedbacks)
+    .where(eq(planoReversaoFeedbacks.planoId, planoId))
+    .orderBy(desc(planoReversaoFeedbacks.createdAt));
+}
+
+export async function createFeedbackPlano(data: any) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  const [result] = await db.insert(planoReversaoFeedbacks).values({
+    ...data,
+    createdAt: now,
+  });
+  return result.insertId;
+}
+
+export async function deleteFeedbackPlano(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(planoReversaoFeedbacks).where(eq(planoReversaoFeedbacks.id, id));
+}
+
+// Dashboard stats for ocorrências
+export async function getOcorrenciasStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, pendentes: 0, emAnalise: 0, resolvidas: 0, encaminhadasReversao: 0, encaminhadasDesligamento: 0, porTipo: {}, porGravidade: {} };
+  
+  const all = await db.select().from(ocorrencias);
+  const porTipo: Record<string, number> = {};
+  const porGravidade: Record<string, number> = {};
+  let pendentes = 0, emAnalise = 0, resolvidas = 0, encaminhadasReversao = 0, encaminhadasDesligamento = 0;
+  
+  for (const o of all) {
+    porTipo[o.tipo] = (porTipo[o.tipo] || 0) + 1;
+    porGravidade[o.gravidade] = (porGravidade[o.gravidade] || 0) + 1;
+    if (o.status === 'registrada') pendentes++;
+    else if (o.status === 'em_analise') emAnalise++;
+    else if (o.status === 'resolvida') resolvidas++;
+    else if (o.status === 'encaminhada_reversao') encaminhadasReversao++;
+    else if (o.status === 'encaminhada_desligamento') encaminhadasDesligamento++;
+  }
+  
+  return { total: all.length, pendentes, emAnalise, resolvidas, encaminhadasReversao, encaminhadasDesligamento, porTipo, porGravidade };
 }

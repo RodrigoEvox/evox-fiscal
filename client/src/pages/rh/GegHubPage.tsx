@@ -13,7 +13,7 @@ import {
   Users, UserPlus, DollarSign, Clock, FileText, Calendar, TrendingUp,
   Heart, Gift, Dumbbell, Bus, Cake, GraduationCap, Target, ClipboardCheck,
   BarChart3, Layers, FileBarChart, FolderOpen, Banknote, Briefcase, Award,
-  BookOpen, Star, Sparkles, Shield, Zap, Monitor, KeyRound, PieChart,
+  BookOpen, Star, Sparkles, Shield, Zap, Monitor, KeyRound, PieChart, AlertTriangle,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -61,6 +61,7 @@ const ICON_MAP: Record<string, any> = {
   'senhas-autorizacoes': KeyRound,
   'bi-indicadores': PieChart,
   'cct': Shield,
+  'ocorrencias-reversao': AlertTriangle,
 };
 
 const AVAILABLE_ICONS = [
@@ -124,6 +125,7 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'equipamentos': { desc: 'Gestão de equipamentos, e-mails corporativos (@grupoevox.com.br) e senhas/acessos' },
   'bi-indicadores': { desc: 'Business Intelligence com indicadores analíticos de RH' },
   'cct': { desc: 'Gestão de convenções coletivas com análise automática por IA' },
+  'ocorrencias-reversao': { desc: 'Registro de ocorrências disciplinares e programa de reversão com acompanhamento' },
 };
 
 export interface HubItem {

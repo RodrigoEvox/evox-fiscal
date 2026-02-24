@@ -4600,6 +4600,220 @@ Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
         return { success: true, resumo: parsed.resumo, totalClausulas: parsed.clausulas?.length || 0 };
       }),
   }),
+
+  // ---- OCORRÊNCIAS E PLANO DE REVERSÃO ----
+  ocorrencias: router({
+    list: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        const { listOcorrencias } = await import("./db");
+        return listOcorrencias(input?.colaboradorId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getOcorrencia } = await import("./db");
+        return getOcorrencia(input.id);
+      }),
+
+    stats: protectedProcedure.query(async () => {
+      const { getOcorrenciasStats } = await import("./db");
+      return getOcorrenciasStats();
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        colaboradorId: z.number(),
+        colaboradorNome: z.string(),
+        cargo: z.string().optional(),
+        setor: z.string().optional(),
+        tipo: z.enum(['falta_injustificada','atraso_frequente','falta_leve','falta_media','falta_grave','erro_trabalho','conduta_inapropriada','conflito_interno']),
+        gravidade: z.enum(['leve','media','grave','gravissima']),
+        descricao: z.string(),
+        dataOcorrencia: z.string(),
+        evidencias: z.string().optional(),
+        testemunhas: z.string().optional(),
+        medidasTomadas: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { createOcorrencia, countOcorrenciasByColaborador, classificarOcorrencia } = await import("./db");
+        const reincidencias = await countOcorrenciasByColaborador(input.colaboradorId);
+        const { classificacao, recomendacao } = classificarOcorrencia(input.tipo, input.gravidade, reincidencias);
+        const id = await createOcorrencia({
+          ...input,
+          classificacao,
+          recomendacao,
+          registradoPorId: ctx.user?.id,
+          registradoPorNome: ctx.user?.name || 'Sistema',
+        });
+        return { id, classificacao, recomendacao };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(['registrada','em_analise','resolvida','encaminhada_reversao','encaminhada_desligamento']).optional(),
+        medidasTomadas: z.string().optional(),
+        planoReversaoId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateOcorrencia } = await import("./db");
+        const { id, ...data } = input;
+        await updateOcorrencia(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteOcorrencia } = await import("./db");
+        await deleteOcorrencia(input.id);
+        return { success: true };
+      }),
+  }),
+
+  planosReversao: router({
+    list: protectedProcedure
+      .input(z.object({ colaboradorId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        const { listPlanosReversao } = await import("./db");
+        return listPlanosReversao(input?.colaboradorId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getPlanoReversao } = await import("./db");
+        return getPlanoReversao(input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        colaboradorId: z.number(),
+        colaboradorNome: z.string(),
+        cargo: z.string().optional(),
+        setor: z.string().optional(),
+        motivo: z.string(),
+        objetivos: z.string(),
+        dataInicio: z.string(),
+        dataFim: z.string(),
+        responsavel: z.string(),
+        frequenciaAcompanhamento: z.enum(['semanal','quinzenal','mensal']).default('quinzenal'),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { createPlanoReversao } = await import("./db");
+        const id = await createPlanoReversao({
+          ...input,
+          criadoPorId: ctx.user?.id,
+          criadoPorNome: ctx.user?.name || 'Sistema',
+        });
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(['ativo','concluido_sucesso','concluido_fracasso','cancelado']).optional(),
+        observacoes: z.string().optional(),
+        resultadoFinal: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { updatePlanoReversao } = await import("./db");
+        const { id, ...data } = input;
+        await updatePlanoReversao(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deletePlanoReversao } = await import("./db");
+        await deletePlanoReversao(input.id);
+        return { success: true };
+      }),
+
+    // Etapas
+    listEtapas: protectedProcedure
+      .input(z.object({ planoId: z.number() }))
+      .query(async ({ input }) => {
+        const { listEtapasPlano } = await import("./db");
+        return listEtapasPlano(input.planoId);
+      }),
+
+    createEtapa: protectedProcedure
+      .input(z.object({
+        planoId: z.number(),
+        tipo: z.enum(['feedback_inicial','meta','acompanhamento','avaliacao_final']).default('meta'),
+        titulo: z.string(),
+        descricao: z.string().optional(),
+        dataPrevista: z.string(),
+        responsavel: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { createEtapaPlano } = await import("./db");
+        const id = await createEtapaPlano(input);
+        return { id };
+      }),
+
+    updateEtapa: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(['pendente','em_andamento','concluida','atrasada']).optional(),
+        dataConclusao: z.string().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateEtapaPlano } = await import("./db");
+        const { id, ...data } = input;
+        await updateEtapaPlano(id, data);
+        return { success: true };
+      }),
+
+    deleteEtapa: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteEtapaPlano } = await import("./db");
+        await deleteEtapaPlano(input.id);
+        return { success: true };
+      }),
+
+    // Feedbacks
+    listFeedbacks: protectedProcedure
+      .input(z.object({ planoId: z.number() }))
+      .query(async ({ input }) => {
+        const { listFeedbacksPlano } = await import("./db");
+        return listFeedbacksPlano(input.planoId);
+      }),
+
+    createFeedback: protectedProcedure
+      .input(z.object({
+        planoId: z.number(),
+        etapaId: z.number().optional(),
+        dataFeedback: z.string(),
+        tipo: z.enum(['positivo','neutro','negativo','alerta']).default('neutro'),
+        descricao: z.string(),
+        evolucao: z.enum(['melhorou','estavel','piorou']).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { createFeedbackPlano } = await import("./db");
+        const id = await createFeedbackPlano({
+          ...input,
+          registradoPorId: ctx.user?.id,
+          registradoPorNome: ctx.user?.name || 'Sistema',
+        });
+        return { id };
+      }),
+
+    deleteFeedback: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteFeedbackPlano } = await import("./db");
+        await deleteFeedbackPlano(input.id);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

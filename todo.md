@@ -1719,3 +1719,17 @@
 - [x] Badges coloridos: Simulado (azul), Salvo (verde), Descartado (vermelho)
 - [x] Rota backend /api/rescisao-pdf para exportação PDF
 - [x] 17 testes vitest passando para auditoria, verbas editáveis, CSV e navegação
+
+## v70 — Ocorrências e Plano de Reversão
+- [x] Criar submenu "Ocorrências e Plano de Reversão" no menu Gestão RH
+- [x] Criar tabelas no banco: ocorrencias, plano_reversao, plano_reversao_etapas, plano_reversao_feedbacks
+- [x] Tipos de ocorrência: falta injustificada, atraso frequente, falta leve/média/grave, erro no trabalho, conduta inapropriada, conflito interno
+- [x] Classificação automática: reversível vs irreversível com indicador de ação (reversão ou desligamento)
+- [x] Registro no histórico do colaborador com data, descrição, evidências
+- [x] Programa de Plano de Reversão estruturado com boas práticas de RH
+- [x] Etapas do plano: feedback inicial, metas, acompanhamento periódico, avaliação final
+- [x] Prazo definido para o plano de revers com acompanhamento
+- [x] Indicador automático de recomendação (reversão vs desligamento) baseado no cenário
+- [x] Rota e navegação no App.tsx
+- [x] Testes vitest para as novas funcionalidades (19 testes passando)
+- [x] Corrigir colunas do banco (snake_case → camelCase) para compatibilidade com schema Drizzle
