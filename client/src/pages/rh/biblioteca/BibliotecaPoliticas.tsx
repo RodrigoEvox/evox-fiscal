@@ -68,23 +68,7 @@ export default function BibliotecaPoliticas() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A1929]">
-      <div className="border-b border-white/10 bg-[#0A1929]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/rh/biblioteca">
-              <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2"><Shield className="w-5 h-5 text-indigo-400" /> Políticas e Regras</h1>
-              <p className="text-sm text-white/50">Configure as regras de funcionamento da biblioteca</p>
-            </div>
-          </div>
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="bg-indigo-600 hover:bg-indigo-700"><Plus className="w-4 h-4 mr-2" /> Nova Política</Button>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+    <>
         {/* Current Policies */}
         <div className="space-y-3">
           {politicas.isLoading ? (
@@ -124,7 +108,6 @@ export default function BibliotecaPoliticas() {
             );
           })}
         </div>
-      </div>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-md">
@@ -152,6 +135,6 @@ export default function BibliotecaPoliticas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

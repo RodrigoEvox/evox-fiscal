@@ -74,25 +74,7 @@ export default function BibliotecaDashboard() {
   const isLoading = dashboard.isLoading || livros.isLoading;
 
   return (
-    <div className="min-h-screen bg-[#0A1929]">
-      <div className="border-b border-white/10 bg-[#0A1929]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/rh/biblioteca">
-            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/10">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-400" />
-              Dashboard — Biblioteca Evox
-            </h1>
-            <p className="text-sm text-white/50">Visão geral e indicadores da biblioteca corporativa</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <>
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
@@ -219,25 +201,6 @@ export default function BibliotecaDashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Novo Livro', href: '/rh/biblioteca/acervo', icon: BookOpen, color: 'text-blue-400' },
-            { label: 'Novo Empréstimo', href: '/rh/biblioteca/emprestimos', icon: BookCopy, color: 'text-amber-400' },
-            { label: 'Devoluções', href: '/rh/biblioteca/devolucoes', icon: RotateCcw, color: 'text-emerald-400' },
-            { label: 'Relatórios', href: '/rh/biblioteca/relatorios', icon: BarChart3, color: 'text-purple-400' },
-          ].map((link) => (
-            <Link key={link.label} href={link.href}>
-              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <link.icon className={`w-5 h-5 ${link.color}`} />
-                  <span className="text-sm font-medium text-white">{link.label}</span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

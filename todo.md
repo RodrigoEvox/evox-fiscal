@@ -1821,3 +1821,9 @@
 - [ ] Notificações: lembrete antes do vencimento, aviso de atraso, reserva disponível, expiração de reserva (próxima iteração)
 - [ ] Autoatendimento do colaborador: buscar catálogo, ver disponibilidade, reservar, renovar, ver meus empréstimos (próxima iteração)
 - [x] Testes vitest: 34 arquivos passando (683 testes), apenas falhas pré-existentes em chat (19 testes)
+
+## v78 — Biblioteca Evox: Consolidar em tela única dentro de Gestão RH
+- [x] Mover Biblioteca Evox para dentro do menu Gestão RH (card na hub Gestão RH com ícone e descrição)
+- [x] Consolidar todas as 10 seções em uma única tela com abas horizontais (Dashboard, Acervo, Exemplares, Empréstimos, Reservas, Devoluções, Fornecedores, Políticas, Auditoria, Relatórios)
+- [x] Remover 11 rotas individuais e hub page separada, substituir por rota única /rh/biblioteca
+- [x] Remover submenu separado "Biblioteca Evox" do sidebar GEG, manter apenas dentro de Gestão RH

@@ -70,17 +70,7 @@ const AcoesEvoxHub = lazy(() => import("./pages/rh/AcoesEvoxHub"));
 const BeneficiosHub = lazy(() => import("./pages/rh/BeneficiosHub"));
 const CarreiraHub = lazy(() => import("./pages/rh/CarreiraHub"));
 const AdministracaoHub = lazy(() => import("./pages/rh/AdministracaoHub"));
-const BibliotecaHub = lazy(() => import("./pages/rh/BibliotecaHub"));
-const BibliotecaDashboard = lazy(() => import("./pages/rh/biblioteca/BibliotecaDashboard"));
-const BibliotecaAcervo = lazy(() => import("./pages/rh/biblioteca/BibliotecaAcervo"));
-const BibliotecaExemplares = lazy(() => import("./pages/rh/biblioteca/BibliotecaExemplares"));
-const BibliotecaEmprestimos = lazy(() => import("./pages/rh/biblioteca/BibliotecaEmprestimos"));
-const BibliotecaReservas = lazy(() => import("./pages/rh/biblioteca/BibliotecaReservas"));
-const BibliotecaDevolucoes = lazy(() => import("./pages/rh/biblioteca/BibliotecaDevolucoes"));
-const BibliotecaFornecedores = lazy(() => import("./pages/rh/biblioteca/BibliotecaFornecedores"));
-const BibliotecaPoliticas = lazy(() => import("./pages/rh/biblioteca/BibliotecaPoliticas"));
-const BibliotecaAuditoria = lazy(() => import("./pages/rh/biblioteca/BibliotecaAuditoria"));
-const BibliotecaRelatorios = lazy(() => import("./pages/rh/biblioteca/BibliotecaRelatorios"));
+const BibliotecaEvox = lazy(() => import("./pages/rh/BibliotecaEvox"));
 const RescisaoPage = lazy(() => import("./pages/rh/RescisaoPage"));
 const ProjecaoFinanceiraGEG = lazy(() => import("./pages/rh/ProjecaoFinanceiraGEG"));
 const SimuladorFeriasGEG = lazy(() => import("./pages/rh/SimuladorFeriasGEG"));
@@ -136,17 +126,7 @@ function Router() {
         <Route path="/rh/beneficios" component={BeneficiosHub} />
         <Route path="/rh/carreira" component={CarreiraHub} />
         <Route path="/rh/administracao" component={AdministracaoHub} />
-        <Route path="/rh/biblioteca" component={BibliotecaHub} />
-        <Route path="/rh/biblioteca/dashboard" component={BibliotecaDashboard} />
-        <Route path="/rh/biblioteca/acervo" component={BibliotecaAcervo} />
-        <Route path="/rh/biblioteca/exemplares" component={BibliotecaExemplares} />
-        <Route path="/rh/biblioteca/emprestimos" component={BibliotecaEmprestimos} />
-        <Route path="/rh/biblioteca/reservas" component={BibliotecaReservas} />
-        <Route path="/rh/biblioteca/devolucoes" component={BibliotecaDevolucoes} />
-        <Route path="/rh/biblioteca/fornecedores" component={BibliotecaFornecedores} />
-        <Route path="/rh/biblioteca/politicas" component={BibliotecaPoliticas} />
-        <Route path="/rh/biblioteca/auditoria" component={BibliotecaAuditoria} />
-        <Route path="/rh/biblioteca/relatorios" component={BibliotecaRelatorios} />
+        <Route path="/rh/biblioteca" component={BibliotecaEvox} />
         <Route path="/rh/rescisao" component={RescisaoPage} />
         <Route path="/rh/projecao-financeira" component={ProjecaoFinanceiraGEG} />
         <Route path="/rh/simulador-ferias" component={SimuladorFeriasGEG} />

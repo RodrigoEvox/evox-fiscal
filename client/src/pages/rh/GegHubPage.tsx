@@ -64,6 +64,7 @@ const ICON_MAP: Record<string, any> = {
   'cct': Shield,
   'ocorrencias-reversao': AlertTriangle,
   // Biblioteca Evox
+  'biblioteca-evox': BookOpen,
   'biblioteca-dashboard': LayoutDashboard,
   'biblioteca-acervo': Library,
   'biblioteca-exemplares': Package,
@@ -139,6 +140,7 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'cct': { desc: 'Gestão de convenções coletivas com análise automática por IA' },
   'ocorrencias-reversao': { desc: 'Registro de ocorrências disciplinares e programa de reversão com acompanhamento' },
   // Biblioteca Evox
+  'biblioteca-evox': { desc: 'Gestão completa do acervo corporativo de livros' },
   'biblioteca-dashboard': { desc: 'Visão geral com KPIs, gráficos e indicadores da biblioteca' },
   'biblioteca-acervo': { desc: 'Catálogo completo de livros com busca, filtros e classificação' },
   'biblioteca-exemplares': { desc: 'Gestão patrimonial de exemplares físicos com código e condição' },

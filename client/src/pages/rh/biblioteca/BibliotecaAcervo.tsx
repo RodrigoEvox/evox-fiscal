@@ -121,29 +121,7 @@ export default function BibliotecaAcervo() {
   }, [livros.data, search, filterCategoria, filterStatus]);
 
   return (
-    <div className="min-h-screen bg-[#0A1929]">
-      <div className="border-b border-white/10 bg-[#0A1929]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/rh/biblioteca">
-              <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/10">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-blue-400" /> Acervo de Livros
-              </h1>
-              <p className="text-sm text-white/50">{filtered.length} título(s) encontrado(s)</p>
-            </div>
-          </div>
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" /> Novo Livro
-          </Button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-4">
+    <>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -212,7 +190,6 @@ export default function BibliotecaAcervo() {
             </Table>
           </CardContent>
         </Card>
-      </div>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -298,6 +275,6 @@ export default function BibliotecaAcervo() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

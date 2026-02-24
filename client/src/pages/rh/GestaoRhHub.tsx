@@ -11,6 +11,7 @@ const ITEMS = [
   { key: 'contratos-vencendo', label: 'Contratos Vencendo', rota: '/rh/workflow-renovacao' },
   { key: 'equipamentos', label: 'Equipamentos, E-mails & Acessos', rota: '/rh/equipamentos' },
   { key: 'ocorrencias-reversao', label: 'Ocorrências e Plano de Reversão', rota: '/rh/ocorrencias-reversao' },
+  { key: 'biblioteca-evox', label: 'Biblioteca Evox', rota: '/rh/biblioteca' },
 ];
 
 export default function GestaoRhHub() {

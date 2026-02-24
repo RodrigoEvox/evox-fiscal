@@ -76,25 +76,7 @@ export default function BibliotecaDevolucoes() {
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
 
   return (
-    <div className="min-h-screen bg-[#0A1929]">
-      <div className="border-b border-white/10 bg-[#0A1929]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/rh/biblioteca">
-              <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2"><RotateCcw className="w-5 h-5 text-cyan-400" /> Devoluções e Ocorrências</h1>
-              <p className="text-sm text-white/50">Controle de devoluções e registro de incidentes</p>
-            </div>
-          </div>
-          <Button onClick={() => setShowOcorrencia(true)} className="bg-orange-600 hover:bg-orange-700">
-            <AlertTriangle className="w-4 h-4 mr-2" /> Nova Ocorrência
-          </Button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-4">
+    <>
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-white/5 border border-white/10">
             <TabsTrigger value="devolucoes" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50">
@@ -228,7 +210,6 @@ export default function BibliotecaDevolucoes() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
 
       <Dialog open={showOcorrencia} onOpenChange={setShowOcorrencia}>
         <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-md">
@@ -283,6 +264,6 @@ export default function BibliotecaDevolucoes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

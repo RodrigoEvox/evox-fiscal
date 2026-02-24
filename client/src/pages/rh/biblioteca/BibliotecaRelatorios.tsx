@@ -103,20 +103,7 @@ export default function BibliotecaRelatorios() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A1929]">
-      <div className="border-b border-white/10 bg-[#0A1929]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/rh/biblioteca">
-            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2"><BarChart3 className="w-5 h-5 text-violet-400" /> Relatórios</h1>
-            <p className="text-sm text-white/50">Relatórios e exportações da biblioteca</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+    <>
         {/* Summary KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -213,7 +200,6 @@ export default function BibliotecaRelatorios() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </>
   );
 }

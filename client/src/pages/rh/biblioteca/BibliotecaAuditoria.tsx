@@ -44,20 +44,7 @@ export default function BibliotecaAuditoria() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A1929]">
-      <div className="border-b border-white/10 bg-[#0A1929]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/rh/biblioteca">
-            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2"><ClipboardList className="w-5 h-5 text-teal-400" /> Auditoria</h1>
-            <p className="text-sm text-white/50">Registro de todas as ações realizadas na biblioteca</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-4">
+    <>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -105,7 +92,6 @@ export default function BibliotecaAuditoria() {
             </Table>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </>
   );
 }
