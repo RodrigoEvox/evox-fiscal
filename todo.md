@@ -1801,3 +1801,23 @@
 - [x] Adicionar filtro por Cargo de Confiança (sim/não)
 - [x] Adicionar filtro por Cargo Comissionado (sim/não)
 - [x] Exportação PDF em orientação paisagem com 15 colunas (Nome, CPF, Cargo, Setor, Nível, Salário, Status, Contrato, Local, Formação, Admissão, VT, Acad., Conf., Comis.)
+
+## v77 — Biblioteca Evox (Módulo Completo)
+- [x] Schema: 9 tabelas (bib_livros, bib_exemplares, bib_emprestimos, bib_reservas, bib_ocorrencias, bib_fornecedores_doadores, bib_politicas, bib_auditoria) + 27 índices
+- [x] Backend: dbBiblioteca.ts com helpers para CRUD de livros, exemplares, empréstimos, reservas, ocorrências, fornecedores, políticas, auditoria
+- [x] Backend: routersBiblioteca.ts com tRPC procedures (livros, exemplares, empréstimos com devolver/renovar, reservas com cancelar, ocorrências, fornecedores, políticas upsert, auditoria, dashboard)
+- [x] Backend: regras de negócio (empréstimo com data retirada/previsão, renovação com nova data, devolução com data efetiva, fila de reservas)
+- [x] Sidebar: submenu Biblioteca Evox dentro de Gente & Gestão com 10 itens
+- [x] Dashboard Biblioteca: 6 KPIs + 3 gráficos (empréstimos/mês, status exemplares, livros/categoria) + ações rápidas
+- [x] Acervo: catálogo com busca, filtro por categoria/status, CRUD completo com todos os campos
+- [x] Exemplares e Patrimônio: gestão com código patrimonial, condição, localização, origem, fornecedor
+- [x] Empréstimos: workflow completo (selecionar exemplar/colaborador, checklist, prazo, renovação +14 dias, devolução)
+- [x] Reservas: fila de reservas com criação, cancelamento e filtro por status
+- [x] Devoluções e Ocorrências: tabs pendentes/ocorrências, registro de devolução, abertura de ocorrências (5 tipos)
+- [x] Fornecedores e Doadores: cadastro com tipo (fornecedor/doador/ambos), contato, email, telefone
+- [x] Políticas e Regras: cards com ícones, upsert, carregar políticas padrão
+- [x] Relatórios: 4 KPIs + exportação CSV (acervo/empréstimos) + top livros/colaboradores + distribuição por categoria
+- [x] Auditoria: log com busca, filtro por ação, tabela com data/hora/usuário/ação/entidade/descrição
+- [ ] Notificações: lembrete antes do vencimento, aviso de atraso, reserva disponível, expiração de reserva (próxima iteração)
+- [ ] Autoatendimento do colaborador: buscar catálogo, ver disponibilidade, reservar, renovar, ver meus empréstimos (próxima iteração)
+- [x] Testes vitest: 34 arquivos passando (683 testes), apenas falhas pré-existentes em chat (19 testes)

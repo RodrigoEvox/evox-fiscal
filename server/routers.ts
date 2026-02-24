@@ -7,6 +7,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import crypto from "crypto";
+import { bibliotecaRouter } from "./routersBiblioteca";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== 'admin') {
@@ -33,6 +34,7 @@ async function logAudit(acao: string, entidadeTipo: string, entidadeId: number |
 
 export const appRouter = router({
   system: systemRouter,
+  biblioteca: bibliotecaRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

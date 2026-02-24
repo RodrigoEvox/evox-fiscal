@@ -1528,3 +1528,199 @@ export const ocorrenciaAssinaturas = mysqlTable("ocorrencia_assinaturas", {
   assinadoEm: bigint({ mode: "number" }).notNull(),
   createdAt: bigint({ mode: "number" }).notNull(),
 });
+
+
+// ===== BIBLIOTECA EVOX =====
+
+export const bibLivros = mysqlTable("bib_livros", {
+  id: int().autoincrement().notNull(),
+  titulo: varchar({ length: 500 }).notNull(),
+  subtitulo: varchar({ length: 500 }),
+  autores: varchar({ length: 1000 }).notNull(),
+  editora: varchar({ length: 255 }),
+  edicao: varchar({ length: 50 }),
+  ano: int(),
+  isbn: varchar({ length: 20 }),
+  idioma: varchar({ length: 50 }).default('Português'),
+  categoria: varchar({ length: 100 }),
+  subcategoria: varchar({ length: 100 }),
+  tags: json(),
+  sinopse: text(),
+  capaUrl: varchar({ length: 1000 }),
+  capaFileKey: varchar({ length: 500 }),
+  linkReferencia: varchar({ length: 1000 }),
+  classificacao: mysqlEnum(['essencial','recomendado','avancado']).default('recomendado'),
+  areaSugerida: varchar({ length: 100 }),
+  status: mysqlEnum(['ativo','inativo','descontinuado']).default('ativo').notNull(),
+  registradoPorId: int(),
+  registradoPorNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_bib_livros_isbn").on(table.isbn),
+  index("idx_bib_livros_categoria").on(table.categoria),
+  index("idx_bib_livros_status").on(table.status),
+]);
+
+export const bibExemplares = mysqlTable("bib_exemplares", {
+  id: int().autoincrement().notNull(),
+  livroId: int().notNull(),
+  codigoPatrimonial: varchar({ length: 50 }).notNull(),
+  localizacao: varchar({ length: 255 }),
+  condicao: mysqlEnum(['novo','bom','regular','danificado']).default('novo').notNull(),
+  dataEntrada: varchar({ length: 10 }),
+  origem: mysqlEnum(['aquisicao','doacao']).default('aquisicao').notNull(),
+  fornecedorId: int(),
+  dataCompra: varchar({ length: 10 }),
+  valorCompra: decimal({ precision: 10, scale: 2 }),
+  doadorTipo: mysqlEnum(['colaborador','parceiro','cliente','pessoa_fisica']),
+  doadorNome: varchar({ length: 255 }),
+  dataDoacao: varchar({ length: 10 }),
+  status: mysqlEnum(['disponivel','emprestado','reservado','indisponivel','perdido','baixado']).default('disponivel').notNull(),
+  motivoBaixa: text(),
+  observacoes: text(),
+  registradoPorId: int(),
+  registradoPorNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_bib_exemplares_livro").on(table.livroId),
+  index("idx_bib_exemplares_status").on(table.status),
+  index("idx_bib_exemplares_codigo").on(table.codigoPatrimonial),
+]);
+
+export const bibEmprestimos = mysqlTable("bib_emprestimos", {
+  id: int().autoincrement().notNull(),
+  exemplarId: int().notNull(),
+  livroId: int().notNull(),
+  colaboradorId: int().notNull(),
+  colaboradorNome: varchar({ length: 255 }).notNull(),
+  dataRetirada: varchar({ length: 10 }).notNull(),
+  dataPrevistaDevolucao: varchar({ length: 10 }).notNull(),
+  dataEfetivaDevolucao: varchar({ length: 10 }),
+  status: mysqlEnum(['ativo','devolvido','atrasado','cancelado','em_disputa']).default('ativo').notNull(),
+  renovacoes: int().default(0).notNull(),
+  limiteRenovacoes: int().default(2).notNull(),
+  termoAceito: tinyint().default(0).notNull(),
+  checklistRetirada: json(),
+  checklistDevolucao: json(),
+  multaValor: decimal({ precision: 10, scale: 2 }),
+  penalidade: varchar({ length: 255 }),
+  observacoes: text(),
+  registradoPorId: int(),
+  registradoPorNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_bib_emprestimos_exemplar").on(table.exemplarId),
+  index("idx_bib_emprestimos_colab").on(table.colaboradorId),
+  index("idx_bib_emprestimos_status").on(table.status),
+]);
+
+export const bibReservas = mysqlTable("bib_reservas", {
+  id: int().autoincrement().notNull(),
+  livroId: int().notNull(),
+  exemplarId: int(),
+  colaboradorId: int().notNull(),
+  colaboradorNome: varchar({ length: 255 }).notNull(),
+  dataReserva: varchar({ length: 10 }).notNull(),
+  posicaoFila: int().default(1).notNull(),
+  prazoRetirada: int().default(3).notNull(),
+  status: mysqlEnum(['ativa','atendida','expirada','cancelada']).default('ativa').notNull(),
+  dataDisponibilidade: varchar({ length: 10 }),
+  dataAtendimento: varchar({ length: 10 }),
+  observacoes: text(),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_bib_reservas_livro").on(table.livroId),
+  index("idx_bib_reservas_colab").on(table.colaboradorId),
+  index("idx_bib_reservas_status").on(table.status),
+]);
+
+export const bibOcorrencias = mysqlTable("bib_ocorrencias", {
+  id: int().autoincrement().notNull(),
+  tipo: mysqlEnum(['atraso_recorrente','devolvido_danificado','extravio_perda','divergencia_condicao','ajuste_manual']).notNull(),
+  emprestimoId: int(),
+  exemplarId: int(),
+  colaboradorId: int(),
+  colaboradorNome: varchar({ length: 255 }),
+  descricao: text().notNull(),
+  evidenciaUrl: varchar({ length: 1000 }),
+  evidenciaFileKey: varchar({ length: 500 }),
+  acaoAplicada: mysqlEnum(['bloqueio','advertencia','reposicao','baixa','nenhuma']).default('nenhuma'),
+  diasBloqueio: int(),
+  responsavelId: int(),
+  responsavelNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_bib_ocorrencias_emprestimo").on(table.emprestimoId),
+  index("idx_bib_ocorrencias_colab").on(table.colaboradorId),
+]);
+
+export const bibFornecedoresDoadores = mysqlTable("bib_fornecedores_doadores", {
+  id: int().autoincrement().notNull(),
+  nome: varchar({ length: 255 }).notNull(),
+  tipo: mysqlEnum(['fornecedor','doador','ambos']).default('fornecedor').notNull(),
+  contato: varchar({ length: 255 }),
+  email: varchar({ length: 320 }),
+  telefone: varchar({ length: 20 }),
+  observacoes: text(),
+  ativo: tinyint().default(1).notNull(),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const bibPoliticas = mysqlTable("bib_politicas", {
+  id: int().autoincrement().notNull(),
+  chave: varchar({ length: 100 }).notNull(),
+  valor: varchar({ length: 255 }).notNull(),
+  descricao: text(),
+  updatedPorId: int(),
+  updatedPorNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_bib_politicas_chave").on(table.chave),
+]);
+
+export const bibAuditoria = mysqlTable("bib_auditoria", {
+  id: int().autoincrement().notNull(),
+  acao: mysqlEnum(['criar','editar','excluir','emprestar','devolver','renovar','reservar','baixar','bloquear','desbloquear','ajuste_manual']).notNull(),
+  entidadeTipo: varchar({ length: 50 }).notNull(),
+  entidadeId: int(),
+  entidadeNome: varchar({ length: 500 }),
+  detalhes: json(),
+  motivo: text(),
+  usuarioId: int(),
+  usuarioNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_bib_auditoria_entidade").on(table.entidadeTipo, table.entidadeId),
+  index("idx_bib_auditoria_usuario").on(table.usuarioId),
+]);
+
+export const bibBloqueios = mysqlTable("bib_bloqueios", {
+  id: int().autoincrement().notNull(),
+  colaboradorId: int().notNull(),
+  colaboradorNome: varchar({ length: 255 }).notNull(),
+  motivo: text().notNull(),
+  ocorrenciaId: int(),
+  dataInicio: varchar({ length: 10 }).notNull(),
+  dataFim: varchar({ length: 10 }),
+  ativo: tinyint().default(1).notNull(),
+  criadoPorId: int(),
+  criadoPorNome: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_bib_bloqueios_colab").on(table.colaboradorId),
+]);

@@ -2,7 +2,7 @@
   "version": "5",
   "dialect": "mysql",
   "id": "01bd6968-4a2e-4545-9391-87b16f78b2cd",
-  "prevId": "040ce1f3-5c6c-419c-bb8d-f043c823c0cd",
+  "prevId": "e2eba278-728e-4544-9b0f-e93f65dba5ab",
   "tables": {
     "academia_beneficio": {
       "name": "academia_beneficio",
@@ -3765,7 +3765,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'Feliz Aniversário!'"
+          "default": "'Feliz Anivers\u00e1rio!'"
         },
         "mensagem": {
           "name": "mensagem",

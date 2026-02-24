@@ -1,0 +1,106 @@
+{
+  "query": "SELECT JSON_PRETTY(sc.submenus) as submenus FROM setor_config sc WHERE sc.sigla = 'GEG' LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT JSON_PRETTY(sc.submenus) as submenus FROM setor_config sc WHERE sc.sigla = 'GEG' LIMIT 1",
+  "rows": [
+    {
+      "submenus": "["
+    },
+    {
+      "submenus": "  {"
+    },
+    {
+      "submenus": "    \"key\": \"nova-tarefa\","
+    },
+    {
+      "submenus": "    \"label\": \"Nova Tarefa\","
+    },
+    {
+      "submenus": "    \"rota\": \"/rh/nova-tarefa\""
+    },
+    {
+      "submenus": "  },"
+    },
+    {
+      "submenus": "  {"
+    },
+    {
+      "submenus": "    \"key\": \"gestao-rh-hub\","
+    },
+    {
+      "submenus": "    \"label\": \"Gestão RH\","
+    },
+    {
+      "submenus": "    \"rota\": \"/rh/gestao-rh\""
+    },
+    {
+      "submenus": "  },"
+    },
+    {
+      "submenus": "  {"
+    },
+    {
+      "submenus": "    \"key\": \"acoes-evox-hub\","
+    },
+    {
+      "submenus": "    \"label\": \"Ações Evox\","
+    },
+    {
+      "submenus": "    \"rota\": \"/rh/acoes-evox\""
+    },
+    {
+      "submenus": "  },"
+    },
+    {
+      "submenus": "  {"
+    },
+    {
+      "submenus": "    \"key\": \"beneficios-hub\","
+    },
+    {
+      "submenus": "    \"label\": \"Benefícios\","
+    },
+    {
+      "submenus": "    \"rota\": \"/rh/beneficios\""
+    },
+    {
+      "submenus": "  },"
+    },
+    {
+      "submenus": "  {"
+    },
+    {
+      "submenus": "    \"key\": \"carreira-hub\","
+    },
+    {
+      "submenus": "    \"label\": \"Carreira e Desenvolvimento\","
+    },
+    {
+      "submenus": "    \"rota\": \"/rh/carreira\""
+    },
+    {
+      "submenus": "  },"
+    },
+    {
+      "submenus": "  {"
+    },
+    {
+      "submenus": "    \"key\": \"admin-hub\","
+    },
+    {
+      "submenus": "    \"label\": \"Administração\","
+    },
+    {
+      "submenus": "    \"rota\": \"/rh/administracao\""
+    },
+    {
+      "submenus": "  }"
+    },
+    {
+      "submenus": "]"
+    }
+  ],
+  "messages": [],
+  "stdout": "submenus\n[\n  {\n    \"key\": \"nova-tarefa\",\n    \"label\": \"Nova Tarefa\",\n    \"rota\": \"/rh/nova-tarefa\"\n  },\n  {\n    \"key\": \"gestao-rh-hub\",\n    \"label\": \"Gestão RH\",\n    \"rota\": \"/rh/gestao-rh\"\n  },\n  {\n    \"key\": \"acoes-evox-hub\",\n    \"label\": \"Ações Evox\",\n    \"rota\": \"/rh/acoes-evox\"\n  },\n  {\n    \"key\": \"beneficios-hub\",\n    \"label\": \"Benefícios\",\n    \"rota\": \"/rh/beneficios\"\n  },\n  {\n    \"key\": \"carreira-hub\",\n    \"label\": \"Carreira e Desenvolvimento\",\n    \"rota\": \"/rh/carreira\"\n  },\n  {\n    \"key\": \"admin-hub\",\n    \"label\": \"Administração\",\n    \"rota\": \"/rh/administracao\"\n  }\n]\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

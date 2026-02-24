@@ -14,6 +14,7 @@ import {
   Heart, Gift, Dumbbell, Bus, Cake, GraduationCap, Target, ClipboardCheck,
   BarChart3, Layers, FileBarChart, FolderOpen, Banknote, Briefcase, Award,
   BookOpen, Star, Sparkles, Shield, Zap, Monitor, KeyRound, PieChart, AlertTriangle,
+  LayoutDashboard, Library, Package, BookCopy, CalendarCheck, RotateCcw, Truck, ScrollText, Search as SearchIcon,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -62,6 +63,17 @@ const ICON_MAP: Record<string, any> = {
   'bi-indicadores': PieChart,
   'cct': Shield,
   'ocorrencias-reversao': AlertTriangle,
+  // Biblioteca Evox
+  'biblioteca-dashboard': LayoutDashboard,
+  'biblioteca-acervo': Library,
+  'biblioteca-exemplares': Package,
+  'biblioteca-emprestimos': BookCopy,
+  'biblioteca-reservas': CalendarCheck,
+  'biblioteca-devolucoes': RotateCcw,
+  'biblioteca-fornecedores': Truck,
+  'biblioteca-politicas': ScrollText,
+  'biblioteca-auditoria': SearchIcon,
+  'biblioteca-relatorios': FileBarChart,
 };
 
 const AVAILABLE_ICONS = [
@@ -126,6 +138,17 @@ const DESCRIPTION_MAP: Record<string, Record<string, string>> = {
   'bi-indicadores': { desc: 'Business Intelligence com indicadores analíticos de RH' },
   'cct': { desc: 'Gestão de convenções coletivas com análise automática por IA' },
   'ocorrencias-reversao': { desc: 'Registro de ocorrências disciplinares e programa de reversão com acompanhamento' },
+  // Biblioteca Evox
+  'biblioteca-dashboard': { desc: 'Visão geral com KPIs, gráficos e indicadores da biblioteca' },
+  'biblioteca-acervo': { desc: 'Catálogo completo de livros com busca, filtros e classificação' },
+  'biblioteca-exemplares': { desc: 'Gestão patrimonial de exemplares físicos com código e condição' },
+  'biblioteca-emprestimos': { desc: 'Controle de empréstimos com termos, checklist e renovação' },
+  'biblioteca-reservas': { desc: 'Fila de reservas com atribuição automática de exemplares' },
+  'biblioteca-devolucoes': { desc: 'Registro de devoluções e ocorrências (dano, extravio, atraso)' },
+  'biblioteca-fornecedores': { desc: 'Cadastro de fornecedores e doadores de livros' },
+  'biblioteca-politicas': { desc: 'Regras de empréstimo, prazos, limites e penalidades' },
+  'biblioteca-auditoria': { desc: 'Log completo de todas as ações realizadas na biblioteca' },
+  'biblioteca-relatorios': { desc: 'Relatórios gerenciais exportáveis em PDF e Excel' },
 };
 
 export interface HubItem {

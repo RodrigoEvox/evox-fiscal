@@ -15,6 +15,13 @@
       "when": 1771948784779,
       "tag": "0001_faithful_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1771971130278,
+      "tag": "0002_colorful_landau",
+      "breakpoints": true
     }
   ]
 }
