@@ -999,27 +999,25 @@ async function startServer() {
       addSectionTitle(doc, 'Listagem de Colaboradores');
 
       const columns = [
-        { header: 'Nome', width: 120 },
-        { header: 'CPF', width: 70 },
-        { header: 'Cargo', width: 80 },
-        { header: 'Setor', width: 70 },
-        { header: 'Status', width: 50 },
-        { header: 'Contrato', width: 45 },
-        { header: 'Forma\u00e7\u00e3o', width: 55 },
-        { header: 'Admiss\u00e3o', width: 55 },
+        { header: 'Nome', key: 'nome', width: 120 },
+        { header: 'CPF', key: 'cpf', width: 70 },
+        { header: 'Cargo', key: 'cargo', width: 80 },
+        { header: 'Setor', key: 'setor', width: 70 },
+        { header: 'Status', key: 'status', width: 50 },
+        { header: 'Contrato', key: 'contrato', width: 45 },
+        { header: 'Formação', key: 'formacao', width: 55 },
+        { header: 'Admissão', key: 'admissao', width: 55 },
       ];
 
       const rows = filtered.map((c: any) => ({
-        values: [
-          c.nomeCompleto || '',
-          c.cpf || '',
-          c.cargo || '',
-          setorMap.get(c.setorId) || '',
-          c.statusColaborador || 'ativo',
-          (c.tipoContrato || '').toUpperCase(),
-          GRAU_LABELS[c.grauInstrucao] || '',
-          fmtDate(c.dataAdmissao || ''),
-        ],
+        nome: c.nomeCompleto || '',
+        cpf: c.cpf || '',
+        cargo: c.cargo || '',
+        setor: setorMap.get(c.setorId) || '',
+        status: c.statusColaborador || 'ativo',
+        contrato: (c.tipoContrato || '').toUpperCase(),
+        formacao: GRAU_LABELS[c.grauInstrucao] || '',
+        admissao: fmtDate(c.dataAdmissao || ''),
       }));
 
       addTable(doc, columns, rows);
@@ -1088,12 +1086,12 @@ async function startServer() {
 
       addSectionTitle(doc, 'Detalhamento por Colaborador');
       const columns = [
-        { header: '#', width: 25 },
-        { header: 'Nome', width: 140 },
-        { header: 'Cargo', width: 100 },
-        { header: 'Nível', width: 70 },
-        { header: 'Salário Base', width: 80 },
-        { header: 'Contrato', width: 50 },
+        { header: '#', key: 'idx', width: 25 },
+        { header: 'Nome', key: 'nome', width: 140 },
+        { header: 'Cargo', key: 'cargo', width: 100 },
+        { header: 'Nível', key: 'nivel', width: 70 },
+        { header: 'Salário Base', key: 'salario', width: 80 },
+        { header: 'Contrato', key: 'contrato', width: 50 },
       ];
       const sorted = [...filteredColabs].sort((a: any, b: any) => {
         const sa = Number(String(a.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
@@ -1103,17 +1101,15 @@ async function startServer() {
       const rows = sorted.map((c: any, idx: number) => {
         const sal = Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
         return {
-          values: [
-            String(idx + 1),
-            c.nomeCompleto || '',
-            c.cargo || '',
-            NIVEL_LABELS[c.nivelHierarquico] || c.nivelHierarquico || 'N/D',
-            fmtCurrency(sal),
-            (c.tipoContrato || 'CLT').toUpperCase(),
-          ],
+          idx: String(idx + 1),
+          nome: c.nomeCompleto || '',
+          cargo: c.cargo || '',
+          nivel: NIVEL_LABELS[c.nivelHierarquico] || c.nivelHierarquico || 'N/D',
+          salario: fmtCurrency(sal),
+          contrato: (c.tipoContrato || 'CLT').toUpperCase(),
         };
       });
-      rows.push({ values: ['', 'TOTAL', '', `${filteredColabs.length} colaboradores`, fmtCurrency(custoTotal), ''] });
+      rows.push({ idx: '', nome: 'TOTAL', cargo: '', nivel: `${filteredColabs.length} colaboradores`, salario: fmtCurrency(custoTotal), contrato: '', isTotal: true } as any);
       addTable(doc, columns, rows);
 
       // Breakdown by nivel
@@ -1127,18 +1123,16 @@ async function startServer() {
         entry.custo += Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
       });
       const nivelCols = [
-        { header: 'Nível', width: 120 },
-        { header: 'Qtd', width: 50 },
-        { header: 'Custo Total', width: 100 },
-        { header: '% do Total', width: 80 },
+        { header: 'Nível', key: 'nivel', width: 120 },
+        { header: 'Qtd', key: 'qtd', width: 50 },
+        { header: 'Custo Total', key: 'custo', width: 100 },
+        { header: '% do Total', key: 'pct', width: 80 },
       ];
       const nivelRows = Array.from(nivelMap.entries()).map(([nivel, data]) => ({
-        values: [
-          NIVEL_LABELS[nivel] || 'Não Definido',
-          String(data.count),
-          fmtCurrency(data.custo),
-          custoTotal > 0 ? `${((data.custo / custoTotal) * 100).toFixed(1)}%` : '0.0%',
-        ],
+        nivel: NIVEL_LABELS[nivel] || 'Não Definido',
+        qtd: String(data.count),
+        custo: fmtCurrency(data.custo),
+        pct: custoTotal > 0 ? `${((data.custo / custoTotal) * 100).toFixed(1)}%` : '0.0%',
       }));
       addTable(doc, nivelCols, nivelRows);
 
@@ -1146,6 +1140,75 @@ async function startServer() {
       doc.end();
     } catch (err: any) {
       console.error('[Memoria Calculo PDF Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Simulador Reajuste PDF export
+  app.get('/api/cargos-salarios/simulador-reajuste-pdf', async (req: any, res: any) => {
+    try {
+      const { createPDF, addHeader, addKPIs, addSectionTitle, addTable, addFooter, fmtCurrency } = await import('../pdfGenerator');
+      const modo = (req.query.modo || 'global') as string;
+      const percentual = parseFloat(req.query.percentual || '0');
+      const custoAtual = parseFloat(req.query.custoAtual || '0');
+      const custoNovo = parseFloat(req.query.custoNovo || '0');
+      const impactoMensal = parseFloat(req.query.impactoMensal || '0');
+      const impactoAnual = parseFloat(req.query.impactoAnual || '0');
+      const afetados = parseInt(req.query.afetados || '0');
+      let dados: any[] = [];
+      try { dados = JSON.parse(req.query.dados || '[]'); } catch { dados = []; }
+
+      const doc = createPDF();
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => {
+        const pdfBuf = Buffer.concat(chunks);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="simulacao-reajuste-${modo}.pdf"`);
+        res.send(pdfBuf);
+      });
+
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      const modoLabel = modo === 'global' ? 'Global' : modo === 'setor' ? 'Por Setor' : 'Por Cargo';
+      addHeader(doc, `Simulação de Reajuste Salarial — ${modoLabel} (${percentual}%)`, `Evox Fiscal — Cargos e Salários | Gerado em ${dataHora}`);
+
+      addKPIs(doc, [
+        { label: 'Custo Atual', value: fmtCurrency(custoAtual), color: '#3B82F6' },
+        { label: 'Custo Projetado', value: fmtCurrency(custoNovo), color: '#10B981' },
+        { label: 'Impacto Mensal', value: `+ ${fmtCurrency(impactoMensal)}`, color: '#EF4444' },
+        { label: 'Impacto Anual', value: `+ ${fmtCurrency(impactoAnual)}`, color: '#F97316' },
+      ]);
+
+      addSectionTitle(doc, `Detalhamento — ${afetados} colaborador(es) afetado(s)`);
+      const columns = [
+        { header: '#', key: 'idx', width: 25 },
+        { header: 'Nome', key: 'nome', width: 120 },
+        { header: 'Cargo', key: 'cargo', width: 90 },
+        { header: 'Setor', key: 'setor', width: 70 },
+        { header: 'Sal. Atual', key: 'salAtual', width: 70, align: 'right' as const },
+        { header: 'Sal. Novo', key: 'salNovo', width: 70, align: 'right' as const },
+        { header: 'Diferença', key: 'dif', width: 70, align: 'right' as const },
+      ];
+      const rows = dados.map((d: any, idx: number) => ({
+        idx: String(idx + 1),
+        nome: d.nome || '',
+        cargo: d.cargo || '',
+        setor: d.setor || '',
+        salAtual: fmtCurrency(d.salarioAtual || 0),
+        salNovo: fmtCurrency(d.salarioNovo || 0),
+        dif: d.diferenca > 0 ? `+ ${fmtCurrency(d.diferenca)}` : '—',
+      }));
+      rows.push({
+        idx: '', nome: 'TOTAL', cargo: '', setor: '',
+        salAtual: fmtCurrency(custoAtual), salNovo: fmtCurrency(custoNovo),
+        dif: `+ ${fmtCurrency(impactoMensal)}`, isTotal: true,
+      } as any);
+      addTable(doc, columns, rows);
+
+      addFooter(doc);
+      doc.end();
+    } catch (err: any) {
+      console.error('[Simulador Reajuste PDF Error]', err);
       res.status(500).json({ error: err.message });
     }
   });

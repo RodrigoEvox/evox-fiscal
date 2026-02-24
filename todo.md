@@ -1652,3 +1652,15 @@
 - [x] Remover campos Salário Mínimo e Máximo, manter apenas Salário Base
 - [x] Criar componente CurrencyInput global com auto-formatação BRL (R$ 1.234,56)
 - [x] Aplicar CurrencyInput em todos os campos monetários do sistema
+
+## v64 — Simulador de Reajuste Salarial + Relatório de Cargos Vagos
+- [x] Nova aba "Simulador de Reajuste" em Cargos e Salários
+- [x] Simulação por percentual de reajuste (global, por setor ou por cargo)
+- [x] Cálculo de impacto financeiro: custo atual vs custo projetado
+- [x] Exportação do resultado da simulação para PDF e Excel
+- [x] Nova aba "Cargos Vagos" em Cargos e Salários
+- [x] Comparação: cargos cadastrados vs colaboradores ativos por setor
+- [x] Indicadores: total de vagas, vagas preenchidas, vagas em aberto
+- [x] Detecção de cargos sem registro na base (colaboradores com cargos não cadastrados)
+- [x] Rota backend para exportação PDF do simulador de reajuste
+- [x] Correção de colunas PDF (key-based) para compatibilidade com pdfGenerator

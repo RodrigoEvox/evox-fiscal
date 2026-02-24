@@ -344,6 +344,608 @@ function MemoriaCalculoDialog({ open, onClose, setor, colaboradores }: {
   );
 }
 
+// ===== SIMULADOR DE REAJUSTE =====
+function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTotalMensal }: {
+  colabList: any[]; setoresList: any[]; niveis: any[]; porSetor: any[]; custoTotalMensal: number;
+}) {
+  const [modo, setModo] = useState<'global' | 'setor' | 'cargo'>('global');
+  const [percentual, setPercentual] = useState('5');
+  const [setorSelecionado, setSetorSelecionado] = useState('todos');
+  const [cargoSelecionado, setCargoSelecionado] = useState('todos');
+  const [reajustesCustom, setReajustesCustom] = useState<Record<string, string>>({});
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const pct = parseFloat(percentual) || 0;
+
+  // Build simulation data
+  const simulacao = useMemo(() => {
+    const result: { nome: string; cargo: string; setor: string; nivel: string; salarioAtual: number; salarioNovo: number; diferenca: number }[] = [];
+
+    colabList.forEach(c => {
+      const salarioAtual = parseSalario(c.salarioBase);
+      if (salarioAtual <= 0) return;
+
+      const setorNome = setoresList.find(s => s.id === c.setorId)?.nome || 'Sem Setor';
+      const cargoNome = c.cargo || 'Sem Cargo';
+      let aplicar = false;
+      let pctAplicar = pct;
+
+      if (modo === 'global') {
+        aplicar = true;
+      } else if (modo === 'setor') {
+        if (setorSelecionado === 'todos') {
+          aplicar = true;
+        } else {
+          aplicar = String(c.setorId) === setorSelecionado;
+          if (reajustesCustom[String(c.setorId)]) {
+            pctAplicar = parseFloat(reajustesCustom[String(c.setorId)]) || 0;
+          }
+        }
+      } else if (modo === 'cargo') {
+        if (cargoSelecionado === 'todos') {
+          aplicar = true;
+        } else {
+          aplicar = cargoNome === cargoSelecionado;
+          if (reajustesCustom[cargoNome]) {
+            pctAplicar = parseFloat(reajustesCustom[cargoNome]) || 0;
+          }
+        }
+      }
+
+      const salarioNovo = aplicar ? salarioAtual * (1 + pctAplicar / 100) : salarioAtual;
+      result.push({
+        nome: c.nomeCompleto || '',
+        cargo: cargoNome,
+        setor: setorNome.replace(/^[A-Z]+\s*[\u2013-]\s*/, ''),
+        nivel: NIVEL_LABELS[c.nivelHierarquico] || c.nivelHierarquico || 'N/D',
+        salarioAtual,
+        salarioNovo,
+        diferenca: salarioNovo - salarioAtual,
+      });
+    });
+
+    return result.sort((a, b) => b.diferenca - a.diferenca);
+  }, [colabList, setoresList, modo, pct, setorSelecionado, cargoSelecionado, reajustesCustom]);
+
+  const custoAtualTotal = simulacao.reduce((s, r) => s + r.salarioAtual, 0);
+  const custoNovoTotal = simulacao.reduce((s, r) => s + r.salarioNovo, 0);
+  const impactoMensal = custoNovoTotal - custoAtualTotal;
+  const impactoAnual = impactoMensal * 12;
+  const afetados = simulacao.filter(r => r.diferenca > 0).length;
+
+  // Unique cargos list
+  const cargosUnicos = useMemo(() => {
+    const set = new Set<string>();
+    colabList.forEach(c => { if (c.cargo) set.add(c.cargo); });
+    return Array.from(set).sort();
+  }, [colabList]);
+
+  // Summary by setor
+  const resumoPorSetor = useMemo(() => {
+    const map = new Map<string, { custoAtual: number; custoNovo: number; qtd: number }>(); 
+    simulacao.forEach(r => {
+      if (!map.has(r.setor)) map.set(r.setor, { custoAtual: 0, custoNovo: 0, qtd: 0 });
+      const e = map.get(r.setor)!;
+      e.custoAtual += r.salarioAtual;
+      e.custoNovo += r.salarioNovo;
+      e.qtd++;
+    });
+    return Array.from(map.entries()).map(([setor, d]) => ({ setor, ...d, diferenca: d.custoNovo - d.custoAtual })).sort((a, b) => b.diferenca - a.diferenca);
+  }, [simulacao]);
+
+  const handleExportPDF = async () => {
+    setExportingPdf(true);
+    try {
+      const params = new URLSearchParams({
+        modo,
+        percentual: String(pct),
+        custoAtual: String(custoAtualTotal),
+        custoNovo: String(custoNovoTotal),
+        impactoMensal: String(impactoMensal),
+        impactoAnual: String(impactoAnual),
+        afetados: String(afetados),
+        dados: JSON.stringify(simulacao.slice(0, 200)),
+      });
+      const resp = await fetch(`/api/cargos-salarios/simulador-reajuste-pdf?${params}`);
+      if (!resp.ok) throw new Error('Erro ao gerar PDF');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `simulacao-reajuste-${modo}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF exportado!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao exportar PDF');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleExportExcel = () => {
+    const headers = ['Nome', 'Cargo', 'Setor', 'Nível', 'Salário Atual', 'Salário Novo', 'Diferença'];
+    const rows = simulacao.map(r => [
+      r.nome, r.cargo, r.setor, r.nivel,
+      r.salarioAtual.toFixed(2).replace('.', ','),
+      r.salarioNovo.toFixed(2).replace('.', ','),
+      r.diferenca.toFixed(2).replace('.', ','),
+    ]);
+    rows.push(['', '', '', '', '', '', '']);
+    rows.push(['TOTAL', '', '', '', custoAtualTotal.toFixed(2).replace('.', ','), custoNovoTotal.toFixed(2).replace('.', ','), impactoMensal.toFixed(2).replace('.', ',')]);
+    const csvContent = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `simulacao-reajuste-${modo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Excel/CSV exportado!');
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-muted/30">
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Simule reajustes salariais por percentual, setor ou cargo e visualize o impacto financeiro antes de aplicar.</p>
+        </CardContent>
+      </Card>
+
+      {/* Controles */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calculator className="w-4 h-4 text-primary" /> Parâmetros da Simulação
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Modo de Reajuste</Label>
+              <Select value={modo} onValueChange={(v: any) => { setModo(v); setReajustesCustom({}); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">Global (todos)</SelectItem>
+                  <SelectItem value="setor">Por Setor</SelectItem>
+                  <SelectItem value="cargo">Por Cargo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Percentual de Reajuste (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={percentual}
+                onChange={e => setPercentual(e.target.value)}
+                placeholder="Ex: 5.0"
+              />
+            </div>
+
+            {modo === 'setor' && (
+              <div className="space-y-2">
+                <Label>Setor</Label>
+                <Select value={setorSelecionado} onValueChange={setSetorSelecionado}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Setores</SelectItem>
+                    {setoresList.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {modo === 'cargo' && (
+              <div className="space-y-2">
+                <Label>Cargo</Label>
+                <Select value={cargoSelecionado} onValueChange={setCargoSelecionado}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Cargos</SelectItem>
+                    {cargosUnicos.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* KPIs do Impacto */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-blue-600 font-medium">Custo Atual Mensal</p>
+            <p className="text-lg font-bold text-blue-800">{formatCurrency(custoAtualTotal)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-green-600 font-medium">Custo Projetado Mensal</p>
+            <p className="text-lg font-bold text-green-800">{formatCurrency(custoNovoTotal)}</p>
+          </CardContent>
+        </Card>
+        <Card className={`border-${impactoMensal > 0 ? 'red' : 'gray'}-200 bg-${impactoMensal > 0 ? 'red' : 'gray'}-50`}>
+          <CardContent className="p-4 text-center">
+            <p className={`text-xs ${impactoMensal > 0 ? 'text-red-600' : 'text-gray-600'} font-medium`}>Impacto Mensal</p>
+            <p className={`text-lg font-bold ${impactoMensal > 0 ? 'text-red-800' : 'text-gray-800'}`}>+ {formatCurrency(impactoMensal)}</p>
+          </CardContent>
+        </Card>
+        <Card className={`border-${impactoAnual > 0 ? 'orange' : 'gray'}-200 bg-${impactoAnual > 0 ? 'orange' : 'gray'}-50`}>
+          <CardContent className="p-4 text-center">
+            <p className={`text-xs ${impactoAnual > 0 ? 'text-orange-600' : 'text-gray-600'} font-medium`}>Impacto Anual</p>
+            <p className={`text-lg font-bold ${impactoAnual > 0 ? 'text-orange-800' : 'text-gray-800'}`}>+ {formatCurrency(impactoAnual)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-purple-600 font-medium">Colaboradores Afetados</p>
+            <p className="text-lg font-bold text-purple-800">{afetados} / {simulacao.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Resumo por Setor */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary" /> Impacto por Setor
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {resumoPorSetor.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado disponível</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-semibold">Setor</TableHead>
+                    <TableHead className="text-center font-semibold">Qtd</TableHead>
+                    <TableHead className="text-right font-semibold">Custo Atual</TableHead>
+                    <TableHead className="text-right font-semibold">Custo Projetado</TableHead>
+                    <TableHead className="text-right font-semibold">Diferença</TableHead>
+                    <TableHead className="font-semibold">Impacto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resumoPorSetor.map(r => (
+                    <TableRow key={r.setor}>
+                      <TableCell className="font-medium">{r.setor}</TableCell>
+                      <TableCell className="text-center">{r.qtd}</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(r.custoAtual)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(r.custoNovo)}</TableCell>
+                      <TableCell className="text-right font-mono text-red-600">+ {formatCurrency(r.diferenca)}</TableCell>
+                      <TableCell>
+                        <div className="w-24 h-3 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-red-400 rounded-full" style={{ width: `${impactoMensal > 0 ? (r.diferenca / impactoMensal) * 100 : 0}%` }} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="font-bold border-t-2 bg-muted/30">
+                    <TableCell>TOTAL</TableCell>
+                    <TableCell className="text-center">{simulacao.length}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(custoAtualTotal)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(custoNovoTotal)}</TableCell>
+                    <TableCell className="text-right font-mono text-red-600">+ {formatCurrency(impactoMensal)}</TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Detalhamento Individual */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" /> Detalhamento Individual
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1">
+                <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
+              </Button>
+              <Button size="sm" onClick={handleExportPDF} disabled={exportingPdf} className="gap-1">
+                {exportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} PDF
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 sticky top-0">
+                  <TableHead className="font-semibold">#</TableHead>
+                  <TableHead className="font-semibold">Nome</TableHead>
+                  <TableHead className="font-semibold">Cargo</TableHead>
+                  <TableHead className="font-semibold">Setor</TableHead>
+                  <TableHead className="text-right font-semibold">Sal. Atual</TableHead>
+                  <TableHead className="text-right font-semibold">Sal. Novo</TableHead>
+                  <TableHead className="text-right font-semibold">Diferença</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {simulacao.slice(0, 100).map((r, idx) => (
+                  <TableRow key={idx} className={r.diferenca > 0 ? 'bg-red-50/30' : ''}>
+                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{r.nome}</TableCell>
+                    <TableCell>{r.cargo}</TableCell>
+                    <TableCell>{r.setor}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(r.salarioAtual)}</TableCell>
+                    <TableCell className="text-right font-mono text-green-700">{formatCurrency(r.salarioNovo)}</TableCell>
+                    <TableCell className="text-right font-mono text-red-600">
+                      {r.diferenca > 0 ? `+ ${formatCurrency(r.diferenca)}` : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {simulacao.length > 100 && (
+            <p className="text-xs text-muted-foreground text-center mt-2">Exibindo 100 de {simulacao.length} colaboradores. Exporte para ver todos.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ===== CARGOS VAGOS =====
+function CargosVagos({ colabList, setoresList, niveis }: {
+  colabList: any[]; setoresList: any[]; niveis: any[];
+}) {
+  const [filterSetorVago, setFilterSetorVago] = useState('todos');
+
+  // Compare registered cargos vs active employees
+  const analiseVagas = useMemo(() => {
+    const result: {
+      cargo: string; funcao: string; setor: string; setorId: number;
+      salarioBase: number; comissionado: boolean; cargoConfianca: boolean;
+      totalCadastrado: number; totalPreenchido: number; vagasAbertas: number;
+    }[] = [];
+
+    // Group niveis by cargo+setor
+    const cargoMap = new Map<string, any>();
+    niveis.forEach(n => {
+      const key = `${n.cargo}__${n.setorId}`;
+      if (!cargoMap.has(key)) {
+        const setor = setoresList.find(s => s.id === n.setorId);
+        cargoMap.set(key, {
+          cargo: n.cargo,
+          funcao: n.funcao || '',
+          setor: setor?.nome?.replace(/^[A-Z]+\s*[\u2013-]\s*/, '') || 'Sem Setor',
+          setorId: n.setorId,
+          salarioBase: parseSalario(n.salarioBase),
+          comissionado: n.comissionado === 1,
+          cargoConfianca: n.cargoConfianca === 1,
+          totalCadastrado: 1,
+        });
+      } else {
+        cargoMap.get(key)!.totalCadastrado++;
+      }
+    });
+
+    // Count active employees per cargo+setor
+    const colabCountMap = new Map<string, number>();
+    colabList.forEach(c => {
+      if (c.status === 'Desligado' || c.status === 'desligado') return;
+      const key = `${c.cargo}__${c.setorId}`;
+      colabCountMap.set(key, (colabCountMap.get(key) || 0) + 1);
+    });
+
+    cargoMap.forEach((data, key) => {
+      const preenchido = colabCountMap.get(key) || 0;
+      result.push({
+        ...data,
+        totalPreenchido: preenchido,
+        vagasAbertas: Math.max(0, data.totalCadastrado - preenchido),
+      });
+    });
+
+    // Also find employees with cargos NOT in the base
+    const cargosRegistrados = new Set(niveis.map(n => `${n.cargo}__${n.setorId}`));
+    const colabSemBase = new Map<string, { cargo: string; setor: string; setorId: number; count: number }>();
+    colabList.forEach(c => {
+      if (c.status === 'Desligado' || c.status === 'desligado') return;
+      const key = `${c.cargo}__${c.setorId}`;
+      if (!cargosRegistrados.has(key) && c.cargo) {
+        if (!colabSemBase.has(key)) {
+          const setor = setoresList.find(s => s.id === c.setorId);
+          colabSemBase.set(key, {
+            cargo: c.cargo,
+            setor: setor?.nome?.replace(/^[A-Z]+\s*[\u2013-]\s*/, '') || 'Sem Setor',
+            setorId: c.setorId,
+            count: 0,
+          });
+        }
+        colabSemBase.get(key)!.count++;
+      }
+    });
+
+    return {
+      vagas: result.sort((a, b) => b.vagasAbertas - a.vagasAbertas),
+      semBase: Array.from(colabSemBase.values()).sort((a, b) => b.count - a.count),
+    };
+  }, [colabList, setoresList, niveis]);
+
+  const vagasFiltradas = useMemo(() => {
+    if (filterSetorVago === 'todos') return analiseVagas.vagas;
+    return analiseVagas.vagas.filter(v => String(v.setorId) === filterSetorVago);
+  }, [analiseVagas.vagas, filterSetorVago]);
+
+  const totalVagas = vagasFiltradas.reduce((s, v) => s + v.totalCadastrado, 0);
+  const totalPreenchidas = vagasFiltradas.reduce((s, v) => s + v.totalPreenchido, 0);
+  const totalAbertas = vagasFiltradas.reduce((s, v) => s + v.vagasAbertas, 0);
+  const taxaOcupacao = totalVagas > 0 ? ((totalPreenchidas / totalVagas) * 100).toFixed(1) : '0.0';
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-muted/30">
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Comparação entre cargos cadastrados na base e colaboradores ativos para identificar posições em aberto e cargos sem registro.</p>
+        </CardContent>
+      </Card>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-blue-600 font-medium">Total de Posições</p>
+            <p className="text-2xl font-bold text-blue-800">{totalVagas}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-green-600 font-medium">Preenchidas</p>
+            <p className="text-2xl font-bold text-green-800">{totalPreenchidas}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-red-600 font-medium">Vagas em Aberto</p>
+            <p className="text-2xl font-bold text-red-800">{totalAbertas}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-purple-600 font-medium">Taxa de Ocupação</p>
+            <p className="text-2xl font-bold text-purple-800">{taxaOcupacao}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filtro */}
+      <div className="flex items-center gap-4">
+        <div className="space-y-1">
+          <Label className="text-xs">Filtrar por Setor</Label>
+          <Select value={filterSetorVago} onValueChange={setFilterSetorVago}>
+            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Setores</SelectItem>
+              {setoresList.map(s => (
+                <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Tabela de Vagas */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-primary" /> Posições Cadastradas vs Colaboradores Ativos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {vagasFiltradas.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhum cargo cadastrado na base. Cadastre cargos na aba "Cadastro" primeiro.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold">Cargo</TableHead>
+                    <TableHead className="font-semibold">Função</TableHead>
+                    <TableHead className="font-semibold">Setor</TableHead>
+                    <TableHead className="text-right font-semibold">Sal. Base</TableHead>
+                    <TableHead className="text-center font-semibold">Cadastrado</TableHead>
+                    <TableHead className="text-center font-semibold">Preenchido</TableHead>
+                    <TableHead className="text-center font-semibold">Vagas</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vagasFiltradas.map((v, idx) => (
+                    <TableRow key={idx} className={v.vagasAbertas > 0 ? 'bg-red-50/40' : ''}>
+                      <TableCell className="font-medium">{v.cargo}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{v.funcao || '\u2014'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">{v.setor}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(v.salarioBase)}</TableCell>
+                      <TableCell className="text-center">{v.totalCadastrado}</TableCell>
+                      <TableCell className="text-center">{v.totalPreenchido}</TableCell>
+                      <TableCell className="text-center">
+                        {v.vagasAbertas > 0 ? (
+                          <Badge className="bg-red-100 text-red-800 border-red-300 text-[10px]">{v.vagasAbertas} vaga{v.vagasAbertas > 1 ? 's' : ''}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {v.vagasAbertas > 0 ? (
+                          <Badge className="bg-red-100 text-red-700 text-[10px] gap-1"><XCircle className="w-3 h-3" /> Em Aberto</Badge>
+                        ) : v.totalPreenchido > v.totalCadastrado ? (
+                          <Badge className="bg-amber-100 text-amber-700 text-[10px] gap-1"><TrendingUp className="w-3 h-3" /> Excedente</Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-700 text-[10px] gap-1"><Check className="w-3 h-3" /> Completo</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cargos sem registro na base */}
+      {analiseVagas.semBase.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-amber-700">
+              <XCircle className="w-4 h-4" /> Cargos sem Registro na Base ({analiseVagas.semBase.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">Estes cargos existem em colaboradores ativos mas não estão cadastrados na base de Cargos e Salários.</p>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-semibold">Cargo</TableHead>
+                    <TableHead className="font-semibold">Setor</TableHead>
+                    <TableHead className="text-center font-semibold">Colaboradores</TableHead>
+                    <TableHead className="font-semibold">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analiseVagas.semBase.map((c, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">{c.cargo}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{c.setor}</Badge></TableCell>
+                      <TableCell className="text-center">{c.count}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300">Cadastrar na base</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ===== MAIN PAGE =====
 export default function CargosSalarios() {
   const colaboradores = trpc.colaboradores.list.useQuery();
@@ -580,12 +1182,14 @@ export default function CargosSalarios() {
         </Card>
       </div>
 
-      {/* Tabs - 3 tabs only */}
+      {/* Tabs - 5 tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="cadastro" className="gap-2"><Briefcase className="w-4 h-4" /> Cadastro</TabsTrigger>
           <TabsTrigger value="organograma" className="gap-2"><GitBranch className="w-4 h-4" /> Organograma</TabsTrigger>
           <TabsTrigger value="analise" className="gap-2"><BarChart3 className="w-4 h-4" /> Análise Salarial</TabsTrigger>
+          <TabsTrigger value="simulador" className="gap-2"><Calculator className="w-4 h-4" /> Simulador</TabsTrigger>
+          <TabsTrigger value="vagos" className="gap-2"><Users className="w-4 h-4" /> Cargos Vagos</TabsTrigger>
         </TabsList>
 
         {/* ===== ABA CADASTRO ===== */}
@@ -829,6 +1433,26 @@ export default function CargosSalarios() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ===== ABA SIMULADOR DE REAJUSTE ===== */}
+        <TabsContent value="simulador" className="space-y-6 mt-4">
+          <SimuladorReajuste
+            colabList={colabList}
+            setoresList={setoresList}
+            niveis={niveis}
+            porSetor={porSetor}
+            custoTotalMensal={custoTotalMensal}
+          />
+        </TabsContent>
+
+        {/* ===== ABA CARGOS VAGOS ===== */}
+        <TabsContent value="vagos" className="space-y-6 mt-4">
+          <CargosVagos
+            colabList={colabList}
+            setoresList={setoresList}
+            niveis={niveis}
+          />
         </TabsContent>
       </Tabs>
 
