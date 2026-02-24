@@ -1,5 +1,5 @@
-import { Link, useLocation } from 'wouter';
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useLocation, Link } from 'wouter';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,11 +13,15 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
   Briefcase, Loader2, Calculator, DollarSign, Calendar, Users,
   FileText, Trash2, Eye, AlertTriangle, ArrowLeft, Save, X,
-  CheckCircle2, Clock, Ban,
+  CheckCircle2, Clock, Ban, Download, FileSpreadsheet, Pencil,
+  History, ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 
 const TIPO_DESLIGAMENTO_LABELS: Record<string, string> = {
@@ -38,6 +42,17 @@ const TIPO_DESLIGAMENTO_COLORS: Record<string, string> = {
   acordo_mutuo: 'bg-purple-100 text-purple-700',
 };
 
+const ACAO_LABELS: Record<string, string> = {
+  simulado: 'Simulado',
+  descartado: 'Descartado',
+  salvo: 'Salvo',
+};
+const ACAO_COLORS: Record<string, string> = {
+  simulado: 'bg-blue-100 text-blue-700',
+  descartado: 'bg-red-100 text-red-700',
+  salvo: 'bg-green-100 text-green-700',
+};
+
 function formatCurrency(v: string | number) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -49,7 +64,13 @@ function formatDate(d: string | null | undefined) {
   return d;
 }
 
-// ─── Inline Result View ───
+function formatDateTime(d: string | Date | null | undefined) {
+  if (!d) return '-';
+  const date = typeof d === 'string' ? new Date(d) : d;
+  return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+// ─── Inline Result View with Editable Verbas ───
 function ResultadoRescisao({
   preview,
   onSave,
@@ -57,14 +78,71 @@ function ResultadoRescisao({
   isSaving,
 }: {
   preview: any;
-  onSave: () => void;
+  onSave: (overrides: { avisoPrevioDias?: number; descontosAdicionais?: number; observacao?: string }) => void;
   onDiscard: () => void;
   isSaving: boolean;
 }) {
+  const [editMode, setEditMode] = useState(false);
+  const [avisoPrevioDias, setAvisoPrevioDias] = useState<number>(preview.avisoPrevioDias || 0);
+  const [descontosAdicionais, setDescontosAdicionais] = useState<number>(0);
+  const [observacao, setObservacao] = useState('');
+  const [showEdits, setShowEdits] = useState(false);
+
+  // Recalculate values with overrides
+  const salDia = Number(preview.salarioBase) / 30;
+  const avisoPrevioCalc = editMode && avisoPrevioDias !== preview.avisoPrevioDias
+    ? (preview.tipoDesligamento === 'acordo_mutuo' ? salDia * avisoPrevioDias * 0.5 : salDia * avisoPrevioDias)
+    : Number(preview.avisoPrevio);
+  const totalProventosCalc = Number(preview.saldoSalario) + avisoPrevioCalc +
+    Number(preview.decimoTerceiroProporcional) + Number(preview.feriasProporcionais) +
+    Number(preview.tercoConstitucional) + Number(preview.feriasVencidas) + Number(preview.multaFgts);
+  const totalDescontosCalc = editMode ? descontosAdicionais : Number(preview.totalDescontos);
+  const totalLiquidoCalc = totalProventosCalc - totalDescontosCalc;
+
+  const handleExportExcel = () => {
+    const BOM = '\uFEFF';
+    const headers = ['Verba', 'Referência', 'Valor'];
+    const rows: string[][] = [];
+    rows.push(['Saldo de Salário', 'Dias trabalhados', String(Number(preview.saldoSalario).toFixed(2))]);
+    if (Number(preview.avisoPrevio) > 0) rows.push(['Aviso Prévio', `${avisoPrevioDias} dias`, String(avisoPrevioCalc.toFixed(2))]);
+    if (Number(preview.decimoTerceiroProporcional) > 0) rows.push(['13º Proporcional', `${preview.decimoTerceiroMeses}/12 avos`, String(Number(preview.decimoTerceiroProporcional).toFixed(2))]);
+    if (Number(preview.feriasProporcionais) > 0) rows.push(['Férias Proporcionais', `${preview.feriasMeses}/12 avos`, String(Number(preview.feriasProporcionais).toFixed(2))]);
+    if (Number(preview.tercoConstitucional) > 0) rows.push(['1/3 Constitucional', 'Sobre férias', String(Number(preview.tercoConstitucional).toFixed(2))]);
+    if (Number(preview.feriasVencidas) > 0) rows.push(['Férias Vencidas + 1/3', 'Período completo', String(Number(preview.feriasVencidas).toFixed(2))]);
+    if (Number(preview.multaFgts) > 0) rows.push([`Multa FGTS (${preview.multaFgtsPercentual}%)`, `Sobre ${Number(preview.fgtsDepositado).toFixed(2)}`, String(Number(preview.multaFgts).toFixed(2))]);
+    if (totalDescontosCalc > 0) rows.push(['Descontos', 'Ajuste manual', String(totalDescontosCalc.toFixed(2))]);
+    rows.push(['TOTAL LÍQUIDO', '', String(totalLiquidoCalc.toFixed(2))]);
+
+    const csv = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rescisao-${(preview.colaboradorNome || 'calculo').replace(/\s+/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+    toast.success('Excel exportado com sucesso');
+  };
+
+  const handleExportPDF = () => {
+    const dados = {
+      ...preview,
+      avisoPrevioDias,
+      avisoPrevio: avisoPrevioCalc,
+      totalProventos: totalProventosCalc,
+      totalDescontos: totalDescontosCalc,
+      totalLiquido: totalLiquidoCalc,
+      observacao,
+    };
+    const url = `/api/rescisao/export-pdf?dados=${encodeURIComponent(JSON.stringify(dados))}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
             <Clock className="w-5 h-5 text-amber-600" />
@@ -74,11 +152,39 @@ function ResultadoRescisao({
             <p className="text-xs text-muted-foreground">Revise os valores antes de salvar</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4" /> Excel
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Exportar para CSV/Excel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-1.5">
+                  <Download className="w-4 h-4" /> PDF
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Exportar para PDF</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button variant="outline" onClick={onDiscard} className="gap-2">
             <X className="w-4 h-4" /> Descartar
           </Button>
-          <Button onClick={onSave} disabled={isSaving} className="gap-2 bg-green-600 hover:bg-green-700">
+          <Button
+            onClick={() => onSave({
+              avisoPrevioDias: editMode ? avisoPrevioDias : undefined,
+              descontosAdicionais: editMode ? descontosAdicionais : undefined,
+              observacao: observacao || undefined,
+            })}
+            disabled={isSaving}
+            className="gap-2 bg-green-600 hover:bg-green-700"
+          >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar Cálculo
           </Button>
@@ -114,22 +220,105 @@ function ResultadoRescisao({
         <Card className="border-green-200 bg-green-50/60">
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-green-700 font-medium mb-1">Total Proventos</p>
-            <p className="text-2xl font-bold text-green-700">{formatCurrency(preview.totalProventos)}</p>
+            <p className="text-2xl font-bold text-green-700">{formatCurrency(totalProventosCalc)}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50/60">
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-red-700 font-medium mb-1">Total Descontos</p>
-            <p className="text-2xl font-bold text-red-700">{formatCurrency(preview.totalDescontos)}</p>
+            <p className="text-2xl font-bold text-red-700">{formatCurrency(totalDescontosCalc)}</p>
           </CardContent>
         </Card>
         <Card className="border-indigo-200 bg-indigo-50/60">
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-indigo-700 font-medium mb-1">Total Líquido</p>
-            <p className="text-2xl font-bold text-indigo-700">{formatCurrency(preview.totalLiquido)}</p>
+            <p className="text-2xl font-bold text-indigo-700">{formatCurrency(totalLiquidoCalc)}</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Editable Verbas Toggle */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { setEditMode(!editMode); setShowEdits(!showEdits); }}
+          className="gap-2"
+        >
+          <Pencil className="w-4 h-4" />
+          {editMode ? 'Fechar Edição Manual' : 'Editar Verbas Manualmente'}
+          {showEdits ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </Button>
+        {editMode && (
+          <Badge className="bg-amber-100 text-amber-700 gap-1">
+            <Pencil className="w-3 h-3" /> Modo edição ativo
+          </Badge>
+        )}
+      </div>
+
+      {/* Editable Fields Panel */}
+      {showEdits && (
+        <Card className="border-amber-200 bg-amber-50/30 animate-in fade-in slide-in-from-top-2 duration-300">
+          <CardContent className="pt-5 pb-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Pencil className="w-4 h-4 text-amber-600" />
+              <span className="font-semibold text-sm text-gray-900">Ajustes Manuais</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    Ajuste os dias de aviso prévio ou adicione descontos antes de salvar. Os totais serão recalculados automaticamente.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-xs font-medium">Dias de Aviso Prévio</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={avisoPrevioDias}
+                  onChange={(e) => setAvisoPrevioDias(Number(e.target.value))}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Original: {preview.avisoPrevioDias} dias
+                  {avisoPrevioDias !== preview.avisoPrevioDias && (
+                    <span className="text-amber-600 font-medium"> (alterado)</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs font-medium">Descontos Adicionais (R$)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={descontosAdicionais}
+                  onChange={(e) => setDescontosAdicionais(Number(e.target.value))}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ex: adiantamentos, empréstimos, danos
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs font-medium">Observação</Label>
+                <Textarea
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  placeholder="Motivo do ajuste, justificativa..."
+                  className="mt-1 h-[68px] resize-none"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Verbas Rescisórias Table */}
       <Card>
@@ -153,11 +342,16 @@ function ResultadoRescisao({
                 <td className="px-4 py-2 text-center text-muted-foreground">Dias trabalhados no mês</td>
                 <td className="px-4 py-2 text-right font-medium">{formatCurrency(preview.saldoSalario)}</td>
               </tr>
-              {Number(preview.avisoPrevio) > 0 && (
-                <tr className="border-b">
-                  <td className="px-4 py-2">Aviso Prévio</td>
-                  <td className="px-4 py-2 text-center text-muted-foreground">{preview.avisoPrevioDias} dias</td>
-                  <td className="px-4 py-2 text-right font-medium">{formatCurrency(preview.avisoPrevio)}</td>
+              {(Number(preview.avisoPrevio) > 0 || avisoPrevioCalc > 0) && (
+                <tr className={`border-b ${editMode && avisoPrevioDias !== preview.avisoPrevioDias ? 'bg-amber-50' : ''}`}>
+                  <td className="px-4 py-2">
+                    Aviso Prévio
+                    {editMode && avisoPrevioDias !== preview.avisoPrevioDias && (
+                      <Badge className="ml-2 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0">editado</Badge>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-center text-muted-foreground">{avisoPrevioDias} dias</td>
+                  <td className="px-4 py-2 text-right font-medium">{formatCurrency(avisoPrevioCalc)}</td>
                 </tr>
               )}
               {Number(preview.decimoTerceiroProporcional) > 0 && (
@@ -195,11 +389,21 @@ function ResultadoRescisao({
                   <td className="px-4 py-2 text-right font-medium">{formatCurrency(preview.multaFgts)}</td>
                 </tr>
               )}
+              {totalDescontosCalc > 0 && (
+                <tr className={`border-b ${editMode ? 'bg-red-50' : ''}`}>
+                  <td className="px-4 py-2 text-red-700">
+                    Descontos Adicionais
+                    {editMode && <Badge className="ml-2 bg-red-100 text-red-700 text-[10px] px-1.5 py-0">manual</Badge>}
+                  </td>
+                  <td className="px-4 py-2 text-center text-muted-foreground">Ajuste manual</td>
+                  <td className="px-4 py-2 text-right font-medium text-red-700">- {formatCurrency(totalDescontosCalc)}</td>
+                </tr>
+              )}
             </tbody>
             <tfoot>
               <tr className="bg-green-50 font-bold">
                 <td className="px-4 py-3" colSpan={2}>Total Líquido</td>
-                <td className="px-4 py-3 text-right text-green-700 text-lg">{formatCurrency(preview.totalLiquido)}</td>
+                <td className="px-4 py-3 text-right text-green-700 text-lg">{formatCurrency(totalLiquidoCalc)}</td>
               </tr>
             </tfoot>
           </table>
@@ -220,6 +424,16 @@ function ResultadoRescisao({
         </CardContent>
       </Card>
 
+      {/* Observação (if filled) */}
+      {observacao && !showEdits && (
+        <Card className="bg-muted/30 border-dashed">
+          <CardContent className="pt-3 pb-3 text-sm">
+            <span className="text-muted-foreground text-xs font-medium">Observação:</span>
+            <p className="mt-1">{observacao}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Bottom action bar (sticky) */}
       <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t py-3 -mx-6 px-6 flex items-center justify-between">
         <p className="text-sm text-amber-600 flex items-center gap-2">
@@ -230,7 +444,16 @@ function ResultadoRescisao({
           <Button variant="outline" onClick={onDiscard} size="sm" className="gap-1">
             <X className="w-3.5 h-3.5" /> Descartar
           </Button>
-          <Button onClick={onSave} disabled={isSaving} size="sm" className="gap-1 bg-green-600 hover:bg-green-700">
+          <Button
+            onClick={() => onSave({
+              avisoPrevioDias: editMode ? avisoPrevioDias : undefined,
+              descontosAdicionais: editMode ? descontosAdicionais : undefined,
+              observacao: observacao || undefined,
+            })}
+            disabled={isSaving}
+            size="sm"
+            className="gap-1 bg-green-600 hover:bg-green-700"
+          >
             {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Salvar Cálculo
           </Button>
@@ -240,10 +463,77 @@ function ResultadoRescisao({
   );
 }
 
+// ─── Audit History Tab ───
+function AuditoriaTab() {
+  const { data: auditoria, isLoading } = trpc.rescisoes.auditoria.useQuery({ limit: 100 });
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  if (!auditoria?.length) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          <History className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+          <p>Nenhum registro de auditoria ainda.</p>
+          <p className="text-sm mt-1">As simulações calculadas, salvas e descartadas aparecerão aqui.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <History className="w-4 h-4 text-indigo-600" /> Histórico de Auditoria ({auditoria.length} registros)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left px-4 py-2 font-medium">Data/Hora</th>
+                <th className="text-left px-4 py-2 font-medium">Colaborador</th>
+                <th className="text-left px-4 py-2 font-medium">Cargo</th>
+                <th className="text-left px-4 py-2 font-medium">Tipo Desligamento</th>
+                <th className="text-right px-4 py-2 font-medium">Salário Base</th>
+                <th className="text-center px-4 py-2 font-medium">Ação</th>
+                <th className="text-left px-4 py-2 font-medium">Usuário</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditoria.map((a: any) => (
+                <tr key={a.id} className="border-b hover:bg-muted/30">
+                  <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">{formatDateTime(a.createdAt)}</td>
+                  <td className="px-4 py-2 font-medium">{a.colaboradorNome}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{a.cargo || '-'}</td>
+                  <td className="px-4 py-2">
+                    <Badge className={`text-[10px] ${TIPO_DESLIGAMENTO_COLORS[a.tipoDesligamento] || 'bg-gray-100'}`}>
+                      {TIPO_DESLIGAMENTO_LABELS[a.tipoDesligamento] || a.tipoDesligamento}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2 text-right">{formatCurrency(a.salarioBase)}</td>
+                  <td className="px-4 py-2 text-center">
+                    <Badge className={`text-[10px] ${ACAO_COLORS[a.acao] || 'bg-gray-100'}`}>
+                      {ACAO_LABELS[a.acao] || a.acao}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground text-xs">{a.simuladoPorNome || 'Sistema'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Page ───
 export default function RescisaoPage() {
-  // View state: 'list' | 'form' | 'result'
   const [view, setView] = useState<'list' | 'form' | 'result'>('list');
+  const [activeTab, setActiveTab] = useState('rescisoes');
   const [selectedColabId, setSelectedColabId] = useState<string>('');
   const [dataDesligamento, setDataDesligamento] = useState('');
   const [tipoDesligamento, setTipoDesligamento] = useState<string>('');
@@ -259,7 +549,6 @@ export default function RescisaoPage() {
   const { data: rescisoes, isLoading } = trpc.rescisoes.list.useQuery();
   const { data: colaboradores } = trpc.colaboradores.list.useQuery();
 
-  // Preview mutation (calculate only, no save)
   const previewMut = trpc.rescisoes.preview.useMutation({
     onSuccess: (data) => {
       setPreviewData(data);
@@ -268,16 +557,22 @@ export default function RescisaoPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  // Save mutation (persist the calculation)
   const saveMut = trpc.rescisoes.calcular.useMutation({
     onSuccess: (data) => {
       utils.rescisoes.list.invalidate();
+      utils.rescisoes.auditoria.invalidate();
       toast.success(`Rescisão salva com sucesso! Total líquido: ${formatCurrency(data.totalLiquido)}`);
       setView('list');
       setPreviewData(null);
       resetForm();
     },
     onError: (e) => toast.error(e.message),
+  });
+
+  const discardMut = trpc.rescisoes.registrarDescarte.useMutation({
+    onSuccess: () => {
+      utils.rescisoes.auditoria.invalidate();
+    },
   });
 
   const deleteMut = trpc.rescisoes.delete.useMutation({
@@ -315,23 +610,37 @@ export default function RescisaoPage() {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = (overrides: { avisoPrevioDias?: number; descontosAdicionais?: number; observacao?: string }) => {
     if (!previewData) return;
     saveMut.mutate({
       colaboradorId: previewData.colaboradorId,
       dataDesligamento: previewData.dataDesligamento,
       tipoDesligamento: previewData.tipoDesligamento as any,
+      overrides: overrides.avisoPrevioDias !== undefined || overrides.descontosAdicionais !== undefined || overrides.observacao
+        ? overrides
+        : undefined,
     });
   };
 
   const handleDiscard = () => {
+    // Register discard in audit
+    if (previewData) {
+      discardMut.mutate({
+        colaboradorId: previewData.colaboradorId,
+        colaboradorNome: previewData.colaboradorNome,
+        cargo: previewData.cargo,
+        salarioBase: String(previewData.salarioBase),
+        dataDesligamento: previewData.dataDesligamento,
+        tipoDesligamento: previewData.tipoDesligamento,
+        resultadoJson: JSON.stringify(previewData),
+      });
+    }
     setPreviewData(null);
     setView('list');
     resetForm();
     toast.info('Cálculo descartado');
   };
 
-  // Intercept navigation when there are unsaved results
   const tryNavigate = useCallback((target: string) => {
     if (hasUnsavedResult) {
       setPendingNavigation(target);
@@ -348,6 +657,18 @@ export default function RescisaoPage() {
 
   const confirmDiscard = () => {
     setShowDiscardAlert(false);
+    // Register discard in audit
+    if (previewData) {
+      discardMut.mutate({
+        colaboradorId: previewData.colaboradorId,
+        colaboradorNome: previewData.colaboradorNome,
+        cargo: previewData.cargo,
+        salarioBase: String(previewData.salarioBase),
+        dataDesligamento: previewData.dataDesligamento,
+        tipoDesligamento: previewData.tipoDesligamento,
+        resultadoJson: JSON.stringify(previewData),
+      });
+    }
     setPreviewData(null);
     setView('list');
     resetForm();
@@ -432,76 +753,93 @@ export default function RescisaoPage() {
           </Card>
         </div>
 
-        {/* Rescisões List */}
-        {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>
-        ) : !rescisoes?.length ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Briefcase className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p>Nenhuma rescisão calculada ainda.</p>
-              <p className="text-sm mt-1">Clique em "Nova Rescisão" para calcular verbas rescisórias.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Rescisões Calculadas</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left px-4 py-3 font-medium">Colaborador</th>
-                      <th className="text-left px-4 py-3 font-medium">Tipo</th>
-                      <th className="text-center px-4 py-3 font-medium">Data Desligamento</th>
-                      <th className="text-right px-4 py-3 font-medium">Salário Base</th>
-                      <th className="text-right px-4 py-3 font-medium">Total Líquido</th>
-                      <th className="text-center px-4 py-3 font-medium">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rescisoes.map((r: any) => (
-                      <tr key={r.id} className="border-b hover:bg-muted/30">
-                        <td className="px-4 py-3 font-medium">{r.colaboradorNome}</td>
-                        <td className="px-4 py-3">
-                          <Badge className={TIPO_DESLIGAMENTO_COLORS[r.tipoDesligamento] || 'bg-gray-100'}>
-                            {TIPO_DESLIGAMENTO_LABELS[r.tipoDesligamento] || r.tipoDesligamento}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-center">{formatDate(r.dataDesligamento)}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(r.salarioBase)}</td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700">{formatCurrency(r.totalLiquido)}</td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex gap-1 justify-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => { setSelectedRescisao(r); setShowDetailDialog(true); }}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => deleteMut.mutate({ id: r.id })}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Tabs: Rescisões + Auditoria */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="rescisoes" className="gap-1.5">
+              <FileText className="w-4 h-4" /> Rescisões
+            </TabsTrigger>
+            <TabsTrigger value="auditoria" className="gap-1.5">
+              <History className="w-4 h-4" /> Auditoria
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Detail Dialog (for viewing saved rescisões) */}
+          <TabsContent value="rescisoes" className="mt-4">
+            {isLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>
+            ) : !rescisoes?.length ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  <Briefcase className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <p>Nenhuma rescisão calculada ainda.</p>
+                  <p className="text-sm mt-1">Clique em "Nova Rescisão" para calcular verbas rescisórias.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Rescisões Calculadas</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left px-4 py-3 font-medium">Colaborador</th>
+                          <th className="text-left px-4 py-3 font-medium">Tipo</th>
+                          <th className="text-center px-4 py-3 font-medium">Data Desligamento</th>
+                          <th className="text-right px-4 py-3 font-medium">Salário Base</th>
+                          <th className="text-right px-4 py-3 font-medium">Total Líquido</th>
+                          <th className="text-center px-4 py-3 font-medium">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rescisoes.map((r: any) => (
+                          <tr key={r.id} className="border-b hover:bg-muted/30">
+                            <td className="px-4 py-3 font-medium">{r.colaboradorNome}</td>
+                            <td className="px-4 py-3">
+                              <Badge className={TIPO_DESLIGAMENTO_COLORS[r.tipoDesligamento] || 'bg-gray-100'}>
+                                {TIPO_DESLIGAMENTO_LABELS[r.tipoDesligamento] || r.tipoDesligamento}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-center">{formatDate(r.dataDesligamento)}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(r.salarioBase)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-green-700">{formatCurrency(r.totalLiquido)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex gap-1 justify-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => { setSelectedRescisao(r); setShowDetailDialog(true); }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => deleteMut.mutate({ id: r.id })}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="auditoria" className="mt-4">
+            <AuditoriaTab />
+          </TabsContent>
+        </Tabs>
+
+        {/* Detail Dialog */}
         <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
           <DialogContent className="sm:max-w-[640px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -591,6 +929,13 @@ export default function RescisaoPage() {
                             <td className="px-4 py-2 text-right font-medium">{formatCurrency(selectedRescisao.multaFgts)}</td>
                           </tr>
                         )}
+                        {Number(selectedRescisao.totalDescontos) > 0 && (
+                          <tr className="border-b">
+                            <td className="px-4 py-2 text-red-700">Descontos</td>
+                            <td className="px-4 py-2 text-center text-muted-foreground">Ajuste manual</td>
+                            <td className="px-4 py-2 text-right font-medium text-red-700">- {formatCurrency(selectedRescisao.totalDescontos)}</td>
+                          </tr>
+                        )}
                       </tbody>
                       <tfoot>
                         <tr className="bg-green-50 font-bold">
@@ -613,6 +958,14 @@ export default function RescisaoPage() {
                     </div>
                   </CardContent>
                 </Card>
+                {selectedRescisao.observacao && (
+                  <Card className="bg-muted/30 border-dashed">
+                    <CardContent className="pt-3 pb-3 text-sm">
+                      <span className="text-muted-foreground text-xs font-medium">Observação:</span>
+                      <p className="mt-1">{selectedRescisao.observacao}</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </DialogContent>
@@ -621,7 +974,7 @@ export default function RescisaoPage() {
     );
   }
 
-  // ─── FORM VIEW (inline, not modal) ───
+  // ─── FORM VIEW ───
   if (view === 'form') {
     return (
       <div className="space-y-6">
@@ -740,7 +1093,7 @@ export default function RescisaoPage() {
     );
   }
 
-  // ─── RESULT VIEW (inline, with save/discard) ───
+  // ─── RESULT VIEW ───
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-2">

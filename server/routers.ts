@@ -3865,7 +3865,7 @@ export const appRouter = router({
       colaboradorId: z.number(),
       dataDesligamento: z.string(),
       tipoDesligamento: z.enum(['sem_justa_causa', 'justa_causa', 'pedido_demissao', 'termino_experiencia_1', 'termino_experiencia_2', 'acordo_mutuo']),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ input, ctx }) => {
       const colabs = await db.listColaboradores();
       const colab = colabs.find((c: any) => c.id === input.colaboradorId);
       if (!colab) throw new TRPCError({ code: 'NOT_FOUND', message: 'Colaborador não encontrado' });
@@ -3878,6 +3878,22 @@ export const appRouter = router({
         periodoExperiencia1Fim: colab.periodoExperiencia1Fim,
         periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
       });
+
+      // Log audit: simulado
+      try {
+        await db.createRescisaoAuditoria({
+          colaboradorId: input.colaboradorId,
+          colaboradorNome: colab.nomeCompleto,
+          cargo: colab.cargo,
+          salarioBase: String(colab.salarioBase),
+          dataDesligamento: input.dataDesligamento,
+          tipoDesligamento: input.tipoDesligamento,
+          resultadoJson: JSON.stringify(calculo),
+          acao: 'simulado',
+          simuladoPorId: ctx.user?.id || null,
+          simuladoPorNome: ctx.user?.name || 'Sistema',
+        });
+      } catch (e) { /* audit is best-effort */ }
 
       return {
         ...calculo,
@@ -3895,11 +3911,17 @@ export const appRouter = router({
         periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
       };
     }),
-    // Salvar: persiste o cálculo previamente feito
+    // Salvar: persiste o cálculo (com possíveis edições manuais)
     calcular: protectedProcedure.input(z.object({
       colaboradorId: z.number(),
       dataDesligamento: z.string(),
       tipoDesligamento: z.enum(['sem_justa_causa', 'justa_causa', 'pedido_demissao', 'termino_experiencia_1', 'termino_experiencia_2', 'acordo_mutuo']),
+      // Overrides manuais (opcionais)
+      overrides: z.object({
+        avisoPrevioDias: z.number().optional(),
+        descontosAdicionais: z.number().optional(),
+        observacao: z.string().optional(),
+      }).optional(),
     })).mutation(async ({ input, ctx }) => {
       const colabs = await db.listColaboradores();
       const colab = colabs.find((c: any) => c.id === input.colaboradorId);
@@ -3913,6 +3935,21 @@ export const appRouter = router({
         periodoExperiencia1Fim: colab.periodoExperiencia1Fim,
         periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
       });
+
+      // Apply manual overrides
+      if (input.overrides?.avisoPrevioDias !== undefined && input.overrides.avisoPrevioDias !== calculo.avisoPrevioDias) {
+        const salDia = Number(colab.salarioBase || 0) / 30;
+        calculo.avisoPrevioDias = input.overrides.avisoPrevioDias;
+        if (input.tipoDesligamento === 'acordo_mutuo') {
+          calculo.avisoPrevio = Number((salDia * input.overrides.avisoPrevioDias * 0.5).toFixed(2));
+        } else {
+          calculo.avisoPrevio = Number((salDia * input.overrides.avisoPrevioDias).toFixed(2));
+        }
+      }
+      let descontosAdicionais = input.overrides?.descontosAdicionais || 0;
+      calculo.totalProventos = Number((calculo.saldoSalario + calculo.avisoPrevio + calculo.decimoTerceiroProporcional + calculo.feriasProporcionais + calculo.tercoConstitucional + calculo.feriasVencidas + calculo.multaFgts).toFixed(2));
+      calculo.totalDescontos = descontosAdicionais;
+      calculo.totalLiquido = Number((calculo.totalProventos - calculo.totalDescontos).toFixed(2));
 
       const id = await db.createRescisao({
         colaboradorId: input.colaboradorId,
@@ -3941,11 +3978,56 @@ export const appRouter = router({
         totalProventos: String(calculo.totalProventos),
         totalDescontos: String(calculo.totalDescontos),
         totalLiquido: String(calculo.totalLiquido),
+        observacao: input.overrides?.observacao || null,
         registradoPorId: ctx.user?.id || null,
         registradoPorNome: ctx.user?.name || 'Sistema',
       });
 
+      // Log audit: salvo
+      try {
+        await db.createRescisaoAuditoria({
+          colaboradorId: input.colaboradorId,
+          colaboradorNome: colab.nomeCompleto,
+          cargo: colab.cargo,
+          salarioBase: String(colab.salarioBase),
+          dataDesligamento: input.dataDesligamento,
+          tipoDesligamento: input.tipoDesligamento,
+          resultadoJson: JSON.stringify(calculo),
+          acao: 'salvo',
+          simuladoPorId: ctx.user?.id || null,
+          simuladoPorNome: ctx.user?.name || 'Sistema',
+        });
+      } catch (e) { /* audit is best-effort */ }
+
       return { id, ...calculo };
+    }),
+    // Registrar descarte de simulação para auditoria
+    registrarDescarte: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      colaboradorNome: z.string(),
+      cargo: z.string().optional(),
+      salarioBase: z.string(),
+      dataDesligamento: z.string(),
+      tipoDesligamento: z.string(),
+      resultadoJson: z.string(),
+    })).mutation(async ({ input, ctx }) => {
+      await db.createRescisaoAuditoria({
+        colaboradorId: input.colaboradorId,
+        colaboradorNome: input.colaboradorNome,
+        cargo: input.cargo,
+        salarioBase: input.salarioBase,
+        dataDesligamento: input.dataDesligamento,
+        tipoDesligamento: input.tipoDesligamento,
+        resultadoJson: input.resultadoJson,
+        acao: 'descartado',
+        simuladoPorId: ctx.user?.id || null,
+        simuladoPorNome: ctx.user?.name || 'Sistema',
+      });
+      return { success: true };
+    }),
+    // Listar histórico de auditoria
+    auditoria: protectedProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(async ({ input }) => {
+      return db.listRescisaoAuditoria(input?.limit || 50);
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await db.deleteRescisao(input.id);

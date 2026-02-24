@@ -66,6 +66,7 @@ import {
   senhaHistorico, InsertSenhaHistorico,
   termosResponsabilidade,
   convencaoColetiva,
+  rescisaoAuditoria,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4177,4 +4178,33 @@ export async function deleteCCT(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(convencaoColetiva).where(eq(convencaoColetiva.id, id));
+}
+
+
+// =============================================
+// ---- RESCISÃO AUDITORIA ----
+// =============================================
+
+export async function createRescisaoAuditoria(data: {
+  colaboradorId: number;
+  colaboradorNome: string;
+  cargo?: string | null;
+  salarioBase: string;
+  dataDesligamento: string;
+  tipoDesligamento: string;
+  resultadoJson: string;
+  acao: 'simulado' | 'descartado' | 'salvo';
+  simuladoPorId?: number | null;
+  simuladoPorNome?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(rescisaoAuditoria).values(data as any);
+  return result[0]?.insertId;
+}
+
+export async function listRescisaoAuditoria(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(rescisaoAuditoria).orderBy(desc(rescisaoAuditoria.createdAt)).limit(limit);
 }

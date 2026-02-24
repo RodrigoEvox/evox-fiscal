@@ -1210,6 +1210,87 @@ async function startServer() {
     }
   });
 
+  // ─── Rescisão PDF Export ───
+  app.get('/api/rescisao/export-pdf', async (req: any, res: any) => {
+    try {
+      const { createPDF, addHeader, addKPIs, addSectionTitle, addTable, addFooter, fmtCurrency } = await import('../pdfGenerator');
+      let dados: any;
+      try { dados = JSON.parse(req.query.dados || '{}'); } catch { dados = {}; }
+
+      const doc = createPDF();
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => {
+        const pdfBuf = Buffer.concat(chunks);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="rescisao-${(dados.colaboradorNome || 'calculo').replace(/\s+/g, '-')}.pdf"`);
+        res.send(pdfBuf);
+      });
+
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      const tipoLabels: Record<string, string> = {
+        sem_justa_causa: 'Sem Justa Causa', justa_causa: 'Justa Causa',
+        pedido_demissao: 'Pedido de Demissão', termino_experiencia_1: 'Término 1º Exp.',
+        termino_experiencia_2: 'Término 2º Exp.', acordo_mutuo: 'Acordo Mútuo',
+      };
+      addHeader(doc, `Rescisão Trabalhista — ${dados.colaboradorNome || ''}`, `Evox Fiscal — RH | Gerado em ${dataHora}`);
+
+      addKPIs(doc, [
+        { label: 'Total Proventos', value: fmtCurrency(dados.totalProventos || 0), color: '#10B981' },
+        { label: 'Total Descontos', value: fmtCurrency(dados.totalDescontos || 0), color: '#EF4444' },
+        { label: 'Total Líquido', value: fmtCurrency(dados.totalLiquido || 0), color: '#6366F1' },
+      ]);
+
+      // Dados do colaborador
+      addSectionTitle(doc, 'Dados do Colaborador');
+      const infoCols = [
+        { header: 'Campo', key: 'campo', width: 150 },
+        { header: 'Valor', key: 'valor', width: 300 },
+      ];
+      const infoRows = [
+        { campo: 'Nome', valor: dados.colaboradorNome || '-' },
+        { campo: 'Cargo', valor: dados.cargo || '-' },
+        { campo: 'Salário Base', valor: fmtCurrency(dados.salarioBase || 0) },
+        { campo: 'Admissão', valor: dados.dataAdmissao || '-' },
+        { campo: 'Desligamento', valor: dados.dataDesligamento || '-' },
+        { campo: 'Tipo', valor: tipoLabels[dados.tipoDesligamento] || dados.tipoDesligamento || '-' },
+        { campo: 'Contrato', valor: (dados.tipoContrato || 'CLT').toUpperCase() },
+      ];
+      addTable(doc, infoCols, infoRows);
+
+      // Verbas Rescisórias
+      addSectionTitle(doc, 'Verbas Rescisórias');
+      const verbasCols = [
+        { header: 'Verba', key: 'verba', width: 200 },
+        { header: 'Referência', key: 'ref', width: 150 },
+        { header: 'Valor', key: 'valor', width: 100, align: 'right' as const },
+      ];
+      const verbasRows: any[] = [];
+      verbasRows.push({ verba: 'Saldo de Salário', ref: 'Dias trabalhados', valor: fmtCurrency(dados.saldoSalario || 0) });
+      if (Number(dados.avisoPrevio) > 0) verbasRows.push({ verba: 'Aviso Prévio', ref: `${dados.avisoPrevioDias || 0} dias`, valor: fmtCurrency(dados.avisoPrevio) });
+      if (Number(dados.decimoTerceiroProporcional) > 0) verbasRows.push({ verba: '13º Proporcional', ref: `${dados.decimoTerceiroMeses || 0}/12 avos`, valor: fmtCurrency(dados.decimoTerceiroProporcional) });
+      if (Number(dados.feriasProporcionais) > 0) verbasRows.push({ verba: 'Férias Proporcionais', ref: `${dados.feriasMeses || 0}/12 avos`, valor: fmtCurrency(dados.feriasProporcionais) });
+      if (Number(dados.tercoConstitucional) > 0) verbasRows.push({ verba: '1/3 Constitucional', ref: 'Sobre férias', valor: fmtCurrency(dados.tercoConstitucional) });
+      if (Number(dados.feriasVencidas) > 0) verbasRows.push({ verba: 'Férias Vencidas + 1/3', ref: 'Período completo', valor: fmtCurrency(dados.feriasVencidas) });
+      if (Number(dados.multaFgts) > 0) verbasRows.push({ verba: `Multa FGTS (${dados.multaFgtsPercentual || 0}%)`, ref: `Sobre ${fmtCurrency(dados.fgtsDepositado || 0)}`, valor: fmtCurrency(dados.multaFgts) });
+      if (Number(dados.totalDescontos) > 0) verbasRows.push({ verba: 'Descontos', ref: 'Ajuste manual', valor: `- ${fmtCurrency(dados.totalDescontos)}` });
+      verbasRows.push({ verba: 'TOTAL LÍQUIDO', ref: '', valor: fmtCurrency(dados.totalLiquido || 0), isTotal: true } as any);
+      addTable(doc, verbasCols, verbasRows);
+
+      if (dados.observacao) {
+        addSectionTitle(doc, 'Observações');
+        doc.fontSize(9).text(dados.observacao, 40, undefined, { width: 500 });
+        doc.moveDown();
+      }
+
+      addFooter(doc);
+      doc.end();
+    } catch (err: any) {
+      console.error('[Rescisao PDF Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Public REST API v1
   app.use("/api/v1", apiRouter);
   // tRPC API

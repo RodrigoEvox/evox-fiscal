@@ -1707,3 +1707,15 @@
 - [x] Corrigir erro na exportação Excel (document.body.appendChild + delayed revokeObjectURL)
 - [x] Incluir colunas Líquido no CSV exportado
 - [x] 16 testes vitest passando para cálculo de salário líquido
+
+## v69 — Melhorias na Rescisão: Export PDF/Excel, Edição de Verbas, Histórico de Auditoria
+- [x] Exportação PDF do resultado da rescisão diretamente na tela de resultado (antes de salvar)
+- [x] Exportação Excel/CSV do resultado da rescisão (antes de salvar)
+- [x] Edição manual de verbas no resultado (ajustar dias de aviso prévio, adicionar descontos)
+- [x] Recálculo automático dos totais ao editar verbas
+- [x] Criar tabela rescisao_auditoria para histórico de simulações
+- [x] Registrar quem simulou, quando, dados do colaborador e resultado da simulação
+- [x] Exibir aba "Auditoria" na página de Rescisão com histórico completo
+- [x] Badges coloridos: Simulado (azul), Salvo (verde), Descartado (vermelho)
+- [x] Rota backend /api/rescisao-pdf para exportação PDF
+- [x] 17 testes vitest passando para auditoria, verbas editáveis, CSV e navegação

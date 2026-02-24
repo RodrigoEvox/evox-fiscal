@@ -1401,3 +1401,20 @@ export const convencaoColetiva = mysqlTable("convencao_coletiva", {
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
+
+
+// ---- HISTÓRICO DE SIMULAÇÕES DE RESCISÃO (AUDITORIA) ----
+export const rescisaoAuditoria = mysqlTable("rescisao_auditoria", {
+	id: int().autoincrement().notNull(),
+	colaboradorId: int().notNull(),
+	colaboradorNome: varchar({ length: 500 }).notNull(),
+	cargo: varchar({ length: 255 }),
+	salarioBase: decimal({ precision: 12, scale: 2 }).notNull(),
+	dataDesligamento: varchar({ length: 10 }).notNull(),
+	tipoDesligamento: mysqlEnum(['sem_justa_causa','justa_causa','pedido_demissao','termino_experiencia_1','termino_experiencia_2','acordo_mutuo']).notNull(),
+	resultadoJson: text().notNull(), // JSON com todos os valores calculados
+	acao: mysqlEnum(['simulado','descartado','salvo']).notNull(),
+	simuladoPorId: int(),
+	simuladoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
