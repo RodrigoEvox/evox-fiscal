@@ -21,7 +21,7 @@ import {
   Download, FileSpreadsheet, FileText, Cake, CalendarDays,
   ArrowLeft, GraduationCap, TrendingUp, DollarSign, Award,
   FileCheck, AlertCircle, Stethoscope, BookOpen, Wrench,
-  ChevronRight, ArrowUpDown, ChevronLeft as ChevronLeftIcon, ChevronsLeft, ChevronsRight, Printer, Upload
+  ChevronRight, ArrowUpDown, ChevronLeft as ChevronLeftIcon, ChevronsLeft, ChevronsRight, Printer, Upload, FileDown
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -1009,6 +1009,30 @@ function HistoricoDisciplinarTab({ colaboradorId, colaboradorNome }: { colaborad
 
   return (
     <div className="space-y-4">
+      {/* Export PDF Button */}
+      <div className="flex justify-end mb-2">
+        <button
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-md hover:bg-muted/50 transition-colors"
+          onClick={async () => {
+            if (!data) return;
+            try {
+              const { generateHistoricoDisciplinarPdf } = await import('@/lib/ocorrenciasPdf');
+              const colab = data.ocorrencias[0];
+              await generateHistoricoDisciplinarPdf({
+                colaboradorNome,
+                cargo: colab?.cargo || '',
+                setor: colab?.setor || '',
+                ocorrencias: data.ocorrencias,
+                planos: data.planos,
+                resumo: data.resumo,
+              });
+            } catch (e) { console.error(e); }
+          }}
+        >
+          <FileDown className="w-3.5 h-3.5" /> Exportar PDF
+        </button>
+      </div>
+
       {/* Resumo */}
       <div className="bg-card border border-border/60 rounded-xl p-5">
         <h4 className="font-semibold text-sm flex items-center gap-2 text-primary mb-4">

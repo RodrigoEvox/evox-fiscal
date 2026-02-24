@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE ocorrencias MODIFY COLUMN tipo ENUM('falta_injustificada','atraso_frequente','falta_leve','falta_media','falta_grave','falta_gravissima','erro_trabalho','conduta_inapropriada','conflito_interno') NOT NULL;\nALTER TABLE ocorrencias ADD COLUMN aprovacaoNecessaria TINYINT DEFAULT 0 NOT NULL;\nALTER TABLE ocorrencias ADD COLUMN aprovacaoStatus ENUM('pendente','aprovada','rejeitada') DEFAULT 'pendente';\nALTER TABLE ocorrencias ADD COLUMN aprovadoPorId INT;\nALTER TABLE ocorrencias ADD COLUMN aprovadoPorNome VARCHAR(255);\nALTER TABLE ocorrencias ADD COLUMN aprovadoEm BIGINT;\nALTER TABLE ocorrencias ADD COLUMN custoRescisaoEstimado DECIMAL(12,2)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE ocorrencias MODIFY COLUMN tipo ENUM('falta_injustificada','atraso_frequente','falta_leve','falta_media','falta_grave','falta_gravissima','erro_trabalho','conduta_inapropriada','conflito_interno') NOT NULL;\nALTER TABLE ocorrencias ADD COLUMN aprovacaoNecessaria TINYINT DEFAULT 0 NOT NULL;\nALTER TABLE ocorrencias ADD COLUMN aprovacaoStatus ENUM('pendente','aprovada','rejeitada') DEFAULT 'pendente';\nALTER TABLE ocorrencias ADD COLUMN aprovadoPorId INT;\nALTER TABLE ocorrencias ADD COLUMN aprovadoPorNome VARCHAR(255);\nALTER TABLE ocorrencias ADD COLUMN aprovadoEm BIGINT;\nALTER TABLE ocorrencias ADD COLUMN custoRescisaoEstimado DECIMAL(12,2)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3765
+}

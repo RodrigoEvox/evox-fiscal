@@ -1748,3 +1748,20 @@
 - [x] Dashboard: evolução temporal de ocorrências
 - [x] Nova página/aba de Dashboard RH com gráficos Recharts
 - [x] Testes vitest para as novas funcionalidades (20 testes passando)
+
+## v72 — Melhorias Formulários Ocorrências/Plano, PDF Export, Workflow Aprovação, Projeção Financeira
+- [x] Alerta de sair sem salvar ao cancelar ou clicar fora do dialog de Nova Ocorrência
+- [x] Campo colaborador com largura fixa (não autoajustável) no dialog de Nova Ocorrência
+- [x] Auto-preencher cargo e setor ao selecionar colaborador no dialog de Nova Ocorrência
+- [x] Auto-selecionar gravidade ao selecionar tipo de ocorrência
+- [x] Criar tipo "Falta Gravíssima" com gravidade gravíssima
+- [x] Medidas Tomadas como menu suspenso com opções (advertência verbal, escrita, suspensão, desligamento, etc.)
+- [x] Alerta de sair sem salvar ao cancelar ou clicar fora do dialog de Criar Plano de Reversão
+- [x] Campo colaborador com largura fixa no dialog de Criar Plano de Reversão
+- [x] Auto-preencher cargo, gestor imediato do setor como responsável e setor ao selecionar colaborador no Plano
+- [x] Gestor de RH como co-responsável em todos os planos de reversão
+- [x] Manter Matriz de Classificação Automática como balizadora e indicadora de medidas
+- [x] Exportação de relatórios em PDF (dashboard e histórico disciplinar)
+- [x] Workflow de aprovação para ocorrência grave ou desligamento (requer aprovação da diretoria)
+- [x] Integração com projeção financeira (custos de rescisão estimados quando recomendação é desligamento)
+- [x] Testes vitest para as novas funcionalidades (15 testes passando)

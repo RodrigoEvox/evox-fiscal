@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +17,7 @@ import {
   AlertTriangle, ArrowLeft, Plus, Loader2, Search, Eye, Trash2,
   CheckCircle2, Clock, XCircle, FileText, Users, BarChart3,
   Shield, AlertCircle, RefreshCw, UserX, Calendar, Info, Bell, TrendingUp, PieChart,
+  Download, ShieldCheck, ShieldX, DollarSign, Gavel,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -29,9 +31,23 @@ const TIPO_LABELS: Record<string, string> = {
   falta_leve: 'Falta Leve',
   falta_media: 'Falta Média',
   falta_grave: 'Falta Grave',
+  falta_gravissima: 'Falta Gravíssima',
   erro_trabalho: 'Erro na Execução',
   conduta_inapropriada: 'Conduta Inapropriada',
   conflito_interno: 'Conflito Interno',
+};
+
+// Mapeamento automático: tipo → gravidade padrão
+const TIPO_GRAVIDADE_MAP: Record<string, string> = {
+  falta_injustificada: 'leve',
+  atraso_frequente: 'leve',
+  falta_leve: 'leve',
+  falta_media: 'media',
+  falta_grave: 'grave',
+  falta_gravissima: 'gravissima',
+  erro_trabalho: 'media',
+  conduta_inapropriada: 'grave',
+  conflito_interno: 'media',
 };
 
 const GRAVIDADE_LABELS: Record<string, string> = {
@@ -97,6 +113,36 @@ const PLANO_STATUS_COLORS: Record<string, string> = {
   cancelado: 'bg-gray-100 text-gray-800',
 };
 
+const MEDIDAS_OPTIONS = [
+  'Advertência Verbal',
+  'Advertência Escrita',
+  'Suspensão por 1 dia',
+  'Suspensão por 3 dias',
+  'Suspensão por 5 dias',
+  'Suspensão por 7 dias',
+  'Suspensão por 15 dias',
+  'Suspensão por 30 dias',
+  'Encaminhamento para Plano de Reversão',
+  'Encaminhamento para Desligamento',
+  'Orientação e Acompanhamento',
+  'Treinamento/Reciclagem',
+  'Mudança de Setor/Função',
+  'Redução de Responsabilidades',
+  'Outra Medida',
+];
+
+const APROVACAO_STATUS_LABELS: Record<string, string> = {
+  pendente: 'Pendente de Aprovação',
+  aprovada: 'Aprovada pela Diretoria',
+  rejeitada: 'Rejeitada pela Diretoria',
+};
+
+const APROVACAO_STATUS_COLORS: Record<string, string> = {
+  pendente: 'bg-amber-100 text-amber-800',
+  aprovada: 'bg-green-100 text-green-800',
+  rejeitada: 'bg-red-100 text-red-800',
+};
+
 // ---- Guia de Classificação Data ----
 const TIPOS_OCORRENCIA_GUIA = [
   { tipo: 'Falta Injustificada', desc: 'Ausência sem justificativa legal ou comunicação prévia', gravidade: 'Leve a Média', baseLegal: 'CLT Art. 473, 482(i)' },
@@ -104,6 +150,7 @@ const TIPOS_OCORRENCIA_GUIA = [
   { tipo: 'Falta Leve', desc: 'Infração de baixo impacto, sem dolo ou reincidência', gravidade: 'Leve', baseLegal: 'Regulamento interno' },
   { tipo: 'Falta Média', desc: 'Infração com impacto moderado, possível reincidência', gravidade: 'Média', baseLegal: 'CLT Art. 482' },
   { tipo: 'Falta Grave', desc: 'Infração grave conforme CLT Art. 482 (justa causa)', gravidade: 'Grave a Gravíssima', baseLegal: 'CLT Art. 482(a-l)' },
+  { tipo: 'Falta Gravíssima', desc: 'Infração gravíssima: assédio, violência, fraude, roubo, embriaguez habitual', gravidade: 'Gravíssima', baseLegal: 'CLT Art. 482(a,b,f,j,k)' },
   { tipo: 'Erro na Execução', desc: 'Falha na execução de tarefas por negligência ou imperícia', gravidade: 'Leve a Grave', baseLegal: 'CLT Art. 482(e)' },
   { tipo: 'Conduta Inapropriada', desc: 'Comportamento inadequado no ambiente de trabalho', gravidade: 'Média a Gravíssima', baseLegal: 'CLT Art. 482(b,j)' },
   { tipo: 'Conflito Interno', desc: 'Desentendimentos ou conflitos entre colaboradores', gravidade: 'Média a Grave', baseLegal: 'CLT Art. 482(j,k)' },
@@ -118,6 +165,14 @@ const MATRIZ_CLASSIFICACAO = [
   { cenario: '3+ reincidências (não leve)', classificacao: 'Irreversível', recomendacao: 'Desligamento', acao: 'Padrão reincidente demonstra inaptidão para o cargo.' },
 ];
 
+// ---- Helper: check if form has unsaved data ----
+function hasUnsavedOcorrencia(form: any) {
+  return form.colaboradorId > 0 || form.tipo || form.gravidade || form.descricao || form.evidencias || form.testemunhas || form.medidasTomadas;
+}
+function hasUnsavedPlano(form: any) {
+  return form.colaboradorId > 0 || form.motivo || form.objetivos || form.dataFim || form.observacoes;
+}
+
 export default function OcorrenciasReversaoPage() {
   const [tab, setTab] = useState('ocorrencias');
   const [showNovaOcorrencia, setShowNovaOcorrencia] = useState(false);
@@ -127,6 +182,8 @@ export default function OcorrenciasReversaoPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState('todas');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [showUnsavedAlertOcorrencia, setShowUnsavedAlertOcorrencia] = useState(false);
+  const [showUnsavedAlertPlano, setShowUnsavedAlertPlano] = useState(false);
 
   // Form state for nova ocorrência
   const [formOcorrencia, setFormOcorrencia] = useState({
@@ -154,6 +211,7 @@ export default function OcorrenciasReversaoPage() {
     dataInicio: new Date().toISOString().split('T')[0],
     dataFim: '',
     responsavel: '',
+    coResponsavel: '',
     frequenciaAcompanhamento: 'quinzenal' as string,
     observacoes: '',
   });
@@ -163,13 +221,17 @@ export default function OcorrenciasReversaoPage() {
   const ocorrenciasQuery = trpc.ocorrencias.list.useQuery();
   const planosQuery = trpc.planosReversao.list.useQuery();
   const colaboradoresQuery = trpc.colaboradores?.list?.useQuery?.() ?? { data: [] };
+  const gestorRHQuery = trpc.gestorLookup.getGestorRH.useQuery();
 
   const utils = trpc.useUtils();
 
   // Mutations
   const createOcorrencia = trpc.ocorrencias.create.useMutation({
     onSuccess: (data) => {
-      toast.success(`Ocorrência registrada. Classificação: ${data.classificacao === 'reversivel' ? 'Reversível' : 'Irreversível'}. Recomendação: ${RECOMENDACAO_LABELS[data.recomendacao]}`);
+      const needsApproval = data.recomendacao === 'desligamento' || data.gravidade === 'grave' || data.gravidade === 'gravissima';
+      let msg = `Ocorrência registrada. Classificação: ${data.classificacao === 'reversivel' ? 'Reversível' : 'Irreversível'}. Recomendação: ${RECOMENDACAO_LABELS[data.recomendacao]}`;
+      if (needsApproval) msg += ' — Requer aprovação da diretoria.';
+      toast.success(msg);
       setShowNovaOcorrencia(false);
       resetFormOcorrencia();
       utils.ocorrencias.list.invalidate();
@@ -226,6 +288,14 @@ export default function OcorrenciasReversaoPage() {
     onError: () => toast.error('Erro ao remover plano'),
   });
 
+  const aprovarMutation = trpc.aprovacaoOcorrencia.aprovar.useMutation({
+    onSuccess: (_, vars) => {
+      toast.success(vars.aprovado ? 'Ocorrência aprovada pela diretoria' : 'Ocorrência rejeitada pela diretoria');
+      utils.ocorrencias.list.invalidate();
+    },
+    onError: () => toast.error('Erro ao processar aprovação'),
+  });
+
   function resetFormOcorrencia() {
     setFormOcorrencia({
       colaboradorId: 0, colaboradorNome: '', cargo: '', setor: '',
@@ -240,8 +310,40 @@ export default function OcorrenciasReversaoPage() {
       colaboradorId: 0, colaboradorNome: '', cargo: '', setor: '',
       motivo: '', objetivos: '',
       dataInicio: new Date().toISOString().split('T')[0],
-      dataFim: '', responsavel: '', frequenciaAcompanhamento: 'quinzenal', observacoes: '',
+      dataFim: '', responsavel: '', coResponsavel: '', frequenciaAcompanhamento: 'quinzenal', observacoes: '',
     });
+  }
+
+  // Unsaved changes handlers for ocorrência dialog
+  function handleCloseOcorrenciaDialog(open: boolean) {
+    if (!open && hasUnsavedOcorrencia(formOcorrencia)) {
+      setShowUnsavedAlertOcorrencia(true);
+    } else if (!open) {
+      setShowNovaOcorrencia(false);
+      resetFormOcorrencia();
+    }
+  }
+
+  function handleCloseOcorrenciaConfirm() {
+    setShowUnsavedAlertOcorrencia(false);
+    setShowNovaOcorrencia(false);
+    resetFormOcorrencia();
+  }
+
+  // Unsaved changes handlers for plano dialog
+  function handleClosePlanoDialog(open: boolean) {
+    if (!open && hasUnsavedPlano(formPlano)) {
+      setShowUnsavedAlertPlano(true);
+    } else if (!open) {
+      setShowNovoPlano(false);
+      resetFormPlano();
+    }
+  }
+
+  function handleClosePlanoConfirm() {
+    setShowUnsavedAlertPlano(false);
+    setShowNovoPlano(false);
+    resetFormPlano();
   }
 
   // Filtered ocorrências
@@ -278,14 +380,46 @@ export default function OcorrenciasReversaoPage() {
     const id = Number(colabId);
     const colab = colaboradoresList.find((c: any) => c.id === id);
     if (colab) {
+      // Auto-fill cargo, setor, and try to find gestor imediato
+      const gestorRH = gestorRHQuery.data;
+      const coResponsavelNome = gestorRH ? `${gestorRH.nome} (Gestor RH)` : '';
       setFormPlano(prev => ({
         ...prev,
         colaboradorId: colab.id,
         colaboradorNome: colab.nomeCompleto || colab.nome || '',
         cargo: colab.cargo || '',
         setor: colab.setor || '',
+        coResponsavel: coResponsavelNome,
       }));
+      // Try to find gestor imediato do setor
+      if (colab.setor) {
+        // We'll use a separate effect to fetch the gestor
+        fetchGestorDoSetor(colab.setor);
+      }
     }
+  }
+
+  function fetchGestorDoSetor(setorNome: string) {
+    // Use the gestorLookup query - we'll fetch it imperatively
+    // For simplicity, we use the utils to fetch
+    utils.gestorLookup.getGestorDoSetor.fetch({ setorNome }).then((gestor) => {
+      if (gestor) {
+        setFormPlano(prev => ({
+          ...prev,
+          responsavel: `${gestor.nome} (${gestor.cargo || 'Gestor do Setor'})`,
+        }));
+      }
+    }).catch(() => {});
+  }
+
+  // Auto-select gravidade when tipo changes
+  function handleTipoChange(tipo: string) {
+    const gravidade = TIPO_GRAVIDADE_MAP[tipo] || '';
+    setFormOcorrencia(prev => ({
+      ...prev,
+      tipo,
+      gravidade,
+    }));
   }
 
   function handleSubmitOcorrencia() {
@@ -380,6 +514,7 @@ export default function OcorrenciasReversaoPage() {
         <TabsList>
           <TabsTrigger value="ocorrencias"><FileText className="w-4 h-4 mr-1" /> Ocorrências</TabsTrigger>
           <TabsTrigger value="planos"><RefreshCw className="w-4 h-4 mr-1" /> Planos de Reversão</TabsTrigger>
+          <TabsTrigger value="aprovacoes"><Gavel className="w-4 h-4 mr-1" /> Aprovações</TabsTrigger>
           <TabsTrigger value="dashboard"><BarChart3 className="w-4 h-4 mr-1" /> Dashboard RH</TabsTrigger>
           <TabsTrigger value="guia"><Info className="w-4 h-4 mr-1" /> Guia de Classificação</TabsTrigger>
         </TabsList>
@@ -404,7 +539,7 @@ export default function OcorrenciasReversaoPage() {
                   <Input placeholder="Buscar colaborador..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
                 </div>
                 <Select value={filterTipo} onValueChange={setFilterTipo}>
-                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todas">Todas</SelectItem>
                     {Object.entries(TIPO_LABELS).map(([k, v]) => (
@@ -413,7 +548,7 @@ export default function OcorrenciasReversaoPage() {
                   </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
                     {Object.entries(STATUS_LABELS).map(([k, v]) => (
@@ -445,6 +580,11 @@ export default function OcorrenciasReversaoPage() {
                             <Badge variant="outline" className={`text-xs ${CLASSIFICACAO_COLORS[o.classificacao] || ''}`}>
                               {o.classificacao === 'reversivel' ? 'Reversível' : 'Irreversível'}
                             </Badge>
+                            {o.aprovacaoNecessaria === 1 && o.aprovacaoStatus && (
+                              <Badge variant="outline" className={`text-xs ${APROVACAO_STATUS_COLORS[o.aprovacaoStatus] || ''}`}>
+                                {o.aprovacaoStatus === 'pendente' ? '⏳ Aguardando Aprovação' : o.aprovacaoStatus === 'aprovada' ? '✓ Aprovada' : '✗ Rejeitada'}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                             <span>{TIPO_LABELS[o.tipo] || o.tipo}</span>
@@ -506,6 +646,7 @@ export default function OcorrenciasReversaoPage() {
                           <span>{p.dataInicio} a {p.dataFim}</span>
                           <span>•</span>
                           <span>Responsável: {p.responsavel}</span>
+                          {p.coResponsavel && <><span>•</span><span>Co-resp.: {p.coResponsavel}</span></>}
                           {p.setor && <><span>•</span><span>{p.setor}</span></>}
                         </div>
                       </div>
@@ -520,6 +661,11 @@ export default function OcorrenciasReversaoPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ---- TAB: APROVAÇÕES ---- */}
+        <TabsContent value="aprovacoes">
+          <AprovacaoTab ocorrencias={ocorrenciasQuery.data || []} aprovarMutation={aprovarMutation} />
         </TabsContent>
 
         {/* ---- TAB: DASHBOARD RH ---- */}
@@ -550,17 +696,10 @@ export default function OcorrenciasReversaoPage() {
                     </thead>
                     <tbody>
                       {TIPOS_OCORRENCIA_GUIA.map((t, i) => (
-                        <tr key={i} className="border-b last:border-0">
+                        <tr key={i} className="border-b hover:bg-muted/30">
                           <td className="py-2 px-3 font-medium">{t.tipo}</td>
                           <td className="py-2 px-3 text-muted-foreground">{t.desc}</td>
-                          <td className="py-2 px-3">
-                            <Badge variant="outline" className={`text-xs ${
-                              t.gravidade.includes('Gravíssima') ? 'bg-red-50 text-red-700' :
-                              t.gravidade.includes('Grave') ? 'bg-orange-50 text-orange-700' :
-                              t.gravidade.includes('Média') ? 'bg-yellow-50 text-yellow-700' :
-                              'bg-green-50 text-green-700'
-                            }`}>{t.gravidade}</Badge>
-                          </td>
+                          <td className="py-2 px-3"><Badge variant="outline" className="text-xs">{t.gravidade}</Badge></td>
                           <td className="py-2 px-3 text-xs text-muted-foreground">{t.baseLegal}</td>
                         </tr>
                       ))}
@@ -574,6 +713,9 @@ export default function OcorrenciasReversaoPage() {
               {/* Matriz de Classificação */}
               <div>
                 <h3 className="font-semibold text-lg mb-3">Matriz de Classificação Automática</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Esta matriz é utilizada como balizadora e indicadora de medidas a serem tomadas. A decisão final de punibilidade, caso a caso, cabe aos diretores e gestores.
+                </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -586,12 +728,10 @@ export default function OcorrenciasReversaoPage() {
                     </thead>
                     <tbody>
                       {MATRIZ_CLASSIFICACAO.map((m, i) => (
-                        <tr key={i} className="border-b last:border-0">
+                        <tr key={i} className="border-b hover:bg-muted/30">
                           <td className="py-2 px-3 font-medium">{m.cenario}</td>
                           <td className="py-2 px-3">
-                            <Badge variant="outline" className={`text-xs ${m.classificacao === 'Reversível' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
-                              {m.classificacao}
-                            </Badge>
+                            <Badge variant="outline" className={`text-xs ${m.classificacao === 'Reversível' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>{m.classificacao}</Badge>
                           </td>
                           <td className="py-2 px-3">
                             <Badge variant="outline" className={`text-xs ${
@@ -668,7 +808,7 @@ export default function OcorrenciasReversaoPage() {
       </Tabs>
 
       {/* ---- DIALOG: NOVA OCORRÊNCIA ---- */}
-      <Dialog open={showNovaOcorrencia} onOpenChange={setShowNovaOcorrencia}>
+      <Dialog open={showNovaOcorrencia} onOpenChange={handleCloseOcorrenciaDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Registrar Nova Ocorrência</DialogTitle>
@@ -679,7 +819,7 @@ export default function OcorrenciasReversaoPage() {
                 <Label>Colaborador *</Label>
                 {colaboradoresList.length > 0 ? (
                   <Select value={formOcorrencia.colaboradorId ? String(formOcorrencia.colaboradorId) : ''} onValueChange={handleSelectColaboradorOcorrencia}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o colaborador..." /></SelectTrigger>
                     <SelectContent>
                       {colaboradoresList.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)}>{c.nomeCompleto || c.nome}</SelectItem>
@@ -698,18 +838,18 @@ export default function OcorrenciasReversaoPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Cargo</Label>
-                <Input value={formOcorrencia.cargo} onChange={e => setFormOcorrencia(prev => ({ ...prev, cargo: e.target.value }))} />
+                <Input value={formOcorrencia.cargo} readOnly className="bg-muted/50" />
               </div>
               <div>
                 <Label>Setor</Label>
-                <Input value={formOcorrencia.setor} onChange={e => setFormOcorrencia(prev => ({ ...prev, setor: e.target.value }))} />
+                <Input value={formOcorrencia.setor} readOnly className="bg-muted/50" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tipo de Ocorrência *</Label>
-                <Select value={formOcorrencia.tipo} onValueChange={v => setFormOcorrencia(prev => ({ ...prev, tipo: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <Select value={formOcorrencia.tipo} onValueChange={handleTipoChange}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o tipo..." /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(TIPO_LABELS).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -720,13 +860,18 @@ export default function OcorrenciasReversaoPage() {
               <div>
                 <Label>Gravidade *</Label>
                 <Select value={formOcorrencia.gravidade} onValueChange={v => setFormOcorrencia(prev => ({ ...prev, gravidade: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(GRAVIDADE_LABELS).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {formOcorrencia.tipo && formOcorrencia.gravidade && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Gravidade sugerida automaticamente. Pode ser ajustada manualmente.
+                  </p>
+                )}
               </div>
             </div>
             <div>
@@ -743,7 +888,17 @@ export default function OcorrenciasReversaoPage() {
             </div>
             <div>
               <Label>Medidas Tomadas</Label>
-              <Textarea rows={2} placeholder="Medidas já adotadas..." value={formOcorrencia.medidasTomadas} onChange={e => setFormOcorrencia(prev => ({ ...prev, medidasTomadas: e.target.value }))} />
+              <Select value={formOcorrencia.medidasTomadas} onValueChange={v => setFormOcorrencia(prev => ({ ...prev, medidasTomadas: v }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Selecione a medida..." /></SelectTrigger>
+                <SelectContent>
+                  {MEDIDAS_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                A decisão final da punibilidade, caso a caso, cabe aos diretores e gestores.
+              </p>
             </div>
 
             {/* Preview de classificação */}
@@ -755,12 +910,18 @@ export default function OcorrenciasReversaoPage() {
                     <span className="font-medium">Classificação prévia:</span>
                     <span>O sistema irá classificar automaticamente com base no tipo, gravidade e histórico do colaborador.</span>
                   </div>
+                  {(formOcorrencia.gravidade === 'grave' || formOcorrencia.gravidade === 'gravissima') && (
+                    <div className="flex items-center gap-2 text-sm mt-2 text-amber-700">
+                      <Gavel className="w-4 h-4" />
+                      <span>Esta ocorrência exigirá aprovação da diretoria antes de ser efetivada.</span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNovaOcorrencia(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => handleCloseOcorrenciaDialog(false)}>Cancelar</Button>
             <Button onClick={handleSubmitOcorrencia} disabled={createOcorrencia.isPending}>
               {createOcorrencia.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Registrar Ocorrência
@@ -769,96 +930,41 @@ export default function OcorrenciasReversaoPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ---- ALERT: SAIR SEM SALVAR OCORRÊNCIA ---- */}
+      <AlertDialog open={showUnsavedAlertOcorrencia} onOpenChange={setShowUnsavedAlertOcorrencia}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem dados não salvos no formulário de ocorrência. Se sair agora, todas as informações preenchidas serão perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCloseOcorrenciaConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Descartar e Sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* ---- DIALOG: DETALHES OCORRÊNCIA ---- */}
       <Dialog open={!!showDetalhes} onOpenChange={() => setShowDetalhes(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {detalheOcorrencia && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  Ocorrência #{detalheOcorrencia.id} — {detalheOcorrencia.colaboradorNome}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={GRAVIDADE_COLORS[detalheOcorrencia.gravidade]}>
-                    {GRAVIDADE_LABELS[detalheOcorrencia.gravidade]}
-                  </Badge>
-                  <Badge variant="outline" className={CLASSIFICACAO_COLORS[detalheOcorrencia.classificacao]}>
-                    {detalheOcorrencia.classificacao === 'reversivel' ? 'Reversível' : 'Irreversível'}
-                  </Badge>
-                  <Badge className={RECOMENDACAO_COLORS[detalheOcorrencia.recomendacao]}>
-                    {RECOMENDACAO_LABELS[detalheOcorrencia.recomendacao]}
-                  </Badge>
-                  <Badge variant="outline" className={STATUS_COLORS[detalheOcorrencia.status]}>
-                    {STATUS_LABELS[detalheOcorrencia.status]}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-muted-foreground">Tipo:</span> {TIPO_LABELS[detalheOcorrencia.tipo]}</div>
-                  <div><span className="text-muted-foreground">Data:</span> {detalheOcorrencia.dataOcorrencia}</div>
-                  {detalheOcorrencia.cargo && <div><span className="text-muted-foreground">Cargo:</span> {detalheOcorrencia.cargo}</div>}
-                  {detalheOcorrencia.setor && <div><span className="text-muted-foreground">Setor:</span> {detalheOcorrencia.setor}</div>}
-                  <div><span className="text-muted-foreground">Registrado por:</span> {detalheOcorrencia.registradoPorNome}</div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="font-medium mb-1">Descrição</h4>
-                  <p className="text-sm text-muted-foreground">{detalheOcorrencia.descricao}</p>
-                </div>
-
-                {detalheOcorrencia.evidencias && (
-                  <div>
-                    <h4 className="font-medium mb-1">Evidências</h4>
-                    <p className="text-sm text-muted-foreground">{detalheOcorrencia.evidencias}</p>
-                  </div>
-                )}
-
-                {detalheOcorrencia.testemunhas && (
-                  <div>
-                    <h4 className="font-medium mb-1">Testemunhas</h4>
-                    <p className="text-sm text-muted-foreground">{detalheOcorrencia.testemunhas}</p>
-                  </div>
-                )}
-
-                {detalheOcorrencia.medidasTomadas && (
-                  <div>
-                    <h4 className="font-medium mb-1">Medidas Tomadas</h4>
-                    <p className="text-sm text-muted-foreground">{detalheOcorrencia.medidasTomadas}</p>
-                  </div>
-                )}
-
-                <Separator />
-
-                {/* Alterar Status */}
-                <div>
-                  <Label>Alterar Status</Label>
-                  <Select value={detalheOcorrencia.status} onValueChange={v => updateOcorrencia.mutate({ id: detalheOcorrencia.id, status: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="destructive" size="sm" onClick={() => deleteOcorrencia.mutate({ id: detalheOcorrencia.id })} disabled={deleteOcorrencia.isPending}>
-                  <Trash2 className="w-4 h-4 mr-1" /> Excluir
-                </Button>
-                <Button variant="outline" onClick={() => setShowDetalhes(null)}>Fechar</Button>
-              </DialogFooter>
-            </>
+            <DetalhesOcorrenciaContent
+              ocorrencia={detalheOcorrencia}
+              updateOcorrencia={updateOcorrencia}
+              deleteOcorrencia={deleteOcorrencia}
+              aprovarMutation={aprovarMutation}
+              onClose={() => setShowDetalhes(null)}
+            />
           )}
         </DialogContent>
       </Dialog>
 
       {/* ---- DIALOG: NOVO PLANO ---- */}
-      <Dialog open={showNovoPlano} onOpenChange={setShowNovoPlano}>
+      <Dialog open={showNovoPlano} onOpenChange={handleClosePlanoDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Criar Plano de Reversão</DialogTitle>
@@ -869,7 +975,7 @@ export default function OcorrenciasReversaoPage() {
                 <Label>Colaborador *</Label>
                 {colaboradoresList.length > 0 ? (
                   <Select value={formPlano.colaboradorId ? String(formPlano.colaboradorId) : ''} onValueChange={handleSelectColaboradorPlano}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o colaborador..." /></SelectTrigger>
                     <SelectContent>
                       {colaboradoresList.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)}>{c.nomeCompleto || c.nome}</SelectItem>
@@ -882,18 +988,24 @@ export default function OcorrenciasReversaoPage() {
               </div>
               <div>
                 <Label>Responsável pelo Acompanhamento *</Label>
-                <Input placeholder="Nome do gestor responsável" value={formPlano.responsavel} onChange={e => setFormPlano(prev => ({ ...prev, responsavel: e.target.value }))} />
+                <Input placeholder="Gestor imediato (preenchido automaticamente)" value={formPlano.responsavel} onChange={e => setFormPlano(prev => ({ ...prev, responsavel: e.target.value }))} />
+                <p className="text-xs text-muted-foreground mt-1">Preenchido automaticamente com o gestor imediato do setor.</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Cargo</Label>
-                <Input value={formPlano.cargo} onChange={e => setFormPlano(prev => ({ ...prev, cargo: e.target.value }))} />
+                <Input value={formPlano.cargo} readOnly className="bg-muted/50" />
               </div>
               <div>
                 <Label>Setor</Label>
-                <Input value={formPlano.setor} onChange={e => setFormPlano(prev => ({ ...prev, setor: e.target.value }))} />
+                <Input value={formPlano.setor} readOnly className="bg-muted/50" />
               </div>
+            </div>
+            <div>
+              <Label>Co-Responsável (Gestor RH)</Label>
+              <Input value={formPlano.coResponsavel} onChange={e => setFormPlano(prev => ({ ...prev, coResponsavel: e.target.value }))} className="bg-muted/50" readOnly />
+              <p className="text-xs text-muted-foreground mt-1">O Gestor de RH é co-responsável em todos os planos de reversão.</p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -930,7 +1042,7 @@ export default function OcorrenciasReversaoPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNovoPlano(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => handleClosePlanoDialog(false)}>Cancelar</Button>
             <Button onClick={handleSubmitPlano} disabled={createPlano.isPending}>
               {createPlano.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Criar Plano
@@ -938,6 +1050,24 @@ export default function OcorrenciasReversaoPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ---- ALERT: SAIR SEM SALVAR PLANO ---- */}
+      <AlertDialog open={showUnsavedAlertPlano} onOpenChange={setShowUnsavedAlertPlano}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem dados não salvos no formulário do plano de reversão. Se sair agora, todas as informações preenchidas serão perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClosePlanoConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Descartar e Sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ---- DIALOG: DETALHES PLANO ---- */}
       <Dialog open={!!showDetalhesPlano} onOpenChange={() => setShowDetalhesPlano(null)}>
@@ -961,6 +1091,7 @@ export default function OcorrenciasReversaoPage() {
                   {detalhePlano.setor && <div><span className="text-muted-foreground">Setor:</span> {detalhePlano.setor}</div>}
                   <div><span className="text-muted-foreground">Período:</span> {detalhePlano.dataInicio} a {detalhePlano.dataFim}</div>
                   <div><span className="text-muted-foreground">Responsável:</span> {detalhePlano.responsavel}</div>
+                  {detalhePlano.coResponsavel && <div><span className="text-muted-foreground">Co-Responsável:</span> {detalhePlano.coResponsavel}</div>}
                   <div><span className="text-muted-foreground">Frequência:</span> {detalhePlano.frequenciaAcompanhamento}</div>
                   <div><span className="text-muted-foreground">Criado por:</span> {detalhePlano.criadoPorNome}</div>
                 </div>
@@ -1016,6 +1147,274 @@ export default function OcorrenciasReversaoPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+
+// ===== DETALHES OCORRÊNCIA CONTENT (with approval + cost estimation) =====
+function DetalhesOcorrenciaContent({ ocorrencia, updateOcorrencia, deleteOcorrencia, aprovarMutation, onClose }: any) {
+  const needsApproval = ocorrencia.aprovacaoNecessaria === 1;
+  const custoQuery = trpc.aprovacaoOcorrencia.estimarCustoRescisao.useQuery(
+    { colaboradorId: ocorrencia.colaboradorId },
+    { enabled: ocorrencia.recomendacao === 'desligamento' }
+  );
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          Ocorrência #{ocorrencia.id} — {ocorrencia.colaboradorNome}
+        </DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className={GRAVIDADE_COLORS[ocorrencia.gravidade]}>
+            {GRAVIDADE_LABELS[ocorrencia.gravidade]}
+          </Badge>
+          <Badge variant="outline" className={CLASSIFICACAO_COLORS[ocorrencia.classificacao]}>
+            {ocorrencia.classificacao === 'reversivel' ? 'Reversível' : 'Irreversível'}
+          </Badge>
+          <Badge className={RECOMENDACAO_COLORS[ocorrencia.recomendacao]}>
+            {RECOMENDACAO_LABELS[ocorrencia.recomendacao]}
+          </Badge>
+          <Badge variant="outline" className={STATUS_COLORS[ocorrencia.status]}>
+            {STATUS_LABELS[ocorrencia.status]}
+          </Badge>
+        </div>
+
+        {/* Approval Status */}
+        {needsApproval && (
+          <Card className={`border-l-4 ${
+            ocorrencia.aprovacaoStatus === 'aprovada' ? 'border-l-green-500 bg-green-50/50' :
+            ocorrencia.aprovacaoStatus === 'rejeitada' ? 'border-l-red-500 bg-red-50/50' :
+            'border-l-amber-500 bg-amber-50/50'
+          }`}>
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {ocorrencia.aprovacaoStatus === 'aprovada' ? <ShieldCheck className="w-5 h-5 text-green-600" /> :
+                   ocorrencia.aprovacaoStatus === 'rejeitada' ? <ShieldX className="w-5 h-5 text-red-600" /> :
+                   <Gavel className="w-5 h-5 text-amber-600" />}
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {APROVACAO_STATUS_LABELS[ocorrencia.aprovacaoStatus] || 'Pendente'}
+                    </p>
+                    {ocorrencia.aprovadoPorNome && (
+                      <p className="text-xs text-muted-foreground">
+                        Por: {ocorrencia.aprovadoPorNome} em {ocorrencia.aprovadoEm ? new Date(ocorrencia.aprovadoEm).toLocaleDateString('pt-BR') : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {ocorrencia.aprovacaoStatus === 'pendente' && (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50"
+                      onClick={() => aprovarMutation.mutate({ id: ocorrencia.id, aprovado: true })}
+                      disabled={aprovarMutation.isPending}>
+                      <CheckCircle2 className="w-4 h-4 mr-1" /> Aprovar
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-red-700 border-red-300 hover:bg-red-50"
+                      onClick={() => aprovarMutation.mutate({ id: ocorrencia.id, aprovado: false })}
+                      disabled={aprovarMutation.isPending}>
+                      <XCircle className="w-4 h-4 mr-1" /> Rejeitar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div><span className="text-muted-foreground">Tipo:</span> {TIPO_LABELS[ocorrencia.tipo]}</div>
+          <div><span className="text-muted-foreground">Data:</span> {ocorrencia.dataOcorrencia}</div>
+          {ocorrencia.cargo && <div><span className="text-muted-foreground">Cargo:</span> {ocorrencia.cargo}</div>}
+          {ocorrencia.setor && <div><span className="text-muted-foreground">Setor:</span> {ocorrencia.setor}</div>}
+          <div><span className="text-muted-foreground">Registrado por:</span> {ocorrencia.registradoPorNome}</div>
+        </div>
+
+        <Separator />
+
+        <div>
+          <h4 className="font-medium mb-1">Descrição</h4>
+          <p className="text-sm text-muted-foreground">{ocorrencia.descricao}</p>
+        </div>
+
+        {ocorrencia.evidencias && (
+          <div>
+            <h4 className="font-medium mb-1">Evidências</h4>
+            <p className="text-sm text-muted-foreground">{ocorrencia.evidencias}</p>
+          </div>
+        )}
+
+        {ocorrencia.testemunhas && (
+          <div>
+            <h4 className="font-medium mb-1">Testemunhas</h4>
+            <p className="text-sm text-muted-foreground">{ocorrencia.testemunhas}</p>
+          </div>
+        )}
+
+        {ocorrencia.medidasTomadas && (
+          <div>
+            <h4 className="font-medium mb-1">Medidas Tomadas</h4>
+            <p className="text-sm text-muted-foreground">{ocorrencia.medidasTomadas}</p>
+          </div>
+        )}
+
+        {/* Custo de Rescisão Estimado (quando recomendação é desligamento) */}
+        {ocorrencia.recomendacao === 'desligamento' && custoQuery.data && (
+          <>
+            <Separator />
+            <Card className="border-l-4 border-l-red-400 bg-red-50/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-red-600" />
+                  Estimativa de Custo de Rescisão
+                </CardTitle>
+                <CardDescription className="text-xs">Valores estimados para rescisão sem justa causa — vinculados à projeção financeira</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">Salário Base:</div>
+                  <div className="font-medium text-right">R$ {custoQuery.data.salarioBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-muted-foreground">Tempo de Serviço:</div>
+                  <div className="font-medium text-right">{custoQuery.data.mesesTrabalhados} meses</div>
+                  <div className="text-muted-foreground">Saldo de Salário:</div>
+                  <div className="text-right">R$ {custoQuery.data.saldoSalario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-muted-foreground">Aviso Prévio:</div>
+                  <div className="text-right">R$ {custoQuery.data.avisoPrevio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-muted-foreground">13º Proporcional:</div>
+                  <div className="text-right">R$ {custoQuery.data.decimoTerceiroProporcional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-muted-foreground">Férias Proporcionais:</div>
+                  <div className="text-right">R$ {custoQuery.data.feriasProporcional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-muted-foreground">1/3 Constitucional:</div>
+                  <div className="text-right">R$ {custoQuery.data.tercoConstitucional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-muted-foreground">Multa FGTS (40%):</div>
+                  <div className="text-right">R$ {custoQuery.data.multaFgts.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                  <Separator className="col-span-2 my-1" />
+                  <div className="font-bold text-red-700">TOTAL ESTIMADO:</div>
+                  <div className="font-bold text-red-700 text-right">R$ {custoQuery.data.totalEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        <Separator />
+
+        {/* Alterar Status */}
+        <div>
+          <Label>Alterar Status</Label>
+          <Select value={ocorrencia.status} onValueChange={v => updateOcorrencia.mutate({ id: ocorrencia.id, status: v as any })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="destructive" size="sm" onClick={() => deleteOcorrencia.mutate({ id: ocorrencia.id })} disabled={deleteOcorrencia.isPending}>
+          <Trash2 className="w-4 h-4 mr-1" /> Excluir
+        </Button>
+        <Button variant="outline" onClick={onClose}>Fechar</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+
+// ===== APROVAÇÃO TAB =====
+function AprovacaoTab({ ocorrencias, aprovarMutation }: { ocorrencias: any[]; aprovarMutation: any }) {
+  const pendentes = ocorrencias.filter((o: any) => o.aprovacaoNecessaria === 1 && o.aprovacaoStatus === 'pendente');
+  const historico = ocorrencias.filter((o: any) => o.aprovacaoNecessaria === 1 && o.aprovacaoStatus !== 'pendente');
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gavel className="w-5 h-5 text-amber-600" />
+            Aprovações Pendentes
+          </CardTitle>
+          <CardDescription>Ocorrências graves ou com recomendação de desligamento que requerem aprovação da diretoria</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pendentes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>Nenhuma aprovação pendente</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendentes.map((o: any) => (
+                <Card key={o.id} className="border-l-4 border-l-amber-400">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{o.colaboradorNome}</span>
+                          <Badge variant="outline" className={`text-xs ${GRAVIDADE_COLORS[o.gravidade]}`}>
+                            {GRAVIDADE_LABELS[o.gravidade]}
+                          </Badge>
+                          <Badge className={`text-xs ${RECOMENDACAO_COLORS[o.recomendacao]}`}>
+                            {RECOMENDACAO_LABELS[o.recomendacao]}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{TIPO_LABELS[o.tipo]} — {o.dataOcorrencia}</p>
+                        <p className="text-sm mt-1">{o.descricao?.substring(0, 150)}{o.descricao?.length > 150 ? '...' : ''}</p>
+                        {o.cargo && <p className="text-xs text-muted-foreground mt-1">{o.cargo} — {o.setor}</p>}
+                      </div>
+                      <div className="flex gap-2 shrink-0 ml-4">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => aprovarMutation.mutate({ id: o.id, aprovado: true })}
+                          disabled={aprovarMutation.isPending}>
+                          <CheckCircle2 className="w-4 h-4 mr-1" /> Aprovar
+                        </Button>
+                        <Button size="sm" variant="destructive"
+                          onClick={() => aprovarMutation.mutate({ id: o.id, aprovado: false })}
+                          disabled={aprovarMutation.isPending}>
+                          <XCircle className="w-4 h-4 mr-1" /> Rejeitar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {historico.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Histórico de Aprovações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {historico.map((o: any) => (
+                <div key={o.id} className="flex items-center justify-between p-2 rounded border text-sm">
+                  <div className="flex items-center gap-2">
+                    {o.aprovacaoStatus === 'aprovada' ? <ShieldCheck className="w-4 h-4 text-green-600" /> : <ShieldX className="w-4 h-4 text-red-600" />}
+                    <span className="font-medium">{o.colaboradorNome}</span>
+                    <span className="text-muted-foreground">{TIPO_LABELS[o.tipo]}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={`text-xs ${APROVACAO_STATUS_COLORS[o.aprovacaoStatus]}`}>
+                      {o.aprovacaoStatus === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                    </Badge>
+                    {o.aprovadoPorNome && <span className="text-xs text-muted-foreground">por {o.aprovadoPorNome}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -1098,6 +1497,7 @@ function NotificationAlerts() {
   );
 }
 
+
 // ===== DASHBOARD RH TAB =====
 const CHART_COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -1141,6 +1541,21 @@ function DashboardRHTab() {
 
   return (
     <div className="space-y-6">
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={async () => {
+          if (!data) { toast.error('Sem dados para exportar'); return; }
+          try {
+            toast.info('Gerando PDF do relatório...');
+            const { generateDashboardPdf } = await import('@/lib/ocorrenciasPdf');
+            await generateDashboardPdf(data);
+            toast.success('PDF do Dashboard gerado com sucesso!');
+          } catch (e) { toast.error('Erro ao gerar PDF'); console.error(e); }
+        }}>
+          <Download className="w-4 h-4 mr-1" /> Exportar PDF
+        </Button>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>

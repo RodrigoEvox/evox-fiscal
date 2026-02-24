@@ -25,7 +25,7 @@ import {
   clienteServicos, InsertClienteServico,
   executivosComerciais, InsertExecutivoComercial,
   rateioComissao, InsertRateioComissao,
-  aprovacaoComissao, InsertAprovacaoComissao,
+  aprovacaoComissao,
   userHistory, InsertUserHistory,
   chatMessages, InsertChatMessage,
   chatChannels, InsertChatChannel,
@@ -1184,7 +1184,7 @@ export async function listAllAprovacoes() {
     .orderBy(desc(aprovacaoComissao.solicitadoEm));
 }
 
-export async function createAprovacaoComissao(data: InsertAprovacaoComissao) {
+export async function createAprovacaoComissao(data: typeof aprovacaoComissao.$inferInsert) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.insert(aprovacaoComissao).values(data).$returningId();
@@ -4598,4 +4598,109 @@ export async function gerarNotificacoesOcorrencias() {
   }
   
   return { planosVencendo: planosVencendoCount, reincidencias: reincidenciasCount };
+}
+
+
+// ===== GESTOR DO SETOR (para auto-fill no plano de reversão) =====
+export async function getGestorDoSetor(setorNome: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Find setor by name
+  const setoresRows = await db.select().from(setores);
+  const setor = setoresRows.find((s: any) => s.nome?.toLowerCase() === setorNome.toLowerCase());
+  if (!setor) return null;
+  
+  const hierarquia = ['diretor','gerente','coordenador','supervisor','analista_sr','analista_pl','analista_jr','assistente','auxiliar','estagiario'];
+  const rows = await db.select().from(colaboradores).where(
+    and(eq(colaboradores.setorId, setor.id), eq(colaboradores.ativo, 1))
+  );
+  if (rows.length === 0) return null;
+  rows.sort((a: any, b: any) => {
+    const ia = hierarquia.indexOf(a.nivelHierarquico || '');
+    const ib = hierarquia.indexOf(b.nivelHierarquico || '');
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+  return { id: rows[0].id, nome: rows[0].nomeCompleto, cargo: rows[0].cargo };
+}
+
+// ===== GESTOR DE RH (GEG) =====
+export async function getGestorRH() {
+  const db = await getDb();
+  if (!db) return null;
+  const setoresRows = await db.select().from(setores);
+  const setorRH = setoresRows.find((s: any) => 
+    s.nome?.toLowerCase().includes('rh') || 
+    s.nome?.toLowerCase().includes('gente') || 
+    s.nome?.toLowerCase().includes('geg') ||
+    s.nome?.toLowerCase().includes('recursos humanos') ||
+    s.nome?.toLowerCase().includes('pessoas')
+  );
+  if (!setorRH) return null;
+  
+  const hierarquia = ['diretor','gerente','coordenador','supervisor','analista_sr','analista_pl','analista_jr','assistente','auxiliar','estagiario'];
+  const rows = await db.select().from(colaboradores).where(
+    and(eq(colaboradores.setorId, setorRH.id), eq(colaboradores.ativo, 1))
+  );
+  if (rows.length === 0) return null;
+  rows.sort((a: any, b: any) => {
+    const ia = hierarquia.indexOf(a.nivelHierarquico || '');
+    const ib = hierarquia.indexOf(b.nivelHierarquico || '');
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+  return { id: rows[0].id, nome: rows[0].nomeCompleto, cargo: rows[0].cargo };
+}
+
+// ===== APROVAÇÃO DE OCORRÊNCIA =====
+export async function aprovarOcorrencia(id: number, aprovadoPorId: number, aprovadoPorNome: string, aprovado: boolean) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  await db.update(ocorrencias).set({
+    aprovacaoStatus: aprovado ? 'aprovada' : 'rejeitada',
+    aprovadoPorId,
+    aprovadoPorNome,
+    aprovadoEm: now,
+    updatedAt: now,
+  } as any).where(eq(ocorrencias.id, id));
+  return { success: true };
+}
+
+// ===== ESTIMAR CUSTO DE RESCISÃO =====
+export async function estimarCustoRescisao(colaboradorId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const colab = await db.select().from(colaboradores).where(eq(colaboradores.id, colaboradorId)).limit(1);
+  if (colab.length === 0) return null;
+  const c = colab[0];
+  const salarioBase = parseFloat(String(c.salarioBase || '0'));
+  const dataAdmissao = c.dataAdmissao;
+  
+  const admDate = new Date(dataAdmissao);
+  const now = new Date();
+  const mesesTrabalhados = Math.max(1, Math.round((now.getTime() - admDate.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  
+  const saldoSalario = salarioBase;
+  const avisoPrevio = salarioBase + (Math.min(Math.floor(mesesTrabalhados / 12), 20) * (salarioBase / 30) * 3);
+  const decimoTerceiroProporcional = (salarioBase / 12) * (now.getMonth() + 1);
+  const feriasProporcional = (salarioBase / 12) * (mesesTrabalhados % 12);
+  const tercoConstitucional = feriasProporcional / 3;
+  const fgtsEstimado = salarioBase * 0.08 * mesesTrabalhados;
+  const multaFgts = fgtsEstimado * 0.4;
+  
+  const totalEstimado = saldoSalario + avisoPrevio + decimoTerceiroProporcional + feriasProporcional + tercoConstitucional + multaFgts;
+  
+  return {
+    colaboradorNome: c.nomeCompleto,
+    cargo: c.cargo,
+    salarioBase,
+    mesesTrabalhados,
+    saldoSalario: Math.round(saldoSalario * 100) / 100,
+    avisoPrevio: Math.round(avisoPrevio * 100) / 100,
+    decimoTerceiroProporcional: Math.round(decimoTerceiroProporcional * 100) / 100,
+    feriasProporcional: Math.round(feriasProporcional * 100) / 100,
+    tercoConstitucional: Math.round(tercoConstitucional * 100) / 100,
+    fgtsEstimado: Math.round(fgtsEstimado * 100) / 100,
+    multaFgts: Math.round(multaFgts * 100) / 100,
+    totalEstimado: Math.round(totalEstimado * 100) / 100,
+  };
 }

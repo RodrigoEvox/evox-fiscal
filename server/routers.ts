@@ -4628,7 +4628,7 @@ Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
         colaboradorNome: z.string(),
         cargo: z.string().optional(),
         setor: z.string().optional(),
-        tipo: z.enum(['falta_injustificada','atraso_frequente','falta_leve','falta_media','falta_grave','erro_trabalho','conduta_inapropriada','conflito_interno']),
+        tipo: z.enum(['falta_injustificada','atraso_frequente','falta_leve','falta_media','falta_grave','falta_gravissima','erro_trabalho','conduta_inapropriada','conflito_interno']),
         gravidade: z.enum(['leve','media','grave','gravissima']),
         descricao: z.string(),
         dataOcorrencia: z.string(),
@@ -4647,7 +4647,7 @@ Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
           registradoPorId: ctx.user?.id,
           registradoPorNome: ctx.user?.name || 'Sistema',
         });
-        return { id, classificacao, recomendacao };
+        return { id, classificacao, recomendacao, gravidade: input.gravidade };
       }),
 
     update: protectedProcedure
@@ -4846,6 +4846,36 @@ Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
       .mutation(async () => {
         const { gerarNotificacoesOcorrencias } = await import("./db");
         return gerarNotificacoesOcorrencias();
+      }),
+  }),
+
+  // ===== GESTOR LOOKUP & APPROVAL WORKFLOW =====
+  gestorLookup: router({
+    getGestorDoSetor: protectedProcedure
+      .input(z.object({ setorNome: z.string() }))
+      .query(async ({ input }) => {
+        const { getGestorDoSetor } = await import("./db");
+        return getGestorDoSetor(input.setorNome);
+      }),
+    getGestorRH: protectedProcedure
+      .query(async () => {
+        const { getGestorRH } = await import("./db");
+        return getGestorRH();
+      }),
+  }),
+
+  aprovacaoOcorrencia: router({
+    aprovar: protectedProcedure
+      .input(z.object({ id: z.number(), aprovado: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        const { aprovarOcorrencia } = await import("./db");
+        return aprovarOcorrencia(input.id, ctx.user.id, ctx.user.name || 'Admin', input.aprovado);
+      }),
+    estimarCustoRescisao: protectedProcedure
+      .input(z.object({ colaboradorId: z.number() }))
+      .query(async ({ input }) => {
+        const { estimarCustoRescisao } = await import("./db");
+        return estimarCustoRescisao(input.colaboradorId);
       }),
   }),
 });
