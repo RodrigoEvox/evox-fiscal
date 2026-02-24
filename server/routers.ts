@@ -4878,6 +4878,82 @@ Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
         return estimarCustoRescisao(input.colaboradorId);
       }),
   }),
+  ocorrenciaTimeline: router({
+    getByOcorrencia: protectedProcedure
+      .input(z.object({ ocorrenciaId: z.number() }))
+      .query(async ({ input }) => {
+        const { getTimelineByOcorrencia } = await import("./db");
+        return getTimelineByOcorrencia(input.ocorrenciaId);
+      }),
+    addEvent: protectedProcedure
+      .input(z.object({
+        ocorrenciaId: z.number(),
+        tipo: z.enum(['registro','alteracao_status','aprovacao_solicitada','aprovacao_aprovada','aprovacao_rejeitada','plano_criado','feedback_adicionado','assinatura_colaborador','assinatura_gestor','medida_aplicada','observacao']),
+        titulo: z.string(),
+        descricao: z.string().optional(),
+        metadata: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { addTimelineEvent } = await import("./db");
+        return addTimelineEvent({
+          ...input,
+          executadoPorId: ctx.user.id,
+          executadoPorNome: ctx.user.name || 'Sistema',
+        });
+      }),
+  }),
+  ocorrenciaAssinaturas: router({
+    getByOcorrencia: protectedProcedure
+      .input(z.object({ ocorrenciaId: z.number() }))
+      .query(async ({ input }) => {
+        const { getAssinaturasByOcorrencia } = await import("./db");
+        return getAssinaturasByOcorrencia(input.ocorrenciaId);
+      }),
+    getByPlano: protectedProcedure
+      .input(z.object({ planoReversaoId: z.number() }))
+      .query(async ({ input }) => {
+        const { getAssinaturasByPlano } = await import("./db");
+        return getAssinaturasByPlano(input.planoReversaoId);
+      }),
+    registrar: protectedProcedure
+      .input(z.object({
+        ocorrenciaId: z.number().optional(),
+        planoReversaoId: z.number().optional(),
+        tipo: z.enum(['ciencia_colaborador','ciencia_gestor','ciencia_rh','concordancia_plano']),
+        assinanteName: z.string(),
+        assinanteCargo: z.string().optional(),
+        observacao: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { registrarAssinatura, addTimelineEvent } = await import("./db");
+        const id = await registrarAssinatura({
+          ...input,
+          assinanteId: ctx.user.id,
+          ipAddress: 'server',
+        });
+        // Add timeline event if ocorrenciaId is present
+        if (input.ocorrenciaId) {
+          const tipoTimeline = input.tipo === 'ciencia_colaborador' ? 'assinatura_colaborador' as const : 'assinatura_gestor' as const;
+          await addTimelineEvent({
+            ocorrenciaId: input.ocorrenciaId,
+            tipo: tipoTimeline,
+            titulo: `Assinatura: ${input.tipo.replace(/_/g, ' ')}`,
+            descricao: `${input.assinanteName} registrou ciência${input.observacao ? ': ' + input.observacao : ''}`,
+            executadoPorId: ctx.user.id,
+            executadoPorNome: ctx.user.name || 'Sistema',
+          });
+        }
+        return { id };
+      }),
+  }),
+  relatorioMensal: router({
+    get: protectedProcedure
+      .input(z.object({ mes: z.number().min(1).max(12), ano: z.number().min(2020) }))
+      .query(async ({ input }) => {
+        const { getRelatorioMensalConsolidado } = await import("./db");
+        return getRelatorioMensalConsolidado(input.mes, input.ano);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

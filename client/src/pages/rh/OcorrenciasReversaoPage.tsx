@@ -18,6 +18,7 @@ import {
   CheckCircle2, Clock, XCircle, FileText, Users, BarChart3,
   Shield, AlertCircle, RefreshCw, UserX, Calendar, Info, Bell, TrendingUp, PieChart,
   Download, ShieldCheck, ShieldX, DollarSign, Gavel,
+  Pen, History, MessageSquare, UserCheck, ClipboardCheck,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -516,6 +517,7 @@ export default function OcorrenciasReversaoPage() {
           <TabsTrigger value="planos"><RefreshCw className="w-4 h-4 mr-1" /> Planos de Reversão</TabsTrigger>
           <TabsTrigger value="aprovacoes"><Gavel className="w-4 h-4 mr-1" /> Aprovações</TabsTrigger>
           <TabsTrigger value="dashboard"><BarChart3 className="w-4 h-4 mr-1" /> Dashboard RH</TabsTrigger>
+          <TabsTrigger value="relatorio"><Calendar className="w-4 h-4 mr-1" /> Relatório Mensal</TabsTrigger>
           <TabsTrigger value="guia"><Info className="w-4 h-4 mr-1" /> Guia de Classificação</TabsTrigger>
         </TabsList>
 
@@ -671,6 +673,11 @@ export default function OcorrenciasReversaoPage() {
         {/* ---- TAB: DASHBOARD RH ---- */}
         <TabsContent value="dashboard">
           <DashboardRHTab />
+        </TabsContent>
+
+        {/* ---- TAB: RELATÓRIO MENSAL ---- */}
+        <TabsContent value="relatorio">
+          <RelatorioMensalTab />
         </TabsContent>
 
         {/* ---- TAB: GUIA DE CLASSIFICAÇÃO ---- */}
@@ -1315,6 +1322,16 @@ function DetalhesOcorrenciaContent({ ocorrencia, updateOcorrencia, deleteOcorren
             </SelectContent>
           </Select>
         </div>
+        <Separator />
+
+        {/* ===== TIMELINE VISUAL ===== */}
+        <TimelineOcorrencia ocorrenciaId={ocorrencia.id} />
+
+        <Separator />
+
+        {/* ===== ASSINATURAS DIGITAIS ===== */}
+        <AssinaturasOcorrencia ocorrenciaId={ocorrencia.id} />
+
       </div>
       <DialogFooter>
         <Button variant="destructive" size="sm" onClick={() => deleteOcorrencia.mutate({ id: ocorrencia.id })} disabled={deleteOcorrencia.isPending}>
@@ -1323,6 +1340,223 @@ function DetalhesOcorrenciaContent({ ocorrencia, updateOcorrencia, deleteOcorren
         <Button variant="outline" onClick={onClose}>Fechar</Button>
       </DialogFooter>
     </>
+  );
+}
+
+// ===== TIMELINE VISUAL COMPONENT =====
+const TIMELINE_ICON_MAP: Record<string, any> = {
+  registro: FileText,
+  alteracao_status: RefreshCw,
+  aprovacao_solicitada: Gavel,
+  aprovacao_aprovada: ShieldCheck,
+  aprovacao_rejeitada: ShieldX,
+  plano_criado: ClipboardCheck,
+  feedback_adicionado: MessageSquare,
+  assinatura_colaborador: Pen,
+  assinatura_gestor: UserCheck,
+  medida_aplicada: Shield,
+  observacao: Info,
+};
+
+const TIMELINE_COLOR_MAP: Record<string, string> = {
+  registro: 'bg-blue-500',
+  alteracao_status: 'bg-purple-500',
+  aprovacao_solicitada: 'bg-amber-500',
+  aprovacao_aprovada: 'bg-green-500',
+  aprovacao_rejeitada: 'bg-red-500',
+  plano_criado: 'bg-teal-500',
+  feedback_adicionado: 'bg-indigo-500',
+  assinatura_colaborador: 'bg-cyan-500',
+  assinatura_gestor: 'bg-emerald-500',
+  medida_aplicada: 'bg-orange-500',
+  observacao: 'bg-gray-500',
+};
+
+function TimelineOcorrencia({ ocorrenciaId }: { ocorrenciaId: number }) {
+  const timelineQuery = trpc.ocorrenciaTimeline.getByOcorrencia.useQuery({ ocorrenciaId });
+  const addEvent = trpc.ocorrenciaTimeline.addEvent.useMutation({
+    onSuccess: () => { timelineQuery.refetch(); toast.success('Observação adicionada à timeline'); },
+  });
+  const [showAddObs, setShowAddObs] = useState(false);
+  const [obsText, setObsText] = useState('');
+
+  const timeline = timelineQuery.data || [];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-medium flex items-center gap-2">
+          <History className="w-4 h-4" /> Timeline de Ações
+        </h4>
+        <Button variant="outline" size="sm" onClick={() => setShowAddObs(!showAddObs)}>
+          <Plus className="w-3 h-3 mr-1" /> Observação
+        </Button>
+      </div>
+
+      {showAddObs && (
+        <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
+          <Textarea placeholder="Adicione uma observação à timeline..." value={obsText} onChange={e => setObsText(e.target.value)} rows={2} />
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setShowAddObs(false); setObsText(''); }}>Cancelar</Button>
+            <Button size="sm" disabled={!obsText.trim() || addEvent.isPending}
+              onClick={() => {
+                addEvent.mutate({ ocorrenciaId, tipo: 'observacao', titulo: 'Observação adicionada', descricao: obsText });
+                setObsText(''); setShowAddObs(false);
+              }}>
+              {addEvent.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Salvar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {timelineQuery.isLoading ? (
+        <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : timeline.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">Nenhum evento registrado na timeline</p>
+      ) : (
+        <div className="relative ml-4">
+          {/* Vertical line */}
+          <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-border" />
+          <div className="space-y-4">
+            {timeline.map((event: any, idx: number) => {
+              const IconComp = TIMELINE_ICON_MAP[event.tipo] || Info;
+              const colorClass = TIMELINE_COLOR_MAP[event.tipo] || 'bg-gray-500';
+              return (
+                <div key={event.id || idx} className="relative flex gap-3 pl-2">
+                  <div className={`relative z-10 flex-shrink-0 w-7 h-7 rounded-full ${colorClass} flex items-center justify-center`}>
+                    <IconComp className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0 pb-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">{event.titulo}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {event.createdAt ? new Date(Number(event.createdAt)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
+                    </div>
+                    {event.descricao && <p className="text-xs text-muted-foreground mt-0.5">{event.descricao}</p>}
+                    <p className="text-xs text-muted-foreground/70">Por: {event.executadoPorNome}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== ASSINATURAS DIGITAIS COMPONENT =====
+const ASSINATURA_TIPO_LABELS: Record<string, string> = {
+  ciencia_colaborador: 'Ciência do Colaborador',
+  ciencia_gestor: 'Ciência do Gestor',
+  ciencia_rh: 'Ciência do RH',
+  concordancia_plano: 'Concordância com Plano',
+};
+
+function AssinaturasOcorrencia({ ocorrenciaId }: { ocorrenciaId: number }) {
+  const assinaturasQuery = trpc.ocorrenciaAssinaturas.getByOcorrencia.useQuery({ ocorrenciaId });
+  const registrar = trpc.ocorrenciaAssinaturas.registrar.useMutation({
+    onSuccess: () => { assinaturasQuery.refetch(); toast.success('Assinatura registrada com sucesso'); },
+  });
+  const [showForm, setShowForm] = useState(false);
+  const [tipoAss, setTipoAss] = useState<string>('');
+  const [nomeAss, setNomeAss] = useState('');
+  const [cargoAss, setCargoAss] = useState('');
+  const [obsAss, setObsAss] = useState('');
+
+  const assinaturas = assinaturasQuery.data || [];
+
+  const handleRegistrar = () => {
+    if (!tipoAss || !nomeAss.trim()) { toast.error('Preencha tipo e nome'); return; }
+    registrar.mutate({
+      ocorrenciaId,
+      tipo: tipoAss as any,
+      assinanteName: nomeAss,
+      assinanteCargo: cargoAss || undefined,
+      observacao: obsAss || undefined,
+    });
+    setShowForm(false); setTipoAss(''); setNomeAss(''); setCargoAss(''); setObsAss('');
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-medium flex items-center gap-2">
+          <Pen className="w-4 h-4" /> Assinaturas Digitais
+        </h4>
+        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}>
+          <Plus className="w-3 h-3 mr-1" /> Registrar Assinatura
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Tipo de Assinatura *</Label>
+              <Select value={tipoAss} onValueChange={setTipoAss}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ASSINATURA_TIPO_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Nome do Assinante *</Label>
+              <Input value={nomeAss} onChange={e => setNomeAss(e.target.value)} placeholder="Nome completo" />
+            </div>
+            <div>
+              <Label className="text-xs">Cargo</Label>
+              <Input value={cargoAss} onChange={e => setCargoAss(e.target.value)} placeholder="Cargo" />
+            </div>
+            <div>
+              <Label className="text-xs">Observação</Label>
+              <Input value={obsAss} onChange={e => setObsAss(e.target.value)} placeholder="Observação opcional" />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button size="sm" disabled={!tipoAss || !nomeAss.trim() || registrar.isPending} onClick={handleRegistrar}>
+              {registrar.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Pen className="w-3 h-3 mr-1" />}
+              Registrar Ciência
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Ao registrar, a data/hora e o IP serão gravados automaticamente como comprovante digital.</p>
+        </div>
+      )}
+
+      {assinaturasQuery.isLoading ? (
+        <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : assinaturas.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">Nenhuma assinatura registrada</p>
+      ) : (
+        <div className="space-y-2">
+          {assinaturas.map((a: any) => (
+            <div key={a.id} className="flex items-center gap-3 p-2 border rounded-lg bg-green-50/30">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                <UserCheck className="w-4 h-4 text-green-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{a.assinanteName}</span>
+                  <Badge variant="outline" className="text-xs">{ASSINATURA_TIPO_LABELS[a.tipo] || a.tipo}</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {a.assinanteCargo && <span>{a.assinanteCargo}</span>}
+                  <span>•</span>
+                  <span>{a.assinadoEm ? new Date(Number(a.assinadoEm)).toLocaleString('pt-BR') : ''}</span>
+                </div>
+                {a.observacao && <p className="text-xs text-muted-foreground mt-0.5">{a.observacao}</p>}
+              </div>
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1725,5 +1959,375 @@ function DashboardRHTab() {
         </Card>
       )}
     </div>
+  );
+}
+
+
+// ===== RELATÓRIO MENSAL CONSOLIDADO TAB =====
+function RelatorioMensalTab() {
+  const now = new Date();
+  const [mes, setMes] = useState(now.getMonth() + 1);
+  const [ano, setAno] = useState(now.getFullYear());
+  const [exporting, setExporting] = useState(false);
+
+  const relatorioQuery = trpc.relatorioMensal.get.useQuery({ mes, ano });
+  const relatorio = relatorioQuery.data;
+
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const handleExportPdf = async () => {
+    if (!relatorio) return;
+    setExporting(true);
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageW = doc.internal.pageSize.getWidth();
+      let y = 15;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Relatório Consolidado Mensal — Ocorrências e Planos de Reversão', pageW / 2, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Período: ${MESES[mes - 1]} / ${ano}`, pageW / 2, y, { align: 'center' });
+      y += 4;
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageW / 2, y, { align: 'center' });
+      y += 10;
+
+      // Resumo KPIs
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo Executivo', 14, y);
+      y += 7;
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Indicador', 'Valor']],
+        body: [
+          ['Total de Ocorrências no Mês', String(relatorio.resumo.totalOcorrencias)],
+          ['Planos de Reversão Criados', String(relatorio.resumo.totalPlanosCriados)],
+          ['Planos de Reversão Ativos', String(relatorio.resumo.totalPlanosAtivos)],
+          ['Feedbacks Registrados', String(relatorio.resumo.totalFeedbacks)],
+          ['Colaboradores Reincidentes (3+)', String(relatorio.resumo.totalReincidentes)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42] },
+        styles: { fontSize: 9 },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+
+      // Por Tipo
+      if (Object.keys(relatorio.porTipo).length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ocorrências por Tipo', 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [['Tipo', 'Quantidade']],
+          body: Object.entries(relatorio.porTipo).map(([k, v]) => [TIPO_LABELS[k] || k, String(v)]),
+          theme: 'grid',
+          headStyles: { fillColor: [15, 23, 42] },
+          styles: { fontSize: 9 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Por Gravidade
+      if (Object.keys(relatorio.porGravidade).length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ocorrências por Gravidade', 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [['Gravidade', 'Quantidade']],
+          body: Object.entries(relatorio.porGravidade).map(([k, v]) => [GRAVIDADE_LABELS[k] || k, String(v)]),
+          theme: 'grid',
+          headStyles: { fillColor: [15, 23, 42] },
+          styles: { fontSize: 9 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Por Setor
+      if (Object.keys(relatorio.porSetor).length > 0) {
+        if (y > 230) { doc.addPage(); y = 15; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ocorrências por Setor', 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [['Setor', 'Quantidade']],
+          body: Object.entries(relatorio.porSetor).map(([k, v]) => [k, String(v)]),
+          theme: 'grid',
+          headStyles: { fillColor: [15, 23, 42] },
+          styles: { fontSize: 9 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Classificação e Recomendação
+      if (Object.keys(relatorio.porClassificacao).length > 0) {
+        if (y > 230) { doc.addPage(); y = 15; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Classificação e Recomendação', 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [['Classificação', 'Qtd', 'Recomendação', 'Qtd']],
+          body: (() => {
+            const classEntries = Object.entries(relatorio.porClassificacao);
+            const recEntries = Object.entries(relatorio.porRecomendacao);
+            const maxLen = Math.max(classEntries.length, recEntries.length);
+            const rows: string[][] = [];
+            for (let i = 0; i < maxLen; i++) {
+              rows.push([
+                classEntries[i] ? (classEntries[i][0] === 'reversivel' ? 'Reversível' : 'Irreversível') : '',
+                classEntries[i] ? String(classEntries[i][1]) : '',
+                recEntries[i] ? (RECOMENDACAO_LABELS[recEntries[i][0]] || recEntries[i][0]) : '',
+                recEntries[i] ? String(recEntries[i][1]) : '',
+              ]);
+            }
+            return rows;
+          })(),
+          theme: 'grid',
+          headStyles: { fillColor: [15, 23, 42] },
+          styles: { fontSize: 9 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Evolução de Feedbacks
+      if (relatorio.evolucaoFeedbacks) {
+        if (y > 230) { doc.addPage(); y = 15; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Evolução dos Feedbacks de Planos', 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [['Evolução', 'Quantidade']],
+          body: [
+            ['Melhorou', String(relatorio.evolucaoFeedbacks.melhorou)],
+            ['Estável', String(relatorio.evolucaoFeedbacks.estavel)],
+            ['Piorou', String(relatorio.evolucaoFeedbacks.piorou)],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [15, 23, 42] },
+          styles: { fontSize: 9 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Reincidentes
+      if (relatorio.reincidentes && relatorio.reincidentes.length > 0) {
+        if (y > 200) { doc.addPage(); y = 15; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Colaboradores Reincidentes (3+ ocorrências)', 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [['Colaborador', 'Setor', 'Total Ocorrências']],
+          body: relatorio.reincidentes.map((r: any) => [r.nome, r.setor, String(r.count)]),
+          theme: 'grid',
+          headStyles: { fillColor: [15, 23, 42] },
+          styles: { fontSize: 9 },
+        });
+      }
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Evox Fiscal — Relatório Consolidado Mensal — Página ${i}/${pageCount}`, pageW / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+      }
+
+      doc.save(`relatorio-mensal-ocorrencias-${MESES[mes - 1].toLowerCase()}-${ano}.pdf`);
+      toast.success('Relatório PDF exportado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao gerar PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="w-5 h-5" /> Relatório Consolidado Mensal
+        </CardTitle>
+        <CardDescription>Resumo mensal de ocorrências, planos de reversão e indicadores de evolução para a diretoria</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Seletor de Mês/Ano */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label>Mês:</Label>
+            <Select value={String(mes)} onValueChange={v => setMes(Number(v))}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MESES.map((m, i) => (
+                  <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label>Ano:</Label>
+            <Select value={String(ano)} onValueChange={v => setAno(Number(v))}>
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[2024, 2025, 2026, 2027].map(a => (
+                  <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" onClick={handleExportPdf} disabled={!relatorio || exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+            Exportar PDF
+          </Button>
+        </div>
+
+        {relatorioQuery.isLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+        ) : !relatorio ? (
+          <p className="text-center text-muted-foreground py-8">Selecione um mês e ano para gerar o relatório</p>
+        ) : (
+          <>
+            {/* KPIs */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {[
+                { label: 'Ocorrências', value: relatorio.resumo.totalOcorrencias, icon: AlertTriangle, color: 'text-red-600' },
+                { label: 'Planos Criados', value: relatorio.resumo.totalPlanosCriados, icon: ClipboardCheck, color: 'text-blue-600' },
+                { label: 'Planos Ativos', value: relatorio.resumo.totalPlanosAtivos, icon: RefreshCw, color: 'text-amber-600' },
+                { label: 'Feedbacks', value: relatorio.resumo.totalFeedbacks, icon: MessageSquare, color: 'text-green-600' },
+                { label: 'Reincidentes', value: relatorio.resumo.totalReincidentes, icon: UserX, color: 'text-purple-600' },
+              ].map((kpi, i) => (
+                <Card key={i}>
+                  <CardContent className="p-3 text-center">
+                    <kpi.icon className={`w-5 h-5 mx-auto mb-1 ${kpi.color}`} />
+                    <p className="text-2xl font-bold">{kpi.value}</p>
+                    <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Detalhamento por Tipo */}
+            {Object.keys(relatorio.porTipo).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Ocorrências por Tipo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(relatorio.porTipo).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([tipo, qtd]) => (
+                      <div key={tipo} className="flex items-center justify-between">
+                        <span className="text-sm">{TIPO_LABELS[tipo] || tipo}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(100, ((qtd as number) / relatorio.resumo.totalOcorrencias) * 100)}%` }} />
+                          </div>
+                          <span className="text-sm font-medium w-8 text-right">{qtd as number}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detalhamento por Gravidade */}
+            {Object.keys(relatorio.porGravidade).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Distribuição por Gravidade</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-3 flex-wrap">
+                    {Object.entries(relatorio.porGravidade).map(([grav, qtd]) => (
+                      <Badge key={grav} variant="outline" className={`text-sm py-1 px-3 ${GRAVIDADE_COLORS[grav] || ''}`}>
+                        {GRAVIDADE_LABELS[grav] || grav}: {qtd as number}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Evolução Feedbacks */}
+            {relatorio.evolucaoFeedbacks && (relatorio.evolucaoFeedbacks.melhorou > 0 || relatorio.evolucaoFeedbacks.estavel > 0 || relatorio.evolucaoFeedbacks.piorou > 0) && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Evolução dos Feedbacks de Planos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                      <span className="text-sm">Melhorou: <strong>{relatorio.evolucaoFeedbacks.melhorou}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                      <span className="text-sm">Estável: <strong>{relatorio.evolucaoFeedbacks.estavel}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500" />
+                      <span className="text-sm">Piorou: <strong>{relatorio.evolucaoFeedbacks.piorou}</strong></span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Reincidentes */}
+            {relatorio.reincidentes && relatorio.reincidentes.length > 0 && (
+              <Card className="border-l-4 border-l-red-400">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <UserX className="w-4 h-4 text-red-600" />
+                    Colaboradores Reincidentes (3+ ocorrências acumuladas)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {relatorio.reincidentes.map((r: any) => (
+                      <div key={r.colaboradorId} className="flex items-center justify-between p-2 rounded border">
+                        <div>
+                          <span className="font-medium text-sm">{r.nome}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{r.setor}</span>
+                        </div>
+                        <Badge variant="destructive">{r.count} ocorrências</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Mensagem se não há dados */}
+            {relatorio.resumo.totalOcorrencias === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p className="font-medium">Nenhuma ocorrência registrada em {MESES[mes - 1]} de {ano}</p>
+                <p className="text-sm">Período sem registros disciplinares</p>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1765,3 +1765,17 @@
 - [x] Workflow de aprovação para ocorrência grave ou desligamento (requer aprovação da diretoria)
 - [x] Integração com projeção financeira (custos de rescisão estimados quando recomendação é desligamento)
 - [x] Testes vitest para as novas funcionalidades (15 testes passando)
+
+## v73 — Timeline Visual, Assinatura Digital, Relatório Mensal Consolidado
+- [x] Timeline visual no detalhe de cada ocorrência (registro, aprovação, plano criado, feedbacks)
+- [x] Tabela ocorrencia_timeline no banco para registrar eventos cronológicos
+- [x] Backend: rota para buscar timeline de uma ocorrência
+- [x] Componente visual de timeline com ícones e cores por tipo de evento
+- [x] Assinatura digital do colaborador nas ocorrências (ciência com data/hora)
+- [x] Assinatura digital do colaborador nos planos de reversão (ciência com data/hora)
+- [x] Campos de assinatura no banco (assinaturaColaborador, dataAssinatura, assinaturaGestor)
+- [x] Backend: rotas para registrar assinaturas
+- [x] Relatório consolidado mensal com resumo de ocorrências, planos e indicadores
+- [x] Backend: rota para gerar dados do relatório mensal
+- [x] Exportação do relatório mensal em PDF
+- [x] Testes vitest para as novas funcionalidades (24 testes passando)

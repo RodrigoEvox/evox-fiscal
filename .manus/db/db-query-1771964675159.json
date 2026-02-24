@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ocorrencia_timeline` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `ocorrenciaId` int NOT NULL,\n  `tipo` enum('registro','alteracao_status','aprovacao_solicitada','aprovacao_aprovada','aprovacao_rejeitada','plano_criado','feedback_adicionado','assinatura_colaborador','assinatura_gestor','medida_aplicada','observacao') NOT NULL,\n  `titulo` varchar(255) NOT NULL,\n  `descricao` text,\n  `executadoPorId` int,\n  `executadoPorNome` varchar(255) NOT NULL,\n  `metadata` text,\n  `createdAt` bigint NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute CREATE TABLE IF NOT EXISTS `ocorrencia_timeline` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `ocorrenciaId` int NOT NULL,\n  `tipo` enum('registro','alteracao_status','aprovacao_solicitada','aprovacao_aprovada','aprovacao_rejeitada','plano_criado','feedback_adicionado','assinatura_colaborador','assinatura_gestor','medida_aplicada','observacao') NOT NULL,\n  `titulo` varchar(255) NOT NULL,\n  `descricao` text,\n  `executadoPorId` int,\n  `executadoPorNome` varchar(255) NOT NULL,\n  `metadata` text,\n  `createdAt` bigint NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 189
+}

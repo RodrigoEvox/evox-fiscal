@@ -1501,3 +1501,30 @@ export const planoReversaoFeedbacks = mysqlTable("plano_reversao_feedbacks", {
   registradoPorNome: varchar({ length: 255 }).notNull(),
   createdAt: bigint({ mode: "number" }).notNull(),
 });
+
+
+export const ocorrenciaTimeline = mysqlTable("ocorrencia_timeline", {
+  id: int().autoincrement().notNull(),
+  ocorrenciaId: int().notNull(),
+  tipo: mysqlEnum('tipo', ['registro','alteracao_status','aprovacao_solicitada','aprovacao_aprovada','aprovacao_rejeitada','plano_criado','feedback_adicionado','assinatura_colaborador','assinatura_gestor','medida_aplicada','observacao']).notNull(),
+  titulo: varchar({ length: 255 }).notNull(),
+  descricao: text(),
+  executadoPorId: int(),
+  executadoPorNome: varchar({ length: 255 }).notNull(),
+  metadata: text(),
+  createdAt: bigint({ mode: "number" }).notNull(),
+});
+
+export const ocorrenciaAssinaturas = mysqlTable("ocorrencia_assinaturas", {
+  id: int().autoincrement().notNull(),
+  ocorrenciaId: int(),
+  planoReversaoId: int(),
+  tipo: mysqlEnum('tipo', ['ciencia_colaborador','ciencia_gestor','ciencia_rh','concordancia_plano']).notNull(),
+  assinanteName: varchar({ length: 255 }).notNull(),
+  assinanteId: int(),
+  assinanteCargo: varchar({ length: 255 }),
+  ipAddress: varchar({ length: 45 }),
+  observacao: text(),
+  assinadoEm: bigint({ mode: "number" }).notNull(),
+  createdAt: bigint({ mode: "number" }).notNull(),
+});

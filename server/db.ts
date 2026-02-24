@@ -71,6 +71,8 @@ import {
   planoReversao,
   planoReversaoEtapas,
   planoReversaoFeedbacks,
+  ocorrenciaTimeline,
+  ocorrenciaAssinaturas,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -4702,5 +4704,171 @@ export async function estimarCustoRescisao(colaboradorId: number) {
     fgtsEstimado: Math.round(fgtsEstimado * 100) / 100,
     multaFgts: Math.round(multaFgts * 100) / 100,
     totalEstimado: Math.round(totalEstimado * 100) / 100,
+  };
+}
+
+
+// =============================================
+// ---- OCORRÊNCIA TIMELINE ----
+// =============================================
+
+export async function addTimelineEvent(data: {
+  ocorrenciaId: number;
+  tipo: 'registro' | 'alteracao_status' | 'aprovacao_solicitada' | 'aprovacao_aprovada' | 'aprovacao_rejeitada' | 'plano_criado' | 'feedback_adicionado' | 'assinatura_colaborador' | 'assinatura_gestor' | 'medida_aplicada' | 'observacao';
+  titulo: string;
+  descricao?: string;
+  executadoPorId?: number;
+  executadoPorNome: string;
+  metadata?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(ocorrenciaTimeline).values({
+    ...data,
+    createdAt: Date.now(),
+  });
+  return result.insertId;
+}
+
+export async function getTimelineByOcorrencia(ocorrenciaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ocorrenciaTimeline)
+    .where(eq(ocorrenciaTimeline.ocorrenciaId, ocorrenciaId))
+    .orderBy(asc(ocorrenciaTimeline.createdAt));
+}
+
+// =============================================
+// ---- ASSINATURAS DIGITAIS ----
+// =============================================
+
+export async function registrarAssinatura(data: {
+  ocorrenciaId?: number;
+  planoReversaoId?: number;
+  tipo: 'ciencia_colaborador' | 'ciencia_gestor' | 'ciencia_rh' | 'concordancia_plano';
+  assinanteName: string;
+  assinanteId?: number;
+  assinanteCargo?: string;
+  ipAddress?: string;
+  observacao?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  const [result] = await db.insert(ocorrenciaAssinaturas).values({
+    ...data,
+    assinadoEm: now,
+    createdAt: now,
+  });
+  return result.insertId;
+}
+
+export async function getAssinaturasByOcorrencia(ocorrenciaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ocorrenciaAssinaturas)
+    .where(eq(ocorrenciaAssinaturas.ocorrenciaId, ocorrenciaId))
+    .orderBy(asc(ocorrenciaAssinaturas.createdAt));
+}
+
+export async function getAssinaturasByPlano(planoReversaoId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ocorrenciaAssinaturas)
+    .where(eq(ocorrenciaAssinaturas.planoReversaoId, planoReversaoId))
+    .orderBy(asc(ocorrenciaAssinaturas.createdAt));
+}
+
+// =============================================
+// ---- RELATÓRIO MENSAL CONSOLIDADO ----
+// =============================================
+
+export async function getRelatorioMensalConsolidado(mes: number, ano: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const inicioMes = new Date(ano, mes - 1, 1).getTime();
+  const fimMes = new Date(ano, mes, 0, 23, 59, 59, 999).getTime();
+
+  // Ocorrências do mês
+  const ocorrenciasMes = await db.select().from(ocorrencias)
+    .where(and(
+      sql`${ocorrencias.createdAt} >= ${inicioMes}`,
+      sql`${ocorrencias.createdAt} <= ${fimMes}`
+    ));
+
+  // Planos criados no mês
+  const planosMes = await db.select().from(planoReversao)
+    .where(and(
+      sql`${planoReversao.createdAt} >= ${inicioMes}`,
+      sql`${planoReversao.createdAt} <= ${fimMes}`
+    ));
+
+  // Todos os planos ativos
+  const planosAtivos = await db.select().from(planoReversao)
+    .where(eq(planoReversao.status, 'ativo'));
+
+  // Feedbacks do mês
+  const feedbacksMes = await db.select().from(planoReversaoFeedbacks)
+    .where(and(
+      sql`${planoReversaoFeedbacks.createdAt} >= ${inicioMes}`,
+      sql`${planoReversaoFeedbacks.createdAt} <= ${fimMes}`
+    ));
+
+  // Contadores por tipo
+  const porTipo: Record<string, number> = {};
+  const porGravidade: Record<string, number> = {};
+  const porSetor: Record<string, number> = {};
+  const porClassificacao: Record<string, number> = {};
+  const porRecomendacao: Record<string, number> = {};
+
+  for (const o of ocorrenciasMes) {
+    porTipo[o.tipo] = (porTipo[o.tipo] || 0) + 1;
+    porGravidade[o.gravidade] = (porGravidade[o.gravidade] || 0) + 1;
+    porSetor[o.setor || 'Não informado'] = (porSetor[o.setor || 'Não informado'] || 0) + 1;
+    porClassificacao[o.classificacao] = (porClassificacao[o.classificacao] || 0) + 1;
+    porRecomendacao[o.recomendacao] = (porRecomendacao[o.recomendacao] || 0) + 1;
+  }
+
+  // Feedbacks evolução
+  const evolucaoFeedbacks = { melhorou: 0, estavel: 0, piorou: 0 };
+  for (const f of feedbacksMes) {
+    if (f.evolucao && f.evolucao in evolucaoFeedbacks) {
+      evolucaoFeedbacks[f.evolucao as keyof typeof evolucaoFeedbacks]++;
+    }
+  }
+
+  // Colaboradores reincidentes (3+ ocorrências no total)
+  const todasOcorrencias = await db.select().from(ocorrencias);
+  const contagemPorColab: Record<number, { nome: string; count: number; setor: string }> = {};
+  for (const o of todasOcorrencias) {
+    if (!contagemPorColab[o.colaboradorId]) {
+      contagemPorColab[o.colaboradorId] = { nome: o.colaboradorNome, count: 0, setor: o.setor || 'N/A' };
+    }
+    contagemPorColab[o.colaboradorId].count++;
+  }
+  const reincidentes = Object.entries(contagemPorColab)
+    .filter(([_, v]) => v.count >= 3)
+    .map(([id, v]) => ({ colaboradorId: Number(id), ...v }));
+
+  return {
+    periodo: { mes, ano },
+    resumo: {
+      totalOcorrencias: ocorrenciasMes.length,
+      totalPlanosCriados: planosMes.length,
+      totalPlanosAtivos: planosAtivos.length,
+      totalFeedbacks: feedbacksMes.length,
+      totalReincidentes: reincidentes.length,
+    },
+    porTipo,
+    porGravidade,
+    porSetor,
+    porClassificacao,
+    porRecomendacao,
+    evolucaoFeedbacks,
+    reincidentes,
+    ocorrencias: ocorrenciasMes,
+    planosCriados: planosMes,
+    planosAtivos,
   };
 }
