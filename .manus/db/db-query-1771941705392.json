@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, nomeCompleto, cargo, salarioBase, CAST(salarioBase AS CHAR) as salarioStr FROM colaboradores WHERE nomeCompleto LIKE '%Ana Paula%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, nomeCompleto, cargo, salarioBase, CAST(salarioBase AS CHAR) as salarioStr FROM colaboradores WHERE nomeCompleto LIKE '%Ana Paula%';",
+  "rows": [
+    {
+      "id": "1",
+      "nomeCompleto": "Ana Paula Ferreira da Silva",
+      "cargo": "Analista Fiscal Sênior",
+      "salarioBase": "8500.00",
+      "salarioStr": "8500.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnomeCompleto\tcargo\tsalarioBase\tsalarioStr\n1\tAna Paula Ferreira da Silva\tAnalista Fiscal Sênior\t8500.00\t8500.00\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

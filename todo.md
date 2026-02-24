@@ -1664,3 +1664,12 @@
 - [x] Detecção de cargos sem registro na base (colaboradores com cargos não cadastrados)
 - [x] Rota backend para exportação PDF do simulador de reajuste
 - [x] Correção de colunas PDF (key-based) para compatibilidade com pdfGenerator
+
+## v65 — Correção de inconsistência salarial no Simulador e demais campos
+- [x] Investigar e corrigir bug de salário multiplicado por 100 no Simulador de Reajuste (ex: R$ 8.500 aparece como R$ 850.000)
+- [x] Garantir que todos os campos do sistema leiam o salário exato do cadastro pai (colaboradores)
+- [x] Verificar parsing de salário (formatação BRL vs centavos) em toda a cadeia de dados
+- [x] Testar consistência de dados em todas as abas de Cargos e Salários
+- [x] Corrigir parseSalario em CargosSalarios.tsx para distinguir decimal DB ("8500.00") de BRL ("R$ 8.500,00")
+- [x] Corrigir parseSal no servidor (index.ts) para memória de cálculo PDF
+- [x] Adicionar testes vitest para parsing de decimais do banco (v65 fix)

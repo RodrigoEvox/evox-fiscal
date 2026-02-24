@@ -1057,10 +1057,8 @@ async function startServer() {
         coordenador: 'Coordenador', supervisor: 'Supervisor', gerente: 'Gerente', diretor: 'Diretor',
       };
 
-      const custoTotal = filteredColabs.reduce((sum: number, c: any) => {
-        const sal = Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-        return sum + sal;
-      }, 0);
+      const parseSal = (v: any) => { const s = String(v || 0).trim(); if (/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s) || 0; return parseFloat(s.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0; };
+      const custoTotal = filteredColabs.reduce((sum: number, c: any) => sum + parseSal(c.salarioBase), 0);
       const media = filteredColabs.length > 0 ? custoTotal / filteredColabs.length : 0;
 
       const doc = createPDF();
@@ -1094,18 +1092,17 @@ async function startServer() {
         { header: 'Contrato', key: 'contrato', width: 50 },
       ];
       const sorted = [...filteredColabs].sort((a: any, b: any) => {
-        const sa = Number(String(a.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-        const sb = Number(String(b.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        const sa = parseSal(a.salarioBase);
+        const sb = parseSal(b.salarioBase);
         return sb - sa;
       });
       const rows = sorted.map((c: any, idx: number) => {
-        const sal = Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
         return {
           idx: String(idx + 1),
           nome: c.nomeCompleto || '',
           cargo: c.cargo || '',
           nivel: NIVEL_LABELS[c.nivelHierarquico] || c.nivelHierarquico || 'N/D',
-          salario: fmtCurrency(sal),
+          salario: fmtCurrency(parseSal(c.salarioBase)),
           contrato: (c.tipoContrato || 'CLT').toUpperCase(),
         };
       });
@@ -1120,7 +1117,7 @@ async function startServer() {
         if (!nivelMap.has(nivel)) nivelMap.set(nivel, { count: 0, custo: 0 });
         const entry = nivelMap.get(nivel)!;
         entry.count++;
-        entry.custo += Number(String(c.salarioBase || 0).replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        entry.custo += parseSal(c.salarioBase);
       });
       const nivelCols = [
         { header: 'Nível', key: 'nivel', width: 120 },

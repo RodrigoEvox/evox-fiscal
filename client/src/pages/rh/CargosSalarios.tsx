@@ -75,9 +75,14 @@ const EMPTY_CARGO_FORM = {
 
 // ===== HELPERS =====
 function parseSalario(val: string | number | null | undefined): number {
-  if (!val) return 0;
-  const str = String(val).replace(/[R$\s.]/g, '').replace(',', '.');
-  return parseFloat(str) || 0;
+  if (!val && val !== 0) return 0;
+  if (typeof val === 'number') return val;
+  const str = String(val).trim();
+  // If it's a raw decimal from the database (e.g. "8500.00"), parse directly
+  if (/^-?\d+(\.\d+)?$/.test(str)) return parseFloat(str) || 0;
+  // If it's BRL formatted (e.g. "R$ 8.500,00"), strip formatting
+  const cleaned = str.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+  return parseFloat(cleaned) || 0;
 }
 
 function formatCurrency(val: number): string {

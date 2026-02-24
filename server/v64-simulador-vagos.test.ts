@@ -12,9 +12,14 @@ describe("v64 — Simulador de Reajuste Salarial", () => {
   }
 
   function parseSalario(val: any): number {
-    if (typeof val === "number") return val;
-    if (!val) return 0;
-    return Number(String(val).replace(/[R$\s.]/g, "").replace(",", ".")) || 0;
+    if (!val && val !== 0) return 0;
+    if (typeof val === 'number') return val;
+    const str = String(val).trim();
+    // If it's a raw decimal from the database (e.g. "8500.00"), parse directly
+    if (/^-?\d+(\.\d+)?$/.test(str)) return parseFloat(str) || 0;
+    // If it's BRL formatted (e.g. "R$ 8.500,00"), strip formatting
+    const cleaned = str.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+    return parseFloat(cleaned) || 0;
   }
 
   it("should calculate global salary adjustment correctly", () => {
@@ -120,6 +125,20 @@ describe("v64 — Simulador de Reajuste Salarial", () => {
     expect(parseSalario(3000)).toBe(3000);
     expect(parseSalario(null)).toBe(0);
     expect(parseSalario("")).toBe(0);
+  });
+
+  it("should parse raw decimal strings from database correctly (v65 fix)", () => {
+    // Database returns decimal columns as strings like "8500.00"
+    expect(parseSalario("8500.00")).toBe(8500);
+    expect(parseSalario("2500.00")).toBe(2500);
+    expect(parseSalario("1200.00")).toBe(1200);
+    expect(parseSalario("10000.50")).toBe(10000.5);
+    expect(parseSalario("0.00")).toBe(0);
+    // Ensure BRL formatted strings still work
+    expect(parseSalario("R$ 8.500,00")).toBe(8500);
+    // Ensure numbers pass through
+    expect(parseSalario(8500)).toBe(8500);
+    expect(parseSalario(0)).toBe(0);
   });
 });
 
