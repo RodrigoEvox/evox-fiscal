@@ -1793,3 +1793,11 @@
 - [x] Total de custo salarial e colaboradores por setor visível
 - [x] Autoajuste ao cadastrar/desligar colaborador
 - [x] Testes vitest existentes continuam passando (24 testes de ocorrências + organograma)
+
+## v76 — Correção de Filtros e Melhorias em Colaboradores
+- [x] Corrigir filtro de Vale Transporte (sim/não não retorna resultados)
+- [x] Revisar e corrigir todos os filtros existentes na página de Colaboradores (VT corrigido: !!c.valeTransporte em vez de === true)
+- [x] Adicionar filtro por benefício Academia (sim/não)
+- [x] Adicionar filtro por Cargo de Confiança (sim/não)
+- [x] Adicionar filtro por Cargo Comissionado (sim/não)
+- [x] Exportação PDF em orientação paisagem com 15 colunas (Nome, CPF, Cargo, Setor, Nível, Salário, Status, Contrato, Local, Formação, Admissão, VT, Acad., Conf., Comis.)

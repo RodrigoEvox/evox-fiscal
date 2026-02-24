@@ -171,6 +171,116 @@ export function addTextBlock(doc: PDFKit.PDFDocument, text: string) {
   doc.moveDown(0.5);
 }
 
+// ---- LANDSCAPE PDF SUPPORT ----
+// A4 landscape: 841.89 x 595.28 pts
+const LANDSCAPE_WIDTH = 841.89;
+const LANDSCAPE_MARGINS = { top: 40, bottom: 40, left: 40, right: 40 };
+const LANDSCAPE_TABLE_WIDTH = LANDSCAPE_WIDTH - LANDSCAPE_MARGINS.left - LANDSCAPE_MARGINS.right; // ~761.89
+
+export function createPDFLandscape(): PDFKit.PDFDocument {
+  const doc = new PDFDocument({
+    size: 'A4',
+    layout: 'landscape',
+    margins: LANDSCAPE_MARGINS,
+    bufferPages: true,
+  });
+  return doc;
+}
+
+export function addHeaderLandscape(doc: PDFKit.PDFDocument, title: string, subtitle: string) {
+  doc.fontSize(20).fillColor(COLORS.primary).text(title, { align: 'left' });
+  doc.moveDown(0.2);
+  doc.moveTo(40, doc.y).lineTo(LANDSCAPE_WIDTH - 40, doc.y).strokeColor(COLORS.secondary).lineWidth(2).stroke();
+  doc.moveDown(0.3);
+  doc.fontSize(9).fillColor(COLORS.gray).text(subtitle, { align: 'left' });
+  doc.moveDown(1);
+}
+
+export function addSectionTitleLandscape(doc: PDFKit.PDFDocument, title: string) {
+  if (doc.y > 500) doc.addPage();
+  doc.moveDown(0.5);
+  doc.fontSize(13).fillColor(COLORS.primary).text(title);
+  doc.moveDown(0.3);
+  doc.moveTo(40, doc.y).lineTo(LANDSCAPE_WIDTH - 40, doc.y).strokeColor(COLORS.border).lineWidth(0.5).stroke();
+  doc.moveDown(0.5);
+}
+
+export function addTableLandscape(doc: PDFKit.PDFDocument, columns: TableColumn[], rows: TableRow[]) {
+  const tableWidth = LANDSCAPE_TABLE_WIDTH;
+  const startX = 40;
+  const rowHeight = 18;
+  const totalCols = columns.reduce((s, c) => s + (c.width || 1), 0);
+  const maxY = 520; // landscape page height minus margins
+
+  // Header
+  if (doc.y > maxY) doc.addPage();
+  let y = doc.y;
+  doc.rect(startX, y, tableWidth, rowHeight).fillColor(COLORS.primary).fill();
+  let x = startX;
+  columns.forEach(col => {
+    const colWidth = ((col.width || 1) / totalCols) * tableWidth;
+    doc.fontSize(7).fillColor('#ffffff').text(
+      col.header.toUpperCase(),
+      x + 3, y + 5,
+      { width: colWidth - 6, align: col.align || 'left' }
+    );
+    x += colWidth;
+  });
+  y += rowHeight;
+
+  // Rows
+  rows.forEach((row, ri) => {
+    if (y > maxY) {
+      doc.addPage();
+      y = 40;
+      // Re-draw header on new page
+      doc.rect(startX, y, tableWidth, rowHeight).fillColor(COLORS.primary).fill();
+      let hx = startX;
+      columns.forEach(col => {
+        const colWidth = ((col.width || 1) / totalCols) * tableWidth;
+        doc.fontSize(7).fillColor('#ffffff').text(
+          col.header.toUpperCase(),
+          hx + 3, y + 5,
+          { width: colWidth - 6, align: col.align || 'left' }
+        );
+        hx += colWidth;
+      });
+      y += rowHeight;
+    }
+
+    const bgColor = row.isTotal ? '#e8f0fe' : (ri % 2 === 0 ? '#ffffff' : COLORS.lightGray);
+    doc.rect(startX, y, tableWidth, rowHeight).fillColor(bgColor).fill();
+
+    x = startX;
+    columns.forEach(col => {
+      const colWidth = ((col.width || 1) / totalCols) * tableWidth;
+      const val = col.format ? col.format(row[col.key]) : String(row[col.key] ?? '');
+      doc.fontSize(7).fillColor(row.isTotal ? COLORS.primary : COLORS.text).text(
+        val,
+        x + 3, y + 5,
+        { width: colWidth - 6, align: col.align || 'left' }
+      );
+      x += colWidth;
+    });
+    y += rowHeight;
+  });
+
+  doc.y = y + 10;
+  doc.x = 40;
+}
+
+export function addFooterLandscape(doc: PDFKit.PDFDocument) {
+  const pages = doc.bufferedPageRange();
+  for (let i = pages.start; i < pages.start + pages.count; i++) {
+    doc.switchToPage(i);
+    doc.fontSize(8).fillColor(COLORS.muted).text(
+      `Evox Fiscal — Gente & Gestão | Página ${i + 1} de ${pages.count}`,
+      40, 545,
+      { align: 'center', width: LANDSCAPE_TABLE_WIDTH }
+    );
+  }
+}
+
 export function fmtCurrency(v: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 }

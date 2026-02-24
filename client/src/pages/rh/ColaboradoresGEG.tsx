@@ -1342,6 +1342,9 @@ export default function ColaboradoresGEG() {
   const [filterVT, setFilterVT] = useState<string>('todos');
   const [filterNivel, setFilterNivel] = useState<string>('todos');
   const [filterContrato, setFilterContrato] = useState<string>('todos');
+  const [filterAcademia, setFilterAcademia] = useState<string>('todos');
+  const [filterCargoConfianca, setFilterCargoConfianca] = useState<string>('todos');
+  const [filterComissionado, setFilterComissionado] = useState<string>('todos');
   const [showFilters, setShowFilters] = useState(false);
   const [admissaoAlert, setAdmissaoAlert] = useState(false);
   const [exitAlert, setExitAlert] = useState(false);
@@ -1359,6 +1362,7 @@ export default function ColaboradoresGEG() {
   const colaboradores = trpc.colaboradores.list.useQuery();
   const setores = trpc.setores.list.useQuery();
   const niveisCargosQ = trpc.niveisCargo.list.useQuery();
+  const academiaQ = trpc.academiaBeneficio.list.useQuery();
   const historicoStatus = trpc.historicoStatus.list.useQuery(
     { colaboradorId: editId || 0 },
     { enabled: !!editId && (viewMode || showForm) }
@@ -1545,6 +1549,32 @@ export default function ColaboradoresGEG() {
   const allColabs = (colaboradores.data || []) as any[];
   const setoresList = (setores.data || []) as any[];
   const niveisCargos = (niveisCargosQ.data || []) as any[];
+  const academiaList = (academiaQ.data || []) as any[];
+
+  // Set of colaboradorIds that have active academia benefit
+  const academiaColabIds = useMemo(() => {
+    const ids = new Set<number>();
+    academiaList.filter((a: any) => a.ativo).forEach((a: any) => ids.add(a.colaboradorId));
+    return ids;
+  }, [academiaList]);
+
+  // Map cargo name + setorId to comissionado/cargoConfianca from niveisCargo
+  const cargoInfoMap = useMemo(() => {
+    const map = new Map<string, { comissionado: boolean; cargoConfianca: boolean }>();
+    niveisCargos.forEach((nc: any) => {
+      const key = `${nc.cargo}__${nc.setorId || 0}`;
+      map.set(key, { comissionado: !!nc.comissionado, cargoConfianca: !!nc.cargoConfianca });
+      // Also set by cargo name only as fallback
+      if (!map.has(`${nc.cargo}__fallback`)) {
+        map.set(`${nc.cargo}__fallback`, { comissionado: !!nc.comissionado, cargoConfianca: !!nc.cargoConfianca });
+      }
+    });
+    return map;
+  }, [niveisCargos]);
+
+  const getCargoInfo = (c: any) => {
+    return cargoInfoMap.get(`${c.cargo}__${c.setorId || 0}`) || cargoInfoMap.get(`${c.cargo}__fallback`) || { comissionado: false, cargoConfianca: false };
+  };
 
   const uniqueCargos = useMemo(() => Array.from(new Set(allColabs.map((c: any) => c.cargo).filter(Boolean))).sort(), [allColabs]);
 
@@ -1589,8 +1619,11 @@ export default function ColaboradoresGEG() {
     if (filterVT !== 'todos') count++;
     if (filterNivel !== 'todos') count++;
     if (filterContrato !== 'todos') count++;
+    if (filterAcademia !== 'todos') count++;
+    if (filterCargoConfianca !== 'todos') count++;
+    if (filterComissionado !== 'todos') count++;
     return count;
-  }, [filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato]);
+  }, [filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato, filterAcademia, filterCargoConfianca, filterComissionado]);
 
   const clearAllFilters = () => {
     setFilterStatus('todos');
@@ -1600,6 +1633,9 @@ export default function ColaboradoresGEG() {
     setFilterVT('todos');
     setFilterNivel('todos');
     setFilterContrato('todos');
+    setFilterAcademia('todos');
+    setFilterCargoConfianca('todos');
+    setFilterComissionado('todos');
     setSearch('');
   };
 
@@ -1644,6 +1680,9 @@ export default function ColaboradoresGEG() {
     if (filterVT !== 'todos') params.set('vt', filterVT);
     if (filterNivel !== 'todos') params.set('nivel', filterNivel);
     if (filterContrato !== 'todos') params.set('contrato', filterContrato);
+    if (filterAcademia !== 'todos') params.set('academia', filterAcademia);
+    if (filterCargoConfianca !== 'todos') params.set('cargoConfianca', filterCargoConfianca);
+    if (filterComissionado !== 'todos') params.set('comissionado', filterComissionado);
     if (search.trim()) params.set('search', search.trim());
     window.open(`/api/colaboradores/export-pdf?${params.toString()}`, '_blank');
     toast.success(`Gerando PDF com ${filtered.length} colaboradores...`);
@@ -1687,9 +1726,12 @@ export default function ColaboradoresGEG() {
     if (filterCargo !== 'todos') list = list.filter((c: any) => c.cargo === filterCargo);
     if (filterSetor !== 'todos') list = list.filter((c: any) => String(c.setorId) === filterSetor);
     if (filterLocal !== 'todos') list = list.filter((c: any) => c.localTrabalho === filterLocal);
-    if (filterVT !== 'todos') list = list.filter((c: any) => filterVT === 'sim' ? c.valeTransporte === true : c.valeTransporte === false || !c.valeTransporte);
+    if (filterVT !== 'todos') list = list.filter((c: any) => filterVT === 'sim' ? !!c.valeTransporte : !c.valeTransporte);
     if (filterNivel !== 'todos') list = list.filter((c: any) => c.nivelHierarquico === filterNivel);
     if (filterContrato !== 'todos') list = list.filter((c: any) => c.tipoContrato === filterContrato);
+    if (filterAcademia !== 'todos') list = list.filter((c: any) => filterAcademia === 'sim' ? academiaColabIds.has(c.id) : !academiaColabIds.has(c.id));
+    if (filterCargoConfianca !== 'todos') list = list.filter((c: any) => { const info = getCargoInfo(c); return filterCargoConfianca === 'sim' ? info.cargoConfianca : !info.cargoConfianca; });
+    if (filterComissionado !== 'todos') list = list.filter((c: any) => { const info = getCargoInfo(c); return filterComissionado === 'sim' ? info.comissionado : !info.comissionado; });
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter((c: any) => c.nomeCompleto?.toLowerCase().includes(s) || c.cpf?.includes(s) || c.cargo?.toLowerCase().includes(s));
@@ -1709,7 +1751,7 @@ export default function ColaboradoresGEG() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return list;
-  }, [allColabs, search, filterStatus, filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato, sortField, sortDir, setoresList]);
+  }, [allColabs, search, filterStatus, filterCargo, filterSetor, filterLocal, filterVT, filterNivel, filterContrato, filterAcademia, filterCargoConfianca, filterComissionado, sortField, sortDir, setoresList, academiaColabIds, cargoInfoMap]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -1866,7 +1908,7 @@ export default function ColaboradoresGEG() {
       {showFilters && (
         <Card className="border-dashed">
           <CardContent className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
               <div>
                 <Label className="text-xs text-muted-foreground mb-1.5 block"><MapPin className="w-3 h-3 inline mr-1" />Local de Trabalho</Label>
                 <Select value={filterLocal} onValueChange={setFilterLocal}>
@@ -1937,6 +1979,39 @@ export default function ColaboradoresGEG() {
               <div>
                 <Label className="text-xs text-muted-foreground mb-1.5 block"><Bus className="w-3 h-3 inline mr-1" />Vale Transporte</Label>
                 <Select value={filterVT} onValueChange={setFilterVT}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><HeartPulse className="w-3 h-3 inline mr-1" />Academia</Label>
+                <Select value={filterAcademia} onValueChange={setFilterAcademia}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><ShieldAlert className="w-3 h-3 inline mr-1" />Cargo de Confiança</Label>
+                <Select value={filterCargoConfianca} onValueChange={setFilterCargoConfianca}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block"><DollarSign className="w-3 h-3 inline mr-1" />Comissionado</Label>
+                <Select value={filterComissionado} onValueChange={setFilterComissionado}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>

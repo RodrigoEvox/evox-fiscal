@@ -953,23 +953,43 @@ async function startServer() {
   // ---- COLABORADORES PDF EXPORT ----
   app.get('/api/colaboradores/export-pdf', async (req: any, res: any) => {
     try {
-      const { createPDF, addHeader, addSectionTitle, addTable, addFooter, fmtDate } = await import('../pdfGenerator');
+      const { createPDFLandscape, addHeaderLandscape, addSectionTitleLandscape, addTableLandscape, addFooterLandscape, fmtDate, fmtCurrency } = await import('../pdfGenerator');
       const db = await import('../db');
       const allColabs = await db.listColaboradores();
       const setores = await db.listSetores();
       const setorMap = new Map(setores.map((s: any) => [s.id, s.nome]));
+      const niveisCargo = await db.listNiveisCargo();
+      const academiaList = await db.listAcademiaBeneficio();
+      const academiaColabIds = new Set(academiaList.filter((a: any) => a.ativo).map((a: any) => a.colaboradorId));
+
+      // Build cargo info map from niveisCargo
+      const cargoInfoMap = new Map<string, { comissionado: boolean; cargoConfianca: boolean }>();
+      niveisCargo.forEach((nc: any) => {
+        const key = `${nc.cargo}__${nc.setorId || 0}`;
+        cargoInfoMap.set(key, { comissionado: !!nc.comissionado, cargoConfianca: !!nc.cargoConfianca });
+        if (!cargoInfoMap.has(`${nc.cargo}__fallback`)) {
+          cargoInfoMap.set(`${nc.cargo}__fallback`, { comissionado: !!nc.comissionado, cargoConfianca: !!nc.cargoConfianca });
+        }
+      });
+      const getCargoInfo = (c: any) => cargoInfoMap.get(`${c.cargo}__${c.setorId || 0}`) || cargoInfoMap.get(`${c.cargo}__fallback`) || { comissionado: false, cargoConfianca: false };
 
       // Apply filters
       let filtered = [...allColabs];
-      const { status, cargo, setor, local, vt, nivel, contrato, search } = req.query;
+      const { status, cargo, setor, local, vt, nivel, contrato, academia, cargoConfianca, comissionado, search } = req.query;
       if (status) filtered = filtered.filter((c: any) => (c.statusColaborador || 'ativo') === status);
       if (cargo) filtered = filtered.filter((c: any) => c.cargo === cargo);
       if (setor) filtered = filtered.filter((c: any) => String(c.setorId) === setor);
       if (local) filtered = filtered.filter((c: any) => c.localTrabalho === local);
-      if (vt === 'sim') filtered = filtered.filter((c: any) => c.valeTransporte);
+      if (vt === 'sim') filtered = filtered.filter((c: any) => !!c.valeTransporte);
       if (vt === 'nao') filtered = filtered.filter((c: any) => !c.valeTransporte);
       if (nivel) filtered = filtered.filter((c: any) => c.nivelHierarquico === nivel);
       if (contrato) filtered = filtered.filter((c: any) => c.tipoContrato === contrato);
+      if (academia === 'sim') filtered = filtered.filter((c: any) => academiaColabIds.has(c.id));
+      if (academia === 'nao') filtered = filtered.filter((c: any) => !academiaColabIds.has(c.id));
+      if (cargoConfianca === 'sim') filtered = filtered.filter((c: any) => getCargoInfo(c).cargoConfianca);
+      if (cargoConfianca === 'nao') filtered = filtered.filter((c: any) => !getCargoInfo(c).cargoConfianca);
+      if (comissionado === 'sim') filtered = filtered.filter((c: any) => getCargoInfo(c).comissionado);
+      if (comissionado === 'nao') filtered = filtered.filter((c: any) => !getCargoInfo(c).comissionado);
       if (search) {
         const q = (search as string).toLowerCase();
         filtered = filtered.filter((c: any) => c.nomeCompleto?.toLowerCase().includes(q) || c.cpf?.includes(q) || c.cargo?.toLowerCase().includes(q));
@@ -982,7 +1002,13 @@ async function startServer() {
         pos_graduacao: 'P\u00f3s-Grad.', mestrado: 'Mestrado', doutorado: 'Doutorado',
       };
 
-      const doc = createPDF();
+      const NIVEL_LABELS: Record<string, string> = {
+        estagiario: 'Estag.', auxiliar: 'Auxiliar', assistente: 'Assist.',
+        analista_jr: 'An. Jr', analista_pl: 'An. Pl', analista_sr: 'An. Sr',
+        coordenador: 'Coord.', supervisor: 'Superv.', gerente: 'Gerente', diretor: 'Diretor',
+      };
+
+      const doc = createPDFLandscape();
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="colaboradores-${new Date().toISOString().slice(0,10)}.pdf"`);
       doc.pipe(res);
@@ -993,35 +1019,58 @@ async function startServer() {
       if (setor) filtersApplied.push(`Setor: ${setorMap.get(Number(setor)) || setor}`);
       if (local) filtersApplied.push(`Local: ${local}`);
       if (contrato) filtersApplied.push(`Contrato: ${contrato}`);
+      if (vt) filtersApplied.push(`VT: ${vt}`);
+      if (academia) filtersApplied.push(`Academia: ${academia}`);
+      if (cargoConfianca) filtersApplied.push(`Cargo Confian\u00e7a: ${cargoConfianca}`);
+      if (comissionado) filtersApplied.push(`Comissionado: ${comissionado}`);
       if (search) filtersApplied.push(`Busca: ${search}`);
 
-      addHeader(doc, 'Relat\u00f3rio de Colaboradores', `${filtered.length} colaboradores${filtersApplied.length ? ' | Filtros: ' + filtersApplied.join(', ') : ''}`);
-      addSectionTitle(doc, 'Listagem de Colaboradores');
+      addHeaderLandscape(doc, 'Relat\u00f3rio de Colaboradores', `${filtered.length} colaboradores${filtersApplied.length ? ' | Filtros: ' + filtersApplied.join(', ') : ''}`);
+      addSectionTitleLandscape(doc, 'Listagem de Colaboradores');
+
+      const parseSal = (v: any) => { const s = String(v || 0).trim(); if (/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s) || 0; return parseFloat(s.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0; };
 
       const columns = [
-        { header: 'Nome', key: 'nome', width: 120 },
-        { header: 'CPF', key: 'cpf', width: 70 },
-        { header: 'Cargo', key: 'cargo', width: 80 },
-        { header: 'Setor', key: 'setor', width: 70 },
-        { header: 'Status', key: 'status', width: 50 },
-        { header: 'Contrato', key: 'contrato', width: 45 },
-        { header: 'Formação', key: 'formacao', width: 55 },
-        { header: 'Admissão', key: 'admissao', width: 55 },
+        { header: 'Nome', key: 'nome', width: 110 },
+        { header: 'CPF', key: 'cpf', width: 60 },
+        { header: 'Cargo', key: 'cargo', width: 70 },
+        { header: 'Setor', key: 'setor', width: 60 },
+        { header: 'N\u00edvel', key: 'nivel', width: 40 },
+        { header: 'Sal\u00e1rio', key: 'salario', width: 55, align: 'right' as const },
+        { header: 'Status', key: 'status', width: 45 },
+        { header: 'Contrato', key: 'contrato', width: 35 },
+        { header: 'Local', key: 'local', width: 45 },
+        { header: 'Forma\u00e7\u00e3o', key: 'formacao', width: 45 },
+        { header: 'Admiss\u00e3o', key: 'admissao', width: 48 },
+        { header: 'VT', key: 'vt', width: 25 },
+        { header: 'Acad.', key: 'academia', width: 25 },
+        { header: 'Conf.', key: 'confianca', width: 25 },
+        { header: 'Comis.', key: 'comis', width: 25 },
       ];
 
-      const rows = filtered.map((c: any) => ({
-        nome: c.nomeCompleto || '',
-        cpf: c.cpf || '',
-        cargo: c.cargo || '',
-        setor: setorMap.get(c.setorId) || '',
-        status: c.statusColaborador || 'ativo',
-        contrato: (c.tipoContrato || '').toUpperCase(),
-        formacao: GRAU_LABELS[c.grauInstrucao] || '',
-        admissao: fmtDate(c.dataAdmissao || ''),
-      }));
+      const rows = filtered.map((c: any) => {
+        const info = getCargoInfo(c);
+        return {
+          nome: c.nomeCompleto || '',
+          cpf: c.cpf || '',
+          cargo: c.cargo || '',
+          setor: setorMap.get(c.setorId) || '',
+          nivel: NIVEL_LABELS[c.nivelHierarquico] || '',
+          salario: fmtCurrency(parseSal(c.salarioBase)),
+          status: c.statusColaborador || 'ativo',
+          contrato: (c.tipoContrato || '').toUpperCase(),
+          local: c.localTrabalho === 'home_office' ? 'Home Office' : c.localTrabalho === 'barueri' ? 'Barueri' : c.localTrabalho === 'uberaba' ? 'Uberaba' : '',
+          formacao: GRAU_LABELS[c.grauInstrucao] || '',
+          admissao: fmtDate(c.dataAdmissao || ''),
+          vt: c.valeTransporte ? 'Sim' : 'N\u00e3o',
+          academia: academiaColabIds.has(c.id) ? 'Sim' : 'N\u00e3o',
+          confianca: info.cargoConfianca ? 'Sim' : 'N\u00e3o',
+          comis: info.comissionado ? 'Sim' : 'N\u00e3o',
+        };
+      });
 
-      addTable(doc, columns, rows);
-      addFooter(doc);
+      addTableLandscape(doc, columns, rows);
+      addFooterLandscape(doc);
       doc.end();
     } catch (err: any) {
       console.error('[Colaboradores PDF Export Error]', err);
