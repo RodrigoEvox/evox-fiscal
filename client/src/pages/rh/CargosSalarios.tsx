@@ -17,8 +17,10 @@ import {
   BarChart3, Users, DollarSign, Building2, TrendingUp, ArrowLeft,
   ChevronDown, ChevronRight, User, GitBranch, Plus, Layers, Trash2,
   Loader2, GraduationCap, Download, FileText, FileSpreadsheet, Calculator,
-  Briefcase, ArrowUpCircle, Edit2, Eye, X, Search, Check, XCircle
+  Briefcase, ArrowUpCircle, Edit2, Eye, X, Search, Check, XCircle,
+  Info, Shield, Receipt, UserCheck
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CurrencyInput } from '@/components/CurrencyInput';
 
 // ===== CONSTANTS =====
@@ -349,29 +351,67 @@ function MemoriaCalculoDialog({ open, onClose, setor, colaboradores }: {
   );
 }
 
+// ===== ENCARGOS CLT =====
+// Percentuais padrão de encargos trabalhistas CLT sobre o salário bruto
+const ENCARGOS_CLT_PADRAO = {
+  inssPatronal: { label: 'INSS Patronal', pct: 20.0, desc: '20% sobre a remuneração bruta (art. 22, Lei 8.212/91)' },
+  rat: { label: 'RAT/SAT', pct: 2.0, desc: 'Risco Ambiental do Trabalho — 1% a 3%, média 2%' },
+  terceiros: { label: 'Sistema S / Terceiros', pct: 5.8, desc: 'SENAI, SESI, SEBRAE, INCRA, Salário-Educação etc.' },
+  fgts: { label: 'FGTS', pct: 8.0, desc: '8% sobre a remuneração bruta (Lei 8.036/90)' },
+  decimoTerceiro: { label: '13º Salário (provisão)', pct: 8.33, desc: '1/12 avos por mês trabalhado' },
+  ferias: { label: 'Férias + 1/3 (provisão)', pct: 11.11, desc: '1/12 avos + 1/3 constitucional = 1/12 × 4/3' },
+  multaFgtsProvisao: { label: 'Multa FGTS (provisão)', pct: 4.0, desc: 'Provisão de 40% sobre 8% FGTS + 13º + férias (estimativa)' },
+};
+
+type EncargoKey = keyof typeof ENCARGOS_CLT_PADRAO;
+
 // ===== SIMULADOR DE REAJUSTE =====
 function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTotalMensal }: {
   colabList: any[]; setoresList: any[]; niveis: any[]; porSetor: any[]; custoTotalMensal: number;
 }) {
-  const [modo, setModo] = useState<'global' | 'setor' | 'cargo'>('global');
+  const [modo, setModo] = useState<'global' | 'setor' | 'cargo' | 'colaborador'>('global');
   const [percentual, setPercentual] = useState('5');
   const [setorSelecionado, setSetorSelecionado] = useState('todos');
   const [cargoSelecionado, setCargoSelecionado] = useState('todos');
+  const [colabSelecionado, setColabSelecionado] = useState('todos');
+  const [colabSearch, setColabSearch] = useState('');
   const [reajustesCustom, setReajustesCustom] = useState<Record<string, string>>({});
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [incluirEncargos, setIncluirEncargos] = useState(true);
+  const [showEncargosDetail, setShowEncargosDetail] = useState(false);
+  const [encargosCustom, setEncargosCustom] = useState<Record<EncargoKey, number>>(
+    Object.fromEntries(Object.entries(ENCARGOS_CLT_PADRAO).map(([k, v]) => [k, v.pct])) as Record<EncargoKey, number>
+  );
+
+  // Fetch CCT vigente for salary rules
+  const cctVigente = trpc.cct.getVigente.useQuery(undefined, { retry: false });
+  const cctSalarioRules = useMemo(() => {
+    if (!cctVigente.data?.regrasSalarioJson) return null;
+    try { return JSON.parse(cctVigente.data.regrasSalarioJson as string); } catch { return null; }
+  }, [cctVigente.data]);
 
   const pct = parseFloat(percentual) || 0;
+  const totalEncargoPct = incluirEncargos
+    ? Object.values(encargosCustom).reduce((s, v) => s + v, 0)
+    : 0;
 
   // Build simulation data
   const simulacao = useMemo(() => {
-    const result: { nome: string; cargo: string; setor: string; nivel: string; salarioAtual: number; salarioNovo: number; diferenca: number }[] = [];
+    type SimRow = {
+      id: number; nome: string; cargo: string; setor: string; nivel: string;
+      salarioAtual: number; salarioNovo: number; diferenca: number;
+      encargosAtual: number; encargosNovo: number; custoTotalAtual: number; custoTotalNovo: number;
+      adicionais: number; tipoContrato: string;
+    };
+    const result: SimRow[] = [];
 
     colabList.forEach(c => {
       const salarioAtual = parseSalario(c.salarioBase);
       if (salarioAtual <= 0) return;
 
-      const setorNome = setoresList.find(s => s.id === c.setorId)?.nome || 'Sem Setor';
+      const setorNome = setoresList.find((s: any) => s.id === c.setorId)?.nome || 'Sem Setor';
       const cargoNome = c.cargo || 'Sem Cargo';
+      const adicionais = parseSalario(c.adicionais);
       let aplicar = false;
       let pctAplicar = pct;
 
@@ -395,10 +435,27 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
             pctAplicar = parseFloat(reajustesCustom[cargoNome]) || 0;
           }
         }
+      } else if (modo === 'colaborador') {
+        if (colabSelecionado === 'todos') {
+          aplicar = true;
+        } else {
+          aplicar = String(c.id) === colabSelecionado;
+          if (reajustesCustom[String(c.id)]) {
+            pctAplicar = parseFloat(reajustesCustom[String(c.id)]) || 0;
+          }
+        }
       }
 
       const salarioNovo = aplicar ? salarioAtual * (1 + pctAplicar / 100) : salarioAtual;
+      // Encargos apply only to CLT contracts
+      const isCLT = (c.tipoContrato || 'clt') === 'clt';
+      const baseEncAtual = isCLT ? (salarioAtual + adicionais) : 0;
+      const baseEncNovo = isCLT ? (salarioNovo + adicionais) : 0;
+      const encargosAtual = baseEncAtual * (totalEncargoPct / 100);
+      const encargosNovo = baseEncNovo * (totalEncargoPct / 100);
+
       result.push({
+        id: c.id,
         nome: c.nomeCompleto || '',
         cargo: cargoNome,
         setor: setorNome.replace(/^[A-Z]+\s*[\u2013-]\s*/, ''),
@@ -406,14 +463,24 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
         salarioAtual,
         salarioNovo,
         diferenca: salarioNovo - salarioAtual,
+        adicionais,
+        tipoContrato: c.tipoContrato || 'clt',
+        encargosAtual,
+        encargosNovo,
+        custoTotalAtual: salarioAtual + adicionais + encargosAtual,
+        custoTotalNovo: salarioNovo + adicionais + encargosNovo,
       });
     });
 
-    return result.sort((a, b) => b.diferenca - a.diferenca);
-  }, [colabList, setoresList, modo, pct, setorSelecionado, cargoSelecionado, reajustesCustom]);
+    return result.sort((a, b) => (b.custoTotalNovo - b.custoTotalAtual) - (a.custoTotalNovo - a.custoTotalAtual));
+  }, [colabList, setoresList, modo, pct, setorSelecionado, cargoSelecionado, colabSelecionado, reajustesCustom, totalEncargoPct]);
 
-  const custoAtualTotal = simulacao.reduce((s, r) => s + r.salarioAtual, 0);
-  const custoNovoTotal = simulacao.reduce((s, r) => s + r.salarioNovo, 0);
+  const custoAtualTotal = simulacao.reduce((s, r) => s + r.custoTotalAtual, 0);
+  const custoNovoTotal = simulacao.reduce((s, r) => s + r.custoTotalNovo, 0);
+  const salAtualTotal = simulacao.reduce((s, r) => s + r.salarioAtual, 0);
+  const salNovoTotal = simulacao.reduce((s, r) => s + r.salarioNovo, 0);
+  const encAtualTotal = simulacao.reduce((s, r) => s + r.encargosAtual, 0);
+  const encNovoTotal = simulacao.reduce((s, r) => s + r.encargosNovo, 0);
   const impactoMensal = custoNovoTotal - custoAtualTotal;
   const impactoAnual = impactoMensal * 12;
   const afetados = simulacao.filter(r => r.diferenca > 0).length;
@@ -425,14 +492,27 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
     return Array.from(set).sort();
   }, [colabList]);
 
+  // Filtered collaborators for search
+  const colabsFiltrados = useMemo(() => {
+    const term = colabSearch.toLowerCase();
+    return colabList
+      .filter(c => parseSalario(c.salarioBase) > 0)
+      .filter(c => !term || (c.nomeCompleto || '').toLowerCase().includes(term) || (c.cargo || '').toLowerCase().includes(term))
+      .sort((a: any, b: any) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || ''));
+  }, [colabList, colabSearch]);
+
   // Summary by setor
   const resumoPorSetor = useMemo(() => {
-    const map = new Map<string, { custoAtual: number; custoNovo: number; qtd: number }>(); 
+    const map = new Map<string, { salAtual: number; salNovo: number; encAtual: number; encNovo: number; custoAtual: number; custoNovo: number; qtd: number }>(); 
     simulacao.forEach(r => {
-      if (!map.has(r.setor)) map.set(r.setor, { custoAtual: 0, custoNovo: 0, qtd: 0 });
+      if (!map.has(r.setor)) map.set(r.setor, { salAtual: 0, salNovo: 0, encAtual: 0, encNovo: 0, custoAtual: 0, custoNovo: 0, qtd: 0 });
       const e = map.get(r.setor)!;
-      e.custoAtual += r.salarioAtual;
-      e.custoNovo += r.salarioNovo;
+      e.salAtual += r.salarioAtual;
+      e.salNovo += r.salarioNovo;
+      e.encAtual += r.encargosAtual;
+      e.encNovo += r.encargosNovo;
+      e.custoAtual += r.custoTotalAtual;
+      e.custoNovo += r.custoTotalNovo;
       e.qtd++;
     });
     return Array.from(map.entries()).map(([setor, d]) => ({ setor, ...d, diferenca: d.custoNovo - d.custoAtual })).sort((a, b) => b.diferenca - a.diferenca);
@@ -449,7 +529,15 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
         impactoMensal: String(impactoMensal),
         impactoAnual: String(impactoAnual),
         afetados: String(afetados),
-        dados: JSON.stringify(simulacao.slice(0, 200)),
+        incluirEncargos: String(incluirEncargos),
+        totalEncargoPct: String(totalEncargoPct),
+        dados: JSON.stringify(simulacao.slice(0, 200).map(r => ({
+          ...r,
+          encargosAtual: r.encargosAtual,
+          encargosNovo: r.encargosNovo,
+          custoTotalAtual: r.custoTotalAtual,
+          custoTotalNovo: r.custoTotalNovo,
+        }))),
       });
       const resp = await fetch(`/api/cargos-salarios/simulador-reajuste-pdf?${params}`);
       if (!resp.ok) throw new Error('Erro ao gerar PDF');
@@ -469,22 +557,38 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
   };
 
   const handleExportExcel = () => {
-    const headers = ['Nome', 'Cargo', 'Setor', 'Nível', 'Salário Atual', 'Salário Novo', 'Diferença'];
-    const rows = simulacao.map(r => [
+    const headers = incluirEncargos
+      ? ['Nome', 'Cargo', 'Setor', 'Tipo', 'Sal. Atual', 'Sal. Novo', 'Dif. Sal.', 'Encargos Atual', 'Encargos Novo', 'Custo Total Atual', 'Custo Total Novo', 'Impacto Total']
+      : ['Nome', 'Cargo', 'Setor', 'Nível', 'Salário Atual', 'Salário Novo', 'Diferença'];
+    const rows = simulacao.map(r => incluirEncargos ? [
+      r.nome, r.cargo, r.setor, r.tipoContrato.toUpperCase(),
+      r.salarioAtual.toFixed(2).replace('.', ','),
+      r.salarioNovo.toFixed(2).replace('.', ','),
+      r.diferenca.toFixed(2).replace('.', ','),
+      r.encargosAtual.toFixed(2).replace('.', ','),
+      r.encargosNovo.toFixed(2).replace('.', ','),
+      r.custoTotalAtual.toFixed(2).replace('.', ','),
+      r.custoTotalNovo.toFixed(2).replace('.', ','),
+      (r.custoTotalNovo - r.custoTotalAtual).toFixed(2).replace('.', ','),
+    ] : [
       r.nome, r.cargo, r.setor, r.nivel,
       r.salarioAtual.toFixed(2).replace('.', ','),
       r.salarioNovo.toFixed(2).replace('.', ','),
       r.diferenca.toFixed(2).replace('.', ','),
     ]);
-    rows.push(['', '', '', '', '', '', '']);
-    rows.push(['TOTAL', '', '', '', custoAtualTotal.toFixed(2).replace('.', ','), custoNovoTotal.toFixed(2).replace('.', ','), impactoMensal.toFixed(2).replace('.', ',')]);
+    rows.push(Array(headers.length).fill(''));
+    if (incluirEncargos) {
+      rows.push(['TOTAL', '', '', '', salAtualTotal.toFixed(2).replace('.', ','), salNovoTotal.toFixed(2).replace('.', ','), (salNovoTotal - salAtualTotal).toFixed(2).replace('.', ','), encAtualTotal.toFixed(2).replace('.', ','), encNovoTotal.toFixed(2).replace('.', ','), custoAtualTotal.toFixed(2).replace('.', ','), custoNovoTotal.toFixed(2).replace('.', ','), impactoMensal.toFixed(2).replace('.', ',')]);
+    } else {
+      rows.push(['TOTAL', '', '', '', salAtualTotal.toFixed(2).replace('.', ','), salNovoTotal.toFixed(2).replace('.', ','), (salNovoTotal - salAtualTotal).toFixed(2).replace('.', ',')]);
+    }
     const csvContent = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `simulacao-reajuste-${modo}.csv`;
+    a.download = `simulacao-reajuste-${modo}${incluirEncargos ? '-com-encargos' : ''}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Excel/CSV exportado!');
@@ -494,7 +598,7 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
     <div className="space-y-6">
       <Card className="bg-muted/30">
         <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">Simule reajustes salariais por percentual, setor ou cargo e visualize o impacto financeiro antes de aplicar.</p>
+          <p className="text-sm text-muted-foreground">Simule reajustes salariais por percentual, setor, cargo ou colaborador individual e visualize o impacto financeiro completo incluindo encargos trabalhistas CLT antes de aplicar.</p>
         </CardContent>
       </Card>
 
@@ -509,12 +613,13 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Modo de Reajuste</Label>
-              <Select value={modo} onValueChange={(v: any) => { setModo(v); setReajustesCustom({}); }}>
+              <Select value={modo} onValueChange={(v: any) => { setModo(v); setReajustesCustom({}); setColabSelecionado('todos'); setColabSearch(''); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="global">Global (todos)</SelectItem>
                   <SelectItem value="setor">Por Setor</SelectItem>
                   <SelectItem value="cargo">Por Cargo</SelectItem>
+                  <SelectItem value="colaborador">Por Colaborador</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -539,7 +644,7 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os Setores</SelectItem>
-                    {setoresList.map(s => (
+                    {setoresList.map((s: any) => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
                     ))}
                   </SelectContent>
@@ -561,31 +666,134 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
                 </Select>
               </div>
             )}
+
+            {modo === 'colaborador' && (
+              <div className="space-y-2">
+                <Label>Colaborador</Label>
+                <Select value={colabSelecionado} onValueChange={setColabSelecionado}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um colaborador" /></SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 pb-2">
+                      <Input
+                        placeholder="Buscar por nome ou cargo..."
+                        value={colabSearch}
+                        onChange={e => setColabSearch(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <SelectItem value="todos">Todos os Colaboradores</SelectItem>
+                    {colabsFiltrados.slice(0, 50).map((c: any) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.nomeCompleto} — {c.cargo || 'Sem Cargo'}
+                      </SelectItem>
+                    ))}
+                    {colabsFiltrados.length > 50 && (
+                      <div className="px-2 py-1 text-xs text-muted-foreground text-center">Mostrando 50 de {colabsFiltrados.length}. Refine a busca.</div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardContent>
+      </Card>
+
+      {/* Encargos CLT */}
+      <Card className="border-amber-200/50">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="w-4 h-4 text-amber-600" /> Encargos Trabalhistas CLT
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">Encargos calculados sobre a remuneração bruta (salário + adicionais) de cada colaborador CLT. PJ não tem encargos. Os percentuais podem ser ajustados conforme a CCT vigente.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+            <div className="flex items-center gap-3">
+              {cctSalarioRules && (
+                <Badge variant="outline" className="text-[10px] text-green-700 border-green-300 gap-1">
+                  <Check className="w-3 h-3" /> CCT Vigente Aplicada
+                </Badge>
+              )}
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Incluir encargos</Label>
+                <Switch checked={incluirEncargos} onCheckedChange={setIncluirEncargos} />
+              </div>
+              {incluirEncargos && (
+                <Button variant="ghost" size="sm" onClick={() => setShowEncargosDetail(!showEncargosDetail)} className="gap-1 text-xs">
+                  {showEncargosDetail ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  {showEncargosDetail ? 'Ocultar' : 'Detalhar'}
+                </Button>
+              )}
+            </div>
+          </div>
+          {incluirEncargos && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Total de encargos: <span className="font-semibold text-amber-700">{totalEncargoPct.toFixed(2)}%</span> sobre a remuneração bruta de cada colaborador CLT
+            </p>
+          )}
+        </CardHeader>
+        {incluirEncargos && showEncargosDetail && (
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {(Object.entries(ENCARGOS_CLT_PADRAO) as [EncargoKey, typeof ENCARGOS_CLT_PADRAO[EncargoKey]][]).map(([key, enc]) => (
+                <div key={key} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                  <div className="flex-1 min-w-0">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-xs font-medium truncate cursor-help">{enc.label}</p>
+                        </TooltipTrigger>
+                        <TooltipContent><p className="text-xs max-w-xs">{enc.desc}</p></TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={encargosCustom[key]}
+                    onChange={e => setEncargosCustom(prev => ({ ...prev, [key]: parseFloat(e.target.value) || 0 }))}
+                    className="w-20 h-7 text-xs text-right"
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* KPIs do Impacto */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-blue-600 font-medium">Custo Atual Mensal</p>
+            <p className="text-xs text-blue-600 font-medium">Custo Total Atual</p>
             <p className="text-lg font-bold text-blue-800">{formatCurrency(custoAtualTotal)}</p>
+            {incluirEncargos && <p className="text-[10px] text-blue-500">Sal: {formatCurrency(salAtualTotal)} + Enc: {formatCurrency(encAtualTotal)}</p>}
           </CardContent>
         </Card>
         <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-green-600 font-medium">Custo Projetado Mensal</p>
+            <p className="text-xs text-green-600 font-medium">Custo Total Projetado</p>
             <p className="text-lg font-bold text-green-800">{formatCurrency(custoNovoTotal)}</p>
+            {incluirEncargos && <p className="text-[10px] text-green-500">Sal: {formatCurrency(salNovoTotal)} + Enc: {formatCurrency(encNovoTotal)}</p>}
           </CardContent>
         </Card>
-        <Card className={`border-${impactoMensal > 0 ? 'red' : 'gray'}-200 bg-${impactoMensal > 0 ? 'red' : 'gray'}-50`}>
+        <Card className={impactoMensal > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}>
           <CardContent className="p-4 text-center">
             <p className={`text-xs ${impactoMensal > 0 ? 'text-red-600' : 'text-gray-600'} font-medium`}>Impacto Mensal</p>
             <p className={`text-lg font-bold ${impactoMensal > 0 ? 'text-red-800' : 'text-gray-800'}`}>+ {formatCurrency(impactoMensal)}</p>
           </CardContent>
         </Card>
-        <Card className={`border-${impactoAnual > 0 ? 'orange' : 'gray'}-200 bg-${impactoAnual > 0 ? 'orange' : 'gray'}-50`}>
+        <Card className={impactoAnual > 0 ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}>
           <CardContent className="p-4 text-center">
             <p className={`text-xs ${impactoAnual > 0 ? 'text-orange-600' : 'text-gray-600'} font-medium`}>Impacto Anual</p>
             <p className={`text-lg font-bold ${impactoAnual > 0 ? 'text-orange-800' : 'text-gray-800'}`}>+ {formatCurrency(impactoAnual)}</p>
@@ -678,25 +886,38 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
                   <TableHead className="font-semibold">Nome</TableHead>
                   <TableHead className="font-semibold">Cargo</TableHead>
                   <TableHead className="font-semibold">Setor</TableHead>
+                  <TableHead className="text-center font-semibold">Tipo</TableHead>
                   <TableHead className="text-right font-semibold">Sal. Atual</TableHead>
                   <TableHead className="text-right font-semibold">Sal. Novo</TableHead>
-                  <TableHead className="text-right font-semibold">Diferença</TableHead>
+                  {incluirEncargos && <TableHead className="text-right font-semibold">Encargos</TableHead>}
+                  <TableHead className="text-right font-semibold">{incluirEncargos ? 'Custo Total' : 'Diferença'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {simulacao.slice(0, 100).map((r, idx) => (
-                  <TableRow key={idx} className={r.diferenca > 0 ? 'bg-red-50/30' : ''}>
-                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                    <TableCell className="font-medium">{r.nome}</TableCell>
-                    <TableCell>{r.cargo}</TableCell>
-                    <TableCell>{r.setor}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.salarioAtual)}</TableCell>
-                    <TableCell className="text-right font-mono text-green-700">{formatCurrency(r.salarioNovo)}</TableCell>
-                    <TableCell className="text-right font-mono text-red-600">
-                      {r.diferenca > 0 ? `+ ${formatCurrency(r.diferenca)}` : '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {simulacao.slice(0, 100).map((r, idx) => {
+                  const impactoRow = r.custoTotalNovo - r.custoTotalAtual;
+                  return (
+                    <TableRow key={idx} className={impactoRow > 0 ? 'bg-red-50/30' : ''}>
+                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className="font-medium">{r.nome}</TableCell>
+                      <TableCell>{r.cargo}</TableCell>
+                      <TableCell>{r.setor}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className={`text-[9px] ${r.tipoContrato === 'pj' ? 'text-purple-700 border-purple-300' : 'text-blue-700 border-blue-300'}`}>
+                          {r.tipoContrato.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(r.salarioAtual)}</TableCell>
+                      <TableCell className="text-right font-mono text-green-700">{formatCurrency(r.salarioNovo)}</TableCell>
+                      {incluirEncargos && (
+                        <TableCell className="text-right font-mono text-amber-600">{formatCurrency(r.encargosNovo)}</TableCell>
+                      )}
+                      <TableCell className="text-right font-mono text-red-600">
+                        {impactoRow > 0 ? `+ ${formatCurrency(impactoRow)}` : '—'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

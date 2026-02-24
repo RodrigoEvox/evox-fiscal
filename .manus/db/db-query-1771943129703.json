@@ -1,0 +1,186 @@
+{
+  "query": "SHOW COLUMNS FROM convencao_coletiva;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM convencao_coletiva;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "titulo",
+      "Type": "varchar(500)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sindicato",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "vigenciaInicio",
+      "Type": "varchar(10)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "vigenciaFim",
+      "Type": "varchar(10)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "dataBase",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "cctStatus",
+      "Type": "enum('vigente','vencida','pendente')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "vigente",
+      "Extra": ""
+    },
+    {
+      "Field": "arquivoPdfUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "arquivoPdfNome",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "anexosJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "resumoLlm",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "clausulasJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "regrasFeriasJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "regrasJornadaJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "regrasSalarioJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "regrasBeneficiosJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "regrasRescisaoJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "observacoes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "criadoPorId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "criadoPorNome",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ntitulo\tvarchar(500)\tNO\t\tNULL\t\nsindicato\tvarchar(500)\tYES\t\tNULL\t\nvigenciaInicio\tvarchar(10)\tNO\t\tNULL\t\nvigenciaFim\tvarchar(10)\tNO\t\tNULL\t\ndataBase\tvarchar(10)\tYES\t\tNULL\t\ncctStatus\tenum('vigente','vencida','pendente')\tNO\t\tvigente\t\narquivoPdfUrl\ttext\tYES\t\tNULL\t\narquivoPdfNome\tvarchar(500)\tYES\t\tNULL\t\nanexosJson\ttext\tYES\t\tNULL\t\nresumoLlm\ttext\tYES\t\tNULL\t\nclausulasJson\ttext\tYES\t\tNULL\t\nregrasFeriasJson\ttext\tYES\t\tNULL\t\nregrasJornadaJson\ttext\tYES\t\tNULL\t\nregrasSalarioJson\ttext\tYES\t\tNULL\t\nregrasBeneficiosJson\ttext\tYES\t\tNULL\t\nregrasRescisaoJson\ttext\tYES\t\tNULL\t\nobservacoes\ttext\tYES\t\tNULL\t\ncriadoPorId\tint\tYES\t\tNULL\t\ncriadoPorNome\tvarchar(255)\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 348
+}

@@ -1673,3 +1673,19 @@
 - [x] Corrigir parseSalario em CargosSalarios.tsx para distinguir decimal DB ("8500.00") de BRL ("R$ 8.500,00")
 - [x] Corrigir parseSal no servidor (index.ts) para memória de cálculo PDF
 - [x] Adicionar testes vitest para parsing de decimais do banco (v65 fix)
+
+## v66 — Correção de parsing salarial em todas as páginas + Simulador com encargos CLT
+- [x] Verificar parseFloat(salarioBase) em ProjecaoFinanceiraGEG.tsx — OK (parseFloat lida corretamente com decimais do DB)
+- [x] Verificar parseFloat(salarioBase) em SimuladorFeriasGEG.tsx — OK
+- [x] Verificar parseFloat(salarioBase) em ReajustesGEG.tsx — OK
+- [x] Verificar Number(salarioBase) em RelatoriosRH.tsx — OK (Number() lida corretamente com decimais do DB)
+- [x] Verificar ColaboradoresGEG.tsx — OK (usa parseFloat corretamente)
+- [x] Adicionar modo "Por Colaborador" no Simulador de Reajuste
+- [x] Calcular encargos trabalhistas CLT no custo projetado (INSS patronal, FGTS, 13º, férias+1/3, etc.)
+- [x] Considerar dados da CCT no cálculo de encargos quando disponíveis
+- [x] Atualizar testes vitest para cobrir novos cenários (28 testes passando)
+- [x] KPIs com breakdown Sal + Enc abaixo do valor principal
+- [x] Toggle "Incluir encargos" com painel expansível de detalhamento
+- [x] Badge "CCT Vigente Aplicada" quando CCT está cadastrada
+- [x] Dropdown searchable de colaboradores com nome + cargo
+- [x] Tipo CLT/PJ por colaborador na tabela de detalhamento
