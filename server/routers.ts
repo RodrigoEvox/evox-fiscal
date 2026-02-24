@@ -3860,12 +3860,12 @@ export const appRouter = router({
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return db.getRescisaoById(input.id);
     }),
-    calcular: protectedProcedure.input(z.object({
+    // Preview: calcula sem salvar no banco
+    preview: protectedProcedure.input(z.object({
       colaboradorId: z.number(),
       dataDesligamento: z.string(),
       tipoDesligamento: z.enum(['sem_justa_causa', 'justa_causa', 'pedido_demissao', 'termino_experiencia_1', 'termino_experiencia_2', 'acordo_mutuo']),
-    })).mutation(async ({ input, ctx }) => {
-      // Buscar dados do colaborador
+    })).mutation(async ({ input }) => {
       const colabs = await db.listColaboradores();
       const colab = colabs.find((c: any) => c.id === input.colaboradorId);
       if (!colab) throw new TRPCError({ code: 'NOT_FOUND', message: 'Colaborador não encontrado' });
@@ -3879,7 +3879,41 @@ export const appRouter = router({
         periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
       });
 
-      // Salvar no banco
+      return {
+        ...calculo,
+        colaboradorId: input.colaboradorId,
+        colaboradorNome: colab.nomeCompleto,
+        dataDesligamento: input.dataDesligamento,
+        tipoDesligamento: input.tipoDesligamento,
+        dataAdmissao: colab.dataAdmissao,
+        salarioBase: String(colab.salarioBase),
+        tipoContrato: colab.tipoContrato,
+        cargo: colab.cargo,
+        periodoExperiencia1Inicio: colab.periodoExperiencia1Inicio,
+        periodoExperiencia1Fim: colab.periodoExperiencia1Fim,
+        periodoExperiencia2Inicio: colab.periodoExperiencia2Inicio,
+        periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
+      };
+    }),
+    // Salvar: persiste o cálculo previamente feito
+    calcular: protectedProcedure.input(z.object({
+      colaboradorId: z.number(),
+      dataDesligamento: z.string(),
+      tipoDesligamento: z.enum(['sem_justa_causa', 'justa_causa', 'pedido_demissao', 'termino_experiencia_1', 'termino_experiencia_2', 'acordo_mutuo']),
+    })).mutation(async ({ input, ctx }) => {
+      const colabs = await db.listColaboradores();
+      const colab = colabs.find((c: any) => c.id === input.colaboradorId);
+      if (!colab) throw new TRPCError({ code: 'NOT_FOUND', message: 'Colaborador não encontrado' });
+
+      const calculo = db.calcularRescisao({
+        salarioBase: Number(colab.salarioBase || 0),
+        dataAdmissao: colab.dataAdmissao,
+        dataDesligamento: input.dataDesligamento,
+        tipoDesligamento: input.tipoDesligamento,
+        periodoExperiencia1Fim: colab.periodoExperiencia1Fim,
+        periodoExperiencia2Fim: colab.periodoExperiencia2Fim,
+      });
+
       const id = await db.createRescisao({
         colaboradorId: input.colaboradorId,
         colaboradorNome: colab.nomeCompleto,

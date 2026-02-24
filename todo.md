@@ -1689,3 +1689,13 @@
 - [x] Badge "CCT Vigente Aplicada" quando CCT está cadastrada
 - [x] Dropdown searchable de colaboradores com nome + cargo
 - [x] Tipo CLT/PJ por colaborador na tabela de detalhamento
+
+## v67 — Refatoração do fluxo de Rescisão: resultado inline + Salvar/Descartar + alerta de saída
+- [x] Substituir modal de cálculo por resultado inline na página
+- [x] Ao clicar "Calcular Rescisão", exibir resultado diretamente na tela/aba
+- [x] Adicionar botões "Salvar Cálculo" e "Descartar" no resultado
+- [x] Alerta de confirmação ao tentar sair da aba ou clicar fora sem salvar
+- [x] Manter fluxo de preenchimento (colaborador, data, tipo) antes do cálculo
+- [x] Rota backend "preview" (calcula sem salvar) separada da rota "calcular" (salva)
+- [x] Resultado inline com dados do colaborador, verbas rescisórias, FGTS, totais
+- [x] 13 testes vitest passando para fluxo de rescisão
