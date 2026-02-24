@@ -4,6 +4,7 @@ import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -2314,7 +2315,7 @@ export default function ColaboradoresGEG() {
             {/* ===== REMUNERAÇÃO ===== */}
             <SectionTitle>Remuneração</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
-              <Field label="Salário Base" required error={validationErrors.has('salarioBase')}><Input value={form.salarioBase} onChange={e => { setForm(f => ({ ...f, salarioBase: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
+              <Field label="Salário Base" required error={validationErrors.has('salarioBase')}><CurrencyInput value={form.salarioBase} onChange={val => { setForm(f => ({ ...f, salarioBase: val })); markDirty(); }} placeholder="R$ 0,00" /></Field>
               <Field label="Cargo Comissionado?">
                 <div className="flex items-center gap-3 h-9">
                   <label className="flex items-center gap-1.5 cursor-pointer">
@@ -2327,7 +2328,7 @@ export default function ColaboradoresGEG() {
                   </label>
                 </div>
               </Field>
-              <Field label="Adicionais"><Input value={form.adicionais} onChange={e => { setForm(f => ({ ...f, adicionais: e.target.value })); markDirty(); }} placeholder="R$ 0,00" /></Field>
+              <Field label="Adicionais"><CurrencyInput value={form.adicionais} onChange={val => { setForm(f => ({ ...f, adicionais: val })); markDirty(); }} placeholder="R$ 0,00" /></Field>
             </div>
 
             {/* ===== JORNADA ===== */}

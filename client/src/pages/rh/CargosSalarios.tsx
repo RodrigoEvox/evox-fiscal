@@ -19,6 +19,7 @@ import {
   Loader2, GraduationCap, Download, FileText, FileSpreadsheet, Calculator,
   Briefcase, ArrowUpCircle, Edit2, Eye, X, Search, Check, XCircle
 } from 'lucide-react';
+import { CurrencyInput } from '@/components/CurrencyInput';
 
 // ===== CONSTANTS =====
 const NIVEL_LABELS: Record<string, string> = {
@@ -51,9 +52,23 @@ const GRAU_LABELS: Record<string, string> = {
   mestrado: 'Mestrado', doutorado: 'Doutorado',
 };
 
+const GRAU_FORMACAO_OPTIONS = [
+  { value: 'sem_formacao', label: 'Sem Formação' },
+  { value: 'fundamental_incompleto', label: 'Fundamental Incompleto' },
+  { value: 'fundamental_completo', label: 'Fundamental Completo' },
+  { value: 'medio_incompleto', label: 'Médio Incompleto' },
+  { value: 'medio_completo', label: 'Médio Completo' },
+  { value: 'tecnico', label: 'Técnico' },
+  { value: 'superior_incompleto', label: 'Superior Incompleto' },
+  { value: 'superior_completo', label: 'Superior Completo' },
+  { value: 'pos_graduacao', label: 'Pós-Graduação' },
+  { value: 'mestrado', label: 'Mestrado' },
+  { value: 'doutorado', label: 'Doutorado' },
+];
+
 const EMPTY_CARGO_FORM = {
   cargo: '', funcao: '', setorId: 0, salarioBase: '',
-  salarioMinimo: '', salarioMaximo: '', grauInstrucaoMinimo: 'medio_completo',
+  grauInstrucaoMinimo: 'medio_completo',
   comissionado: 0, cargoConfianca: 0, requisitosFormacao: '',
   requisitos: '', competencias: '', nivel: 1, descricaoNivel: '',
 };
@@ -376,8 +391,6 @@ export default function CargosSalarios() {
       funcao: cargo.funcao || '',
       setorId: cargo.setorId || 0,
       salarioBase: cargo.salarioBase ? String(cargo.salarioBase) : '',
-      salarioMinimo: cargo.salarioMinimo ? String(cargo.salarioMinimo) : '',
-      salarioMaximo: cargo.salarioMaximo ? String(cargo.salarioMaximo) : '',
       grauInstrucaoMinimo: cargo.grauInstrucaoMinimo || 'medio_completo',
       comissionado: cargo.comissionado || 0,
       cargoConfianca: cargo.cargoConfianca || 0,
@@ -409,8 +422,6 @@ export default function CargosSalarios() {
           funcao: cargoForm.funcao || null,
           setorId: cargoForm.setorId,
           salarioBase: cargoForm.salarioBase || null,
-          salarioMinimo: cargoForm.salarioMinimo || null,
-          salarioMaximo: cargoForm.salarioMaximo || null,
           grauInstrucaoMinimo: cargoForm.grauInstrucaoMinimo || null,
           comissionado: cargoForm.comissionado,
           cargoConfianca: cargoForm.cargoConfianca,
@@ -427,8 +438,6 @@ export default function CargosSalarios() {
         funcao: cargoForm.funcao || undefined,
         setorId: cargoForm.setorId,
         salarioBase: cargoForm.salarioBase || undefined,
-        salarioMinimo: cargoForm.salarioMinimo || undefined,
-        salarioMaximo: cargoForm.salarioMaximo || undefined,
         grauInstrucaoMinimo: cargoForm.grauInstrucaoMinimo || undefined,
         comissionado: cargoForm.comissionado,
         cargoConfianca: cargoForm.cargoConfianca,
@@ -865,13 +874,6 @@ export default function CargosSalarios() {
                   <p className="font-semibold text-green-700">{viewingCargo.salarioBase ? formatCurrency(Number(viewingCargo.salarioBase)) : '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Faixa Salarial</p>
-                  <p className="font-medium">
-                    {viewingCargo.salarioMinimo ? formatCurrency(Number(viewingCargo.salarioMinimo)) : '—'}
-                    {viewingCargo.salarioMaximo ? ` — ${formatCurrency(Number(viewingCargo.salarioMaximo))}` : ''}
-                  </p>
-                </div>
-                <div>
                   <p className="text-xs text-muted-foreground">Comissionado</p>
                   <Badge className={viewingCargo.comissionado ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'} variant="outline">
                     {viewingCargo.comissionado ? 'Sim' : 'Não'}
@@ -887,7 +889,9 @@ export default function CargosSalarios() {
               {viewingCargo.requisitosFormacao && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Requisitos de Formação</p>
-                  <p className="text-sm bg-muted/50 p-3 rounded-lg">{viewingCargo.requisitosFormacao}</p>
+                  <p className="text-sm bg-muted/50 p-3 rounded-lg">
+                    {GRAU_FORMACAO_OPTIONS.find(o => o.value === viewingCargo.requisitosFormacao)?.label || viewingCargo.requisitosFormacao}
+                  </p>
                 </div>
               )}
               {viewingCargo.competencias && (
@@ -965,93 +969,64 @@ export default function CargosSalarios() {
               </div>
             </div>
 
-            {/* Row 3: Salário Base + Faixa */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label className="text-sm font-medium">Salário Base (R$) <span className="text-red-500">*</span></Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={cargoForm.salarioBase}
-                  onChange={e => setCargoForm(f => ({ ...f, salarioBase: e.target.value }))}
-                  placeholder="0,00"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Salário Mínimo (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={cargoForm.salarioMinimo}
-                  onChange={e => setCargoForm(f => ({ ...f, salarioMinimo: e.target.value }))}
-                  placeholder="Faixa mín."
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Salário Máximo (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={cargoForm.salarioMaximo}
-                  onChange={e => setCargoForm(f => ({ ...f, salarioMaximo: e.target.value }))}
-                  placeholder="Faixa máx."
-                  className="mt-1"
-                />
-              </div>
+            {/* Row 3: Salário Base */}
+            <div>
+              <Label className="text-sm font-medium">Salário Base (R$) <span className="text-red-500">*</span></Label>
+              <CurrencyInput
+                value={cargoForm.salarioBase}
+                onChange={val => setCargoForm(f => ({ ...f, salarioBase: val }))}
+                placeholder="R$ 0,00"
+                className="mt-1"
+              />
             </div>
 
             {/* Row 4: Comissionado + Cargo de Confiança */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="border">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm font-medium">Cargo Comissionado</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">Este cargo recebe comissão?</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-medium ${!cargoForm.comissionado ? 'text-foreground' : 'text-muted-foreground'}`}>Não</span>
-                      <Switch
-                        checked={!!cargoForm.comissionado}
-                        onCheckedChange={checked => setCargoForm(f => ({ ...f, comissionado: checked ? 1 : 0 }))}
-                      />
-                      <span className={`text-sm font-medium ${cargoForm.comissionado ? 'text-green-600' : 'text-muted-foreground'}`}>Sim</span>
-                    </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <Label className="text-sm font-medium">Cargo Comissionado</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Este cargo recebe comissão?</p>
                   </div>
-                </CardContent>
-              </Card>
-              <Card className="border">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm font-medium">Cargo de Confiança</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">Este é um cargo de confiança?</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-medium ${!cargoForm.cargoConfianca ? 'text-foreground' : 'text-muted-foreground'}`}>Não</span>
-                      <Switch
-                        checked={!!cargoForm.cargoConfianca}
-                        onCheckedChange={checked => setCargoForm(f => ({ ...f, cargoConfianca: checked ? 1 : 0 }))}
-                      />
-                      <span className={`text-sm font-medium ${cargoForm.cargoConfianca ? 'text-amber-600' : 'text-muted-foreground'}`}>Sim</span>
-                    </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-medium ${!cargoForm.comissionado ? 'text-foreground' : 'text-muted-foreground'}`}>Não</span>
+                    <Switch
+                      checked={!!cargoForm.comissionado}
+                      onCheckedChange={checked => setCargoForm(f => ({ ...f, comissionado: checked ? 1 : 0 }))}
+                    />
+                    <span className={`text-xs font-medium ${cargoForm.comissionado ? 'text-green-600' : 'text-muted-foreground'}`}>Sim</span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <Label className="text-sm font-medium">Cargo de Confiança</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Este é um cargo de confiança?</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-medium ${!cargoForm.cargoConfianca ? 'text-foreground' : 'text-muted-foreground'}`}>Não</span>
+                    <Switch
+                      checked={!!cargoForm.cargoConfianca}
+                      onCheckedChange={checked => setCargoForm(f => ({ ...f, cargoConfianca: checked ? 1 : 0 }))}
+                    />
+                    <span className={`text-xs font-medium ${cargoForm.cargoConfianca ? 'text-amber-600' : 'text-muted-foreground'}`}>Sim</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Row 5: Requisitos de Formação */}
             <div>
               <Label className="text-sm font-medium">Requisitos de Formação</Label>
-              <Textarea
-                value={cargoForm.requisitosFormacao}
-                onChange={e => setCargoForm(f => ({ ...f, requisitosFormacao: e.target.value }))}
-                rows={2}
-                placeholder="Ex: Graduação em Administração, Contabilidade ou áreas afins"
-                className="mt-1"
-              />
+              <Select value={cargoForm.requisitosFormacao || 'sem_formacao'} onValueChange={v => setCargoForm(f => ({ ...f, requisitosFormacao: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o nível de formação..." /></SelectTrigger>
+                <SelectContent>
+                  {GRAU_FORMACAO_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Row 6: Competências */}

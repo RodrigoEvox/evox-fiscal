@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -215,7 +216,7 @@ export default function AcademiaGEG() {
               </div>
               <div>
                 <Label>Valor do Plano (R$) *</Label>
-                <Input type="number" step="0.01" value={form.valorPlano} onChange={e => setForm(f => ({ ...f, valorPlano: e.target.value }))} />
+                <CurrencyInput value={form.valorPlano} onChange={val => setForm(f => ({ ...f, valorPlano: val }))} />
               </div>
             </div>
             <div>
@@ -226,7 +227,7 @@ export default function AcademiaGEG() {
               <Switch checked={form.descontoFolha} onCheckedChange={v => setForm(f => ({ ...f, descontoFolha: v }))} />
               <Label>Desconto em Folha?</Label>
               {form.descontoFolha && (
-                <Input type="number" step="0.01" value={form.valorDesconto} onChange={e => setForm(f => ({ ...f, valorDesconto: e.target.value }))} placeholder="Valor desconto" className="w-32" />
+                <CurrencyInput value={form.valorDesconto} onChange={val => setForm(f => ({ ...f, valorDesconto: val }))} placeholder="R$ 0,00" className="w-32" />
               )}
             </div>
             <div className="flex items-center gap-3">

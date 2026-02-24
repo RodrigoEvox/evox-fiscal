@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -225,11 +226,11 @@ export default function NiveisCargoGEG() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Salário Mínimo (R$) *</Label>
-                <Input type="number" step="0.01" value={form.salarioMinimo} onChange={e => setForm(f => ({ ...f, salarioMinimo: e.target.value }))} />
+                <CurrencyInput value={form.salarioMinimo} onChange={val => setForm(f => ({ ...f, salarioMinimo: val }))} />
               </div>
               <div>
                 <Label>Salário Máximo (R$)</Label>
-                <Input type="number" step="0.01" value={form.salarioMaximo} onChange={e => setForm(f => ({ ...f, salarioMaximo: e.target.value }))} />
+                <CurrencyInput value={form.salarioMaximo} onChange={val => setForm(f => ({ ...f, salarioMaximo: val }))} />
               </div>
             </div>
             <div>

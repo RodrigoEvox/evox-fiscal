@@ -1645,3 +1645,10 @@
 - [x] Criar/atualizar tabela cargos_salarios no banco de dados
 - [x] Backend: rotas CRUD para cargos_salarios
 - [x] Integrar auto-fill de cargo/salário no cadastro de colaboradores
+
+## v63 — Correções Cargos e Salários + Input Monetário Global
+- [x] Corrigir layout dos campos Comissionado e Cargo de Confiança (saindo do quadrante)
+- [x] Requisito de Formação: dropdown com níveis de formação (incluindo Sem Formação)
+- [x] Remover campos Salário Mínimo e Máximo, manter apenas Salário Base
+- [x] Criar componente CurrencyInput global com auto-formatação BRL (R$ 1.234,56)
+- [x] Aplicar CurrencyInput em todos os campos monetários do sistema

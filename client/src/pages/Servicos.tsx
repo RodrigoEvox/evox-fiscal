@@ -3,6 +3,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -416,7 +417,7 @@ export default function Servicos() {
                 {showValorFixo && (
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Valor Fixo (R$)</Label>
-                    <Input type="number" min={0} step="0.01" value={form.valorFixo} onChange={(e) => setForm({ ...form, valorFixo: e.target.value })} placeholder="0.00" />
+                    <CurrencyInput value={form.valorFixo} onChange={val => setForm({ ...form, valorFixo: val })} placeholder="R$ 0,00" />
                   </div>
                 )}
 
@@ -430,7 +431,7 @@ export default function Servicos() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Valor da Entrada (R$)</Label>
-                      <Input type="number" min={0} step="0.01" value={form.valorEntrada} onChange={(e) => setForm({ ...form, valorEntrada: e.target.value })} placeholder="0.00" />
+                      <CurrencyInput value={form.valorEntrada} onChange={val => setForm({ ...form, valorEntrada: val })} placeholder="R$ 0,00" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">% sobre o Êxito</Label>
@@ -443,11 +444,11 @@ export default function Servicos() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Valor Total (R$)</Label>
-                      <Input type="number" min={0} step="0.01" value={form.valorFixo} onChange={(e) => {
-                        const total = parseFloat(e.target.value) || 0;
+                      <CurrencyInput value={form.valorFixo} onChange={val => {
+                        const total = parseFloat(val) || 0;
                         const parcelas = form.quantidadeParcelas || 1;
-                        setForm({ ...form, valorFixo: e.target.value, valorParcela: (total / parcelas).toFixed(2) });
-                      }} placeholder="0.00" />
+                        setForm({ ...form, valorFixo: val, valorParcela: (total / parcelas).toFixed(2) });
+                      }} placeholder="R$ 0,00" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Qtd. Parcelas</Label>
@@ -459,7 +460,7 @@ export default function Servicos() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Valor Parcela (R$)</Label>
-                      <Input type="number" min={0} step="0.01" value={form.valorParcela} onChange={(e) => setForm({ ...form, valorParcela: e.target.value })} placeholder="0.00" disabled className="bg-muted" />
+                      <CurrencyInput value={form.valorParcela} onChange={val => setForm({ ...form, valorParcela: val })} placeholder="R$ 0,00" disabled className="bg-muted" />
                     </div>
                   </div>
                 )}

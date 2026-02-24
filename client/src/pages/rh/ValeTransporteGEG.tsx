@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -234,7 +235,7 @@ export default function ValeTransporteGEG() {
               </div>
               <div>
                 <Label>Valor Unit. (R$)</Label>
-                <Input type="number" step="0.01" value={form.valorPassagem} onChange={e => setForm(f => ({ ...f, valorPassagem: e.target.value }))} />
+                <CurrencyInput value={form.valorPassagem} onChange={val => setForm(f => ({ ...f, valorPassagem: val }))} />
               </div>
             </div>
             <Card className="bg-green-50 border-green-200">

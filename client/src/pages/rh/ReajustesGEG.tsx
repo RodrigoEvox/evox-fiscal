@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -285,11 +286,11 @@ export default function ReajustesGEG() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Salário Anterior</Label>
-                <Input type="number" step="0.01" value={form.salarioAnterior} onChange={e => setForm(f => ({ ...f, salarioAnterior: e.target.value }))} />
+                <CurrencyInput value={form.salarioAnterior} onChange={val => setForm(f => ({ ...f, salarioAnterior: val }))} />
               </div>
               <div>
                 <Label>Salário Novo</Label>
-                <Input type="number" step="0.01" value={salarioCalculado} readOnly className="bg-green-50 font-semibold" />
+                <CurrencyInput value={salarioCalculado} onChange={() => {}} disabled className="bg-green-50 font-semibold" />
               </div>
             </div>
             {form.salarioAnterior && form.percentual && (

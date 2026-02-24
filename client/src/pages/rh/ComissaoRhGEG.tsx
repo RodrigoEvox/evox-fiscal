@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -236,7 +237,7 @@ export default function ComissaoRhGEG() {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Valor Base (R$) *</Label>
-                <Input type="number" step="0.01" value={form.valorBase} onChange={e => setForm(f => ({ ...f, valorBase: e.target.value }))} />
+                <CurrencyInput value={form.valorBase} onChange={val => setForm(f => ({ ...f, valorBase: val }))} />
               </div>
               <div>
                 <Label>Percentual (%)</Label>
@@ -244,7 +245,7 @@ export default function ComissaoRhGEG() {
               </div>
               <div>
                 <Label>Comissão (R$)</Label>
-                <Input type="number" step="0.01" value={calcComissao} onChange={e => setForm(f => ({ ...f, valorComissao: e.target.value }))} />
+                <CurrencyInput value={calcComissao} onChange={val => setForm(f => ({ ...f, valorComissao: val }))} />
               </div>
             </div>
             {form.valorBase && form.percentual && (

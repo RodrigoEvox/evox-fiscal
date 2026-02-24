@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/CurrencyInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
@@ -165,7 +166,7 @@ function MetaDialog({ parceiros, onCreated }: { parceiros: { id: number; nome: s
           )}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Valor da Meta (R$) *</label>
-            <Input type="number" step="0.01" value={valorMeta} onChange={e => setValorMeta(e.target.value)} placeholder="Ex: 50000.00" />
+            <CurrencyInput value={valorMeta} onChange={val => setValorMeta(val)} placeholder="R$ 0,00" />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Observação</label>
