@@ -1699,3 +1699,11 @@
 - [x] Rota backend "preview" (calcula sem salvar) separada da rota "calcular" (salva)
 - [x] Resultado inline com dados do colaborador, verbas rescisórias, FGTS, totais
 - [x] 13 testes vitest passando para fluxo de rescisão
+
+## v68 — Coluna Salário Líquido no Simulador + Correção Excel Export
+- [x] Adicionar colunas "Líquido Atual" e "Líquido Novo" na tabela do Simulador de Reajuste
+- [x] Calcular descontos CLT do empregado: INSS (faixa progressiva 2025), IRRF (faixa progressiva 2025)
+- [x] Considerar tipo de contratação (CLT vs PJ) — PJ sem descontos CLT
+- [x] Corrigir erro na exportação Excel (document.body.appendChild + delayed revokeObjectURL)
+- [x] Incluir colunas Líquido no CSV exportado
+- [x] 16 testes vitest passando para cálculo de salário líquido

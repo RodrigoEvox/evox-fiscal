@@ -402,7 +402,51 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
       salarioAtual: number; salarioNovo: number; diferenca: number;
       encargosAtual: number; encargosNovo: number; custoTotalAtual: number; custoTotalNovo: number;
       adicionais: number; tipoContrato: string;
+      liquidoAtual: number; liquidoNovo: number;
     };
+
+    // INSS empregado — faixas progressivas 2025/2026
+    function calcINSSEmpregado(bruto: number): number {
+      const faixas = [
+        { teto: 1518.00, aliq: 0.075 },
+        { teto: 2793.88, aliq: 0.09 },
+        { teto: 4190.83, aliq: 0.12 },
+        { teto: 8157.41, aliq: 0.14 },
+      ];
+      let desconto = 0;
+      let anterior = 0;
+      for (const f of faixas) {
+        if (bruto <= anterior) break;
+        const base = Math.min(bruto, f.teto) - anterior;
+        if (base > 0) desconto += base * f.aliq;
+        anterior = f.teto;
+      }
+      return desconto;
+    }
+
+    // IRRF — faixas progressivas 2025/2026
+    function calcIRRF(bruto: number, inss: number, dependentes: number = 0): number {
+      const deducaoDep = dependentes * 189.59;
+      const base = bruto - inss - deducaoDep;
+      if (base <= 2259.20) return 0;
+      const faixas = [
+        { teto: 2826.65, aliq: 0.075, deduz: 169.44 },
+        { teto: 3751.05, aliq: 0.15, deduz: 381.44 },
+        { teto: 4664.68, aliq: 0.225, deduz: 662.77 },
+        { teto: Infinity, aliq: 0.275, deduz: 896.00 },
+      ];
+      for (const f of faixas) {
+        if (base <= f.teto) return Math.max(0, base * f.aliq - f.deduz);
+      }
+      return 0;
+    }
+
+    function calcLiquido(bruto: number, isCLT: boolean): number {
+      if (!isCLT) return bruto; // PJ: sem descontos CLT
+      const inss = calcINSSEmpregado(bruto);
+      const irrf = calcIRRF(bruto, inss);
+      return bruto - inss - irrf;
+    }
     const result: SimRow[] = [];
 
     colabList.forEach(c => {
@@ -469,6 +513,8 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
         encargosNovo,
         custoTotalAtual: salarioAtual + adicionais + encargosAtual,
         custoTotalNovo: salarioNovo + adicionais + encargosNovo,
+        liquidoAtual: calcLiquido(salarioAtual + adicionais, isCLT),
+        liquidoNovo: calcLiquido(salarioNovo + adicionais, isCLT),
       });
     });
 
@@ -558,29 +604,27 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
 
   const handleExportExcel = () => {
     const headers = incluirEncargos
-      ? ['Nome', 'Cargo', 'Setor', 'Tipo', 'Sal. Atual', 'Sal. Novo', 'Dif. Sal.', 'Encargos Atual', 'Encargos Novo', 'Custo Total Atual', 'Custo Total Novo', 'Impacto Total']
-      : ['Nome', 'Cargo', 'Setor', 'Nível', 'Salário Atual', 'Salário Novo', 'Diferença'];
+      ? ['Nome', 'Cargo', 'Setor', 'Tipo', 'Sal. Atual', 'Sal. Novo', 'Líquido Atual', 'Líquido Novo', 'Dif. Sal.', 'Encargos Atual', 'Encargos Novo', 'Custo Total Atual', 'Custo Total Novo', 'Impacto Total']
+      : ['Nome', 'Cargo', 'Setor', 'Tipo', 'Sal. Atual', 'Sal. Novo', 'Líquido Atual', 'Líquido Novo', 'Diferença'];
+    const fmt = (v: number) => v.toFixed(2).replace('.', ',');
     const rows = simulacao.map(r => incluirEncargos ? [
       r.nome, r.cargo, r.setor, r.tipoContrato.toUpperCase(),
-      r.salarioAtual.toFixed(2).replace('.', ','),
-      r.salarioNovo.toFixed(2).replace('.', ','),
-      r.diferenca.toFixed(2).replace('.', ','),
-      r.encargosAtual.toFixed(2).replace('.', ','),
-      r.encargosNovo.toFixed(2).replace('.', ','),
-      r.custoTotalAtual.toFixed(2).replace('.', ','),
-      r.custoTotalNovo.toFixed(2).replace('.', ','),
-      (r.custoTotalNovo - r.custoTotalAtual).toFixed(2).replace('.', ','),
+      fmt(r.salarioAtual), fmt(r.salarioNovo), fmt(r.liquidoAtual), fmt(r.liquidoNovo),
+      fmt(r.diferenca), fmt(r.encargosAtual), fmt(r.encargosNovo),
+      fmt(r.custoTotalAtual), fmt(r.custoTotalNovo),
+      fmt(r.custoTotalNovo - r.custoTotalAtual),
     ] : [
-      r.nome, r.cargo, r.setor, r.nivel,
-      r.salarioAtual.toFixed(2).replace('.', ','),
-      r.salarioNovo.toFixed(2).replace('.', ','),
-      r.diferenca.toFixed(2).replace('.', ','),
+      r.nome, r.cargo, r.setor, r.tipoContrato.toUpperCase(),
+      fmt(r.salarioAtual), fmt(r.salarioNovo), fmt(r.liquidoAtual), fmt(r.liquidoNovo),
+      fmt(r.diferenca),
     ]);
     rows.push(Array(headers.length).fill(''));
+    const liqAtualTotal = simulacao.reduce((s, r) => s + r.liquidoAtual, 0);
+    const liqNovoTotal = simulacao.reduce((s, r) => s + r.liquidoNovo, 0);
     if (incluirEncargos) {
-      rows.push(['TOTAL', '', '', '', salAtualTotal.toFixed(2).replace('.', ','), salNovoTotal.toFixed(2).replace('.', ','), (salNovoTotal - salAtualTotal).toFixed(2).replace('.', ','), encAtualTotal.toFixed(2).replace('.', ','), encNovoTotal.toFixed(2).replace('.', ','), custoAtualTotal.toFixed(2).replace('.', ','), custoNovoTotal.toFixed(2).replace('.', ','), impactoMensal.toFixed(2).replace('.', ',')]);
+      rows.push(['TOTAL', '', '', '', fmt(salAtualTotal), fmt(salNovoTotal), fmt(liqAtualTotal), fmt(liqNovoTotal), fmt(salNovoTotal - salAtualTotal), fmt(encAtualTotal), fmt(encNovoTotal), fmt(custoAtualTotal), fmt(custoNovoTotal), fmt(impactoMensal)]);
     } else {
-      rows.push(['TOTAL', '', '', '', salAtualTotal.toFixed(2).replace('.', ','), salNovoTotal.toFixed(2).replace('.', ','), (salNovoTotal - salAtualTotal).toFixed(2).replace('.', ',')]);
+      rows.push(['TOTAL', '', '', '', fmt(salAtualTotal), fmt(salNovoTotal), fmt(liqAtualTotal), fmt(liqNovoTotal), fmt(salNovoTotal - salAtualTotal)]);
     }
     const csvContent = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const BOM = '\uFEFF';
@@ -589,8 +633,11 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
     const a = document.createElement('a');
     a.href = url;
     a.download = `simulacao-reajuste-${modo}${incluirEncargos ? '-com-encargos' : ''}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 200);
     toast.success('Excel/CSV exportado!');
   };
 
@@ -889,6 +936,8 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
                   <TableHead className="text-center font-semibold">Tipo</TableHead>
                   <TableHead className="text-right font-semibold">Sal. Atual</TableHead>
                   <TableHead className="text-right font-semibold">Sal. Novo</TableHead>
+                  <TableHead className="text-right font-semibold">Líquido Atual</TableHead>
+                  <TableHead className="text-right font-semibold">Líquido Novo</TableHead>
                   {incluirEncargos && <TableHead className="text-right font-semibold">Encargos</TableHead>}
                   <TableHead className="text-right font-semibold">{incluirEncargos ? 'Custo Total' : 'Diferença'}</TableHead>
                 </TableRow>
@@ -909,6 +958,8 @@ function SimuladorReajuste({ colabList, setoresList, niveis, porSetor, custoTota
                       </TableCell>
                       <TableCell className="text-right font-mono">{formatCurrency(r.salarioAtual)}</TableCell>
                       <TableCell className="text-right font-mono text-green-700">{formatCurrency(r.salarioNovo)}</TableCell>
+                      <TableCell className="text-right font-mono text-slate-600">{formatCurrency(r.liquidoAtual)}</TableCell>
+                      <TableCell className="text-right font-mono text-emerald-600">{formatCurrency(r.liquidoNovo)}</TableCell>
                       {incluirEncargos && (
                         <TableCell className="text-right font-mono text-amber-600">{formatCurrency(r.encargosNovo)}</TableCell>
                       )}
