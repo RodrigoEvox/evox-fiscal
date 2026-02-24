@@ -1779,3 +1779,10 @@
 - [x] Backend: rota para gerar dados do relatório mensal
 - [x] Exportação do relatório mensal em PDF
 - [x] Testes vitest para as novas funcionalidades (24 testes passando)
+
+## v74 — Redesign Organograma em Cargos e Salários
+- [x] Setores recolhidos por padrão, expandir ao clicar
+- [x] Visual de organograma real (hierárquico com cards e conexões)
+- [x] Total de colaboradores por setor visível no card do setor
+- [x] Autoajuste ao cadastrar/desligar colaborador (dados dinâmicos do backend)
+- [x] Testes vitest para a nova funcionalidade (15 testes passando)

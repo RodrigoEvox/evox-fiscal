@@ -91,56 +91,97 @@ function formatCurrency(val: number): string {
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// ===== ORGANOGRAMA COMPONENT =====
-function OrgNode({ nivel, colabs, isLast }: { nivel: string; colabs: any[]; isLast: boolean }) {
-  const [expanded, setExpanded] = useState(true);
-  const color = NIVEL_COLORS[nivel] || 'bg-gray-100 text-gray-800 border-gray-300';
+// ===== ORGANOGRAMA COMPONENT (Redesigned) =====
 
+// Cores de fundo para os cards de nível no organograma
+const NIVEL_BG: Record<string, string> = {
+  diretor: 'from-red-500 to-red-600',
+  gerente: 'from-orange-500 to-orange-600',
+  supervisor: 'from-amber-500 to-amber-600',
+  coordenador: 'from-yellow-500 to-yellow-600',
+  analista_sr: 'from-blue-500 to-blue-600',
+  analista_pl: 'from-indigo-500 to-indigo-600',
+  analista_jr: 'from-violet-500 to-violet-600',
+  assistente: 'from-green-500 to-green-600',
+  auxiliar: 'from-teal-500 to-teal-600',
+  estagiario: 'from-gray-500 to-gray-600',
+};
+
+const NIVEL_ICON_BG: Record<string, string> = {
+  diretor: 'bg-red-100 text-red-700',
+  gerente: 'bg-orange-100 text-orange-700',
+  supervisor: 'bg-amber-100 text-amber-700',
+  coordenador: 'bg-yellow-100 text-yellow-700',
+  analista_sr: 'bg-blue-100 text-blue-700',
+  analista_pl: 'bg-indigo-100 text-indigo-700',
+  analista_jr: 'bg-violet-100 text-violet-700',
+  assistente: 'bg-green-100 text-green-700',
+  auxiliar: 'bg-teal-100 text-teal-700',
+  estagiario: 'bg-gray-100 text-gray-700',
+};
+
+// Card de colaborador individual no organograma
+function OrgColabCard({ c }: { c: any }) {
   return (
-    <div className="relative">
-      <div className="flex items-start gap-0">
-        <div className="flex flex-col items-center w-8 shrink-0">
-          <div className="w-0.5 h-4 bg-border" />
-          <div className="w-3 h-3 rounded-full border-2 border-primary bg-background shrink-0" />
-          {!isLast && <div className="w-0.5 flex-1 bg-border" />}
-        </div>
-        <div className="flex-1 pb-3">
-          <button
-            onClick={() => setExpanded(p => !p)}
-            className={`w-full text-left rounded-lg border p-3 transition-all hover:shadow-sm ${color}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{NIVEL_LABELS[nivel] || nivel}</span>
-                <Badge variant="secondary" className="text-[10px] bg-white/60">{colabs.length} colaborador{colabs.length !== 1 ? 'es' : ''}</Badge>
-              </div>
-              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </div>
-          </button>
-          {expanded && (
-            <div className="mt-2 ml-4 space-y-1.5">
-              {colabs.map((c: any) => (
-                <div key={c.id} className="flex items-center gap-2 text-sm p-2 rounded-md bg-background border hover:bg-muted/50 transition-colors">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <User className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium truncate block">{c.nomeCompleto}</span>
-                    <span className="text-xs text-muted-foreground">{c.cargo}</span>
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{formatCurrency(parseSalario(c.salarioBase))}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+    <div className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-background border hover:shadow-md transition-all cursor-default min-w-[200px]">
+      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        <User className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="font-medium text-sm truncate block">{c.nomeCompleto}</span>
+        <span className="text-xs text-muted-foreground">{c.cargo}</span>
       </div>
     </div>
   );
 }
 
+// Nível hierárquico no organograma - card com conector vertical
+function OrgNivelCard({ nivel, colabs, isFirst }: { nivel: string; colabs: any[]; isFirst: boolean }) {
+  const [showColabs, setShowColabs] = useState(false);
+  const bg = NIVEL_BG[nivel] || 'from-gray-500 to-gray-600';
+  const iconBg = NIVEL_ICON_BG[nivel] || 'bg-gray-100 text-gray-700';
+
+  return (
+    <div className="flex flex-col items-center">
+      {/* Conector vertical de cima */}
+      {!isFirst && <div className="w-0.5 h-5 bg-border" />}
+      {/* Card do nível */}
+      <button
+        onClick={() => setShowColabs(p => !p)}
+        className={`relative bg-gradient-to-r ${bg} text-white rounded-xl px-5 py-3 shadow-md hover:shadow-lg transition-all min-w-[220px] text-center`}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
+            <Users className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-semibold text-sm">{NIVEL_LABELS[nivel] || nivel}</span>
+          <Badge className="bg-white/20 text-white border-white/30 text-[10px] hover:bg-white/30">
+            {colabs.length}
+          </Badge>
+          {showColabs ? <ChevronDown className="w-3.5 h-3.5 ml-1" /> : <ChevronRight className="w-3.5 h-3.5 ml-1" />}
+        </div>
+      </button>
+      {/* Colaboradores expandidos */}
+      {showColabs && (
+        <div className="mt-2 w-full">
+          {/* Conector para os cards */}
+          <div className="flex justify-center mb-1">
+            <div className="w-0.5 h-3 bg-border" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 px-2">
+            {colabs.map((c: any) => (
+              <OrgColabCard key={c.id} c={c} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Setor card para o organograma - recolhido por padrão
 function SetorOrganograma({ nome, colaboradores }: { nome: string; colaboradores: any[] }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const byNivel = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -159,32 +200,58 @@ function SetorOrganograma({ nome, colaboradores }: { nome: string; colaboradores
       );
   }, [colaboradores]);
 
+  // Contagem por nível para o resumo
+  const resumoNiveis = byNivel.map(g => `${NIVEL_LABELS[g.nivel] || g.nivel}: ${g.colabs.length}`).join(' · ');
+
   return (
-    <Card>
-      <CardHeader className="pb-2 cursor-pointer" onClick={() => setExpanded(p => !p)}>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-primary" />
-            {nome.replace(/^[A-Z]+\s*[–-]\s*/, '')}
-            <Badge variant="secondary" className="text-[10px]">{colaboradores.length} colaboradores</Badge>
-          </CardTitle>
-          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+    <div className="flex flex-col items-center">
+      {/* Card do setor - visual de organograma */}
+      <button
+        onClick={() => setExpanded(p => !p)}
+        className={`relative bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-2xl px-6 py-4 shadow-lg hover:shadow-xl transition-all min-w-[280px] max-w-[400px] text-center border-2 ${
+          expanded ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'
+        }`}
+      >
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <div className="font-bold text-base">{nome.replace(/^[A-Z]+\s*[–-]\s*/, '')}</div>
+            <div className="text-xs text-white/70 mt-0.5">
+              {colaboradores.length} colaborador{colaboradores.length !== 1 ? 'es' : ''}
+            </div>
+          </div>
+          <div className="ml-2">
+            {expanded ? <ChevronDown className="w-5 h-5 text-white/70" /> : <ChevronRight className="w-5 h-5 text-white/70" />}
+          </div>
         </div>
-      </CardHeader>
+      </button>
+
+      {/* Hierarquia expandida */}
       {expanded && (
-        <CardContent className="pt-2">
+        <div className="mt-1 w-full">
+          {/* Conector vertical do setor para os níveis */}
+          <div className="flex justify-center">
+            <div className="w-0.5 h-4 bg-border" />
+          </div>
           {byNivel.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Nenhum colaborador com nível hierárquico definido</p>
           ) : (
-            <div className="pl-2">
+            <div className="flex flex-col items-center gap-0">
               {byNivel.map((group, idx) => (
-                <OrgNode key={group.nivel} nivel={group.nivel} colabs={group.colabs} isLast={idx === byNivel.length - 1} />
+                <OrgNivelCard key={group.nivel} nivel={group.nivel} colabs={group.colabs} isFirst={idx === 0} />
               ))}
             </div>
           )}
-        </CardContent>
+        </div>
       )}
-    </Card>
+
+      {/* Resumo de níveis quando recolhido */}
+      {!expanded && resumoNiveis && (
+        <p className="text-xs text-muted-foreground mt-2 text-center max-w-[400px]">{resumoNiveis}</p>
+      )}
+    </div>
   );
 }
 
@@ -1596,18 +1663,64 @@ export default function CargosSalarios() {
         </TabsContent>
 
         {/* ===== ABA ORGANOGRAMA ===== */}
-        <TabsContent value="organograma" className="space-y-4 mt-4">
+        <TabsContent value="organograma" className="space-y-6 mt-4">
           <Card className="bg-muted/30">
             <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Organograma hierárquico por setor, baseado nos colaboradores cadastrados e seus níveis hierárquicos.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Organograma hierárquico por setor. Clique em um setor para expandir sua estrutura. Os dados são atualizados automaticamente ao cadastrar ou desligar colaboradores.</p>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold">{porSetor.length}</span>
+                    <span className="text-muted-foreground">setores</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold">{totalColaboradores}</span>
+                    <span className="text-muted-foreground">colaboradores</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Organograma visual - empresa no topo */}
           {porSetor.length === 0 ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum colaborador cadastrado</CardContent></Card>
           ) : (
-            porSetor.map((s, idx) => (
-              <SetorOrganograma key={idx} nome={s.nome} colaboradores={s.colaboradores} />
-            ))
+            <div className="flex flex-col items-center">
+              {/* Card da empresa (raiz) */}
+              <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl px-8 py-5 shadow-xl text-center min-w-[300px]">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg">Evox Fiscal</div>
+                    <div className="text-sm opacity-80">{totalColaboradores} colaboradores · {porSetor.length} setores</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conector vertical da empresa para os setores */}
+              <div className="w-0.5 h-8 bg-border" />
+
+              {/* Linha horizontal conectando todos os setores */}
+              <div className="relative w-full">
+                {porSetor.length > 1 && (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 bg-border" style={{ width: `${Math.min(90, porSetor.length * 20)}%` }} />
+                )}
+              </div>
+
+              {/* Grid de setores */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 w-full mt-4">
+                {porSetor.map((s, idx) => (
+                  <SetorOrganograma key={idx} nome={s.nome} colaboradores={s.colaboradores} />
+                ))}
+              </div>
+            </div>
           )}
         </TabsContent>
 
