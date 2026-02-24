@@ -1786,3 +1786,10 @@
 - [x] Total de colaboradores por setor visível no card do setor
 - [x] Autoajuste ao cadastrar/desligar colaborador (dados dinâmicos do backend)
 - [x] Testes vitest para a nova funcionalidade (15 testes passando)
+
+## v75 — Reverter Organograma para Formato Lista
+- [x] Reverter visual do organograma para formato lista (anterior)
+- [x] Setores recolhidos por padrão, expandir ao clicar
+- [x] Total de custo salarial e colaboradores por setor visível
+- [x] Autoajuste ao cadastrar/desligar colaborador
+- [x] Testes vitest existentes continuam passando (24 testes de ocorrências + organograma)
