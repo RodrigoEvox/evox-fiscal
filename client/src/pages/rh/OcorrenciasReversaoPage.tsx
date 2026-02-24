@@ -15,8 +15,12 @@ import { toast } from 'sonner';
 import {
   AlertTriangle, ArrowLeft, Plus, Loader2, Search, Eye, Trash2,
   CheckCircle2, Clock, XCircle, FileText, Users, BarChart3,
-  Shield, AlertCircle, RefreshCw, UserX, Calendar, Info,
+  Shield, AlertCircle, RefreshCw, UserX, Calendar, Info, Bell, TrendingUp, PieChart,
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
+} from 'recharts';
 
 // ---- Labels & Maps ----
 const TIPO_LABELS: Record<string, string> = {
@@ -368,12 +372,16 @@ export default function OcorrenciasReversaoPage() {
         </Card>
       </div>
 
+      {/* Notification Alerts */}
+      <NotificationAlerts />
+
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="ocorrencias"><FileText className="w-4 h-4 mr-1" /> Ocorrências</TabsTrigger>
           <TabsTrigger value="planos"><RefreshCw className="w-4 h-4 mr-1" /> Planos de Reversão</TabsTrigger>
-          <TabsTrigger value="guia"><BarChart3 className="w-4 h-4 mr-1" /> Guia de Classificação</TabsTrigger>
+          <TabsTrigger value="dashboard"><BarChart3 className="w-4 h-4 mr-1" /> Dashboard RH</TabsTrigger>
+          <TabsTrigger value="guia"><Info className="w-4 h-4 mr-1" /> Guia de Classificação</TabsTrigger>
         </TabsList>
 
         {/* ---- TAB: OCORRÊNCIAS ---- */}
@@ -512,6 +520,11 @@ export default function OcorrenciasReversaoPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ---- TAB: DASHBOARD RH ---- */}
+        <TabsContent value="dashboard">
+          <DashboardRHTab />
         </TabsContent>
 
         {/* ---- TAB: GUIA DE CLASSIFICAÇÃO ---- */}
@@ -1003,6 +1016,299 @@ export default function OcorrenciasReversaoPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+
+// ===== NOTIFICATION ALERTS =====
+function NotificationAlerts() {
+  const planosVencendoQ = trpc.ocorrenciasDashboard.planosVencendo.useQuery({ diasAntecedencia: 14 });
+  const reincidenciasQ = trpc.ocorrenciasDashboard.reincidenciasAlerta.useQuery({ limite: 3 });
+  const gerarNotificacoes = trpc.ocorrenciasDashboard.gerarNotificacoes.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Notificações geradas: ${data.planosVencendo} planos + ${data.reincidencias} reincidências`);
+    },
+    onError: () => toast.error('Erro ao gerar notificações'),
+  });
+
+  const planosVencendo = planosVencendoQ.data || [];
+  const reincidentes = reincidenciasQ.data || [];
+
+  if (planosVencendo.length === 0 && reincidentes.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {planosVencendo.length > 0 && (
+        <Card className="border-l-4 border-l-amber-500 bg-amber-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <Bell className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-sm text-amber-800">Planos de Reversão com Prazo Próximo</p>
+                  <div className="space-y-1 mt-2">
+                    {planosVencendo.map((p: any) => (
+                      <div key={p.id} className="text-xs text-amber-700">
+                        <span className="font-medium">{p.colaboradorNome}</span>
+                        {' — '}
+                        {(p as any).vencido ? (
+                          <Badge className="bg-red-100 text-red-700 text-[10px]">VENCIDO em {p.dataFim}</Badge>
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-700 text-[10px]">{p.diasRestantes} dia(s) restante(s) — vence em {p.dataFim}</Badge>
+                        )}
+                        <span className="text-muted-foreground ml-1">({p.cargo} - {p.setor})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => gerarNotificacoes.mutate()} disabled={gerarNotificacoes.isPending}>
+                <Bell className="w-3 h-3 mr-1" /> Notificar Gestores
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {reincidentes.length > 0 && (
+        <Card className="border-l-4 border-l-red-500 bg-red-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-sm text-red-800">Colaboradores com Reincidências (3+ ocorrências)</p>
+                <div className="space-y-1 mt-2">
+                  {reincidentes.map((r: any) => (
+                    <div key={r.colaboradorId} className="text-xs text-red-700">
+                      <span className="font-medium">{r.nome}</span>
+                      {' — '}
+                      <Badge className="bg-red-100 text-red-700 text-[10px]">{r.count} ocorrências</Badge>
+                      <span className="text-muted-foreground ml-1">({r.cargo} - {r.setor})</span>
+                      <span className="text-muted-foreground ml-1">Última: {r.ultimaData}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ===== DASHBOARD RH TAB =====
+const CHART_COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+function DashboardRHTab() {
+  const dashboardQ = trpc.ocorrenciasDashboard.get.useQuery();
+  const data = dashboardQ.data;
+
+  if (dashboardQ.isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Carregando dashboard...</span>
+      </div>
+    );
+  }
+
+  if (!data) return <p className="text-muted-foreground py-4">Erro ao carregar dados do dashboard.</p>;
+
+  const porTipoData = data.porTipo.map((t: any) => ({
+    name: TIPO_LABELS[t.tipo] || t.tipo,
+    value: t.count,
+  }));
+
+  const porSetorData = data.porSetor.map((s: any) => ({
+    name: s.setor,
+    value: s.count,
+  }));
+
+  const porMesData = data.porMes.map((m: any) => ({
+    name: m.mes,
+    value: m.count,
+  }));
+
+  const planosStats = data.planosReversaoStats;
+  const planosChartData = [
+    { name: 'Ativos', value: planosStats.ativos, color: '#3b82f6' },
+    { name: 'Sucesso', value: planosStats.sucesso, color: '#10b981' },
+    { name: 'Fracasso', value: planosStats.fracasso, color: '#ef4444' },
+    { name: 'Cancelados', value: planosStats.cancelados, color: '#6b7280' },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-muted-foreground uppercase">Total Planos</p>
+            <p className="text-3xl font-bold">{planosStats.total}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-blue-400">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-muted-foreground uppercase">Planos Ativos</p>
+            <p className="text-3xl font-bold text-blue-600">{planosStats.ativos}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-green-400">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-muted-foreground uppercase">Taxa de Sucesso</p>
+            <p className="text-3xl font-bold text-green-600">{planosStats.taxaSucesso}%</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-red-400">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-muted-foreground uppercase">Reincidentes (3+)</p>
+            <p className="text-3xl font-bold text-red-600">{data.topReincidentes.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Ocorrências por Tipo */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2"><PieChart className="w-4 h-4" /> Ocorrências por Tipo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {porTipoData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sem dados para exibir</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <RechartsPie>
+                  <Pie data={porTipoData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={false} fontSize={10}>
+                    {porTipoData.map((_: any, i: number) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                </RechartsPie>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Ocorrências por Setor */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Ocorrências por Setor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {porSetorData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sem dados para exibir</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={porSetorData} layout="vertical" margin={{ left: 80 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="name" width={75} fontSize={11} />
+                  <RechartsTooltip />
+                  <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Ocorrências" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Evolução Temporal */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Evolução Temporal de Ocorrências</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {porMesData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sem dados para exibir</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={porMesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" fontSize={11} />
+                  <YAxis fontSize={11} />
+                  <RechartsTooltip />
+                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} name="Ocorrências" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Planos de Reversão - Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Planos de Reversão por Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {planosChartData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sem planos de reversão registrados</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <RechartsPie>
+                  <Pie data={planosChartData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine={true} fontSize={11}>
+                    {planosChartData.map((d: any, i: number) => (
+                      <Cell key={i} fill={d.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                  <Legend />
+                </RechartsPie>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Reincidentes */}
+      {data.topReincidentes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-500" /> Colaboradores com Maior Número de Ocorrências</CardTitle>
+            <CardDescription>Colaboradores com 2 ou mais ocorrências registradas — atenção para reincidências</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-muted-foreground">Colaborador</th>
+                    <th className="text-left py-2 px-3 font-medium text-muted-foreground">Cargo</th>
+                    <th className="text-left py-2 px-3 font-medium text-muted-foreground">Setor</th>
+                    <th className="text-center py-2 px-3 font-medium text-muted-foreground">Ocorrências</th>
+                    <th className="text-center py-2 px-3 font-medium text-muted-foreground">Nível de Risco</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.topReincidentes.map((r: any) => (
+                    <tr key={r.colaboradorId} className="border-b hover:bg-muted/30">
+                      <td className="py-2 px-3 font-medium">{r.nome}</td>
+                      <td className="py-2 px-3 text-muted-foreground">{r.cargo || '—'}</td>
+                      <td className="py-2 px-3 text-muted-foreground">{r.setor || '—'}</td>
+                      <td className="py-2 px-3 text-center">
+                        <Badge className={r.count >= 5 ? 'bg-red-100 text-red-700' : r.count >= 3 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}>
+                          {r.count}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <Badge className={r.count >= 5 ? 'bg-red-100 text-red-700' : r.count >= 3 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}>
+                          {r.count >= 5 ? 'Crítico' : r.count >= 3 ? 'Alto' : 'Moderado'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -328,6 +328,7 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
     { id: 'atestados', label: 'Atestados & Licenças', icon: Stethoscope },
     { id: 'carreira', label: 'Carreira & Formação', icon: GraduationCap },
     { id: 'status', label: 'Histórico de Status', icon: History },
+    { id: 'disciplinar', label: 'Histórico Disciplinar', icon: ShieldAlert },
   ];
 
   const InfoItem = ({ label, value, icon: Ic }: { label: string; value: React.ReactNode; icon?: any }) => (
@@ -958,9 +959,154 @@ function PainelColaborador({ colab, setores, onClose, onEdit }: { colab: any; se
                 })}
               </div>
             )}
-          </SectionCard>
+           </SectionCard>
+        )}
+
+        {activeTab === 'disciplinar' && (
+          <HistoricoDisciplinarTab colaboradorId={colabId} colaboradorNome={colab.nomeCompleto} />
         )}
       </div>
+    </div>
+  );
+}
+
+// ===== HISTÓRICO DISCIPLINAR TAB =====
+function HistoricoDisciplinarTab({ colaboradorId, colaboradorNome }: { colaboradorId: number; colaboradorNome: string }) {
+  const historicoQ = trpc.ocorrenciasDashboard.historicoDisciplinar.useQuery({ colaboradorId });
+  const data = historicoQ.data;
+
+  if (historicoQ.isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+        <Loader2 className="w-4 h-4 animate-spin" /> Carregando histórico disciplinar...
+      </div>
+    );
+  }
+
+  if (!data) return <p className="text-sm text-muted-foreground py-4">Erro ao carregar dados.</p>;
+
+  const TIPO_LABELS: Record<string, string> = {
+    falta_injustificada: 'Falta Injustificada', atraso_frequente: 'Atraso Frequente',
+    falta_leve: 'Falta Leve', falta_media: 'Falta Média', falta_grave: 'Falta Grave',
+    erro_trabalho: 'Erro na Execução', conduta_inapropriada: 'Conduta Inapropriada', conflito_interno: 'Conflito Interno',
+  };
+  const GRAV_COLORS: Record<string, string> = {
+    leve: 'bg-yellow-100 text-yellow-700', media: 'bg-orange-100 text-orange-700',
+    grave: 'bg-red-100 text-red-700', gravissima: 'bg-red-200 text-red-800',
+  };
+  const CLASS_COLORS: Record<string, string> = {
+    reversivel: 'bg-green-100 text-green-700', irreversivel: 'bg-red-100 text-red-700',
+  };
+  const STATUS_COLORS: Record<string, string> = {
+    registrada: 'bg-gray-100 text-gray-700', em_analise: 'bg-blue-100 text-blue-700',
+    resolvida: 'bg-green-100 text-green-700', encaminhada_reversao: 'bg-yellow-100 text-yellow-700',
+    encaminhada_desligamento: 'bg-red-100 text-red-700',
+  };
+  const PLANO_STATUS: Record<string, string> = {
+    ativo: 'bg-blue-100 text-blue-700', concluido_sucesso: 'bg-green-100 text-green-700',
+    concluido_fracasso: 'bg-red-100 text-red-700', cancelado: 'bg-gray-100 text-gray-700',
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Resumo */}
+      <div className="bg-card border border-border/60 rounded-xl p-5">
+        <h4 className="font-semibold text-sm flex items-center gap-2 text-primary mb-4">
+          <ShieldAlert className="w-4 h-4" /> Resumo Disciplinar — {colaboradorNome}
+        </h4>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Total Ocorrências</p>
+            <p className="text-lg font-bold">{data.resumo.totalOcorrencias}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-green-600">Reversíveis</p>
+            <p className="text-lg font-bold text-green-700">{data.resumo.reversiveis}</p>
+          </div>
+          <div className="bg-red-50 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-red-600">Irreversíveis</p>
+            <p className="text-lg font-bold text-red-700">{data.resumo.irreversiveis}</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-blue-600">Planos Ativos</p>
+            <p className="text-lg font-bold text-blue-700">{data.resumo.planosAtivos}</p>
+          </div>
+          <div className="bg-background/70 rounded-lg p-3 text-center">
+            <p className="text-[10px] uppercase text-muted-foreground">Planos Concluídos</p>
+            <p className="text-lg font-bold">{data.resumo.planosConcluidos}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Ocorrências */}
+      <div className="bg-card border border-border/60 rounded-xl p-5">
+        <h4 className="font-semibold text-sm flex items-center gap-2 text-primary mb-4">
+          <AlertTriangle className="w-4 h-4" /> Ocorrências Registradas
+        </h4>
+        {data.ocorrencias.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">Nenhuma ocorrência registrada para este colaborador.</p>
+        ) : (
+          <div className="space-y-3">
+            {data.ocorrencias.map((o: any) => (
+              <div key={o.id} className="border border-border/40 rounded-lg p-4 hover:bg-muted/30 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{TIPO_LABELS[o.tipo] || o.tipo}</span>
+                      <Badge className={`text-[10px] ${GRAV_COLORS[o.gravidade] || ''}`}>{o.gravidade?.charAt(0).toUpperCase() + o.gravidade?.slice(1)}</Badge>
+                      <Badge className={`text-[10px] ${CLASS_COLORS[o.classificacao] || ''}`}>{o.classificacao === 'reversivel' ? 'Reversível' : 'Irreversível'}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{o.descricao}</p>
+                    <div className="flex gap-3 text-[10px] text-muted-foreground mt-2">
+                      <span>Data: {o.dataOcorrencia ? o.dataOcorrencia.split('-').reverse().join('/') : '—'}</span>
+                      {o.registradoPorNome && <span>Por: {o.registradoPorNome}</span>}
+                      {o.medidasTomadas && <span>Medida: {o.medidasTomadas}</span>}
+                    </div>
+                  </div>
+                  <Badge className={`text-[10px] shrink-0 ${STATUS_COLORS[o.status] || ''}`}>
+                    {o.status === 'registrada' ? 'Registrada' : o.status === 'em_analise' ? 'Em Análise' : o.status === 'resolvida' ? 'Resolvida' : o.status === 'encaminhada_reversao' ? 'Em Reversão' : 'Desligamento'}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Planos de Reversão */}
+      {data.planos.length > 0 && (
+        <div className="bg-card border border-border/60 rounded-xl p-5">
+          <h4 className="font-semibold text-sm flex items-center gap-2 text-primary mb-4">
+            <FileCheck className="w-4 h-4" /> Planos de Reversão
+          </h4>
+          <div className="space-y-3">
+            {data.planos.map((p: any) => (
+              <div key={p.id} className="border border-border/40 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{p.motivo}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{p.objetivos}</p>
+                    <div className="flex gap-3 text-[10px] text-muted-foreground mt-2">
+                      <span>Início: {p.dataInicio ? p.dataInicio.split('-').reverse().join('/') : '—'}</span>
+                      <span>Fim: {p.dataFim ? p.dataFim.split('-').reverse().join('/') : '—'}</span>
+                      <span>Responsável: {p.responsavel}</span>
+                      <span>Acompanhamento: {p.frequenciaAcompanhamento}</span>
+                    </div>
+                  </div>
+                  <Badge className={`text-[10px] shrink-0 ${PLANO_STATUS[p.status] || ''}`}>
+                    {p.status === 'ativo' ? 'Ativo' : p.status === 'concluido_sucesso' ? 'Sucesso' : p.status === 'concluido_fracasso' ? 'Fracasso' : 'Cancelado'}
+                  </Badge>
+                </div>
+                {p.resultadoFinal && (
+                  <div className="mt-2 p-2 bg-muted/30 rounded text-xs">
+                    <span className="font-medium">Resultado Final:</span> {p.resultadoFinal}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

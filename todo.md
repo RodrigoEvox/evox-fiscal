@@ -1733,3 +1733,18 @@
 - [x] Rota e navegação no App.tsx
 - [x] Testes vitest para as novas funcionalidades (19 testes passando)
 - [x] Corrigir colunas do banco (snake_case → camelCase) para compatibilidade com schema Drizzle
+
+## v71 — Integração Ocorrências + Perfil Colaborador, Notificações Automáticas, Dashboard RH
+- [x] Integração com cadastro de colaboradores: vincular ocorrências ao perfil do colaborador
+- [x] Exibir aba "Histórico Disciplinar" na ficha individual do colaborador
+- [x] Backend: rota para buscar ocorrências e planos por colaboradorId
+- [x] Notificações automáticas: alertar gestores quando plano de reversão próximo do vencimento
+- [x] Notificações automáticas: alertar quando colaborador atingir limite de reincidências
+- [x] Backend: lógica de verificação de prazos e reincidências com notificação
+- [x] Relatórios e dashboards de RH: visualizações consolidadas
+- [x] Dashboard: ocorrências por setor (gráfico)
+- [x] Dashboard: ocorrências por tipo (gráfico)
+- [x] Dashboard: taxa de sucesso dos planos de reversão
+- [x] Dashboard: evolução temporal de ocorrências
+- [x] Nova página/aba de Dashboard RH com gráficos Recharts
+- [x] Testes vitest para as novas funcionalidades (20 testes passando)

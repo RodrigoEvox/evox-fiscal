@@ -4814,6 +4814,40 @@ Seja preciso e detalhado. Extraia TODAS as cláusulas e regras.`
         return { success: true };
       }),
   }),
+
+  ocorrenciasDashboard: router({
+    get: protectedProcedure.query(async () => {
+      const { getOcorrenciasDashboard } = await import("./db");
+      return getOcorrenciasDashboard();
+    }),
+
+    historicoDisciplinar: protectedProcedure
+      .input(z.object({ colaboradorId: z.number() }))
+      .query(async ({ input }) => {
+        const { getHistoricoDisciplinar } = await import("./db");
+        return getHistoricoDisciplinar(input.colaboradorId);
+      }),
+
+    planosVencendo: protectedProcedure
+      .input(z.object({ diasAntecedencia: z.number().default(7) }).optional())
+      .query(async ({ input }) => {
+        const { checkPlanosVencendo } = await import("./db");
+        return checkPlanosVencendo(input?.diasAntecedencia || 7);
+      }),
+
+    reincidenciasAlerta: protectedProcedure
+      .input(z.object({ limite: z.number().default(3) }).optional())
+      .query(async ({ input }) => {
+        const { checkReincidenciasAlerta } = await import("./db");
+        return checkReincidenciasAlerta(input?.limite || 3);
+      }),
+
+    gerarNotificacoes: protectedProcedure
+      .mutation(async () => {
+        const { gerarNotificacoesOcorrencias } = await import("./db");
+        return gerarNotificacoesOcorrencias();
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -4421,3 +4421,181 @@ export async function getOcorrenciasStats() {
   
   return { total: all.length, pendentes, emAnalise, resolvidas, encaminhadasReversao, encaminhadasDesligamento, porTipo, porGravidade };
 }
+
+// =============================================
+// ---- OCORRÊNCIAS DASHBOARD & NOTIFICATIONS ----
+// =============================================
+
+export async function getOcorrenciasDashboard() {
+  const db = await getDb();
+  if (!db) return { porSetor: [], porTipo: [], porMes: [], planosReversaoStats: { total: 0, ativos: 0, sucesso: 0, fracasso: 0, cancelados: 0, taxaSucesso: 0 }, topReincidentes: [] };
+  
+  const allOcorrencias = await db.select().from(ocorrencias).orderBy(desc(ocorrencias.createdAt));
+  const allPlanos = await db.select().from(planoReversao);
+  
+  // Por setor
+  const setorMap: Record<string, number> = {};
+  for (const o of allOcorrencias) {
+    const setor = o.setor || 'Não informado';
+    setorMap[setor] = (setorMap[setor] || 0) + 1;
+  }
+  const porSetor = Object.entries(setorMap).map(([setor, count]) => ({ setor, count })).sort((a, b) => b.count - a.count);
+  
+  // Por tipo
+  const tipoMap: Record<string, number> = {};
+  for (const o of allOcorrencias) {
+    tipoMap[o.tipo] = (tipoMap[o.tipo] || 0) + 1;
+  }
+  const porTipo = Object.entries(tipoMap).map(([tipo, count]) => ({ tipo, count })).sort((a, b) => b.count - a.count);
+  
+  // Por mês (últimos 12 meses)
+  const mesMap: Record<string, number> = {};
+  for (const o of allOcorrencias) {
+    const mes = o.dataOcorrencia ? o.dataOcorrencia.substring(0, 7) : 'N/A';
+    mesMap[mes] = (mesMap[mes] || 0) + 1;
+  }
+  const porMes = Object.entries(mesMap).map(([mes, count]) => ({ mes, count })).sort((a, b) => a.mes.localeCompare(b.mes)).slice(-12);
+  
+  // Planos de reversão stats
+  const total = allPlanos.length;
+  const ativos = allPlanos.filter(p => p.status === 'ativo').length;
+  const sucesso = allPlanos.filter(p => p.status === 'concluido_sucesso').length;
+  const fracasso = allPlanos.filter(p => p.status === 'concluido_fracasso').length;
+  const cancelados = allPlanos.filter(p => p.status === 'cancelado').length;
+  const concluidos = sucesso + fracasso;
+  const taxaSucesso = concluidos > 0 ? Math.round((sucesso / concluidos) * 100) : 0;
+  
+  // Top reincidentes
+  const colabMap: Record<number, { nome: string; setor: string; cargo: string; count: number }> = {};
+  for (const o of allOcorrencias) {
+    if (!colabMap[o.colaboradorId]) {
+      colabMap[o.colaboradorId] = { nome: o.colaboradorNome, setor: o.setor || '', cargo: o.cargo || '', count: 0 };
+    }
+    colabMap[o.colaboradorId].count++;
+  }
+  const topReincidentes = Object.entries(colabMap)
+    .map(([id, data]) => ({ colaboradorId: Number(id), ...data }))
+    .filter(r => r.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  
+  return { porSetor, porTipo, porMes, planosReversaoStats: { total, ativos, sucesso, fracasso, cancelados, taxaSucesso }, topReincidentes };
+}
+
+export async function getHistoricoDisciplinar(colaboradorId: number) {
+  const db = await getDb();
+  if (!db) return { ocorrencias: [], planos: [], resumo: { totalOcorrencias: 0, reversiveis: 0, irreversiveis: 0, planosAtivos: 0, planosConcluidos: 0 } };
+  
+  const ocorrenciasList = await db.select().from(ocorrencias)
+    .where(eq(ocorrencias.colaboradorId, colaboradorId))
+    .orderBy(desc(ocorrencias.createdAt));
+  
+  const planosList = await db.select().from(planoReversao)
+    .where(eq(planoReversao.colaboradorId, colaboradorId))
+    .orderBy(desc(planoReversao.createdAt));
+  
+  const reversiveis = ocorrenciasList.filter(o => o.classificacao === 'reversivel').length;
+  const irreversiveis = ocorrenciasList.filter(o => o.classificacao === 'irreversivel').length;
+  const planosAtivos = planosList.filter(p => p.status === 'ativo').length;
+  const planosConcluidos = planosList.filter(p => p.status === 'concluido_sucesso' || p.status === 'concluido_fracasso').length;
+  
+  return {
+    ocorrencias: ocorrenciasList,
+    planos: planosList,
+    resumo: { totalOcorrencias: ocorrenciasList.length, reversiveis, irreversiveis, planosAtivos, planosConcluidos }
+  };
+}
+
+export async function checkPlanosVencendo(diasAntecedencia: number = 7) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const planosAtivos = await db.select().from(planoReversao)
+    .where(eq(planoReversao.status, 'ativo'));
+  
+  const hoje = new Date();
+  const vencendo: any[] = [];
+  
+  for (const p of planosAtivos) {
+    const [y, m, d] = p.dataFim.split('-').map(Number);
+    const dataFim = new Date(y, m - 1, d);
+    const diffDias = Math.ceil((dataFim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDias <= diasAntecedencia && diffDias >= 0) {
+      vencendo.push({ ...p, diasRestantes: diffDias });
+    } else if (diffDias < 0) {
+      vencendo.push({ ...p, diasRestantes: diffDias, vencido: true });
+    }
+  }
+  
+  return vencendo;
+}
+
+export async function checkReincidenciasAlerta(limiteReincidencias: number = 3) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const allOcorrencias = await db.select().from(ocorrencias);
+  
+  const colabMap: Record<number, { nome: string; setor: string; cargo: string; count: number; ultimaData: string }> = {};
+  for (const o of allOcorrencias) {
+    if (!colabMap[o.colaboradorId]) {
+      colabMap[o.colaboradorId] = { nome: o.colaboradorNome, setor: o.setor || '', cargo: o.cargo || '', count: 0, ultimaData: '' };
+    }
+    colabMap[o.colaboradorId].count++;
+    if (o.dataOcorrencia > colabMap[o.colaboradorId].ultimaData) {
+      colabMap[o.colaboradorId].ultimaData = o.dataOcorrencia;
+    }
+  }
+  
+  return Object.entries(colabMap)
+    .filter(([_, data]) => data.count >= limiteReincidencias)
+    .map(([id, data]) => ({ colaboradorId: Number(id), ...data }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function gerarNotificacoesOcorrencias() {
+  const db = await getDb();
+  if (!db) return { planosVencendo: 0, reincidencias: 0 };
+  
+  let planosVencendoCount = 0;
+  let reincidenciasCount = 0;
+  
+  // Check planos vencendo (7 dias)
+  const planosVencendo = await checkPlanosVencendo(7);
+  for (const p of planosVencendo) {
+    const titulo = p.vencido 
+      ? `Plano de Reversão VENCIDO — ${p.colaboradorNome}`
+      : `Plano de Reversão vencendo em ${p.diasRestantes} dia(s) — ${p.colaboradorNome}`;
+    const mensagem = p.vencido
+      ? `O plano de reversão de ${p.colaboradorNome} (${p.cargo || 'N/A'} - ${p.setor || 'N/A'}) venceu em ${p.dataFim}. É necessário realizar a avaliação final.`
+      : `O plano de reversão de ${p.colaboradorNome} (${p.cargo || 'N/A'} - ${p.setor || 'N/A'}) vence em ${p.dataFim}. Restam ${p.diasRestantes} dia(s) para a avaliação final.`;
+    
+    await createNotificacao({
+      tipo: 'geral',
+      titulo,
+      mensagem,
+      lida: 0,
+      usuarioId: null,
+    } as any);
+    planosVencendoCount++;
+  }
+  
+  // Check reincidências (3+)
+  const reincidentes = await checkReincidenciasAlerta(3);
+  for (const r of reincidentes) {
+    const titulo = `Alerta de Reincidência — ${r.nome}`;
+    const mensagem = `O colaborador ${r.nome} (${r.cargo || 'N/A'} - ${r.setor || 'N/A'}) possui ${r.count} ocorrências registradas. Última ocorrência em ${r.ultimaData}. Recomenda-se avaliação para possível plano de reversão ou desligamento.`;
+    
+    await createNotificacao({
+      tipo: 'geral',
+      titulo,
+      mensagem,
+      lida: 0,
+      usuarioId: null,
+    } as any);
+    reincidenciasCount++;
+  }
+  
+  return { planosVencendo: planosVencendoCount, reincidencias: reincidenciasCount };
+}
