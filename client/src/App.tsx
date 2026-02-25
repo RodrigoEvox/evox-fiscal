@@ -84,14 +84,13 @@ const OcorrenciasReversaoPage = lazy(() => import("./pages/rh/OcorrenciasReversa
 
 // Crédito Tributário
 const CreditoDashboard = lazy(() => import("./pages/credito/CreditoDashboard"));
-const CreditoCases = lazy(() => import("./pages/credito/CreditoCases"));
-const CreditoFilas = lazy(() => import("./pages/credito/CreditoFilas"));
-const CreditoRTI = lazy(() => import("./pages/credito/CreditoRTI"));
-const CreditoLedger = lazy(() => import("./pages/credito/CreditoLedger"));
-const CreditoTickets = lazy(() => import("./pages/credito/CreditoTickets"));
-const CreditoExitos = lazy(() => import("./pages/credito/CreditoExitos"));
-const CreditoConfiguracoes = lazy(() => import("./pages/credito/CreditoConfiguracoes"));
-const CreditoClientes = lazy(() => import("./pages/credito/CreditoClientes"));
+const CreditoNovaTarefa = lazy(() => import("./pages/credito/CreditoNovaTarefa"));
+const CreditoFilaApuracao = lazy(() => import("./pages/credito/CreditoFilaApuracao"));
+const CreditoFilaOnboarding = lazy(() => import("./pages/credito/CreditoFilaOnboarding"));
+const CreditoFilaRetificacao = lazy(() => import("./pages/credito/CreditoFilaRetificacao"));
+const CreditoFilaCompensacao = lazy(() => import("./pages/credito/CreditoFilaCompensacao"));
+const CreditoFilaRessarcimento = lazy(() => import("./pages/credito/CreditoFilaRessarcimento"));
+const CreditoFilaRestituicao = lazy(() => import("./pages/credito/CreditoFilaRestituicao"));
 const CreditoGestaoCreditos = lazy(() => import("./pages/credito/CreditoGestaoCreditos"));
 
 // Suporte Comercial
@@ -184,15 +183,14 @@ function Router() {
         <Route path="/rh/ocorrencias-reversao" component={OcorrenciasReversaoPage} />
         {/* Setor pages with sub-routes */}
         {/* Crédito Tributário */}
-        <Route path="/credito/dashboard" component={CreditoDashboard} />
-        <Route path="/credito/cases" component={CreditoCases} />
-        <Route path="/credito/filas" component={CreditoFilas} />
-        <Route path="/credito/rti" component={CreditoRTI} />
-        <Route path="/credito/ledger" component={CreditoLedger} />
-        <Route path="/credito/tickets" component={CreditoTickets} />
-        <Route path="/credito/exitos" component={CreditoExitos} />
-        <Route path="/credito/configuracoes" component={CreditoConfiguracoes} />
-        <Route path="/credito/clientes-credito" component={CreditoClientes} />
+        <Route path="/credito/dashboard-credito" component={CreditoDashboard} />
+        <Route path="/credito/nova-tarefa-credito" component={CreditoNovaTarefa} />
+        <Route path="/credito/fila-apuracao" component={CreditoFilaApuracao} />
+        <Route path="/credito/fila-onboarding" component={CreditoFilaOnboarding} />
+        <Route path="/credito/fila-retificacao" component={CreditoFilaRetificacao} />
+        <Route path="/credito/fila-compensacao" component={CreditoFilaCompensacao} />
+        <Route path="/credito/fila-ressarcimento" component={CreditoFilaRessarcimento} />
+        <Route path="/credito/fila-restituicao" component={CreditoFilaRestituicao} />
         <Route path="/credito/gestao-creditos" component={CreditoGestaoCreditos} />
         {/* Suporte Comercial */}
         <Route path="/suporte/inbox" component={InboxDemandas} />

@@ -1973,3 +1973,20 @@
 - [x] Rota /credito/clientes-credito registrada no App.tsx
 - [x] Rota /credito/gestao-creditos registrada no App.tsx
 - [x] Testes vitest para listCreditClientes, getCliente360, getGestaoCreditos, evaluateTesesAderencia (10 testes passando)
+
+### Reestruturação Completa do Setor de Crédito Tributário
+- [x] Remover todos os submenus antigos do setor CRE (manter apenas Teses Tributárias)
+- [x] Configurar 9 novos submenus: Dashboard, Nova Tarefa, Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição, Gestão de Créditos
+- [x] Remover páginas frontend antigas do crédito e limpar rotas
+- [x] Dashboard do Crédito: visão geral do setor
+- [x] Nova Tarefa: criar tarefa rápida associando a cliente existente e fila do setor
+- [x] Nova Tarefa: motor de regras tributárias para validar teses aderentes/oportunidades
+- [x] Nova Tarefa: seleção de teses aderentes com alerta e justificativa para não aderentes
+- [x] Nova Tarefa: validação de contrato (Apuração/Revisão não precisa; demais filas exigem contrato)
+- [x] Nova Tarefa: NDA opcional para Apuração/Revisão
+- [x] Nova Tarefa: ordem de entrada na fila por data/hora de criação com log do usuário
+- [x] Páginas placeholder para filas: Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição
+- [x] Página Gestão de Créditos
+- [x] Registrar todas as novas rotas no App.tsx
+- [x] Atualizar sidebar com ícones para os novos submenus
+- [x] Testes vitest para Nova Tarefa e motor de regras (15 testes passando)

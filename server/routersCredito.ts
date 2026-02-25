@@ -541,7 +541,7 @@ const creditoRouter = router({
 
     create: protectedProcedure
       .input(z.object({
-        fila: z.enum(['apuracao', 'retificacao', 'compensacao', 'onboarding', 'chamados']),
+        fila: z.enum(['apuracao', 'retificacao', 'compensacao', 'ressarcimento', 'restituicao', 'revisao', 'onboarding', 'chamados']),
         caseId: z.number().nullable().optional(),
         clienteId: z.number().nullable().optional(),
         demandRequestId: z.number().nullable().optional(),
