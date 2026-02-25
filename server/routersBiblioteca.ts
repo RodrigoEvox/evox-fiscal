@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import * as bibDb from "./dbBiblioteca";
+import { storagePut } from "./storage";
+import crypto from "crypto";
 
 // Helper to extract user info from ctx (User type is inferred from DB)
 function getUser(ctx: any): { id: number; name: string } {
@@ -98,6 +100,28 @@ export const bibliotecaRouter = router({
         usuarioId: getUser(ctx).id,
         usuarioNome: (getUser(ctx).name),
       });
+    }),
+    uploadCapa: protectedProcedure.input(z.object({
+      livroId: z.number(),
+      base64Data: z.string(),
+      mimeType: z.string(),
+      fileName: z.string(),
+    })).mutation(async ({ input, ctx }) => {
+      const buffer = Buffer.from(input.base64Data, 'base64');
+      const suffix = crypto.randomBytes(4).toString('hex');
+      const ext = input.fileName.split('.').pop() || 'jpg';
+      const fileKey = `evox-fiscal/biblioteca/capas/${input.livroId}-${suffix}.${ext}`;
+      const { url } = await storagePut(fileKey, buffer, input.mimeType);
+      await bibDb.updateLivro(input.livroId, { capaUrl: url, capaFileKey: fileKey });
+      await bibDb.createAuditoriaBib({
+        acao: 'editar',
+        entidadeTipo: 'livro',
+        entidadeId: input.livroId,
+        entidadeNome: `Upload de capa: ${input.fileName}`,
+        usuarioId: getUser(ctx).id,
+        usuarioNome: (getUser(ctx).name),
+      });
+      return { url, fileKey };
     }),
   }),
 

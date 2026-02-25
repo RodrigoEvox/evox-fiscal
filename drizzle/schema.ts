@@ -758,7 +758,7 @@ export const niveisCargo = mysqlTable("niveis_cargo", {
 
 export const notificacoes = mysqlTable("notificacoes", {
 	id: int().autoincrement().notNull(),
-	tipo: mysqlEnum(['procuracao_vencendo','procuracao_vencida','analise_concluida','nova_tese','tarefa_atribuida','tarefa_sla_vencendo','tarefa_comentario','geral','avaliacao_ciclo_aberto','avaliacao_pendente']).notNull(),
+	tipo: mysqlEnum(['procuracao_vencendo','procuracao_vencida','analise_concluida','nova_tese','tarefa_atribuida','tarefa_sla_vencendo','tarefa_comentario','geral','avaliacao_ciclo_aberto','avaliacao_pendente','cct_vencimento','biblioteca_vencimento']).notNull(),
 	titulo: varchar({ length: 500 }).notNull(),
 	mensagem: text().notNull(),
 	lida: tinyint().default(0).notNull(),

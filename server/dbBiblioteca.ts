@@ -428,3 +428,53 @@ export async function getBibliotecaDashboard() {
     porCategoria,
   };
 }
+
+// ===== NOTIFICATION HELPERS =====
+
+export async function getEmprestimosVencendoEm(diasAntes: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const today = new Date();
+  const targetDate = new Date(today);
+  targetDate.setDate(targetDate.getDate() + diasAntes);
+  const targetStr = targetDate.toISOString().slice(0, 10);
+  
+  return db.select().from(bibEmprestimos)
+    .where(and(
+      eq(bibEmprestimos.status, 'ativo' as any),
+      eq(bibEmprestimos.dataPrevistaDevolucao, targetStr)
+    ));
+}
+
+export async function getEmprestimosAtrasados() {
+  const db = await getDb();
+  if (!db) return [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  
+  return db.select().from(bibEmprestimos)
+    .where(and(
+      eq(bibEmprestimos.status, 'ativo' as any),
+      sql`${bibEmprestimos.dataPrevistaDevolucao} < ${todayStr}`
+    ));
+}
+
+export async function marcarEmprestimosAtrasados() {
+  const db = await getDb();
+  if (!db) return 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  
+  const result = await db.update(bibEmprestimos)
+    .set({ status: 'atrasado' as any })
+    .where(and(
+      eq(bibEmprestimos.status, 'ativo' as any),
+      sql`${bibEmprestimos.dataPrevistaDevolucao} < ${todayStr}`
+    ));
+  return (result as any)[0]?.affectedRows || 0;
+}
+
+export async function getLivroTitulo(livroId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) return 'Livro desconhecido';
+  const rows = await db.select({ titulo: bibLivros.titulo }).from(bibLivros).where(eq(bibLivros.id, livroId)).limit(1);
+  return rows[0]?.titulo || 'Livro desconhecido';
+}

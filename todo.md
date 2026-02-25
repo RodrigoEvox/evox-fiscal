@@ -1827,3 +1827,11 @@
 - [x] Consolidar todas as 10 seções em uma única tela com abas horizontais (Dashboard, Acervo, Exemplares, Empréstimos, Reservas, Devoluções, Fornecedores, Políticas, Auditoria, Relatórios)
 - [x] Remover 11 rotas individuais e hub page separada, substituir por rota única /rh/biblioteca
 - [x] Remover submenu separado "Biblioteca Evox" do sidebar GEG, manter apenas dentro de Gestão RH
+
+## v79 — Biblioteca Evox: Livros de teste, Notificações e Upload de Capa
+- [x] Seed: 12 livros, 17 exemplares, 5 empréstimos (2 atrasados), 1 reserva, 2 fornecedores, 6 políticas padrão
+- [x] Notificações automáticas: scheduler diário (8h) com notifyOwner para empréstimos vencendo amanhã e atrasados
+- [x] Notificações automáticas: notificações in-app (tipo biblioteca_vencimento) para todos os usuários + aviso de atraso
+- [x] Upload de capa: procedure uploadCapa com storagePut para S3 (base64 → Buffer → S3)
+- [x] Upload de capa: frontend com preview de imagem, drag-and-drop, ou URL manual no form de cadastro/edição
+- [x] Upload de capa: coluna Capa na tabela do Acervo com thumbnail 36x48px e placeholder BookOpen

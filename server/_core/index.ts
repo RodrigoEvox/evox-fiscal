@@ -331,6 +331,80 @@ async function checkCCTExpiration() {
   }
 }
 
+async function runBibliotecaEmprestimoAlerts() {
+  try {
+    const bibDb = await import('../dbBiblioteca');
+    const { notifyOwner } = await import('./notification');
+    const db = await import('../db');
+
+    // 1. Mark overdue loans as 'atrasado'
+    const marcados = await bibDb.marcarEmprestimosAtrasados();
+    if (marcados > 0) {
+      console.log(`[Biblioteca Scheduler] ${marcados} empréstimo(s) marcado(s) como atrasado(s)`);
+    }
+
+    // 2. Get the notification threshold from policies (default: 3 days)
+    const diasAvisoStr = await bibDb.getPoliticaValor('dias_aviso_vencimento');
+    const diasAviso = parseInt(diasAvisoStr || '3', 10);
+
+    // 3. Notify about loans expiring in 1 day (tomorrow)
+    const venceAmanha = await bibDb.getEmprestimosVencendoEm(1);
+    for (const emp of venceAmanha) {
+      const tituloLivro = await bibDb.getLivroTitulo(emp.livroId);
+      await notifyOwner({
+        title: `📚 Biblioteca: Empréstimo vence AMANHÃ`,
+        content: `O colaborador ${emp.colaboradorNome} tem o livro "${tituloLivro}" com devolução prevista para amanhã (${emp.dataPrevistaDevolucao}). Renovações: ${emp.renovacoes}/${emp.limiteRenovacoes}.`,
+      });
+      try {
+        const users = await db.listUsers();
+        for (const u of users) {
+          await db.createNotificacao({
+            usuarioId: u.id,
+            tipo: 'biblioteca_vencimento',
+            titulo: `Empréstimo vence amanhã: ${tituloLivro}`,
+            mensagem: `${emp.colaboradorNome} deve devolver "${tituloLivro}" amanhã (${emp.dataPrevistaDevolucao}).`,
+            lida: 0,
+          } as any);
+        }
+      } catch (e) { console.error('[Bib Notif] Error creating in-app notifications', e); }
+    }
+
+    // 4. Notify about loans expiring in N days (configurable)
+    if (diasAviso > 1) {
+      const venceEmNDias = await bibDb.getEmprestimosVencendoEm(diasAviso);
+      for (const emp of venceEmNDias) {
+        const tituloLivro = await bibDb.getLivroTitulo(emp.livroId);
+        await notifyOwner({
+          title: `📚 Biblioteca: Empréstimo vence em ${diasAviso} dias`,
+          content: `O colaborador ${emp.colaboradorNome} tem o livro "${tituloLivro}" com devolução prevista para ${emp.dataPrevistaDevolucao} (${diasAviso} dias). Renovações: ${emp.renovacoes}/${emp.limiteRenovacoes}.`,
+        });
+      }
+    }
+
+    // 5. Notify about overdue loans (atrasados)
+    const atrasados = await bibDb.getEmprestimosAtrasados();
+    if (atrasados.length > 0) {
+      const detalhes = [];
+      for (const emp of atrasados) {
+        const tituloLivro = await bibDb.getLivroTitulo(emp.livroId);
+        const diasAtraso = Math.floor((Date.now() - new Date(emp.dataPrevistaDevolucao + 'T00:00:00').getTime()) / 86400000);
+        detalhes.push(`• ${emp.colaboradorNome} - "${tituloLivro}" (${diasAtraso} dia(s) de atraso)`);
+      }
+      await notifyOwner({
+        title: `📚 Biblioteca: ${atrasados.length} empréstimo(s) em atraso`,
+        content: `Os seguintes empréstimos estão com devolução em atraso:\n\n${detalhes.join('\n')}`,
+      });
+    }
+
+    const total = venceAmanha.length + (diasAviso > 1 ? (await bibDb.getEmprestimosVencendoEm(diasAviso)).length : 0) + atrasados.length;
+    if (total > 0) {
+      console.log(`[Biblioteca Scheduler] Sent ${total} notification(s): ${venceAmanha.length} vencendo amanhã, ${atrasados.length} atrasados`);
+    }
+  } catch (err) {
+    console.error('[Biblioteca Scheduler Error]', err);
+  }
+}
+
 function startScheduledJobs() {
   // Run birthday emails daily at 8:00 AM (check every hour)
   const HOUR_MS = 60 * 60 * 1000;
@@ -339,6 +413,7 @@ function startScheduledJobs() {
   let lastReajusteRun = '';
   let lastExperienciaRun = '';
   let lastCCTRun = '';
+  let lastBibliotecaRun = '';
 
   setInterval(async () => {
     const now = new Date();
@@ -374,6 +449,12 @@ function startScheduledJobs() {
       lastCCTRun = todayKey;
       await checkCCTExpiration();
     }
+
+    // Run biblioteca loan alerts once per day (after 8 AM)
+    if (now.getHours() >= 8 && lastBibliotecaRun !== todayKey) {
+      lastBibliotecaRun = todayKey;
+      await runBibliotecaEmprestimoAlerts();
+    }
   }, HOUR_MS);
 
   // Also run once on startup after a short delay
@@ -384,9 +465,10 @@ function startScheduledJobs() {
     await runReajusteDoisAnosCheck();
     await runExperienciaExpirationCheck();
     await checkCCTExpiration();
+    await runBibliotecaEmprestimoAlerts();
   }, 10000);
 
-  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, and CCT expiration checks scheduled');
+  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, CCT expiration checks, and biblioteca loan alerts scheduled');
 }
 
 async function startServer() {
