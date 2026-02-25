@@ -1514,6 +1514,13 @@ export async function getColaboradorById(id: number) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getColaboradorByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(colaboradores).where(eq(colaboradores.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function createColaborador(data: InsertColaborador) {
   const db = await getDb();
   if (!db) return null;

@@ -34,6 +34,7 @@ const SetorPage = lazy(() => import("./pages/SetorPage"));
 const GestaoParcerias = lazy(() => import("./pages/GestaoParcerias"));
 const SlaConfig = lazy(() => import("./pages/SlaConfig"));
 const MinhasTarefas = lazy(() => import("./pages/MinhasTarefas"));
+const MinhaBiblioteca = lazy(() => import("./pages/MinhaBiblioteca"));
 const ExecutivosComerciais = lazy(() => import("./pages/ExecutivosComerciais"));
 const AprovacoesComissao = lazy(() => import("./pages/AprovacoesComissao"));
 const RelatorioComissoes = lazy(() => import("./pages/RelatorioComissoes"));
@@ -95,6 +96,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/minhas-tarefas" component={MinhasTarefas} />
+        <Route path="/minha-biblioteca" component={MinhaBiblioteca} />
         <Route path="/tarefas" component={Tarefas} />
         <Route path="/tarefas/:id" component={TarefaDetalhe} />
         <Route path="/clientes" component={Clientes} />

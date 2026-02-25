@@ -1847,3 +1847,9 @@
 - [x] Integrar busca de livros no campo de busca global (Ctrl+K) (já implementado na v79: buscaGlobal inclui livros por título, autores, ISBN e categoria; GlobalSearch.tsx exibe seção Biblioteca)
 - [x] Gerar PDF do termo de responsabilidade ao realizar empréstimo (rota /api/biblioteca/termo-responsabilidade-pdf com dados do colaborador, livro, exemplar, empréstimo, 6 cláusulas e assinaturas; botão Termo na tabela de empréstimos)
 - [x] 23 testes vitest passando (biblioteca-improvements.test.ts)
+
+## v82 — Biblioteca Evox: Termo Automático com E-mail, Autoatendimento e Assinatura Digital
+- [x] Gerar termo de responsabilidade PDF automaticamente ao registrar empréstimo e enviar por e-mail ao colaborador (generateAndStoreTermoPdf fire-and-forget no create mutation; upload S3; notificação in-app; notifyOwner; assinaturas base64→S3 antes do insert)
+- [x] Implementar autoatendimento do colaborador na biblioteca (página /minha-biblioteca com catálogo+busca+filtro, meus empréstimos ativos/histórico, minhas reservas, renovar, cancelar reserva; link no sidebar; getColaboradorByUserId; 6 procedures autoatendimento)
+- [x] Adicionar assinatura digital (canvas) no termo de responsabilidade da biblioteca (SignatureCanvas no form de novo empréstimo; dialog de assinatura para empréstimos existentes; salvarAssinatura mutation com upload S3; regeneração do PDF com assinaturas embutidas; indicadores visuais na tabela)
+- [x] 35 testes vitest passando (biblioteca-v82.test.ts) + 23 testes v81 sem regressão

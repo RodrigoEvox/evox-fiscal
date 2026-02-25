@@ -9,7 +9,7 @@ import {
   Headphones, Podcast, Gift, Calendar, Building2,
   CreditCard, PiggyBank, Building, Shield, ShoppingCart,
   Banknote, GraduationCap, MonitorCheck, Gavel,
-  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu,
+  ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu, Library,
   MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
   Bus, Dumbbell, DollarSign, Cake, Heart, Layers,
 } from 'lucide-react';
@@ -390,6 +390,9 @@ export default function AppSidebar() {
 
         {/* Minhas Tarefas */}
         <NavLink path="/minhas-tarefas" icon={ClipboardList} label="Minhas Tarefas" />
+
+        {/* Minha Biblioteca */}
+        <NavLink path="/minha-biblioteca" icon={Library} label="Minha Biblioteca" />
 
         {/* Chat */}
         <ChatNavLink />
