@@ -208,18 +208,18 @@ export default function BibliotecaAcervo() {
     <>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[250px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <Input placeholder="Buscar por título, autor, ISBN, editora..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input placeholder="Buscar por título, autor, ISBN, editora..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-muted/30 border-border/60 text-foreground placeholder:text-muted-foreground/50" />
           </div>
           <Select value={filterCategoria} onValueChange={setFilterCategoria}>
-            <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white"><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <SelectTrigger className="w-[180px] bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Categoria" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Categorias</SelectItem>
               {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[150px] bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Status</SelectItem>
               <SelectItem value="ativo">Ativo</SelectItem>
@@ -229,42 +229,42 @@ export default function BibliotecaAcervo() {
           </Select>
         </div>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border/60">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-white/10 hover:bg-transparent">
-                  <TableHead className="text-white/60 w-[50px]">Capa</TableHead>
-                  <TableHead className="text-white/60">Título</TableHead>
-                  <TableHead className="text-white/60">Autor(es)</TableHead>
-                  <TableHead className="text-white/60">Categoria</TableHead>
-                  <TableHead className="text-white/60">Editora</TableHead>
-                  <TableHead className="text-white/60">Ano</TableHead>
-                  <TableHead className="text-white/60">Status</TableHead>
-                  <TableHead className="text-white/60 text-right">Ações</TableHead>
+                <TableRow className="border-border/60 hover:bg-transparent">
+                  <TableHead className="text-muted-foreground w-[50px]">Capa</TableHead>
+                  <TableHead className="text-muted-foreground">Título</TableHead>
+                  <TableHead className="text-muted-foreground">Autor(es)</TableHead>
+                  <TableHead className="text-muted-foreground">Categoria</TableHead>
+                  <TableHead className="text-muted-foreground">Editora</TableHead>
+                  <TableHead className="text-muted-foreground">Ano</TableHead>
+                  <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {livros.isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-white/30 py-10">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground/50 py-10">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-white/30 py-10">Nenhum livro encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground/50 py-10">Nenhum livro encontrado</TableCell></TableRow>
                 ) : filtered.map((livro: any) => (
-                  <TableRow key={livro.id} className="border-white/5 hover:bg-white/5">
+                  <TableRow key={livro.id} className="border-border/40 hover:bg-muted/50">
                     <TableCell className="py-1.5">
                       {livro.capaUrl ? (
-                        <img src={livro.capaUrl} alt={livro.titulo} className="w-9 h-12 object-cover rounded border border-white/10" />
+                        <img src={livro.capaUrl} alt={livro.titulo} className="w-9 h-12 object-cover rounded border border-border/60" />
                       ) : (
-                        <div className="w-9 h-12 rounded border border-white/10 bg-white/5 flex items-center justify-center">
-                          <BookOpen className="w-4 h-4 text-white/20" />
+                        <div className="w-9 h-12 rounded border border-border/60 bg-muted/30 flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-muted-foreground/40" />
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-white font-medium">{livro.titulo}</TableCell>
-                    <TableCell className="text-white/70">{livro.autores}</TableCell>
-                    <TableCell><Badge variant="outline" className="border-white/20 text-white/60">{livro.categoria || '-'}</Badge></TableCell>
-                    <TableCell className="text-white/70">{livro.editora || '-'}</TableCell>
-                    <TableCell className="text-white/70">{livro.ano || '-'}</TableCell>
+                    <TableCell className="text-foreground font-medium">{livro.titulo}</TableCell>
+                    <TableCell className="text-muted-foreground">{livro.autores}</TableCell>
+                    <TableCell><Badge variant="outline" className="border-border text-muted-foreground">{livro.categoria || '-'}</Badge></TableCell>
+                    <TableCell className="text-muted-foreground">{livro.editora || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{livro.ano || '-'}</TableCell>
                     <TableCell>
                       <Badge className={livro.status === 'ativo' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
                         {livro.status === 'ativo' ? 'Ativo' : livro.status === 'inativo' ? 'Inativo' : 'Descontinuado'}
@@ -272,7 +272,7 @@ export default function BibliotecaAcervo() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-white/40 hover:text-white" onClick={() => handleEdit(livro)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/60 hover:text-foreground" onClick={() => handleEdit(livro)}><Edit2 className="w-3.5 h-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400/60 hover:text-red-400" onClick={() => { if (confirm('Remover este livro?')) deleteLivro.mutate({ id: livro.id }); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                       </div>
                     </TableCell>
@@ -284,12 +284,12 @@ export default function BibliotecaAcervo() {
         </Card>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border/60 text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingId ? 'Editar Livro' : 'Novo Livro'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             {/* Cover Upload Section */}
             <div className="col-span-2">
-              <Label className="text-white/70 mb-2 block">Capa do Livro</Label>
+              <Label className="text-muted-foreground mb-2 block">Capa do Livro</Label>
               <div className="flex items-start gap-4">
                 <div className="relative group">
                   {coverPreview || form.capaUrl ? (
@@ -297,25 +297,25 @@ export default function BibliotecaAcervo() {
                       <img
                         src={coverPreview || form.capaUrl}
                         alt="Capa"
-                        className="w-24 h-32 object-cover rounded-lg border border-white/10"
+                        className="w-24 h-32 object-cover rounded-lg border border-border/60"
                       />
                       <button
                         type="button"
                         onClick={removeCover}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute -top-2 -right-2 bg-red-500 text-foreground rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="w-3 h-3" />
                       </button>
                       {uploadingCover && (
                         <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                          <Loader2 className="w-5 h-5 animate-spin text-white" />
+                          <Loader2 className="w-5 h-5 animate-spin text-foreground" />
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="w-24 h-32 rounded-lg border-2 border-dashed border-white/20 bg-white/5 flex flex-col items-center justify-center gap-1">
-                      <ImageIcon className="w-6 h-6 text-white/20" />
-                      <span className="text-[10px] text-white/30">Sem capa</span>
+                    <div className="w-24 h-32 rounded-lg border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-1">
+                      <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
+                      <span className="text-[10px] text-muted-foreground/50">Sem capa</span>
                     </div>
                   )}
                 </div>
@@ -333,21 +333,21 @@ export default function BibliotecaAcervo() {
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingCover}
-                    className="border-white/20 text-white/70 hover:bg-white/10"
+                    className="border-border text-muted-foreground hover:bg-muted/60"
                   >
                     {uploadingCover ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
                     Enviar Imagem
                   </Button>
-                  <p className="text-xs text-white/30">JPG, PNG ou WEBP. Máximo 5MB.</p>
+                  <p className="text-xs text-muted-foreground/50">JPG, PNG ou WEBP. Máximo 5MB.</p>
                   <div>
-                    <Label className="text-white/50 text-xs">Ou cole a URL da capa:</Label>
+                    <Label className="text-muted-foreground/70 text-xs">Ou cole a URL da capa:</Label>
                     <Input
                       value={form.capaUrl}
                       onChange={(e) => {
                         setForm(p => ({ ...p, capaUrl: e.target.value }));
                         setCoverPreview(e.target.value || null);
                       }}
-                      className="bg-white/5 border-white/10 text-white text-xs h-8 mt-1"
+                      className="bg-muted/30 border-border/60 text-foreground text-xs h-8 mt-1"
                       placeholder="https://..."
                     />
                   </div>
@@ -356,29 +356,29 @@ export default function BibliotecaAcervo() {
             </div>
 
             <div className="col-span-2">
-              <Label className="text-white/70">Título *</Label>
-              <Input value={form.titulo} onChange={(e) => setForm(p => ({ ...p, titulo: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Título *</Label>
+              <Input value={form.titulo} onChange={(e) => setForm(p => ({ ...p, titulo: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Autor(es) *</Label>
-              <Input value={form.autores} onChange={(e) => setForm(p => ({ ...p, autores: e.target.value }))} className="bg-white/5 border-white/10 text-white" placeholder="Separar com vírgula" />
+              <Label className="text-muted-foreground">Autor(es) *</Label>
+              <Input value={form.autores} onChange={(e) => setForm(p => ({ ...p, autores: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" placeholder="Separar com vírgula" />
             </div>
             <div>
-              <Label className="text-white/70">ISBN</Label>
-              <Input value={form.isbn} onChange={(e) => setForm(p => ({ ...p, isbn: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">ISBN</Label>
+              <Input value={form.isbn} onChange={(e) => setForm(p => ({ ...p, isbn: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Editora</Label>
-              <Input value={form.editora} onChange={(e) => setForm(p => ({ ...p, editora: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Editora</Label>
+              <Input value={form.editora} onChange={(e) => setForm(p => ({ ...p, editora: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Ano de Publicação</Label>
-              <Input type="number" value={form.ano} onChange={(e) => setForm(p => ({ ...p, ano: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Ano de Publicação</Label>
+              <Input type="number" value={form.ano} onChange={(e) => setForm(p => ({ ...p, ano: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Categoria</Label>
+              <Label className="text-muted-foreground">Categoria</Label>
               <Select value={form.categoria || "none"} onValueChange={(v) => setForm(p => ({ ...p, categoria: v === "none" ? "" : v }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Selecione</SelectItem>
                   {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -386,21 +386,21 @@ export default function BibliotecaAcervo() {
               </Select>
             </div>
             <div>
-              <Label className="text-white/70">Subcategoria</Label>
-              <Input value={form.subcategoria} onChange={(e) => setForm(p => ({ ...p, subcategoria: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Subcategoria</Label>
+              <Input value={form.subcategoria} onChange={(e) => setForm(p => ({ ...p, subcategoria: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Idioma</Label>
-              <Input value={form.idioma} onChange={(e) => setForm(p => ({ ...p, idioma: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Idioma</Label>
+              <Input value={form.idioma} onChange={(e) => setForm(p => ({ ...p, idioma: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Edição</Label>
-              <Input value={form.edicao} onChange={(e) => setForm(p => ({ ...p, edicao: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Edição</Label>
+              <Input value={form.edicao} onChange={(e) => setForm(p => ({ ...p, edicao: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Classificação</Label>
+              <Label className="text-muted-foreground">Classificação</Label>
               <Select value={form.classificacao || "none"} onValueChange={(v) => setForm(p => ({ ...p, classificacao: v === "none" ? "" : v as any }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Selecione</SelectItem>
                   <SelectItem value="essencial">Essencial</SelectItem>
@@ -410,20 +410,20 @@ export default function BibliotecaAcervo() {
               </Select>
             </div>
             <div>
-              <Label className="text-white/70">Área Sugerida</Label>
-              <Input value={form.areaSugerida} onChange={(e) => setForm(p => ({ ...p, areaSugerida: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Área Sugerida</Label>
+              <Input value={form.areaSugerida} onChange={(e) => setForm(p => ({ ...p, areaSugerida: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Link de Referência</Label>
-              <Input value={form.linkReferencia} onChange={(e) => setForm(p => ({ ...p, linkReferencia: e.target.value }))} className="bg-white/5 border-white/10 text-white" placeholder="https://..." />
+              <Label className="text-muted-foreground">Link de Referência</Label>
+              <Input value={form.linkReferencia} onChange={(e) => setForm(p => ({ ...p, linkReferencia: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" placeholder="https://..." />
             </div>
             <div className="col-span-2">
-              <Label className="text-white/70">Sinopse</Label>
-              <Textarea value={form.sinopse} onChange={(e) => setForm(p => ({ ...p, sinopse: e.target.value }))} className="bg-white/5 border-white/10 text-white" rows={3} />
+              <Label className="text-muted-foreground">Sinopse</Label>
+              <Textarea value={form.sinopse} onChange={(e) => setForm(p => ({ ...p, sinopse: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" rows={3} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={resetForm} className="border-white/20 text-white/70 hover:bg-white/10">Cancelar</Button>
+            <Button variant="outline" onClick={resetForm} className="border-border text-muted-foreground hover:bg-muted/60">Cancelar</Button>
             <Button onClick={handleSubmit} disabled={createLivro.isPending || updateLivro.isPending || uploadingCover} className="bg-blue-600 hover:bg-blue-700">
               {(createLivro.isPending || updateLivro.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {editingId ? 'Salvar' : 'Cadastrar'}

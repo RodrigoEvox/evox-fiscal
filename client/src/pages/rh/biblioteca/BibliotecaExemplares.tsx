@@ -114,11 +114,11 @@ export default function BibliotecaExemplares() {
     <>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[250px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <Input placeholder="Buscar por título, código, localização..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input placeholder="Buscar por título, código, localização..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-muted/30 border-border/60 text-foreground placeholder:text-muted-foreground/50" />
           </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[160px] bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Status</SelectItem>
               {Object.entries(STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
@@ -126,39 +126,39 @@ export default function BibliotecaExemplares() {
           </Select>
         </div>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border/60">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-white/10 hover:bg-transparent">
-                  <TableHead className="text-white/60">Livro</TableHead>
-                  <TableHead className="text-white/60">Cód. Patrimônio</TableHead>
-                  <TableHead className="text-white/60">Condição</TableHead>
-                  <TableHead className="text-white/60">Localização</TableHead>
-                  <TableHead className="text-white/60">Origem</TableHead>
-                  <TableHead className="text-white/60">Status</TableHead>
-                  <TableHead className="text-white/60 text-right">Ações</TableHead>
+                <TableRow className="border-border/60 hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">Livro</TableHead>
+                  <TableHead className="text-muted-foreground">Cód. Patrimônio</TableHead>
+                  <TableHead className="text-muted-foreground">Condição</TableHead>
+                  <TableHead className="text-muted-foreground">Localização</TableHead>
+                  <TableHead className="text-muted-foreground">Origem</TableHead>
+                  <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {exemplares.isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-white/30 py-10">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground/50 py-10">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-white/30 py-10">Nenhum exemplar encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground/50 py-10">Nenhum exemplar encontrado</TableCell></TableRow>
                 ) : filtered.map((ex: any) => {
                   const st = STATUS_MAP[ex.status] || { label: ex.status, color: 'bg-gray-500/20 text-gray-400' };
                   return (
-                    <TableRow key={ex.id} className="border-white/5 hover:bg-white/5">
-                      <TableCell className="text-white font-medium">{livroMap.get(ex.livroId) || `#${ex.livroId}`}</TableCell>
-                      <TableCell className="text-white/70 font-mono text-xs">{ex.codigoPatrimonial || '-'}</TableCell>
+                    <TableRow key={ex.id} className="border-border/40 hover:bg-muted/50">
+                      <TableCell className="text-foreground font-medium">{livroMap.get(ex.livroId) || `#${ex.livroId}`}</TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-xs">{ex.codigoPatrimonial || '-'}</TableCell>
 
-                      <TableCell className="text-white/70 capitalize">{ex.condicao}</TableCell>
-                      <TableCell className="text-white/70">{ex.localizacao || '-'}</TableCell>
-                      <TableCell className="text-white/70 capitalize">{ex.origem}</TableCell>
+                      <TableCell className="text-muted-foreground capitalize">{ex.condicao}</TableCell>
+                      <TableCell className="text-muted-foreground">{ex.localizacao || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground capitalize">{ex.origem}</TableCell>
                       <TableCell><Badge className={st.color}>{st.label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-white/40 hover:text-white" onClick={() => handleEdit(ex)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/60 hover:text-foreground" onClick={() => handleEdit(ex)}><Edit2 className="w-3.5 h-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400/60 hover:text-red-400" onClick={() => { if (confirm('Remover?')) deleteExemplar.mutate({ id: ex.id }); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                         </div>
                       </TableCell>
@@ -171,13 +171,13 @@ export default function BibliotecaExemplares() {
         </Card>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border/60 text-foreground max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingId ? 'Editar Exemplar' : 'Novo Exemplar'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-white/70">Livro *</Label>
+              <Label className="text-muted-foreground">Livro *</Label>
               <Select value={form.livroId} onValueChange={(v) => setForm(p => ({ ...p, livroId: v }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue placeholder="Selecione o livro" /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Selecione o livro" /></SelectTrigger>
                 <SelectContent>
                   {livros.data?.map((l: any) => <SelectItem key={l.id} value={l.id.toString()}>{l.titulo}</SelectItem>)}
                 </SelectContent>
@@ -185,24 +185,24 @@ export default function BibliotecaExemplares() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-white/70">Cód. Patrimônio</Label>
-                <Input value={form.codigoPatrimonial} onChange={(e) => setForm(p => ({ ...p, codigoPatrimonial: e.target.value }))} className="bg-white/5 border-white/10 text-white" placeholder="BIB-001" />
+                <Label className="text-muted-foreground">Cód. Patrimônio</Label>
+                <Input value={form.codigoPatrimonial} onChange={(e) => setForm(p => ({ ...p, codigoPatrimonial: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" placeholder="BIB-001" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-white/70">Condição</Label>
+                <Label className="text-muted-foreground">Condição</Label>
                 <Select value={form.condicao} onValueChange={(v) => setForm(p => ({ ...p, condicao: v as any }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CONDICOES.map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label className="text-white/70">Origem</Label>
+                <Label className="text-muted-foreground">Origem</Label>
                 <Select value={form.origem} onValueChange={(v) => setForm(p => ({ ...p, origem: v as any }))}>
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {ORIGENS.map(o => <SelectItem key={o} value={o} className="capitalize">{o}</SelectItem>)}
                   </SelectContent>
@@ -210,16 +210,16 @@ export default function BibliotecaExemplares() {
               </div>
             </div>
             <div>
-              <Label className="text-white/70">Localização</Label>
-              <Input value={form.localizacao} onChange={(e) => setForm(p => ({ ...p, localizacao: e.target.value }))} className="bg-white/5 border-white/10 text-white" placeholder="Estante A, Prateleira 3" />
+              <Label className="text-muted-foreground">Localização</Label>
+              <Input value={form.localizacao} onChange={(e) => setForm(p => ({ ...p, localizacao: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" placeholder="Estante A, Prateleira 3" />
             </div>
             <div>
-              <Label className="text-white/70">Observações</Label>
-              <Textarea value={form.observacoes} onChange={(e) => setForm(p => ({ ...p, observacoes: e.target.value }))} className="bg-white/5 border-white/10 text-white" rows={2} />
+              <Label className="text-muted-foreground">Observações</Label>
+              <Textarea value={form.observacoes} onChange={(e) => setForm(p => ({ ...p, observacoes: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" rows={2} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={resetForm} className="border-white/20 text-white/70 hover:bg-white/10">Cancelar</Button>
+            <Button variant="outline" onClick={resetForm} className="border-border text-muted-foreground hover:bg-muted/60">Cancelar</Button>
             <Button onClick={handleSubmit} disabled={createExemplar.isPending || updateExemplar.isPending} className="bg-emerald-600 hover:bg-emerald-700">
               {(createExemplar.isPending || updateExemplar.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {editingId ? 'Salvar' : 'Cadastrar'}

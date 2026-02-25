@@ -47,11 +47,11 @@ export default function BibliotecaAuditoria() {
     <>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[250px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <Input placeholder="Buscar por usuário, descrição..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input placeholder="Buscar por usuário, descrição..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-muted/30 border-border/60 text-foreground placeholder:text-muted-foreground/50" />
           </div>
           <Select value={filterAcao} onValueChange={setFilterAcao}>
-            <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white"><SelectValue placeholder="Ação" /></SelectTrigger>
+            <SelectTrigger className="w-[160px] bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Ação" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Ações</SelectItem>
               {Object.entries(ACAO_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
@@ -59,32 +59,32 @@ export default function BibliotecaAuditoria() {
           </Select>
         </div>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border/60">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-white/10 hover:bg-transparent">
-                  <TableHead className="text-white/60">Data/Hora</TableHead>
-                  <TableHead className="text-white/60">Usuário</TableHead>
-                  <TableHead className="text-white/60">Ação</TableHead>
-                  <TableHead className="text-white/60">Entidade</TableHead>
-                  <TableHead className="text-white/60">Descrição</TableHead>
+                <TableRow className="border-border/60 hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">Data/Hora</TableHead>
+                  <TableHead className="text-muted-foreground">Usuário</TableHead>
+                  <TableHead className="text-muted-foreground">Ação</TableHead>
+                  <TableHead className="text-muted-foreground">Entidade</TableHead>
+                  <TableHead className="text-muted-foreground">Descrição</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {auditoria.isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-white/30 py-10">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground/50 py-10">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-white/30 py-10">Nenhum registro de auditoria</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground/50 py-10">Nenhum registro de auditoria</TableCell></TableRow>
                 ) : filtered.map((a: any) => {
                   const ac = ACAO_MAP[a.acao] || { label: a.acao, color: 'bg-gray-500/20 text-gray-400' };
                   return (
-                    <TableRow key={a.id} className="border-white/5 hover:bg-white/5">
-                      <TableCell className="text-white/50 text-xs whitespace-nowrap">{formatDate(a.createdAt)}</TableCell>
-                      <TableCell className="text-white font-medium">{a.usuarioNome || '-'}</TableCell>
+                    <TableRow key={a.id} className="border-border/40 hover:bg-muted/50">
+                      <TableCell className="text-muted-foreground/70 text-xs whitespace-nowrap">{formatDate(a.createdAt)}</TableCell>
+                      <TableCell className="text-foreground font-medium">{a.usuarioNome || '-'}</TableCell>
                       <TableCell><Badge className={ac.color}>{ac.label}</Badge></TableCell>
-                      <TableCell className="text-white/60 capitalize">{a.entidade || '-'}</TableCell>
-                      <TableCell className="text-white/70 max-w-[400px] truncate">{a.descricao}</TableCell>
+                      <TableCell className="text-muted-foreground capitalize">{a.entidade || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[400px] truncate">{a.descricao}</TableCell>
                     </TableRow>
                   );
                 })}

@@ -118,11 +118,11 @@ export default function BibliotecaEmprestimos() {
     <>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[250px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <Input placeholder="Buscar por colaborador, livro..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+            <Input placeholder="Buscar por colaborador, livro..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-muted/30 border-border/60 text-foreground placeholder:text-muted-foreground/50" />
           </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[160px] bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               {Object.entries(STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
@@ -130,38 +130,38 @@ export default function BibliotecaEmprestimos() {
           </Select>
         </div>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border/60">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-white/10 hover:bg-transparent">
-                  <TableHead className="text-white/60">Colaborador</TableHead>
-                  <TableHead className="text-white/60">Livro</TableHead>
-                  <TableHead className="text-white/60">Exemplar</TableHead>
-                  <TableHead className="text-white/60">Empréstimo</TableHead>
-                  <TableHead className="text-white/60">Prev. Devolução</TableHead>
-                  <TableHead className="text-white/60">Renovações</TableHead>
-                  <TableHead className="text-white/60">Status</TableHead>
-                  <TableHead className="text-white/60 text-right">Ações</TableHead>
+                <TableRow className="border-border/60 hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">Colaborador</TableHead>
+                  <TableHead className="text-muted-foreground">Livro</TableHead>
+                  <TableHead className="text-muted-foreground">Exemplar</TableHead>
+                  <TableHead className="text-muted-foreground">Empréstimo</TableHead>
+                  <TableHead className="text-muted-foreground">Prev. Devolução</TableHead>
+                  <TableHead className="text-muted-foreground">Renovações</TableHead>
+                  <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {emprestimos.isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-white/30 py-10">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground/50 py-10">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-white/30 py-10">Nenhum empréstimo encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground/50 py-10">Nenhum empréstimo encontrado</TableCell></TableRow>
                 ) : filtered.map((emp: any) => {
                   const ex = exemplarMap.get(emp.exemplarId);
                   const titulo = ex ? livroMap.get(ex.livroId) || `Livro #${ex.livroId}` : '-';
                   const st = STATUS_MAP[emp.displayStatus] || { label: emp.displayStatus, color: 'bg-gray-500/20 text-gray-400' };
                   return (
-                    <TableRow key={emp.id} className="border-white/5 hover:bg-white/5">
-                      <TableCell className="text-white font-medium">{emp.colaboradorNome}</TableCell>
-                      <TableCell className="text-white/70">{titulo}</TableCell>
-                      <TableCell className="text-white/50 font-mono text-xs">{ex?.codigoPatrimonio || `#${emp.exemplarId}`}</TableCell>
-                      <TableCell className="text-white/70">{formatDate(emp.dataEmprestimo)}</TableCell>
-                      <TableCell className="text-white/70">{formatDate(emp.dataPrevistaDevolucao)}</TableCell>
-                      <TableCell className="text-white/70 text-center">{emp.renovacoes || 0}</TableCell>
+                    <TableRow key={emp.id} className="border-border/40 hover:bg-muted/50">
+                      <TableCell className="text-foreground font-medium">{emp.colaboradorNome}</TableCell>
+                      <TableCell className="text-muted-foreground">{titulo}</TableCell>
+                      <TableCell className="text-muted-foreground/70 font-mono text-xs">{ex?.codigoPatrimonio || `#${emp.exemplarId}`}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(emp.dataEmprestimo)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(emp.dataPrevistaDevolucao)}</TableCell>
+                      <TableCell className="text-muted-foreground text-center">{emp.renovacoes || 0}</TableCell>
                       <TableCell><Badge className={st.color}>{st.label}</Badge></TableCell>
                       <TableCell className="text-right">
                         {emp.displayStatus === 'ativo' || emp.displayStatus === 'atrasado' ? (
@@ -182,7 +182,7 @@ export default function BibliotecaEmprestimos() {
                             </Button>
                           </div>
                         ) : (
-                          <span className="text-white/30 text-xs">-</span>
+                          <span className="text-muted-foreground/50 text-xs">-</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -194,13 +194,13 @@ export default function BibliotecaEmprestimos() {
         </Card>
 
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border/60 text-foreground max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Empréstimo</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-white/70">Exemplar Disponível *</Label>
+              <Label className="text-muted-foreground">Exemplar Disponível *</Label>
               <Select value={form.exemplarId} onValueChange={(v) => setForm(p => ({ ...p, exemplarId: v }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {disponiveis.map((ex: any) => (
                     <SelectItem key={ex.id} value={ex.id.toString()}>
@@ -211,31 +211,31 @@ export default function BibliotecaEmprestimos() {
               </Select>
             </div>
             <div>
-              <Label className="text-white/70">Nome do Colaborador *</Label>
-              <Input value={form.colaboradorNome} onChange={(e) => setForm(p => ({ ...p, colaboradorNome: e.target.value }))} className="bg-white/5 border-white/10 text-white" placeholder="Nome completo" />
+              <Label className="text-muted-foreground">Nome do Colaborador *</Label>
+              <Input value={form.colaboradorNome} onChange={(e) => setForm(p => ({ ...p, colaboradorNome: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" placeholder="Nome completo" />
             </div>
             <div>
-              <Label className="text-white/70">Prazo (dias)</Label>
-              <Input type="number" value={form.prazoMaximoDias} onChange={(e) => setForm(p => ({ ...p, prazoMaximoDias: e.target.value }))} className="bg-white/5 border-white/10 text-white" />
+              <Label className="text-muted-foreground">Prazo (dias)</Label>
+              <Input type="number" value={form.prazoMaximoDias} onChange={(e) => setForm(p => ({ ...p, prazoMaximoDias: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" />
             </div>
             <div>
-              <Label className="text-white/70">Observações</Label>
-              <Textarea value={form.observacoes} onChange={(e) => setForm(p => ({ ...p, observacoes: e.target.value }))} className="bg-white/5 border-white/10 text-white" rows={2} />
+              <Label className="text-muted-foreground">Observações</Label>
+              <Textarea value={form.observacoes} onChange={(e) => setForm(p => ({ ...p, observacoes: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" rows={2} />
             </div>
-            <div className="space-y-3 pt-2 border-t border-white/10">
-              <p className="text-sm font-semibold text-white/80">Checklist de Empréstimo</p>
+            <div className="space-y-3 pt-2 border-t border-border/60">
+              <p className="text-sm font-semibold text-foreground">Checklist de Empréstimo</p>
               <div className="flex items-center gap-2">
                 <Checkbox id="chk1" checked={form.checklistCondicao} onCheckedChange={(v) => setForm(p => ({ ...p, checklistCondicao: !!v }))} />
-                <label htmlFor="chk1" className="text-sm text-white/60">Condição do exemplar verificada</label>
+                <label htmlFor="chk1" className="text-sm text-muted-foreground">Condição do exemplar verificada</label>
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox id="chk2" checked={form.checklistTermo} onCheckedChange={(v) => setForm(p => ({ ...p, checklistTermo: !!v }))} />
-                <label htmlFor="chk2" className="text-sm text-white/60">Termo de responsabilidade aceito pelo colaborador</label>
+                <label htmlFor="chk2" className="text-sm text-muted-foreground">Termo de responsabilidade aceito pelo colaborador</label>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={resetForm} className="border-white/20 text-white/70 hover:bg-white/10">Cancelar</Button>
+            <Button variant="outline" onClick={resetForm} className="border-border text-muted-foreground hover:bg-muted/60">Cancelar</Button>
             <Button onClick={handleSubmit} disabled={createEmprestimo.isPending} className="bg-amber-600 hover:bg-amber-700">
               {createEmprestimo.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Registrar Empréstimo

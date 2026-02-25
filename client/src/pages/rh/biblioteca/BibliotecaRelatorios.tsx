@@ -112,12 +112,12 @@ export default function BibliotecaRelatorios() {
             { label: 'Empréstimos Ativos', value: stats.ativos, icon: BookCopy, color: 'text-amber-400' },
             { label: 'Atrasados', value: stats.atrasados, icon: AlertTriangle, color: 'text-red-400' },
           ].map(kpi => (
-            <Card key={kpi.label} className="bg-white/5 border-white/10">
+            <Card key={kpi.label} className="bg-muted/30 border-border/60">
               <CardContent className="p-4 flex items-center gap-3">
                 <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
                 <div>
-                  <p className="text-xl font-bold text-white">{kpi.value}</p>
-                  <p className="text-xs text-white/50">{kpi.label}</p>
+                  <p className="text-xl font-bold text-foreground">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground/70">{kpi.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -125,13 +125,13 @@ export default function BibliotecaRelatorios() {
         </div>
 
         {/* Export Buttons */}
-        <Card className="bg-white/5 border-white/10">
-          <CardHeader><CardTitle className="text-white text-sm">Exportar Relatórios</CardTitle></CardHeader>
+        <Card className="bg-muted/30 border-border/60">
+          <CardHeader><CardTitle className="text-foreground text-sm">Exportar Relatórios</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-3">
-            <Button onClick={exportAcervo} variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+            <Button onClick={exportAcervo} variant="outline" className="border-border text-muted-foreground hover:bg-muted/60">
               <Download className="w-4 h-4 mr-2" /> Acervo Completo (CSV)
             </Button>
-            <Button onClick={exportEmprestimos} variant="outline" className="border-white/20 text-white/70 hover:bg-white/10">
+            <Button onClick={exportEmprestimos} variant="outline" className="border-border text-muted-foreground hover:bg-muted/60">
               <Download className="w-4 h-4 mr-2" /> Empréstimos (CSV)
             </Button>
           </CardContent>
@@ -139,20 +139,20 @@ export default function BibliotecaRelatorios() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Books */}
-          <Card className="bg-white/5 border-white/10">
-            <CardHeader><CardTitle className="text-white text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-400" /> Livros Mais Emprestados</CardTitle></CardHeader>
+          <Card className="bg-muted/30 border-border/60">
+            <CardHeader><CardTitle className="text-foreground text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-400" /> Livros Mais Emprestados</CardTitle></CardHeader>
             <CardContent>
               {stats.topBooks.length === 0 ? (
-                <p className="text-white/30 text-sm text-center py-4">Nenhum empréstimo registrado</p>
+                <p className="text-muted-foreground/50 text-sm text-center py-4">Nenhum empréstimo registrado</p>
               ) : (
                 <div className="space-y-3">
                   {stats.topBooks.map((b, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">{i + 1}</span>
-                        <span className="text-white text-sm truncate max-w-[200px]">{b.titulo}</span>
+                        <span className="text-foreground text-sm truncate max-w-[200px]">{b.titulo}</span>
                       </div>
-                      <Badge variant="outline" className="border-white/20 text-white/60">{b.count}x</Badge>
+                      <Badge variant="outline" className="border-border text-muted-foreground">{b.count}x</Badge>
                     </div>
                   ))}
                 </div>
@@ -161,20 +161,20 @@ export default function BibliotecaRelatorios() {
           </Card>
 
           {/* Top Borrowers */}
-          <Card className="bg-white/5 border-white/10">
-            <CardHeader><CardTitle className="text-white text-sm flex items-center gap-2"><Users className="w-4 h-4 text-emerald-400" /> Colaboradores que Mais Leem</CardTitle></CardHeader>
+          <Card className="bg-muted/30 border-border/60">
+            <CardHeader><CardTitle className="text-foreground text-sm flex items-center gap-2"><Users className="w-4 h-4 text-emerald-400" /> Colaboradores que Mais Leem</CardTitle></CardHeader>
             <CardContent>
               {stats.topBorrowers.length === 0 ? (
-                <p className="text-white/30 text-sm text-center py-4">Nenhum empréstimo registrado</p>
+                <p className="text-muted-foreground/50 text-sm text-center py-4">Nenhum empréstimo registrado</p>
               ) : (
                 <div className="space-y-3">
                   {stats.topBorrowers.map((b, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center">{i + 1}</span>
-                        <span className="text-white text-sm">{b.nome}</span>
+                        <span className="text-foreground text-sm">{b.nome}</span>
                       </div>
-                      <Badge variant="outline" className="border-white/20 text-white/60">{b.count}x</Badge>
+                      <Badge variant="outline" className="border-border text-muted-foreground">{b.count}x</Badge>
                     </div>
                   ))}
                 </div>
@@ -184,16 +184,16 @@ export default function BibliotecaRelatorios() {
         </div>
 
         {/* Categories */}
-        <Card className="bg-white/5 border-white/10">
-          <CardHeader><CardTitle className="text-white text-sm flex items-center gap-2"><BookOpen className="w-4 h-4 text-purple-400" /> Distribuição por Categoria</CardTitle></CardHeader>
+        <Card className="bg-muted/30 border-border/60">
+          <CardHeader><CardTitle className="text-foreground text-sm flex items-center gap-2"><BookOpen className="w-4 h-4 text-purple-400" /> Distribuição por Categoria</CardTitle></CardHeader>
           <CardContent>
             {stats.categories.length === 0 ? (
-              <p className="text-white/30 text-sm text-center py-4">Nenhum livro cadastrado</p>
+              <p className="text-muted-foreground/50 text-sm text-center py-4">Nenhum livro cadastrado</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {stats.categories.map((c) => (
-                  <Badge key={c.name} variant="outline" className="border-white/20 text-white/60 px-3 py-1">
-                    {c.name} <span className="ml-1 text-white/40">({c.count})</span>
+                  <Badge key={c.name} variant="outline" className="border-border text-muted-foreground px-3 py-1">
+                    {c.name} <span className="ml-1 text-muted-foreground/60">({c.count})</span>
                   </Badge>
                 ))}
               </div>

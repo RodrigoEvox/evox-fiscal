@@ -1835,3 +1835,9 @@
 - [x] Upload de capa: procedure uploadCapa com storagePut para S3 (base64 → Buffer → S3)
 - [x] Upload de capa: frontend com preview de imagem, drag-and-drop, ou URL manual no form de cadastro/edição
 - [x] Upload de capa: coluna Capa na tabela do Acervo com thumbnail 36x48px e placeholder BookOpen
+
+## v80 — Biblioteca Evox: Correção de cores (texto branco em fundo branco)
+- [x] Corrigir cores do texto em todas as abas da Biblioteca Evox (texto branco invisível em fundo claro)
+- [x] Substituir text-white/* por text-foreground/text-muted-foreground em todas as 10 páginas da biblioteca
+- [x] Corrigir bg-white/* por bg-muted/*, border-white/* por border-border em todas as 10 páginas
+- [x] Testado todas as abas: Dashboard, Acervo, Exemplares, Empréstimos, Reservas, Devoluções, Fornecedores, Políticas, Auditoria, Relatórios

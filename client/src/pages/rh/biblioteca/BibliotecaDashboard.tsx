@@ -85,15 +85,15 @@ export default function BibliotecaDashboard() {
             { label: 'Atrasados', value: atrasados, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10' },
             { label: 'Ocorrências', value: stats?.totalOcorrencias ?? '-', icon: RotateCcw, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
           ].map((kpi) => (
-            <Card key={kpi.label} className="bg-white/5 border-white/10">
+            <Card key={kpi.label} className="bg-muted/30 border-border/60">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg ${kpi.bg} flex items-center justify-center`}>
                     <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">{isLoading ? <Skeleton className="h-7 w-10" /> : kpi.value}</p>
-                    <p className="text-xs text-white/50">{kpi.label}</p>
+                    <p className="text-2xl font-bold text-foreground">{isLoading ? <Skeleton className="h-7 w-10" /> : kpi.value}</p>
+                    <p className="text-xs text-muted-foreground/70">{kpi.label}</p>
                   </div>
                 </div>
               </CardContent>
@@ -104,9 +104,9 @@ export default function BibliotecaDashboard() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Empréstimos por Mês */}
-          <Card className="bg-white/5 border-white/10">
+          <Card className="bg-muted/30 border-border/60">
             <CardHeader>
-              <CardTitle className="text-white text-sm font-semibold flex items-center gap-2">
+              <CardTitle className="text-foreground text-sm font-semibold flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-400" />
                 Empréstimos por Mês
               </CardTitle>
@@ -125,7 +125,7 @@ export default function BibliotecaDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[250px] flex items-center justify-center text-white/30 text-sm">
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm">
                   Nenhum empréstimo registrado
                 </div>
               )}
@@ -133,9 +133,9 @@ export default function BibliotecaDashboard() {
           </Card>
 
           {/* Status dos Exemplares */}
-          <Card className="bg-white/5 border-white/10">
+          <Card className="bg-muted/30 border-border/60">
             <CardHeader>
-              <CardTitle className="text-white text-sm font-semibold flex items-center gap-2">
+              <CardTitle className="text-foreground text-sm font-semibold flex items-center gap-2">
                 <Package className="w-4 h-4 text-emerald-400" />
                 Status dos Exemplares
               </CardTitle>
@@ -164,7 +164,7 @@ export default function BibliotecaDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[250px] flex items-center justify-center text-white/30 text-sm">
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground/50 text-sm">
                   Nenhum exemplar cadastrado
                 </div>
               )}
@@ -173,9 +173,9 @@ export default function BibliotecaDashboard() {
         </div>
 
         {/* Categories */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border/60">
           <CardHeader>
-            <CardTitle className="text-white text-sm font-semibold flex items-center gap-2">
+            <CardTitle className="text-foreground text-sm font-semibold flex items-center gap-2">
               <Library className="w-4 h-4 text-purple-400" />
               Livros por Categoria
             </CardTitle>
@@ -194,7 +194,7 @@ export default function BibliotecaDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[280px] flex items-center justify-center text-white/30 text-sm">
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground/50 text-sm">
                 Nenhum livro cadastrado ainda
               </div>
             )}

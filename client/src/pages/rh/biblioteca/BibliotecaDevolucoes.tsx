@@ -78,45 +78,45 @@ export default function BibliotecaDevolucoes() {
   return (
     <>
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-white/5 border border-white/10">
-            <TabsTrigger value="devolucoes" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50">
+          <TabsList className="bg-muted/30 border border-border/60">
+            <TabsTrigger value="devolucoes" className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground/70">
               Pendentes ({ativos.length})
             </TabsTrigger>
-            <TabsTrigger value="historico" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50">
+            <TabsTrigger value="historico" className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground/70">
               Histórico ({devolvidos.length})
             </TabsTrigger>
-            <TabsTrigger value="ocorrencias" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50">
+            <TabsTrigger value="ocorrencias" className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground/70">
               Ocorrências ({ocorrencias.data?.length || 0})
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="devolucoes">
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-muted/30 border-border/60">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="text-white/60">Colaborador</TableHead>
-                      <TableHead className="text-white/60">Livro</TableHead>
-                      <TableHead className="text-white/60">Empréstimo</TableHead>
-                      <TableHead className="text-white/60">Prev. Devolução</TableHead>
-                      <TableHead className="text-white/60">Situação</TableHead>
-                      <TableHead className="text-white/60 text-right">Ações</TableHead>
+                    <TableRow className="border-border/60 hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Colaborador</TableHead>
+                      <TableHead className="text-muted-foreground">Livro</TableHead>
+                      <TableHead className="text-muted-foreground">Empréstimo</TableHead>
+                      <TableHead className="text-muted-foreground">Prev. Devolução</TableHead>
+                      <TableHead className="text-muted-foreground">Situação</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ativos.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-white/30 py-10">Nenhum empréstimo ativo</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground/50 py-10">Nenhum empréstimo ativo</TableCell></TableRow>
                     ) : ativos.map((emp: any) => {
                       const ex = exemplarMap.get(emp.exemplarId);
                       const titulo = ex ? livroMap.get(ex.livroId) || '-' : '-';
                       const isAtrasado = new Date(emp.dataPrevistaDevolucao).getTime() < Date.now();
                       return (
-                        <TableRow key={emp.id} className="border-white/5 hover:bg-white/5">
-                          <TableCell className="text-white font-medium">{emp.colaboradorNome}</TableCell>
-                          <TableCell className="text-white/70">{titulo}</TableCell>
-                          <TableCell className="text-white/70">{formatDate(emp.dataEmprestimo)}</TableCell>
-                          <TableCell className={isAtrasado ? 'text-red-400 font-semibold' : 'text-white/70'}>{formatDate(emp.dataPrevistaDevolucao)}</TableCell>
+                        <TableRow key={emp.id} className="border-border/40 hover:bg-muted/50">
+                          <TableCell className="text-foreground font-medium">{emp.colaboradorNome}</TableCell>
+                          <TableCell className="text-muted-foreground">{titulo}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(emp.dataEmprestimo)}</TableCell>
+                          <TableCell className={isAtrasado ? 'text-red-400 font-semibold' : 'text-muted-foreground'}>{formatDate(emp.dataPrevistaDevolucao)}</TableCell>
                           <TableCell>
                             <Badge className={isAtrasado ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}>
                               {isAtrasado ? 'Atrasado' : 'No prazo'}
@@ -139,31 +139,31 @@ export default function BibliotecaDevolucoes() {
           </TabsContent>
 
           <TabsContent value="historico">
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-muted/30 border-border/60">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="text-white/60">Colaborador</TableHead>
-                      <TableHead className="text-white/60">Livro</TableHead>
-                      <TableHead className="text-white/60">Empréstimo</TableHead>
-                      <TableHead className="text-white/60">Devolução</TableHead>
-                      <TableHead className="text-white/60">Condição</TableHead>
+                    <TableRow className="border-border/60 hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Colaborador</TableHead>
+                      <TableHead className="text-muted-foreground">Livro</TableHead>
+                      <TableHead className="text-muted-foreground">Empréstimo</TableHead>
+                      <TableHead className="text-muted-foreground">Devolução</TableHead>
+                      <TableHead className="text-muted-foreground">Condição</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {devolvidos.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-white/30 py-10">Nenhuma devolução registrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground/50 py-10">Nenhuma devolução registrada</TableCell></TableRow>
                     ) : devolvidos.map((emp: any) => {
                       const ex = exemplarMap.get(emp.exemplarId);
                       const titulo = ex ? livroMap.get(ex.livroId) || '-' : '-';
                       return (
-                        <TableRow key={emp.id} className="border-white/5 hover:bg-white/5">
-                          <TableCell className="text-white font-medium">{emp.colaboradorNome}</TableCell>
-                          <TableCell className="text-white/70">{titulo}</TableCell>
-                          <TableCell className="text-white/70">{formatDate(emp.dataEmprestimo)}</TableCell>
-                          <TableCell className="text-white/70">{formatDate(emp.dataDevolucao)}</TableCell>
-                          <TableCell className="text-white/70 capitalize">{emp.condicaoDevolucao || '-'}</TableCell>
+                        <TableRow key={emp.id} className="border-border/40 hover:bg-muted/50">
+                          <TableCell className="text-foreground font-medium">{emp.colaboradorNome}</TableCell>
+                          <TableCell className="text-muted-foreground">{titulo}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(emp.dataEmprestimo)}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(emp.dataDevolucao)}</TableCell>
+                          <TableCell className="text-muted-foreground capitalize">{emp.condicaoDevolucao || '-'}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -174,32 +174,32 @@ export default function BibliotecaDevolucoes() {
           </TabsContent>
 
           <TabsContent value="ocorrencias">
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-muted/30 border-border/60">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="text-white/60">Tipo</TableHead>
-                      <TableHead className="text-white/60">Exemplar</TableHead>
-                      <TableHead className="text-white/60">Descrição</TableHead>
-                      <TableHead className="text-white/60">Data</TableHead>
-                      <TableHead className="text-white/60">Status</TableHead>
+                    <TableRow className="border-border/60 hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Tipo</TableHead>
+                      <TableHead className="text-muted-foreground">Exemplar</TableHead>
+                      <TableHead className="text-muted-foreground">Descrição</TableHead>
+                      <TableHead className="text-muted-foreground">Data</TableHead>
+                      <TableHead className="text-muted-foreground">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {!ocorrencias.data?.length ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-white/30 py-10">Nenhuma ocorrência</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground/50 py-10">Nenhuma ocorrência</TableCell></TableRow>
                     ) : ocorrencias.data.map((oc: any) => {
                       const tp = TIPO_MAP[oc.tipo] || { label: oc.tipo, color: 'bg-gray-500/20 text-gray-400' };
                       const st = STATUS_OC[oc.status] || { label: oc.status, color: 'bg-gray-500/20 text-gray-400' };
                       const ex = exemplarMap.get(oc.exemplarId);
                       const titulo = ex ? livroMap.get(ex.livroId) || '-' : '-';
                       return (
-                        <TableRow key={oc.id} className="border-white/5 hover:bg-white/5">
+                        <TableRow key={oc.id} className="border-border/40 hover:bg-muted/50">
                           <TableCell><Badge className={tp.color}>{tp.label}</Badge></TableCell>
-                          <TableCell className="text-white/70">{titulo} {ex?.codigoPatrimonio ? `(${ex.codigoPatrimonio})` : ''}</TableCell>
-                          <TableCell className="text-white/70 max-w-[300px] truncate">{oc.descricao}</TableCell>
-                          <TableCell className="text-white/70">{formatDate(oc.dataOcorrencia)}</TableCell>
+                          <TableCell className="text-muted-foreground">{titulo} {ex?.codigoPatrimonio ? `(${ex.codigoPatrimonio})` : ''}</TableCell>
+                          <TableCell className="text-muted-foreground max-w-[300px] truncate">{oc.descricao}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(oc.dataOcorrencia)}</TableCell>
                           <TableCell><Badge className={st.color}>{st.label}</Badge></TableCell>
                         </TableRow>
                       );
@@ -212,22 +212,22 @@ export default function BibliotecaDevolucoes() {
         </Tabs>
 
       <Dialog open={showOcorrencia} onOpenChange={setShowOcorrencia}>
-        <DialogContent className="bg-[#0F2137] border-white/10 text-white max-w-md">
+        <DialogContent className="bg-card border-border/60 text-foreground max-w-md">
           <DialogHeader><DialogTitle>Nova Ocorrência</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-white/70">Tipo *</Label>
+              <Label className="text-muted-foreground">Tipo *</Label>
               <Select value={ocForm.tipo} onValueChange={(v) => setOcForm(p => ({ ...p, tipo: v }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(TIPO_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-white/70">Exemplar *</Label>
+              <Label className="text-muted-foreground">Exemplar *</Label>
               <Select value={ocForm.exemplarId} onValueChange={(v) => setOcForm(p => ({ ...p, exemplarId: v }))}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger className="bg-muted/30 border-border/60 text-foreground"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {exemplares.data?.map((ex: any) => (
                     <SelectItem key={ex.id} value={ex.id.toString()}>
@@ -238,16 +238,16 @@ export default function BibliotecaDevolucoes() {
               </Select>
             </div>
             <div>
-              <Label className="text-white/70">Descrição *</Label>
-              <Textarea value={ocForm.descricao} onChange={(e) => setOcForm(p => ({ ...p, descricao: e.target.value }))} className="bg-white/5 border-white/10 text-white" rows={3} />
+              <Label className="text-muted-foreground">Descrição *</Label>
+              <Textarea value={ocForm.descricao} onChange={(e) => setOcForm(p => ({ ...p, descricao: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" rows={3} />
             </div>
             <div>
-              <Label className="text-white/70">Penalidade (se aplicável)</Label>
-              <Input value={ocForm.penalidade} onChange={(e) => setOcForm(p => ({ ...p, penalidade: e.target.value }))} className="bg-white/5 border-white/10 text-white" placeholder="Ex: Suspensão de 30 dias" />
+              <Label className="text-muted-foreground">Penalidade (se aplicável)</Label>
+              <Input value={ocForm.penalidade} onChange={(e) => setOcForm(p => ({ ...p, penalidade: e.target.value }))} className="bg-muted/30 border-border/60 text-foreground" placeholder="Ex: Suspensão de 30 dias" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOcorrencia(false)} className="border-white/20 text-white/70 hover:bg-white/10">Cancelar</Button>
+            <Button variant="outline" onClick={() => setShowOcorrencia(false)} className="border-border text-muted-foreground hover:bg-muted/60">Cancelar</Button>
             <Button onClick={() => {
               if (!ocForm.exemplarId || !ocForm.descricao.trim()) { toast.error('Preencha todos os campos obrigatórios'); return; }
               createOcorrencia.mutate({
