@@ -1,0 +1,85 @@
+{
+  "query": "SELECT id, sigla, CAST(submenus AS CHAR) as submenus_text FROM setor_config ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, sigla, CAST(submenus AS CHAR) as submenus_text FROM setor_config ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "sigla": "SUP",
+      "submenus_text": "[{\"grupo\": \"Backoffice\", \"key\": \"inbox\", \"label\": \"Inbox (Demandas)\", \"rota\": \"/suporte/inbox\"}, {\"grupo\": \"Backoffice\", \"key\": \"conflito-carteira\", \"label\": \"Conflito de Carteira\", \"rota\": \"/suporte/conflito-carteira\"}, {\"grupo\": \"Operacional\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/suporte/nova-tarefa\"}, {\"grupo\": \"Cadastros\", \"key\": \"clientes\", \"label\": \"Clientes\", \"rota\": \"/clientes\"}, {\"grupo\": \"Cadastros\", \"key\": \"parceiros\", \"label\": \"Parceiros\", \"rota\": \"/parceiros\"}, {\"grupo\": \"Cadastros\", \"key\": \"gestao-parcerias\", \"label\": \"Gestão de Parcerias\", \"rota\": \"/setor/suporte/gestao-parcerias\"}]"
+    },
+    {
+      "id": "2",
+      "sigla": "CRE",
+      "submenus_text": "[{\"grupo\": \"Recuperação de Créditos\", \"key\": \"dashboard-credito\", \"label\": \"Dashboard\", \"rota\": \"/credito/dashboard\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"cases\", \"label\": \"Cases\", \"rota\": \"/credito/cases\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"filas-credito\", \"label\": \"Filas de Trabalho\", \"rota\": \"/credito/filas\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"rti\", \"label\": \"RTI (Relatórios)\", \"rota\": \"/credito/rti\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"ledger\", \"label\": \"Ledger de Créditos\", \"rota\": \"/credito/ledger\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"tickets-credito\", \"label\": \"Tickets\", \"rota\": \"/credito/tickets\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"exitos\", \"label\": \"Êxitos\", \"rota\": \"/credito/exitos\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"config-credito\", \"label\": \"Configurações\", \"rota\": \"/credito/configuracoes\"}, {\"grupo\": \"Análise\", \"key\": \"teses\", \"label\": \"Teses Tributárias\", \"rota\": \"/teses\"}, {\"grupo\": \"Operacional\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/credito/nova-tarefa\"}, {\"grupo\": \"Operacional\", \"key\": \"fila\", \"label\": \"Fila de Apuração\", \"rota\": \"/setor/credito/fila\"}, {\"grupo\": \"Operacional\", \"key\": \"visao-analitica\", \"label\": \"Visão Analítica\", \"rota\": \"/setor/credito/visao-analitica\"}, {\"grupo\": \"Operacional\", \"key\": \"media-guias\", \"label\": \"Média de Guias\", \"rota\": \"/setor/credito/media-guias\"}]"
+    },
+    {
+      "id": "3",
+      "sigla": "TRA",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/dpt/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Apuração DPT\", \"rota\": \"/setor/dpt/fila\"}, {\"key\": \"analitica\", \"label\": \"Visão Analítica DPT\", \"rota\": \"/setor/dpt/analitica\"}]"
+    },
+    {
+      "id": "4",
+      "sigla": "JUR",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/jur/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução JUR\", \"rota\": \"/setor/jur/fila\"}]"
+    },
+    {
+      "id": "5",
+      "sigla": "REF",
+      "submenus_text": "[{\"key\": \"simulador\", \"label\": \"Simulador de Impactos\", \"rota\": \"/setor/rt/simulador\"}, {\"key\": \"consultoria\", \"label\": \"Consultoria\", \"rota\": \"/setor/rt/consultoria\"}]"
+    },
+    {
+      "id": "6",
+      "sigla": "CON",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/ct/nova-tarefa\"}]"
+    },
+    {
+      "id": "7",
+      "sigla": "FIN",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/fin/nova-tarefa\"}, {\"key\": \"contas-pagar\", \"label\": \"Contas a Pagar\", \"rota\": \"/setor/fin/contas-pagar\"}, {\"key\": \"contas-receber\", \"label\": \"Contas a Receber\", \"rota\": \"/setor/fin/contas-receber\"}, {\"key\": \"contas-bancarias\", \"label\": \"Contas Bancárias\", \"rota\": \"/setor/fin/contas-bancarias\"}]"
+    },
+    {
+      "id": "8",
+      "sigla": "MKT",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/mkt/nova-tarefa\"}, {\"key\": \"redes-sociais\", \"label\": \"Redes Sociais\", \"rota\": \"/setor/mkt/redes-sociais\"}, {\"key\": \"imersoes\", \"label\": \"Imersões\", \"rota\": \"/setor/mkt/imersoes\"}, {\"key\": \"podcast\", \"label\": \"Evox Podcast\", \"rota\": \"/setor/mkt/podcast\"}, {\"key\": \"brindes\", \"label\": \"Brindes\", \"rota\": \"/setor/mkt/brindes\"}]"
+    },
+    {
+      "id": "9",
+      "sigla": "GEG",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/rh/nova-tarefa\"}, {\"key\": \"gestao-rh-hub\", \"label\": \"Gestão RH\", \"rota\": \"/rh/gestao-rh\"}, {\"key\": \"acoes-evox-hub\", \"label\": \"Ações Evox\", \"rota\": \"/rh/acoes-evox\"}, {\"key\": \"beneficios-hub\", \"label\": \"Benefícios\", \"rota\": \"/rh/beneficios\"}, {\"key\": \"carreira-hub\", \"label\": \"Carreira e Desenvolvimento\", \"rota\": \"/rh/carreira\"}, {\"key\": \"admin-hub\", \"label\": \"Administração\", \"rota\": \"/rh/administracao\"}]"
+    },
+    {
+      "id": "30001",
+      "sigla": "COM",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/com/nova-tarefa\"}, {\"key\": \"fila-execucao\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/com/fila-execucao\"}, {\"key\": \"executivos-comerciais\", \"label\": \"Executivos Comerciais\", \"rota\": \"/executivos-comerciais\"}]"
+    },
+    {
+      "id": "30002",
+      "sigla": "CTN",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/contencioso/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/contencioso/fila\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/contencioso/relatorio\"}]"
+    },
+    {
+      "id": "30003",
+      "sigla": "MON",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/evox-monitor/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/evox-monitor/fila\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/evox-monitor/relatorio\"}]"
+    },
+    {
+      "id": "30004",
+      "sigla": "SOF",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/solucoes-financeiras/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/solucoes-financeiras/fila\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/solucoes-financeiras/relatorio\"}]"
+    },
+    {
+      "id": "30005",
+      "sigla": "UNI",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/universidade-evox/nova-tarefa\"}, {\"key\": \"treinamentos\", \"label\": \"Treinamentos\", \"rota\": \"/setor/universidade-evox/treinamentos\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/universidade-evox/relatorio\"}]"
+    },
+    {
+      "id": "60001",
+      "sigla": "IAT",
+      "submenus_text": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/iat/nova-tarefa\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsigla\tsubmenus_text\n1\tSUP\t[{\"grupo\": \"Backoffice\", \"key\": \"inbox\", \"label\": \"Inbox (Demandas)\", \"rota\": \"/suporte/inbox\"}, {\"grupo\": \"Backoffice\", \"key\": \"conflito-carteira\", \"label\": \"Conflito de Carteira\", \"rota\": \"/suporte/conflito-carteira\"}, {\"grupo\": \"Operacional\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/suporte/nova-tarefa\"}, {\"grupo\": \"Cadastros\", \"key\": \"clientes\", \"label\": \"Clientes\", \"rota\": \"/clientes\"}, {\"grupo\": \"Cadastros\", \"key\": \"parceiros\", \"label\": \"Parceiros\", \"rota\": \"/parceiros\"}, {\"grupo\": \"Cadastros\", \"key\": \"gestao-parcerias\", \"label\": \"Gestão de Parcerias\", \"rota\": \"/setor/suporte/gestao-parcerias\"}]\n2\tCRE\t[{\"grupo\": \"Recuperação de Créditos\", \"key\": \"dashboard-credito\", \"label\": \"Dashboard\", \"rota\": \"/credito/dashboard\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"cases\", \"label\": \"Cases\", \"rota\": \"/credito/cases\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"filas-credito\", \"label\": \"Filas de Trabalho\", \"rota\": \"/credito/filas\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"rti\", \"label\": \"RTI (Relatórios)\", \"rota\": \"/credito/rti\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"ledger\", \"label\": \"Ledger de Créditos\", \"rota\": \"/credito/ledger\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"tickets-credito\", \"label\": \"Tickets\", \"rota\": \"/credito/tickets\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"exitos\", \"label\": \"Êxitos\", \"rota\": \"/credito/exitos\"}, {\"grupo\": \"Recuperação de Créditos\", \"key\": \"config-credito\", \"label\": \"Configurações\", \"rota\": \"/credito/configuracoes\"}, {\"grupo\": \"Análise\", \"key\": \"teses\", \"label\": \"Teses Tributárias\", \"rota\": \"/teses\"}, {\"grupo\": \"Operacional\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/credito/nova-tarefa\"}, {\"grupo\": \"Operacional\", \"key\": \"fila\", \"label\": \"Fila de Apuração\", \"rota\": \"/setor/credito/fila\"}, {\"grupo\": \"Operacional\", \"key\": \"visao-analitica\", \"label\": \"Visão Analítica\", \"rota\": \"/setor/credito/visao-analitica\"}, {\"grupo\": \"Operacional\", \"key\": \"media-guias\", \"label\": \"Média de Guias\", \"rota\": \"/setor/credito/media-guias\"}]\n3\tTRA\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/dpt/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Apuração DPT\", \"rota\": \"/setor/dpt/fila\"}, {\"key\": \"analitica\", \"label\": \"Visão Analítica DPT\", \"rota\": \"/setor/dpt/analitica\"}]\n4\tJUR\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/jur/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução JUR\", \"rota\": \"/setor/jur/fila\"}]\n5\tREF\t[{\"key\": \"simulador\", \"label\": \"Simulador de Impactos\", \"rota\": \"/setor/rt/simulador\"}, {\"key\": \"consultoria\", \"label\": \"Consultoria\", \"rota\": \"/setor/rt/consultoria\"}]\n6\tCON\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/ct/nova-tarefa\"}]\n7\tFIN\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/fin/nova-tarefa\"}, {\"key\": \"contas-pagar\", \"label\": \"Contas a Pagar\", \"rota\": \"/setor/fin/contas-pagar\"}, {\"key\": \"contas-receber\", \"label\": \"Contas a Receber\", \"rota\": \"/setor/fin/contas-receber\"}, {\"key\": \"contas-bancarias\", \"label\": \"Contas Bancárias\", \"rota\": \"/setor/fin/contas-bancarias\"}]\n8\tMKT\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/mkt/nova-tarefa\"}, {\"key\": \"redes-sociais\", \"label\": \"Redes Sociais\", \"rota\": \"/setor/mkt/redes-sociais\"}, {\"key\": \"imersoes\", \"label\": \"Imersões\", \"rota\": \"/setor/mkt/imersoes\"}, {\"key\": \"podcast\", \"label\": \"Evox Podcast\", \"rota\": \"/setor/mkt/podcast\"}, {\"key\": \"brindes\", \"label\": \"Brindes\", \"rota\": \"/setor/mkt/brindes\"}]\n9\tGEG\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/rh/nova-tarefa\"}, {\"key\": \"gestao-rh-hub\", \"label\": \"Gestão RH\", \"rota\": \"/rh/gestao-rh\"}, {\"key\": \"acoes-evox-hub\", \"label\": \"Ações Evox\", \"rota\": \"/rh/acoes-evox\"}, {\"key\": \"beneficios-hub\", \"label\": \"Benefícios\", \"rota\": \"/rh/beneficios\"}, {\"key\": \"carreira-hub\", \"label\": \"Carreira e Desenvolvimento\", \"rota\": \"/rh/carreira\"}, {\"key\": \"admin-hub\", \"label\": \"Administração\", \"rota\": \"/rh/administracao\"}]\n30001\tCOM\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/com/nova-tarefa\"}, {\"key\": \"fila-execucao\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/com/fila-execucao\"}, {\"key\": \"executivos-comerciais\", \"label\": \"Executivos Comerciais\", \"rota\": \"/executivos-comerciais\"}]\n30002\tCTN\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/contencioso/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/contencioso/fila\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/contencioso/relatorio\"}]\n30003\tMON\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/evox-monitor/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/evox-monitor/fila\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/evox-monitor/relatorio\"}]\n30004\tSOF\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/solucoes-financeiras/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Execução\", \"rota\": \"/setor/solucoes-financeiras/fila\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/solucoes-financeiras/relatorio\"}]\n30005\tUNI\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/universidade-evox/nova-tarefa\"}, {\"key\": \"treinamentos\", \"label\": \"Treinamentos\", \"rota\": \"/setor/universidade-evox/treinamentos\"}, {\"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/universidade-evox/relatorio\"}]\n60001\tIAT\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/iat/nova-tarefa\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 114
+}

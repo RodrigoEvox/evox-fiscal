@@ -91,6 +91,8 @@ const CreditoLedger = lazy(() => import("./pages/credito/CreditoLedger"));
 const CreditoTickets = lazy(() => import("./pages/credito/CreditoTickets"));
 const CreditoExitos = lazy(() => import("./pages/credito/CreditoExitos"));
 const CreditoConfiguracoes = lazy(() => import("./pages/credito/CreditoConfiguracoes"));
+const CreditoClientes = lazy(() => import("./pages/credito/CreditoClientes"));
+const CreditoGestaoCreditos = lazy(() => import("./pages/credito/CreditoGestaoCreditos"));
 
 // Suporte Comercial
 const InboxDemandas = lazy(() => import("./pages/suporte/InboxDemandas"));
@@ -190,6 +192,8 @@ function Router() {
         <Route path="/credito/tickets" component={CreditoTickets} />
         <Route path="/credito/exitos" component={CreditoExitos} />
         <Route path="/credito/configuracoes" component={CreditoConfiguracoes} />
+        <Route path="/credito/clientes-credito" component={CreditoClientes} />
+        <Route path="/credito/gestao-creditos" component={CreditoGestaoCreditos} />
         {/* Suporte Comercial */}
         <Route path="/suporte/inbox" component={InboxDemandas} />
         <Route path="/suporte/conflito-carteira" component={ConflitoCarteira} />

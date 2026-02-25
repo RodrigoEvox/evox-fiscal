@@ -109,6 +109,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'biblioteca-hub': BookOpen,
   'cct': Shield,
   'dashboard-credito': LayoutDashboard,
+  'clientes-credito': Users,
   'cases': Briefcase,
   'filas-credito': ListOrdered,
   'rti': FileBarChart,
@@ -116,6 +117,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'tickets-credito': ClipboardList,
   'exitos': ShieldCheck,
   'config-credito': Settings,
+  'gestao-creditos': DollarSign,
   'inbox': Mail,
   'conflito-carteira': ArrowLeftRight,
 };

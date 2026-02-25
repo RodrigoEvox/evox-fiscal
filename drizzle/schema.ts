@@ -1867,13 +1867,13 @@ export const rtiReports = mysqlTable("rti_reports", {
 export const creditTasks = mysqlTable("credit_tasks", {
 	id: int().autoincrement().notNull(),
 	codigo: varchar({ length: 20 }).notNull(), // CT-0001
-	fila: mysqlEnum(['apuracao','retificacao','compensacao','onboarding','chamados']).notNull(),
+	fila: mysqlEnum(['apuracao','retificacao','compensacao','ressarcimento','restituicao','revisao','onboarding','chamados']).notNull(),
 	caseId: int(),
 	clienteId: int(),
 	demandRequestId: int(),
 	titulo: varchar({ length: 500 }).notNull(),
 	descricao: text(),
-	status: mysqlEnum(['a_fazer','fazendo','feito']).default('a_fazer').notNull(),
+	status: mysqlEnum(['a_fazer','fazendo','feito','concluido']).default('a_fazer').notNull(),
 	prioridade: mysqlEnum(['urgente','alta','media','baixa']).default('media').notNull(),
 	ordem: int().default(0).notNull(),
 	responsavelId: int(),
@@ -2073,4 +2073,148 @@ export const creditTicketMessages = mysqlTable("credit_ticket_messages", {
 },
 (table) => [
 	index("idx_ctm_ticket").on(table.ticketId),
+]);
+
+
+// ===== V84 — REESTRUTURAÇÃO CRÉDITO =====
+
+// Checklist Templates — templates de checklist por fila/tese (admin configurável)
+export const creditChecklistTemplates = mysqlTable("credit_checklist_templates", {
+	id: int().autoincrement().notNull(),
+	fila: varchar({ length: 50 }).notNull(), // apuracao, retificacao, compensacao, etc.
+	teseId: int(), // null = genérico para a fila
+	teseNome: varchar({ length: 500 }),
+	nome: varchar({ length: 255 }).notNull(),
+	itens: json().notNull(), // [{ordem, titulo, descricao, obrigatorio}]
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// Checklist Instances — instância de checklist vinculada a uma tarefa
+export const creditChecklistInstances = mysqlTable("credit_checklist_instances", {
+	id: int().autoincrement().notNull(),
+	taskId: int().notNull(),
+	templateId: int(),
+	fila: varchar({ length: 50 }).notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	itens: json().notNull(), // [{ordem, titulo, descricao, obrigatorio, concluido, concluidoPorNome, concluidoEm, observacao}]
+	progresso: int().default(0).notNull(), // % concluído
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cci_task").on(table.taskId),
+]);
+
+// Document Folders — pastas de documentos por tarefa/cliente/fila
+export const creditDocFolders = mysqlTable("credit_doc_folders", {
+	id: int().autoincrement().notNull(),
+	taskId: int(),
+	caseId: int(),
+	clienteId: int().notNull(),
+	fila: varchar({ length: 50 }),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_cdf_task").on(table.taskId),
+	index("idx_cdf_cliente").on(table.clienteId),
+	index("idx_cdf_case").on(table.caseId),
+]);
+
+// Document Files — arquivos dentro de pastas
+export const creditDocFiles = mysqlTable("credit_doc_files", {
+	id: int().autoincrement().notNull(),
+	folderId: int().notNull(),
+	nome: varchar({ length: 500 }).notNull(),
+	fileUrl: varchar({ length: 1000 }).notNull(),
+	fileKey: varchar({ length: 500 }),
+	mimeType: varchar({ length: 100 }),
+	tamanhoBytes: int(),
+	uploadPorId: int(),
+	uploadPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_cdfi_folder").on(table.folderId),
+]);
+
+// PerdComps — registro de PerdComps para busca futura
+export const creditPerdcomps = mysqlTable("credit_perdcomps", {
+	id: int().autoincrement().notNull(),
+	taskId: int(),
+	caseId: int(),
+	clienteId: int().notNull(),
+	ledgerEntryId: int(),
+	numeroPerdcomp: varchar({ length: 50 }).notNull(),
+	tipoCredito: varchar({ length: 100 }), // PIS, COFINS, INSS, etc.
+	periodoApuracao: varchar({ length: 20 }), // MM/YYYY
+	valorCredito: decimal({ precision: 15, scale: 2 }),
+	valorDebitosCompensados: decimal({ precision: 15, scale: 2 }),
+	saldoRemanescente: decimal({ precision: 15, scale: 2 }),
+	dataTransmissao: timestamp({ mode: 'string' }),
+	dataVencimentoGuia: timestamp({ mode: 'string' }),
+	guiaNumero: varchar({ length: 100 }),
+	guiaUrl: varchar({ length: 1000 }),
+	comprovanteUrl: varchar({ length: 1000 }),
+	reciboUrl: varchar({ length: 1000 }),
+	status: mysqlEnum(['transmitido','homologado','nao_homologado','em_analise','cancelado']).default('transmitido').notNull(),
+	despachoDecisorio: text(),
+	feitoPelaEvox: tinyint().default(1).notNull(),
+	observacoes: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cp_cliente").on(table.clienteId),
+	index("idx_cp_case").on(table.caseId),
+	index("idx_cp_numero").on(table.numeroPerdcomp),
+	index("idx_cp_task").on(table.taskId),
+]);
+
+// Task Teses — teses selecionadas para uma tarefa (com justificativa se não aderente)
+export const creditTaskTeses = mysqlTable("credit_task_teses", {
+	id: int().autoincrement().notNull(),
+	taskId: int().notNull(),
+	teseId: int().notNull(),
+	teseNome: varchar({ length: 500 }),
+	aderente: tinyint().default(1).notNull(), // 1 = aderente, 0 = não aderente (com justificativa)
+	justificativaNaoAderente: text(), // obrigatória se aderente = 0
+	valorEstimado: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorApurado: decimal({ precision: 15, scale: 2 }),
+	valorValidado: decimal({ precision: 15, scale: 2 }),
+	status: mysqlEnum(['selecionada','em_apuracao','apurada','validada','descartada']).default('selecionada').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_ctt_task").on(table.taskId),
+	index("idx_ctt_tese").on(table.teseId),
+]);
+
+// Credit Case Strategy — estratégia de monetização definida no onboarding
+export const creditCaseStrategy = mysqlTable("credit_case_strategy", {
+	id: int().autoincrement().notNull(),
+	caseId: int().notNull(),
+	clienteId: int().notNull(),
+	estrategia: mysqlEnum(['compensacao','ressarcimento','restituicao','mista']).notNull(),
+	compensacaoPct: int().default(0), // % do saldo para compensação
+	ressarcimentoPct: int().default(0),
+	restituicaoPct: int().default(0),
+	observacoes: text(),
+	definidoPorId: int(),
+	definidoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ccs_case").on(table.caseId),
+	index("idx_ccs_cliente").on(table.clienteId),
 ]);

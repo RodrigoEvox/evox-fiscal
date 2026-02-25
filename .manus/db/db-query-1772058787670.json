@@ -1,0 +1,26 @@
+{
+  "query": "SHOW COLUMNS FROM demand_requests WHERE Field LIKE '%client%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM demand_requests WHERE Field LIKE '%client%'",
+  "rows": [
+    {
+      "Field": "clienteId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "clienteCnpj",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nclienteId\tint\tYES\tMUL\tNULL\t\nclienteCnpj\tvarchar(20)\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}

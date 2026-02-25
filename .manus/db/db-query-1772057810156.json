@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, sigla FROM setor_config ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, sigla FROM setor_config ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "sigla": "SUP"
+    },
+    {
+      "id": "2",
+      "sigla": "CRE"
+    },
+    {
+      "id": "3",
+      "sigla": "TRA"
+    },
+    {
+      "id": "4",
+      "sigla": "JUR"
+    },
+    {
+      "id": "5",
+      "sigla": "REF"
+    },
+    {
+      "id": "6",
+      "sigla": "CON"
+    },
+    {
+      "id": "7",
+      "sigla": "FIN"
+    },
+    {
+      "id": "8",
+      "sigla": "MKT"
+    },
+    {
+      "id": "9",
+      "sigla": "GEG"
+    },
+    {
+      "id": "30001",
+      "sigla": "COM"
+    },
+    {
+      "id": "30002",
+      "sigla": "CTN"
+    },
+    {
+      "id": "30003",
+      "sigla": "MON"
+    },
+    {
+      "id": "30004",
+      "sigla": "SOF"
+    },
+    {
+      "id": "30005",
+      "sigla": "UNI"
+    },
+    {
+      "id": "60001",
+      "sigla": "IAT"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsigla\n1\tSUP\n2\tCRE\n3\tTRA\n4\tJUR\n5\tREF\n6\tCON\n7\tFIN\n8\tMKT\n9\tGEG\n30001\tCOM\n30002\tCTN\n30003\tMON\n30004\tSOF\n30005\tUNI\n60001\tIAT\n",
+  "stderr": "",
+  "execution_time_ms": 77
+}

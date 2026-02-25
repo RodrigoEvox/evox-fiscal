@@ -502,3 +502,316 @@ export async function getCreditDashboardStats() {
     exitos: exitoStats,
   };
 }
+
+
+// ===== V84 — CLIENTES 360° & REESTRUTURAÇÃO =====
+
+// --- Clientes 360° ---
+export async function getCliente360(clienteId: number) {
+  const db = getDb();
+  const [rows] = await (await db)!.execute(sql.raw(`
+    SELECT c.*,
+      p.nomeFantasia as parceiroNome, p.cnpj as parceiroCnpj
+    FROM clientes c
+    LEFT JOIN parceiros p ON c.parceiroId = p.id
+    WHERE c.id = ${clienteId}
+  `));
+  const cliente = (rows as unknown as any[])[0];
+  if (!cliente) return null;
+
+  const db_ = (await db)!;
+  const [cases] = await db_.execute(sql.raw(`SELECT id, numero, fase, status, responsavelNome, valorEstimado, valorContratado, createdAt, updatedAt FROM credit_cases WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [tasks] = await db_.execute(sql.raw(`SELECT id, codigo, fila, titulo, status, prioridade, responsavelNome, dataVencimento, dataConclusao, slaStatus, createdAt FROM credit_tasks WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [rtis] = await db_.execute(sql.raw(`SELECT id, numero, versao, valorTotalEstimado, status, emitidoPorNome, emitidoEm, devolutivaStatus, slaDevolutivaVenceEm, createdAt FROM rti_reports WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [tickets] = await db_.execute(sql.raw(`SELECT id, numero, tipo, titulo, status, prioridade, responsavelNome, dataVencimento, createdAt FROM credit_tickets WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [ledger] = await db_.execute(sql.raw(`SELECT cl.*, ccg.sigla as grupoSigla FROM credit_ledger cl LEFT JOIN credit_compensation_groups ccg ON cl.compensationGroupId = ccg.id WHERE cl.clienteId = ${clienteId} ORDER BY cl.createdAt DESC`));
+  const [perdcomps] = await db_.execute(sql.raw(`SELECT * FROM credit_perdcomps WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [exitos] = await db_.execute(sql.raw(`SELECT * FROM success_events WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [strategies] = await db_.execute(sql.raw(`SELECT * FROM credit_case_strategy WHERE clienteId = ${clienteId} ORDER BY createdAt DESC LIMIT 1`));
+  const [demands] = await db_.execute(sql.raw(`SELECT id, numero, tipoDemanda as tipo, urgencia, status, createdAt FROM demand_requests WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [auditLog] = await db_.execute(sql.raw(`
+    SELECT * FROM credit_audit_log
+    WHERE (entidade = 'case' AND entidadeId IN (SELECT id FROM credit_cases WHERE clienteId = ${clienteId}))
+       OR (entidade = 'task' AND entidadeId IN (SELECT id FROM credit_tasks WHERE clienteId = ${clienteId}))
+       OR (entidade = 'rti' AND entidadeId IN (SELECT id FROM rti_reports WHERE clienteId = ${clienteId}))
+       OR (entidade = 'ticket' AND entidadeId IN (SELECT id FROM credit_tickets WHERE clienteId = ${clienteId}))
+       OR (entidade = 'ledger' AND entidadeId IN (SELECT id FROM credit_ledger WHERE clienteId = ${clienteId}))
+       OR (entidade = 'exito' AND entidadeId IN (SELECT id FROM success_events WHERE clienteId = ${clienteId}))
+    ORDER BY createdAt DESC LIMIT 50
+  `));
+
+  const ledgerArr = ledger as unknown as any[];
+  const tasksArr = tasks as unknown as any[];
+  const totalEstimado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorEstimado || 0), 0);
+  const totalValidado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorValidado || 0), 0);
+  const totalEfetivado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorEfetivado || 0), 0);
+  const saldoDisponivel = ledgerArr.reduce((s: number, l: any) => s + Number(l.saldoResidual || 0), 0);
+  const tasksEmAtraso = tasksArr.filter((t: any) => t.slaStatus === 'vencido').length;
+  const tasksAtivas = tasksArr.filter((t: any) => ['a_fazer', 'fazendo'].includes(t.status)).length;
+
+  return {
+    cliente,
+    cases: cases as unknown as any[],
+    tasks: tasksArr,
+    rtis: rtis as unknown as any[],
+    tickets: tickets as unknown as any[],
+    ledger: ledgerArr,
+    perdcomps: perdcomps as unknown as any[],
+    exitos: exitos as unknown as any[],
+    strategy: (strategies as unknown as any[])[0] || null,
+    auditLog: auditLog as unknown as any[],
+    demands: demands as unknown as any[],
+    totals: { totalEstimado, totalValidado, totalEfetivado, saldoDisponivel, tasksEmAtraso, tasksAtivas },
+  };
+}
+
+// List clients with credit activity summary
+export async function listCreditClientes(filters?: { search?: string; parceiroId?: number }) {
+  const db_ = (await getDb())!;
+  let whereClauses: string[] = [];
+  if (filters?.search) {
+    const s = filters.search.replace(/'/g, "''");
+    whereClauses.push(`(c.razaoSocial LIKE '%${s}%' OR c.cnpj LIKE '%${s}%' OR c.nomeFantasia LIKE '%${s}%')`);
+  }
+  if (filters?.parceiroId) {
+    whereClauses.push(`c.parceiroId = ${Number(filters.parceiroId)}`);
+  }
+  const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  const query = `
+    SELECT c.id, c.cnpj, c.razaoSocial, c.nomeFantasia, c.regimeTributario, c.situacaoCadastral,
+      c.segmentoEconomico, c.parceiroId,
+      MAX(p.nomeFantasia) as parceiroNome,
+      COUNT(DISTINCT cc.id) as totalCases,
+      COUNT(DISTINCT ct.id) as totalTasks,
+      SUM(CASE WHEN ct.status IN ('a_fazer','fazendo') THEN 1 ELSE 0 END) as tasksAtivas,
+      SUM(CASE WHEN ct.slaStatus = 'vencido' THEN 1 ELSE 0 END) as tasksEmAtraso
+    FROM clientes c
+    LEFT JOIN parceiros p ON c.parceiroId = p.id
+    LEFT JOIN credit_cases cc ON cc.clienteId = c.id
+    LEFT JOIN credit_tasks ct ON ct.clienteId = c.id
+    ${whereStr}
+    GROUP BY c.id, c.cnpj, c.razaoSocial, c.nomeFantasia, c.regimeTributario, c.situacaoCadastral,
+      c.segmentoEconomico, c.parceiroId
+    ORDER BY tasksEmAtraso DESC, tasksAtivas DESC, c.razaoSocial ASC
+  `;
+  const [rows] = await db_.execute(sql.raw(query));
+  return rows as unknown as any[];
+}
+
+// --- Checklist Templates ---
+export async function listChecklistTemplates(fila?: string) {
+  const db_ = (await getDb())!;
+  const conditions = [];
+  if (fila) {
+    const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_checklist_templates WHERE ativo = 1 AND fila = '${fila}' ORDER BY fila, nome`));
+    return rows as unknown as any[];
+  }
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_checklist_templates WHERE ativo = 1 ORDER BY fila, nome`));
+  return rows as unknown as any[];
+}
+
+export async function createChecklistTemplate(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_checklist_templates (fila, teseId, teseNome, nome, itens, criadoPorId, criadoPorNome) VALUES ('${data.fila}', ${data.teseId || 'NULL'}, ${data.teseNome ? `'${data.teseNome}'` : 'NULL'}, '${data.nome}', '${JSON.stringify(data.itens)}', ${data.criadoPorId || 'NULL'}, ${data.criadoPorNome ? `'${data.criadoPorNome}'` : 'NULL'})`));
+  return (result as any).insertId;
+}
+
+export async function updateChecklistTemplate(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  if (data.nome !== undefined) sets.push(`nome = '${data.nome}'`);
+  if (data.itens !== undefined) sets.push(`itens = '${JSON.stringify(data.itens)}'`);
+  if (data.ativo !== undefined) sets.push(`ativo = ${data.ativo}`);
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE credit_checklist_templates SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+// --- Checklist Instances ---
+export async function getChecklistInstance(taskId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_checklist_instances WHERE taskId = ${taskId}`));
+  return (rows as unknown as any[])[0] || null;
+}
+
+export async function createChecklistInstance(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_checklist_instances (taskId, templateId, fila, nome, itens, progresso) VALUES (${data.taskId}, ${data.templateId || 'NULL'}, '${data.fila}', '${data.nome}', '${JSON.stringify(data.itens)}', 0)`));
+  return (result as any).insertId;
+}
+
+export async function updateChecklistInstance(id: number, itens: any[], progresso: number) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(`UPDATE credit_checklist_instances SET itens = '${JSON.stringify(itens)}', progresso = ${progresso} WHERE id = ${id}`));
+}
+
+// --- Document Folders ---
+export async function listDocFolders(filters: { taskId?: number; clienteId?: number; caseId?: number }) {
+  const db_ = (await getDb())!;
+  let where = '1=1';
+  if (filters.taskId) where += ` AND taskId = ${filters.taskId}`;
+  if (filters.clienteId) where += ` AND clienteId = ${filters.clienteId}`;
+  if (filters.caseId) where += ` AND caseId = ${filters.caseId}`;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_doc_folders WHERE ${where} ORDER BY createdAt DESC`));
+  return rows as unknown as any[];
+}
+
+export async function createDocFolder(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_doc_folders (taskId, caseId, clienteId, fila, nome, descricao, criadoPorId, criadoPorNome) VALUES (${data.taskId || 'NULL'}, ${data.caseId || 'NULL'}, ${data.clienteId}, ${data.fila ? `'${data.fila}'` : 'NULL'}, '${data.nome}', ${data.descricao ? `'${data.descricao}'` : 'NULL'}, ${data.criadoPorId || 'NULL'}, ${data.criadoPorNome ? `'${data.criadoPorNome}'` : 'NULL'})`));
+  return (result as any).insertId;
+}
+
+export async function listDocFiles(folderId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_doc_files WHERE folderId = ${folderId} ORDER BY createdAt DESC`));
+  return rows as unknown as any[];
+}
+
+export async function createDocFile(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_doc_files (folderId, nome, fileUrl, fileKey, mimeType, tamanhoBytes, uploadPorId, uploadPorNome) VALUES (${data.folderId}, '${data.nome}', '${data.fileUrl}', ${data.fileKey ? `'${data.fileKey}'` : 'NULL'}, ${data.mimeType ? `'${data.mimeType}'` : 'NULL'}, ${data.tamanhoBytes || 'NULL'}, ${data.uploadPorId || 'NULL'}, ${data.uploadPorNome ? `'${data.uploadPorNome}'` : 'NULL'})`));
+  return (result as any).insertId;
+}
+
+export async function deleteDocFile(id: number) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(`DELETE FROM credit_doc_files WHERE id = ${id}`));
+}
+
+// --- PerdComps ---
+export async function listPerdcomps(filters?: { clienteId?: number; caseId?: number; taskId?: number; search?: string }) {
+  const db_ = (await getDb())!;
+  let where = '1=1';
+  if (filters?.clienteId) where += ` AND clienteId = ${filters.clienteId}`;
+  if (filters?.caseId) where += ` AND caseId = ${filters.caseId}`;
+  if (filters?.taskId) where += ` AND taskId = ${filters.taskId}`;
+  if (filters?.search) where += ` AND (numeroPerdcomp LIKE '%${filters.search}%' OR tipoCredito LIKE '%${filters.search}%')`;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_perdcomps WHERE ${where} ORDER BY createdAt DESC`));
+  return rows as unknown as any[];
+}
+
+export async function createPerdcomp(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_perdcomps (taskId, caseId, clienteId, ledgerEntryId, numeroPerdcomp, tipoCredito, periodoApuracao, valorCredito, valorDebitosCompensados, saldoRemanescente, dataTransmissao, dataVencimentoGuia, guiaNumero, status, feitoPelaEvox, observacoes, registradoPorId, registradoPorNome) VALUES (${data.taskId || 'NULL'}, ${data.caseId || 'NULL'}, ${data.clienteId}, ${data.ledgerEntryId || 'NULL'}, '${data.numeroPerdcomp}', ${data.tipoCredito ? `'${data.tipoCredito}'` : 'NULL'}, ${data.periodoApuracao ? `'${data.periodoApuracao}'` : 'NULL'}, ${data.valorCredito || 'NULL'}, ${data.valorDebitosCompensados || 'NULL'}, ${data.saldoRemanescente || 'NULL'}, ${data.dataTransmissao ? `'${data.dataTransmissao}'` : 'NULL'}, ${data.dataVencimentoGuia ? `'${data.dataVencimentoGuia}'` : 'NULL'}, ${data.guiaNumero ? `'${data.guiaNumero}'` : 'NULL'}, '${data.status || 'transmitido'}', ${data.feitoPelaEvox ?? 1}, ${data.observacoes ? `'${data.observacoes}'` : 'NULL'}, ${data.registradoPorId || 'NULL'}, ${data.registradoPorNome ? `'${data.registradoPorNome}'` : 'NULL'})`));
+  return (result as any).insertId;
+}
+
+export async function updatePerdcomp(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  for (const [k, v] of Object.entries(data)) {
+    if (k === 'id' || k === 'createdAt') continue;
+    sets.push(`${k} = ${v === null || v === undefined ? 'NULL' : typeof v === 'string' ? `'${v}'` : v}`);
+  }
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE credit_perdcomps SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+// --- Task Teses ---
+export async function listTaskTeses(taskId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT ctt.*, t.tributoEnvolvido, t.tipo as teseTipo, t.classificacao, t.potencialFinanceiro FROM credit_task_teses ctt LEFT JOIN teses t ON ctt.teseId = t.id WHERE ctt.taskId = ${taskId} ORDER BY ctt.createdAt`));
+  return rows as unknown as any[];
+}
+
+export async function createTaskTese(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_task_teses (taskId, teseId, teseNome, aderente, justificativaNaoAderente, valorEstimado, status) VALUES (${data.taskId}, ${data.teseId}, ${data.teseNome ? `'${data.teseNome}'` : 'NULL'}, ${data.aderente ?? 1}, ${data.justificativaNaoAderente ? `'${data.justificativaNaoAderente}'` : 'NULL'}, ${data.valorEstimado || 0}, '${data.status || 'selecionada'}')`));
+  return (result as any).insertId;
+}
+
+export async function updateTaskTese(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  for (const [k, v] of Object.entries(data)) {
+    if (k === 'id' || k === 'createdAt') continue;
+    sets.push(`${k} = ${v === null || v === undefined ? 'NULL' : typeof v === 'string' ? `'${v}'` : v}`);
+  }
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE credit_task_teses SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+// --- Case Strategy ---
+export async function getCaseStrategy(caseId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_case_strategy WHERE caseId = ${caseId} ORDER BY createdAt DESC LIMIT 1`));
+  return (rows as unknown as any[])[0] || null;
+}
+
+export async function upsertCaseStrategy(data: any) {
+  const db_ = (await getDb())!;
+  const [existing] = await db_.execute(sql.raw(`SELECT id FROM credit_case_strategy WHERE caseId = ${data.caseId} LIMIT 1`));
+  if ((existing as unknown as any[]).length > 0) {
+    await db_.execute(sql.raw(`UPDATE credit_case_strategy SET estrategia = '${data.estrategia}', compensacaoPct = ${data.compensacaoPct || 0}, ressarcimentoPct = ${data.ressarcimentoPct || 0}, restituicaoPct = ${data.restituicaoPct || 0}, observacoes = ${data.observacoes ? `'${data.observacoes}'` : 'NULL'}, definidoPorId = ${data.definidoPorId || 'NULL'}, definidoPorNome = ${data.definidoPorNome ? `'${data.definidoPorNome}'` : 'NULL'} WHERE caseId = ${data.caseId}`));
+    return (existing as unknown as any[])[0].id;
+  } else {
+    const [result] = await db_.execute(sql.raw(`INSERT INTO credit_case_strategy (caseId, clienteId, estrategia, compensacaoPct, ressarcimentoPct, restituicaoPct, observacoes, definidoPorId, definidoPorNome) VALUES (${data.caseId}, ${data.clienteId}, '${data.estrategia}', ${data.compensacaoPct || 0}, ${data.ressarcimentoPct || 0}, ${data.restituicaoPct || 0}, ${data.observacoes ? `'${data.observacoes}'` : 'NULL'}, ${data.definidoPorId || 'NULL'}, ${data.definidoPorNome ? `'${data.definidoPorNome}'` : 'NULL'})`));
+    return (result as any).insertId;
+  }
+}
+
+// --- Tese Aderencia Engine ---
+export async function evaluateTesesAderencia(clienteId: number) {
+  const db_ = (await getDb())!;
+  const [clienteRows] = await db_.execute(sql.raw(`SELECT * FROM clientes WHERE id = ${clienteId}`));
+  const cliente = (clienteRows as unknown as any[])[0];
+  if (!cliente) return { aderentes: [], naoAderentes: [] };
+
+  const [tesesRows] = await db_.execute(sql.raw(`SELECT * FROM teses WHERE ativa = 1`));
+  const teses = tesesRows as unknown as any[];
+
+  const aderentes: any[] = [];
+  const naoAderentes: any[] = [];
+
+  for (const tese of teses) {
+    let aplicavel = true;
+    const motivos: string[] = [];
+    if (cliente.regimeTributario === 'lucro_real' && !tese.aplicavelLucroReal) { aplicavel = false; motivos.push('Não aplicável a Lucro Real'); }
+    if (cliente.regimeTributario === 'lucro_presumido' && !tese.aplicavelLucroPresumido) { aplicavel = false; motivos.push('Não aplicável a Lucro Presumido'); }
+    if (cliente.regimeTributario === 'simples_nacional' && !tese.aplicavelSimplesNacional) { aplicavel = false; motivos.push('Não aplicável a Simples Nacional'); }
+    const base = Number(cliente.valorMedioGuias || 0);
+    const mult = tese.potencialFinanceiro === 'muito_alto' ? 0.15 : tese.potencialFinanceiro === 'alto' ? 0.10 : tese.potencialFinanceiro === 'medio' ? 0.05 : 0.02;
+    const valorEstimado = Math.round(base * mult * 100) / 100;
+
+    const item = { teseId: tese.id, teseNome: tese.nome, tributoEnvolvido: tese.tributoEnvolvido, tipo: tese.tipo, classificacao: tese.classificacao, potencialFinanceiro: tese.potencialFinanceiro, valorEstimado };
+    if (aplicavel) {
+      aderentes.push(item);
+    } else {
+      naoAderentes.push({ ...item, motivos });
+    }
+  }
+
+  return { aderentes, naoAderentes };
+}
+
+// --- Gestão de Créditos (full history) ---
+export async function getGestaoCreditos(clienteId: number) {
+  const db_ = (await getDb())!;
+  const [ledger] = await db_.execute(sql.raw(`SELECT cl.*, ccg.sigla as grupoSigla, ccg.nome as grupoNome FROM credit_ledger cl LEFT JOIN credit_compensation_groups ccg ON cl.compensationGroupId = ccg.id WHERE cl.clienteId = ${clienteId} ORDER BY cl.createdAt DESC`));
+  const [perdcomps] = await db_.execute(sql.raw(`SELECT * FROM credit_perdcomps WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [exitos] = await db_.execute(sql.raw(`SELECT * FROM success_events WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [strategies] = await db_.execute(sql.raw(`SELECT ccs.*, cc.numero as caseNumero FROM credit_case_strategy ccs LEFT JOIN credit_cases cc ON ccs.caseId = cc.id WHERE ccs.clienteId = ${clienteId} ORDER BY ccs.createdAt DESC`));
+
+  const ledgerArr = ledger as unknown as any[];
+  const totalEstimado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorEstimado || 0), 0);
+  const totalValidado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorValidado || 0), 0);
+  const totalProtocolado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorProtocolado || 0), 0);
+  const totalEfetivado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorEfetivado || 0), 0);
+  const saldoResidual = ledgerArr.reduce((s: number, l: any) => s + Number(l.saldoResidual || 0), 0);
+
+  const now = Date.now();
+  const prescricaoRisk = ledgerArr.filter(l => {
+    const created = new Date(l.createdAt).getTime();
+    const yearsOld = (now - created) / (365.25 * 24 * 60 * 60 * 1000);
+    return yearsOld > 4.5 && Number(l.saldoResidual || 0) > 0;
+  });
+
+  return {
+    ledger: ledgerArr,
+    perdcomps: perdcomps as unknown as any[],
+    exitos: exitos as unknown as any[],
+    strategies: strategies as unknown as any[],
+    totals: { totalEstimado, totalValidado, totalProtocolado, totalEfetivado, saldoResidual },
+    prescricaoRisk: prescricaoRisk.length,
+  };
+}

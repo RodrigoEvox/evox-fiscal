@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM credit_tasks LIKE 'slaStatus'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM credit_tasks LIKE 'slaStatus'",
+  "rows": [
+    {
+      "Field": "slaStatus",
+      "Type": "enum('dentro_prazo','atencao','vencido')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "dentro_prazo",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nslaStatus\tenum('dentro_prazo','atencao','vencido')\tYES\t\tdentro_prazo\t\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

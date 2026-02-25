@@ -1909,3 +1909,67 @@
 - [x] Testes vitest: 49 testes passando (credito-recovery.test.ts) + 58 testes anteriores sem regressão
 - [x] App do Parceiro: página /app-parceiro com 5 abas (Meus Cases, Demandas, Tickets, Documentos, Comissões)
 - [x] Sidebar: link App do Parceiro na seção pessoal (com ícone Handshake)
+
+## v84 — Reestruturação Submenus Crédito + Visão 360° do Cliente + Nova Tarefa + Filas Detalhadas + Gestão de Créditos
+
+### Reestruturação dos Submenus CRE
+- [ ] Submenus: Dashboard, Nova Tarefa, Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição, Gestão de Créditos, Clientes, Teses Tributárias, Configurações
+- [ ] Remover submenus antigos (Cases, Filas, RTI, Ledger, Tickets, Êxitos) e substituir pelos novos
+
+### Clientes 360° (dentro do Crédito)
+- [ ] Página de listagem de clientes do setor Crédito com busca e filtros
+- [ ] Visão 360° ao selecionar cliente: histórico completo, situação atual, timeline de atividades
+- [ ] O que foi feito, o que está sendo feito, o que se tem a fazer
+- [ ] Com quem está, quem fez, quando fez, se em atraso
+- [ ] Estratégia de monetização visível (compensação/ressarcimento/restituição/mista)
+- [ ] Saldo de créditos resumido (apurado, validado, utilizado, disponível)
+
+### Nova Tarefa
+- [ ] Criar tarefas rápidas associando a cliente existente e fila do setor
+- [ ] Puxar dados da base (cliente, parceiro)
+- [ ] Filas: apuração, retificação, compensação, ressarcimento, restituição, revisão
+- [ ] Motor de regras tributárias: validar teses aderentes/oportunidades para o cliente
+- [ ] Selecionar todas ou algumas teses aderentes; alerta + justificativa para teses não aderentes
+- [ ] Para apuração/revisão: NDA opcional, contrato não obrigatório
+- [ ] Para demais filas: contrato obrigatório (cruzar com setor contratos futuro)
+
+### Filas com Etapas Detalhadas
+- [ ] Etapas em todas as filas: A Fazer, Fazendo, Feito, Concluído
+- [ ] Em Fazendo/Feito/Concluído: nome do analista, quando iniciou, SLA previsão, dentro do prazo ou em atraso
+- [ ] Em A Fazer: também indicar se dentro do prazo ou em atraso
+- [ ] Campos/pastas nomeáveis para documentos em cada cliente/fila
+- [ ] Checklist padrão customizável por administrador para cada tese (Apuração)
+- [ ] RTI preenchido dentro do sistema a partir de template editável
+- [ ] Gestão de retorno dos parceiros com SLA dos RTIs enviados
+- [ ] Onboarding: checklist de etapas, campo para link/arquivo da reunião, definição de estratégia de monetização
+- [ ] Retificação: checklist por tese, validação de créditos, comparativo RTI vs saldo real, constituição de saldo por grupo
+- [ ] Compensação: guias com datas de vencimento, comprovantes, dados PerdComp para busca futura
+- [ ] Ressarcimento: mesmo cenário da compensação
+- [ ] Restituição: mesmo cenário da compensação
+
+### Gestão de Créditos
+- [ ] Histórico completo de créditos do cliente (apurado, revisado, validado, utilizado, disponível)
+- [ ] Relação de PerdComps vinculadas com dados para busca rápida
+- [ ] Alerta de risco de prescrição de crédito
+- [ ] Saldo por tese, saldo global, saldo por grupo de débitos
+
+### Testes
+- [ ] Testes vitest para o módulo reestruturado
+
+### Clientes 360° — Visão Completa no Setor de Crédito
+- [x] Página de listagem de clientes com resumo de atividade no crédito (cases, tarefas ativas, em atraso, valor estimado)
+- [x] Busca por razão social, CNPJ ou nome fantasia
+- [x] Visão 360° do cliente com KPIs (valor estimado, validado, efetivado, saldo disponível, tarefas ativas, em atraso)
+- [x] Aba Resumo: dados do cliente, o que está sendo feito, o que foi feito, o que tem a fazer
+- [x] Aba Cases: listagem de cases do cliente com fase, status, responsável e valores
+- [x] Aba Tarefas: listagem de tarefas com fila, status, prioridade, responsável, SLA
+- [x] Aba RTIs: listagem de RTIs com versão, valor, status, devolutiva
+- [x] Aba Créditos: listagem do ledger com tese, grupo, tipo, valores e status
+- [x] Aba PerdComps: listagem de PerdComps com tipo, valores, status e se feito pela Evox
+- [x] Aba Timeline: audit log com ações realizadas no cliente
+- [x] Submenu "Clientes" adicionado ao setor Crédito Tributário no sidebar
+- [x] Submenu "Gestão de Créditos" adicionado ao setor Crédito Tributário no sidebar
+- [x] Página de Gestão de Créditos com KPIs, ledger, PerdComps, estratégia e alertas de prescrição
+- [x] Rota /credito/clientes-credito registrada no App.tsx
+- [x] Rota /credito/gestao-creditos registrada no App.tsx
+- [x] Testes vitest para listCreditClientes, getCliente360, getGestaoCreditos, evaluateTesesAderencia (10 testes passando)

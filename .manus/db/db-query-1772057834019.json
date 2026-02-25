@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE setor_config SET submenus = JSON_ARRAY_INSERT(submenus, '$[1]', JSON_OBJECT('grupo', 'Recuperação de Créditos', 'key', 'clientes-credito', 'label', 'Clientes', 'rota', '/credito/clientes'), '$[8]', JSON_OBJECT('grupo', 'Recuperação de Créditos', 'key', 'gestao-creditos', 'label', 'Gestão de Créditos', 'rota', '/credito/gestao-creditos')) WHERE sigla = 'CRE';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute UPDATE setor_config SET submenus = JSON_ARRAY_INSERT(submenus, '$[1]', JSON_OBJECT('grupo', 'Recuperação de Créditos', 'key', 'clientes-credito', 'label', 'Clientes', 'rota', '/credito/clientes'), '$[8]', JSON_OBJECT('grupo', 'Recuperação de Créditos', 'key', 'gestao-creditos', 'label', 'Gestão de Créditos', 'rota', '/credito/gestao-creditos')) WHERE sigla = 'CRE';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 74
+}

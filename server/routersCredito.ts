@@ -1010,6 +1010,29 @@ const creditoRouter = router({
     .query(async ({ input }) => {
       return credDb.listCreditAuditLog(input || {});
     }),
+  // --- Clientes 360° ---
+  clientes: router({
+    list: protectedProcedure
+      .input(z.object({ search: z.string().optional(), parceiroId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return credDb.listCreditClientes(input || {});
+      }),
+    get360: protectedProcedure
+      .input(z.object({ clienteId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getCliente360(input.clienteId);
+      }),
+    gestaoCreditos: protectedProcedure
+      .input(z.object({ clienteId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getGestaoCreditos(input.clienteId);
+      }),
+    evaluateTeses: protectedProcedure
+      .input(z.object({ clienteId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.evaluateTesesAderencia(input.clienteId);
+      }),
+  }),
 });
 
 // ===== ADMIN ROUTER =====
@@ -1121,6 +1144,187 @@ const adminRouter = router({
     .query(async ({ input }) => {
       return credDb.listCreditAuditLog(input || {});
     }),
+  // --- Checklists ---
+  checklists: router({
+    templates: protectedProcedure
+      .input(z.object({ fila: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return credDb.listChecklistTemplates(input?.fila);
+      }),
+    createTemplate: protectedProcedure
+      .input(z.object({
+        fila: z.string(),
+        teseId: z.number().nullable().optional(),
+        teseNome: z.string().nullable().optional(),
+        nome: z.string().min(1),
+        itens: z.array(z.object({ ordem: z.number(), titulo: z.string(), descricao: z.string().optional(), obrigatorio: z.boolean().default(true) })),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        return credDb.createChecklistTemplate({ ...input, criadoPorId: user.id, criadoPorNome: user.name });
+      }),
+    updateTemplate: protectedProcedure
+      .input(z.object({ id: z.number(), nome: z.string().optional(), itens: z.any().optional(), ativo: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await credDb.updateChecklistTemplate(id, data);
+        return { success: true };
+      }),
+    getInstance: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getChecklistInstance(input.taskId);
+      }),
+    createInstance: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        templateId: z.number().nullable().optional(),
+        fila: z.string(),
+        nome: z.string(),
+        itens: z.any(),
+      }))
+      .mutation(async ({ input }) => {
+        return credDb.createChecklistInstance(input);
+      }),
+    updateInstance: protectedProcedure
+      .input(z.object({ id: z.number(), itens: z.any(), progresso: z.number() }))
+      .mutation(async ({ input }) => {
+        await credDb.updateChecklistInstance(input.id, input.itens, input.progresso);
+        return { success: true };
+      }),
+  }),
+  // --- Document Folders ---
+  docFolders: router({
+    list: protectedProcedure
+      .input(z.object({ taskId: z.number().optional(), clienteId: z.number().optional(), caseId: z.number().optional() }))
+      .query(async ({ input }) => {
+        return credDb.listDocFolders(input);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number().nullable().optional(),
+        caseId: z.number().nullable().optional(),
+        clienteId: z.number(),
+        fila: z.string().nullable().optional(),
+        nome: z.string().min(1),
+        descricao: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        return credDb.createDocFolder({ ...input, criadoPorId: user.id, criadoPorNome: user.name });
+      }),
+    listFiles: protectedProcedure
+      .input(z.object({ folderId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.listDocFiles(input.folderId);
+      }),
+    uploadFile: protectedProcedure
+      .input(z.object({
+        folderId: z.number(),
+        nome: z.string(),
+        fileUrl: z.string(),
+        fileKey: z.string().nullable().optional(),
+        mimeType: z.string().nullable().optional(),
+        tamanhoBytes: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        return credDb.createDocFile({ ...input, uploadPorId: user.id, uploadPorNome: user.name });
+      }),
+    deleteFile: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await credDb.deleteDocFile(input.id);
+        return { success: true };
+      }),
+  }),
+  // --- PerdComps ---
+  perdcomps: router({
+    list: protectedProcedure
+      .input(z.object({ clienteId: z.number().optional(), caseId: z.number().optional(), taskId: z.number().optional(), search: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return credDb.listPerdcomps(input || {});
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number().nullable().optional(),
+        caseId: z.number().nullable().optional(),
+        clienteId: z.number(),
+        ledgerEntryId: z.number().nullable().optional(),
+        numeroPerdcomp: z.string().min(1),
+        tipoCredito: z.string().nullable().optional(),
+        periodoApuracao: z.string().nullable().optional(),
+        valorCredito: z.number().nullable().optional(),
+        valorDebitosCompensados: z.number().nullable().optional(),
+        saldoRemanescente: z.number().nullable().optional(),
+        dataTransmissao: z.string().nullable().optional(),
+        dataVencimentoGuia: z.string().nullable().optional(),
+        guiaNumero: z.string().nullable().optional(),
+        status: z.string().default('transmitido'),
+        feitoPelaEvox: z.number().default(1),
+        observacoes: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        return credDb.createPerdcomp({ ...input, registradoPorId: user.id, registradoPorNome: user.name });
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), status: z.string().optional(), despachoDecisorio: z.string().nullable().optional(), observacoes: z.string().nullable().optional() }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await credDb.updatePerdcomp(id, data);
+        return { success: true };
+      }),
+  }),
+  // --- Task Teses ---
+  taskTeses: router({
+    list: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.listTaskTeses(input.taskId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        teseId: z.number(),
+        teseNome: z.string().nullable().optional(),
+        aderente: z.number().default(1),
+        justificativaNaoAderente: z.string().nullable().optional(),
+        valorEstimado: z.number().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        return credDb.createTaskTese(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), status: z.string().optional(), valorApurado: z.number().nullable().optional(), valorValidado: z.number().nullable().optional() }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await credDb.updateTaskTese(id, data);
+        return { success: true };
+      }),
+  }),
+  // --- Case Strategy ---
+  caseStrategy: router({
+    get: protectedProcedure
+      .input(z.object({ caseId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getCaseStrategy(input.caseId);
+      }),
+    upsert: protectedProcedure
+      .input(z.object({
+        caseId: z.number(),
+        clienteId: z.number(),
+        estrategia: z.enum(['compensacao', 'ressarcimento', 'restituicao', 'mista']),
+        compensacaoPct: z.number().default(0),
+        ressarcimentoPct: z.number().default(0),
+        restituicaoPct: z.number().default(0),
+        observacoes: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        return credDb.upsertCaseStrategy({ ...input, definidoPorId: user.id, definidoPorNome: user.name });
+      }),
+  }),
 });
 
 // ===== COMBINED EXPORT =====
