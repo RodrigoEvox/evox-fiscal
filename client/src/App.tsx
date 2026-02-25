@@ -82,6 +82,23 @@ const ConvencaoColetivaGEG = lazy(() => import("./pages/rh/ConvencaoColetivaGEG"
 const ImportacaoColaboradores = lazy(() => import("./pages/rh/ImportacaoColaboradores"));
 const OcorrenciasReversaoPage = lazy(() => import("./pages/rh/OcorrenciasReversaoPage"));
 
+// Crédito Tributário
+const CreditoDashboard = lazy(() => import("./pages/credito/CreditoDashboard"));
+const CreditoCases = lazy(() => import("./pages/credito/CreditoCases"));
+const CreditoFilas = lazy(() => import("./pages/credito/CreditoFilas"));
+const CreditoRTI = lazy(() => import("./pages/credito/CreditoRTI"));
+const CreditoLedger = lazy(() => import("./pages/credito/CreditoLedger"));
+const CreditoTickets = lazy(() => import("./pages/credito/CreditoTickets"));
+const CreditoExitos = lazy(() => import("./pages/credito/CreditoExitos"));
+const CreditoConfiguracoes = lazy(() => import("./pages/credito/CreditoConfiguracoes"));
+
+// Suporte Comercial
+const InboxDemandas = lazy(() => import("./pages/suporte/InboxDemandas"));
+const ConflitoCarteira = lazy(() => import("./pages/suporte/ConflitoCarteira"));
+
+// App do Parceiro
+const AppParceiro = lazy(() => import("./pages/parceiro/AppParceiro"));
+
 function LazyFallback() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -164,6 +181,21 @@ function Router() {
         <Route path="/rh/importacao-colaboradores" component={ImportacaoColaboradores} />
         <Route path="/rh/ocorrencias-reversao" component={OcorrenciasReversaoPage} />
         {/* Setor pages with sub-routes */}
+        {/* Crédito Tributário */}
+        <Route path="/credito/dashboard" component={CreditoDashboard} />
+        <Route path="/credito/cases" component={CreditoCases} />
+        <Route path="/credito/filas" component={CreditoFilas} />
+        <Route path="/credito/rti" component={CreditoRTI} />
+        <Route path="/credito/ledger" component={CreditoLedger} />
+        <Route path="/credito/tickets" component={CreditoTickets} />
+        <Route path="/credito/exitos" component={CreditoExitos} />
+        <Route path="/credito/configuracoes" component={CreditoConfiguracoes} />
+        {/* Suporte Comercial */}
+        <Route path="/suporte/inbox" component={InboxDemandas} />
+        <Route path="/suporte/conflito-carteira" component={ConflitoCarteira} />
+        {/* App do Parceiro */}
+        <Route path="/app-parceiro" component={AppParceiro} />
+
         <Route path="/setor/:sigla/:sub?" component={SetorPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

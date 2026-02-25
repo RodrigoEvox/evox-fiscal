@@ -1,0 +1,16 @@
+{
+  "query": "SELECT sc.id, sc.sigla, sc.submenus, s.nome FROM setor_config sc JOIN setores s ON sc.setorId = s.id WHERE sc.sigla = 'CRE'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT sc.id, sc.sigla, sc.submenus, s.nome FROM setor_config sc JOIN setores s ON sc.setorId = s.id WHERE sc.sigla = 'CRE'",
+  "rows": [
+    {
+      "id": "2",
+      "sigla": "CRE",
+      "submenus": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/credito/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Apuração\", \"rota\": \"/setor/credito/fila\"}, {\"key\": \"teses\", \"label\": \"Teses Tributárias\", \"rota\": \"/teses\"}, {\"key\": \"visao-analitica\", \"label\": \"Visão Analítica\", \"rota\": \"/setor/credito/visao-analitica\"}, {\"key\": \"media-guias\", \"label\": \"Média de Guias\", \"rota\": \"/setor/credito/media-guias\"}]",
+      "nome": "Crédito"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsigla\tsubmenus\tnome\n2\tCRE\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/credito/nova-tarefa\"}, {\"key\": \"fila\", \"label\": \"Fila de Apuração\", \"rota\": \"/setor/credito/fila\"}, {\"key\": \"teses\", \"label\": \"Teses Tributárias\", \"rota\": \"/teses\"}, {\"key\": \"visao-analitica\", \"label\": \"Visão Analítica\", \"rota\": \"/setor/credito/visao-analitica\"}, {\"key\": \"media-guias\", \"label\": \"Média de Guias\", \"rota\": \"/setor/credito/media-guias\"}]\tCrédito\n",
+  "stderr": "",
+  "execution_time_ms": 86
+}

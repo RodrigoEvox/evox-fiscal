@@ -1728,3 +1728,349 @@ export const bibBloqueios = mysqlTable("bib_bloqueios", {
 (table) => [
   index("idx_bib_bloqueios_colab").on(table.colaboradorId),
 ]);
+
+// =====================================================
+// MÓDULO: RECUPERAÇÃO DE CRÉDITOS TRIBUTÁRIOS
+// =====================================================
+
+// Demand Requests — entidade intermediária entre Parceiro/Suporte e as filas do Crédito
+export const demandRequests = mysqlTable("demand_requests", {
+	id: int().autoincrement().notNull(),
+	numero: varchar({ length: 20 }).notNull(), // sequencial DR-0001
+	origem: mysqlEnum(['parceiro','suporte','interno']).default('parceiro').notNull(),
+	parceiroId: int(),
+	clienteId: int(), // referência a clientes.id
+	clienteCnpj: varchar({ length: 20 }),
+	tipoDemanda: mysqlEnum(['apuracao','retificacao','compensacao','onboarding','chamado','outro']).notNull(),
+	descricao: text(),
+	anexos: json(), // [{url, nome, tipo}]
+	urgencia: mysqlEnum(['normal','alta','urgente']).default('normal').notNull(),
+	status: mysqlEnum(['triagem','classificada','roteada','cancelada']).default('triagem').notNull(),
+	motivoCancelamento: text(),
+	canceladoPorId: int(),
+	canceladoEm: timestamp({ mode: 'string' }),
+	classificadoPorId: int(),
+	classificadoEm: timestamp({ mode: 'string' }),
+	roteadoPorId: int(),
+	roteadoEm: timestamp({ mode: 'string' }),
+	filaDestino: mysqlEnum(['apuracao','retificacao','compensacao','onboarding','chamados']),
+	tarefaCriadaId: int(), // referência à tarefa criada após roteamento
+	caseCriadoId: int(), // referência ao case criado
+	slaTriagemHoras: int().default(8), // 1 dia útil = 8h
+	slaTriagemVenceEm: timestamp({ mode: 'string' }),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_dr_parceiro").on(table.parceiroId),
+	index("idx_dr_cliente").on(table.clienteId),
+	index("idx_dr_status").on(table.status),
+	index("idx_dr_numero").on(table.numero),
+]);
+
+// Portfolio Migration Requests — conflito de carteira
+export const portfolioMigrationRequests = mysqlTable("portfolio_migration_requests", {
+	id: int().autoincrement().notNull(),
+	solicitanteParceiroId: int().notNull(),
+	cnpj: varchar({ length: 20 }).notNull(),
+	clienteId: int(),
+	parceiroAtualId: int(), // parceiro que já detém o CNPJ
+	motivo: text().notNull(),
+	evidencias: json(), // [{url, nome}]
+	status: mysqlEnum(['pendente','aprovada','rejeitada']).default('pendente').notNull(),
+	aprovadorId: int(),
+	aprovadoEm: timestamp({ mode: 'string' }),
+	observacaoAprovador: text(),
+	criadoPorId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_pmr_cnpj").on(table.cnpj),
+	index("idx_pmr_status").on(table.status),
+]);
+
+// Credit Cases — cases do Crédito com fases Oportunidade e Contratado
+export const creditCases = mysqlTable("credit_cases", {
+	id: int().autoincrement().notNull(),
+	numero: varchar({ length: 20 }).notNull(), // CC-0001
+	clienteId: int().notNull(),
+	parceiroId: int(),
+	tesesIds: json(), // [1, 2, 3] referências a teses
+	fase: mysqlEnum(['oportunidade','contratado']).default('oportunidade').notNull(),
+	status: varchar({ length: 50 }).default('nda_pendente').notNull(),
+	// Oportunidade: nda_pendente, nda_assinado, em_apuracao, rti_emitido, aguardando_devolutiva, ganho, perdido
+	// Contratado: contrato_assinado, onboarding_concluido, retificacao, compensacao, exito_registrado, cobranca_emitida, recebido, pos_venda
+	responsavelId: int(),
+	responsavelNome: varchar({ length: 255 }),
+	valorEstimado: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorContratado: decimal({ precision: 15, scale: 2 }).default('0'),
+	ndaUrl: varchar({ length: 1000 }),
+	ndaAssinadoEm: timestamp({ mode: 'string' }),
+	contratoUrl: varchar({ length: 1000 }),
+	contratoAssinadoEm: timestamp({ mode: 'string' }),
+	onboardingConcluidoEm: timestamp({ mode: 'string' }),
+	exitoRegistradoEm: timestamp({ mode: 'string' }),
+	observacoes: text(),
+	demandRequestId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cc_cliente").on(table.clienteId),
+	index("idx_cc_parceiro").on(table.parceiroId),
+	index("idx_cc_fase").on(table.fase),
+	index("idx_cc_status").on(table.status),
+	index("idx_cc_numero").on(table.numero),
+]);
+
+// RTI Reports — Relatório Técnico de Indicação
+export const rtiReports = mysqlTable("rti_reports", {
+	id: int().autoincrement().notNull(),
+	caseId: int().notNull(),
+	clienteId: int().notNull(),
+	numero: varchar({ length: 20 }).notNull(), // RTI-0001
+	versao: int().default(1).notNull(),
+	// Campos estruturados do RTI
+	tesesAnalisadas: json(), // [{teseId, nome, tributo, valorEstimado, periodoInicio, periodoFim, fundamentacao}]
+	valorTotalEstimado: decimal({ precision: 15, scale: 2 }).default('0'),
+	periodoAnalise: varchar({ length: 100 }),
+	resumoExecutivo: text(),
+	metodologia: text(),
+	conclusao: text(),
+	observacoes: text(),
+	// PDF
+	pdfUrl: varchar({ length: 1000 }),
+	pdfHash: varchar({ length: 64 }),
+	status: mysqlEnum(['rascunho','emitido','revisado']).default('rascunho').notNull(),
+	emitidoPorId: int(),
+	emitidoPorNome: varchar({ length: 255 }),
+	emitidoEm: timestamp({ mode: 'string' }),
+	// SLA devolutiva
+	slaDevolutivaDias: int().default(7),
+	slaDevolutivaVenceEm: timestamp({ mode: 'string' }),
+	devolutivaRecebidaEm: timestamp({ mode: 'string' }),
+	devolutivaStatus: mysqlEnum(['pendente','recebida','expirada']).default('pendente'),
+	devolutivaObservacao: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_rti_case").on(table.caseId),
+	index("idx_rti_cliente").on(table.clienteId),
+	index("idx_rti_numero").on(table.numero),
+]);
+
+// Credit Tasks — tarefas nas filas do Crédito
+export const creditTasks = mysqlTable("credit_tasks", {
+	id: int().autoincrement().notNull(),
+	codigo: varchar({ length: 20 }).notNull(), // CT-0001
+	fila: mysqlEnum(['apuracao','retificacao','compensacao','onboarding','chamados']).notNull(),
+	caseId: int(),
+	clienteId: int(),
+	demandRequestId: int(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	status: mysqlEnum(['a_fazer','fazendo','feito']).default('a_fazer').notNull(),
+	prioridade: mysqlEnum(['urgente','alta','media','baixa']).default('media').notNull(),
+	ordem: int().default(0).notNull(),
+	responsavelId: int(),
+	responsavelNome: varchar({ length: 255 }),
+	dataVencimento: timestamp({ mode: 'string' }),
+	dataConclusao: timestamp({ mode: 'string' }),
+	slaHoras: int(),
+	slaStatus: mysqlEnum(['dentro_prazo','atencao','vencido']).default('dentro_prazo'),
+	anexos: json(),
+	observacoes: text(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ct_fila").on(table.fila),
+	index("idx_ct_case").on(table.caseId),
+	index("idx_ct_cliente").on(table.clienteId),
+	index("idx_ct_status").on(table.status),
+]);
+
+// Credit Tickets — tickets separados do chat
+export const creditTickets = mysqlTable("credit_tickets", {
+	id: int().autoincrement().notNull(),
+	numero: varchar({ length: 20 }).notNull(), // TK-0001
+	caseId: int(),
+	clienteId: int().notNull(),
+	parceiroId: int(),
+	tipo: mysqlEnum(['pendencia_cliente','exigencia_rfb','contestacao_saldo','solicitacao_contencioso','solicitacao_financeiro','outros']).notNull(),
+	titulo: varchar({ length: 500 }).notNull(),
+	descricao: text(),
+	status: mysqlEnum(['aberto','em_andamento','aguardando_cliente','resolvido','cancelado']).default('aberto').notNull(),
+	prioridade: mysqlEnum(['urgente','alta','media','baixa']).default('media').notNull(),
+	responsavelId: int(),
+	responsavelNome: varchar({ length: 255 }),
+	dataVencimento: timestamp({ mode: 'string' }),
+	dataResolucao: timestamp({ mode: 'string' }),
+	resolucao: text(),
+	anexos: json(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_tk_case").on(table.caseId),
+	index("idx_tk_cliente").on(table.clienteId),
+	index("idx_tk_status").on(table.status),
+	index("idx_tk_numero").on(table.numero),
+]);
+
+// Credit Compensation Groups — grupos de compensação (INSS, PIS/COFINS, IRPJ/CSLL)
+export const creditCompensationGroups = mysqlTable("credit_compensation_groups", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 100 }).notNull(),
+	sigla: varchar({ length: 20 }).notNull(),
+	descricao: text(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+// Credit Ledger — saldo de créditos por cliente/tese/período
+export const creditLedger = mysqlTable("credit_ledger", {
+	id: int().autoincrement().notNull(),
+	caseId: int().notNull(),
+	clienteId: int().notNull(),
+	teseId: int(),
+	teseNome: varchar({ length: 500 }),
+	compensationGroupId: int(), // referência a credit_compensation_groups
+	compensationGroupNome: varchar({ length: 100 }),
+	periodoInicio: varchar({ length: 10 }), // MM/YYYY
+	periodoFim: varchar({ length: 10 }),
+	valorEstimado: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorValidado: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorProtocolado: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorEfetivado: decimal({ precision: 15, scale: 2 }).default('0'), // compensado/restituído/ressarcido
+	saldoResidual: decimal({ precision: 15, scale: 2 }).default('0'),
+	tipoEfetivacao: mysqlEnum(['compensacao','restituicao','ressarcimento']),
+	status: mysqlEnum(['estimado','validado','protocolado','efetivado','parcial','cancelado']).default('estimado').notNull(),
+	observacoes: text(),
+	atualizadoPorId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cl_case").on(table.caseId),
+	index("idx_cl_cliente").on(table.clienteId),
+	index("idx_cl_group").on(table.compensationGroupId),
+]);
+
+// Due Schedule Policies — políticas de vencimento de guias (admin configurável)
+export const dueSchedulePolicies = mysqlTable("due_schedule_policies", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	compensationGroupId: int(),
+	compensationGroupNome: varchar({ length: 100 }),
+	frequencia: mysqlEnum(['mensal','trimestral','anual']).default('mensal').notNull(),
+	diaVencimento: int(), // dia do mês (ex: 25 para PIS/COFINS)
+	mesesVencimento: json(), // para trimestral: [4,7,10,1] (abril, julho, outubro, janeiro)
+	antecedenciaInternaDiasUteis: int().default(5),
+	antecedenciaCriacaoTarefaDias: int().default(10), // criar tarefa X dias antes
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// Client Due Policy Subscriptions — assinatura de política por cliente/case
+export const clientDuePolicySubscriptions = mysqlTable("client_due_policy_subs", {
+	id: int().autoincrement().notNull(),
+	clienteId: int().notNull(),
+	caseId: int(),
+	policyId: int().notNull(),
+	ativo: tinyint().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_cdps_cliente").on(table.clienteId),
+	index("idx_cdps_policy").on(table.policyId),
+]);
+
+// Success Events — eventos de êxito
+export const successEvents = mysqlTable("success_events", {
+	id: int().autoincrement().notNull(),
+	caseId: int().notNull(),
+	clienteId: int().notNull(),
+	ledgerEntryId: int(), // referência ao credit_ledger
+	tipo: mysqlEnum(['compensacao','restituicao','ressarcimento']).notNull(),
+	valor: decimal({ precision: 15, scale: 2 }).notNull(),
+	dataEfetivacao: timestamp({ mode: 'string' }).notNull(),
+	descricao: text(),
+	// Gatilho financeiro (stub)
+	faturamentoGerado: tinyint().default(0),
+	faturamentoId: int(),
+	comissaoGerada: tinyint().default(0),
+	comissaoId: int(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_se_case").on(table.caseId),
+	index("idx_se_cliente").on(table.clienteId),
+]);
+
+// Credit Audit Log — auditoria e histórico imutável
+export const creditAuditLog = mysqlTable("credit_audit_log", {
+	id: int().autoincrement().notNull(),
+	entidade: mysqlEnum(['demand_request','case','rti','task','ticket','ledger','policy','migration','sla','exito']).notNull(),
+	entidadeId: int().notNull(),
+	acao: varchar({ length: 100 }).notNull(), // ex: 'rti_emitido', 'status_alterado', 'roteamento', 'cancelamento', 'exito_registrado'
+	descricao: text(),
+	dadosAnteriores: json(),
+	dadosNovos: json(),
+	usuarioId: int(),
+	usuarioNome: varchar({ length: 255 }),
+	ip: varchar({ length: 45 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_cal_entidade").on(table.entidade, table.entidadeId),
+	index("idx_cal_acao").on(table.acao),
+	index("idx_cal_created").on(table.createdAt),
+]);
+
+// SLA Configs — SLAs editáveis por administrador
+export const creditSlaConfigs = mysqlTable("credit_sla_configs", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	categoria: mysqlEnum(['triagem','fila','ticket','case','rti_devolutiva','vencimento_guia']).notNull(),
+	fila: varchar({ length: 50 }), // apuracao, retificacao, etc.
+	tipoTarefa: varchar({ length: 50 }),
+	tipoTicket: varchar({ length: 50 }),
+	statusCase: varchar({ length: 50 }),
+	slaHoras: int(), // para SLAs baseados em horas
+	slaDias: int(), // para SLAs baseados em dias
+	slaDiasUteis: tinyint().default(1), // 1 = dias úteis, 0 = corridos
+	alertaDias: json(), // [3, 6] dias para alertas
+	escalonamentoDias: int(), // dia para escalonamento
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+// Ticket Messages — mensagens dentro de tickets
+export const creditTicketMessages = mysqlTable("credit_ticket_messages", {
+	id: int().autoincrement().notNull(),
+	ticketId: int().notNull(),
+	mensagem: text().notNull(),
+	anexos: json(),
+	autorId: int(),
+	autorNome: varchar({ length: 255 }),
+	interno: tinyint().default(0).notNull(), // 1 = nota interna, 0 = visível ao parceiro
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_ctm_ticket").on(table.ticketId),
+]);

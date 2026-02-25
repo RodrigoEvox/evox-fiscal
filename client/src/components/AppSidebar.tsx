@@ -11,7 +11,7 @@ import {
   Banknote, GraduationCap, MonitorCheck, Gavel,
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu, Library,
   MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
-  Bus, Dumbbell, DollarSign, Cake, Heart, Layers,
+  Bus, Dumbbell, DollarSign, Cake, Heart, Layers, Award, Inbox, AlertTriangle,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -108,6 +108,16 @@ const SUBMENU_ICONS: Record<string, any> = {
   'admin-hub': Settings,
   'biblioteca-hub': BookOpen,
   'cct': Shield,
+  'dashboard-credito': LayoutDashboard,
+  'cases': Briefcase,
+  'filas-credito': ListOrdered,
+  'rti': FileBarChart,
+  'ledger': DollarSign,
+  'tickets-credito': ClipboardList,
+  'exitos': ShieldCheck,
+  'config-credito': Settings,
+  'inbox': Mail,
+  'conflito-carteira': ArrowLeftRight,
 };
 
 interface SetorConfigItem {
@@ -393,6 +403,9 @@ export default function AppSidebar() {
 
         {/* Minha Biblioteca */}
         <NavLink path="/minha-biblioteca" icon={Library} label="Minha Biblioteca" />
+
+        {/* App do Parceiro */}
+        <NavLink path="/app-parceiro" icon={Handshake} label="App do Parceiro" />
 
         {/* Chat */}
         <ChatNavLink />

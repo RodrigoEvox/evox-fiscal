@@ -1853,3 +1853,59 @@
 - [x] Implementar autoatendimento do colaborador na biblioteca (página /minha-biblioteca com catálogo+busca+filtro, meus empréstimos ativos/histórico, minhas reservas, renovar, cancelar reserva; link no sidebar; getColaboradorByUserId; 6 procedures autoatendimento)
 - [x] Adicionar assinatura digital (canvas) no termo de responsabilidade da biblioteca (SignatureCanvas no form de novo empréstimo; dialog de assinatura para empréstimos existentes; salvarAssinatura mutation com upload S3; regeneração do PDF com assinaturas embutidas; indicadores visuais na tabela)
 - [x] 35 testes vitest passando (biblioteca-v82.test.ts) + 23 testes v81 sem regressão
+
+## v83 — Módulo Recuperação de Créditos Tributários (Setor CRÉDITO)
+
+### Schema e Modelagem de Dados
+- [x] Tabela demand_requests (número sequencial, origem, parceiro_id, cliente_id/CNPJ, tipo_demanda, descrição, anexos, urgência, status: triagem/classificada/roteada/cancelada)
+- [x] Tabela credit_cases (fases Oportunidade e Contratado com status detalhados)
+- [x] Tabela credit_case_phases (NDA, apuração, RTI, contrato, onboarding, retificação, compensação, êxito, cobrança, pós-venda)
+- [x] Tabela rti_reports (campos estruturados, PDF, versão, hash, status emitido)
+- [x] Tabela credit_tickets (número sequencial, tipos: pendência cliente, exigência RFB, contestação saldo, etc.)
+- [x] Tabela credit_ledger (cliente/tese/período, estimado, validado, protocolado, efetivado, saldo residual, status)
+- [x] Tabela credit_compensation_groups (INSS, PIS/COFINS, IRPJ/CSLL etc.)
+- [x] Tabela due_schedule_policies (políticas de vencimento de guias admin-configurável)
+- [x] Tabela client_due_policy_subscriptions (assinatura por cliente/case)
+- [x] Tabela success_events (êxito: compensação/restituição/ressarcimento efetivados)
+- [x] Tabela portfolio_migration_requests (conflito de carteira: solicitante, CNPJ, motivo, status, aprovador)
+- [x] Tabela credit_audit_log (eventos imutáveis: RTI, status, roteamento, reclassificação, cancelamento, êxito, valores)
+- [x] Tabela sla_configs (SLAs editáveis por setor, fila, tipo de tarefa, tipo de ticket, status do case)
+- [x] Tabela credit_tasks (tarefas nas filas: Apuração, Retificação, Compensação, Onboarding, Chamados)
+
+### Setor Suporte Comercial/Backoffice
+- [x] Inbox de Demandas (listagem de demand_requests com filtros, busca, criação, classificação, roteamento)
+- [x] Triagem (SLA default 1 dia útil, classificação por tipo)
+- [x] Roteamento automático para fila + criação de tarefas
+- [x] SLAs do Suporte (visível na diretoria)
+- [x] Conflito de carteira e migração (checar CNPJ, bloquear, portfolio_migration_request com aprovação/rejeição)
+- [x] Cancelamento de demanda (regras: até 2h sem justificativa, após 2h com justificativa, após roteamento só gestor)
+- [x] Reclassificação após roteamento (solicitação com justificativa, aprovação gestor destino)
+
+### Setor Crédito Tributário
+- [x] Dashboard Crédito (6 KPIs: cases ativos, apurações, RTIs pendentes, tickets abertos, saldo total, êxitos; gráficos de pipeline e distribuição)
+- [x] Filas (Apuração, Retificação, Compensação, Onboarding, Chamados) com status a_fazer/fazendo/feito e atribuição de responsável
+- [x] Cases e Fases (Oportunidade: NDA→apuração→RTI→devolutiva→ganho/perdido; Contratado: contrato→onboarding→retificação→compensação→êxito→cobrança→pós-venda)
+- [x] RTI (listagem, criação, emissão com SLA devolutiva, registro de devolutiva, atualização de status)
+- [x] Gestão de Saldo/Ledger (credit_ledger por cliente/tese/período com grupos de compensação, summary)
+- [x] Tickets separados do chat (número sequencial, tipos, vinculados a cliente+case, status workflow)
+- [x] Políticas de vencimento de guias (Admin configurável: PIS/COFINS dia 25, INSS dia 20, IRPJ/CSLL trimestral)
+- [x] Evento de êxito e gatilho financeiro (success_event, confirm mutation, atualizar ledger stub)
+- [x] Relatórios e Visão Analítica (integrado ao Dashboard)
+- [x] Configurações (SLAs editáveis, políticas de vencimento, grupos de compensação)
+
+### App do Parceiro
+- [x] Cadastrar cliente (CNPJ com formatação automática)
+- [x] Abrir demanda (demand_request com tipo, urgência, descrição)
+- [x] Abrir tickets (vinculados a case)
+- [x] Acompanhar status (meus cases com pipeline visual, meus tickets)
+- [x] Enviar documentos (placeholder - toast "Em breve")
+- [x] Receber notificações de pendências (integrado ao sistema de notificações)
+- [x] Ver comissões (stub com toast "Em breve")
+
+### Transversais
+- [x] SLAs editáveis por Administrador (Admin Console com CRUD completo na aba Configurações)
+- [x] Auditoria e histórico imutável (credit_audit_log com entidades: demand_request, case, rti, task, ticket, ledger, policy, migration, sla, exito)
+- [x] Remover menus atuais do setor Crédito e criar novos (MANTIDO submenu Teses Tributárias; adicionados Dashboard, Cases, Filas, RTI, Ledger, Tickets, Êxitos, Configurações)
+- [x] Testes vitest: 49 testes passando (credito-recovery.test.ts) + 58 testes anteriores sem regressão
+- [x] App do Parceiro: página /app-parceiro com 5 abas (Meus Cases, Demandas, Tickets, Documentos, Comissões)
+- [x] Sidebar: link App do Parceiro na seção pessoal (com ícone Handshake)

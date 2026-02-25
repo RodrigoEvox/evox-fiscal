@@ -8,6 +8,7 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import crypto from "crypto";
 import { bibliotecaRouter } from "./routersBiblioteca";
+import { creditRecoveryRouter } from "./routersCredito";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== 'admin') {
@@ -35,6 +36,7 @@ async function logAudit(acao: string, entidadeTipo: string, entidadeId: number |
 export const appRouter = router({
   system: systemRouter,
   biblioteca: bibliotecaRouter,
+  creditRecovery: creditRecoveryRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
