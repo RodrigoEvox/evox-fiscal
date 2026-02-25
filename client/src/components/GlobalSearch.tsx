@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, X, Users, FileText, Handshake, BookOpen, CheckSquare, User } from 'lucide-react';
+import { Search, X, Users, FileText, Handshake, BookOpen, CheckSquare, User, Library } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ export default function GlobalSearch() {
   const hasResults = data && (
     data.clientes.length > 0 || data.tarefas.length > 0 ||
     data.parceiros.length > 0 || data.teses.length > 0 ||
-    data.usuarios.length > 0
+    data.usuarios.length > 0 || (data.livros && data.livros.length > 0)
   );
 
   const navigateTo = (path: string) => {
@@ -69,7 +69,7 @@ export default function GlobalSearch() {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Buscar clientes, tarefas, teses... (Ctrl+K)"
+          placeholder="Buscar clientes, tarefas, teses, livros... (Ctrl+K)"
           className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none"
         />
         {query && (
@@ -139,6 +139,17 @@ export default function GlobalSearch() {
                     <ResultItem key={u.id} onClick={() => navigateTo(`/usuarios`)}>
                       <span className="font-medium">{u.name}</span>
                       <span className="text-gray-400 text-xs ml-2">{u.email}</span>
+                    </ResultItem>
+                  ))}
+                </ResultSection>
+              )}
+              {data!.livros && data!.livros.length > 0 && (
+                <ResultSection title="Biblioteca" icon={Library}>
+                  {data!.livros.map((l: any) => (
+                    <ResultItem key={l.id} onClick={() => navigateTo(`/rh/biblioteca`)}>
+                      <span className="font-medium">{l.titulo}</span>
+                      <span className="text-gray-400 text-xs ml-2">{l.autores}</span>
+                      {l.categoria && <span className="text-blue-500 text-[10px] ml-2 px-1.5 py-0.5 bg-blue-50 rounded">{l.categoria}</span>}
                     </ResultItem>
                   ))}
                 </ResultSection>

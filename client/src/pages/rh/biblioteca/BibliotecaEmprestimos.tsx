@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Search, BookCopy, Loader2, RotateCcw, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Plus, Search, BookCopy, Loader2, RotateCcw, RefreshCw, CheckCircle2, FileText } from 'lucide-react';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   ativo: { label: 'Ativo', color: 'bg-blue-500/20 text-blue-400' },
@@ -180,9 +180,16 @@ export default function BibliotecaEmprestimos() {
                               disabled={renewEmprestimo.isPending}>
                               <RefreshCw className="w-3.5 h-3.5 mr-1" /> Renovar
                             </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                              onClick={() => window.open(`/api/biblioteca/termo-responsabilidade-pdf?emprestimoId=${emp.id}`, '_blank')}>
+                              <FileText className="w-3.5 h-3.5 mr-1" /> Termo
+                            </Button>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground/50 text-xs">-</span>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                            onClick={() => window.open(`/api/biblioteca/termo-responsabilidade-pdf?emprestimoId=${emp.id}`, '_blank')}>
+                            <FileText className="w-3.5 h-3.5 mr-1" /> Termo
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>

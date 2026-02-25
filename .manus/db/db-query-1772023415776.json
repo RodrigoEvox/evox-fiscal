@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM notificacoes WHERE Field = 'tipo';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM notificacoes WHERE Field = 'tipo';",
+  "rows": [
+    {
+      "Field": "tipo",
+      "Type": "enum('procuracao_vencendo','procuracao_vencida','analise_concluida','nova_tese','tarefa_atribuida','tarefa_sla_vencendo','tarefa_comentario','geral','avaliacao_ciclo_aberto','avaliacao_pendente','cct_vencimento','biblioteca_vencimento')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\ntipo\tenum('procuracao_vencendo','procuracao_vencida','analise_concluida','nova_tese','tarefa_atribuida','tarefa_sla_vencendo','tarefa_comentario','geral','avaliacao_ciclo_aberto','avaliacao_pendente','cct_vencimento','biblioteca_vencimento')\tNO\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 188
+}

@@ -73,6 +73,7 @@ import {
   planoReversaoFeedbacks,
   ocorrenciaTimeline,
   ocorrenciaAssinaturas,
+  bibLivros,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -413,8 +414,19 @@ export async function listNotificacoes(usuarioId?: number) {
 export async function createNotificacao(data: InsertNotificacao) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.insert(notificacoes).values(data);
-  return result[0].insertId;
+  try {
+    const result = await db.insert(notificacoes).values(data);
+    return result[0].insertId;
+  } catch (err: any) {
+    // Fallback to raw SQL if Drizzle enum mapping fails (e.g., Data truncated)
+    if (err?.cause?.code === 'WARN_DATA_TRUNCATED' || err?.message?.includes('Data truncated')) {
+      const result = await db.execute(
+        sql`INSERT INTO notificacoes (tipo, titulo, mensagem, lida, usuarioId, clienteId, tarefaId) VALUES (${data.tipo}, ${data.titulo}, ${data.mensagem}, ${data.lida ?? 0}, ${data.usuarioId ?? null}, ${data.clienteId ?? null}, ${data.tarefaId ?? null})`
+      );
+      return (result as any)?.[0]?.insertId ?? null;
+    }
+    throw err;
+  }
 }
 
 export async function markNotificacaoLida(id: number) {
@@ -786,7 +798,17 @@ export async function buscaGlobal(termo: string) {
     ))
     .limit(10);
 
-  return { clientes: clientesResult, tarefas: tarefasResult, parceiros: parceirosResult, teses: tesesResult, usuarios: usuariosResult };
+  const livrosResult = await db.select({ id: bibLivros.id, titulo: bibLivros.titulo, autores: bibLivros.autores, isbn: bibLivros.isbn, categoria: bibLivros.categoria })
+    .from(bibLivros)
+    .where(or(
+      sql`${bibLivros.titulo} LIKE ${like}`,
+      sql`${bibLivros.autores} LIKE ${like}`,
+      sql`${bibLivros.isbn} LIKE ${like}`,
+      sql`${bibLivros.categoria} LIKE ${like}`,
+    ))
+    .limit(10);
+
+  return { clientes: clientesResult, tarefas: tarefasResult, parceiros: parceirosResult, teses: tesesResult, usuarios: usuariosResult, livros: livrosResult };
 }
 
 // =============================================

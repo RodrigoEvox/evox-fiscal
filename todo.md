@@ -1841,3 +1841,9 @@
 - [x] Substituir text-white/* por text-foreground/text-muted-foreground em todas as 10 páginas da biblioteca
 - [x] Corrigir bg-white/* por bg-muted/*, border-white/* por border-border em todas as 10 páginas
 - [x] Testado todas as abas: Dashboard, Acervo, Exemplares, Empréstimos, Reservas, Devoluções, Fornecedores, Políticas, Auditoria, Relatórios
+
+## v81 — Biblioteca Evox: Notificações, Busca Global e Termo de Responsabilidade
+- [x] Corrigir enum tipo na tabela notificacoes para incluir biblioteca_vencimento (enum já existia no schema e DB; erro Data Truncated era transiente durante restart; adicionado fallback com SQL raw em createNotificacao)
+- [x] Integrar busca de livros no campo de busca global (Ctrl+K) (já implementado na v79: buscaGlobal inclui livros por título, autores, ISBN e categoria; GlobalSearch.tsx exibe seção Biblioteca)
+- [x] Gerar PDF do termo de responsabilidade ao realizar empréstimo (rota /api/biblioteca/termo-responsabilidade-pdf com dados do colaborador, livro, exemplar, empréstimo, 6 cláusulas e assinaturas; botão Termo na tabela de empréstimos)
+- [x] 23 testes vitest passando (biblioteca-improvements.test.ts)

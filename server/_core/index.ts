@@ -1422,6 +1422,150 @@ async function startServer() {
     }
   });
 
+  // ===== BIBLIOTECA: TERMO DE RESPONSABILIDADE PDF =====
+  app.get('/api/biblioteca/termo-responsabilidade-pdf', async (req: any, res: any) => {
+    try {
+      const { createPDF, addHeader, addSectionTitle, addTable, addFooter, fmtDate } = await import('../pdfGenerator');
+      const bibDb = await import('../dbBiblioteca');
+      const db = await import('../db');
+
+      const emprestimoId = parseInt(req.query.emprestimoId || '0');
+      if (!emprestimoId) return res.status(400).json({ error: 'emprestimoId obrigatório' });
+
+      const emprestimo = await bibDb.getEmprestimo(emprestimoId);
+      if (!emprestimo) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+
+      const livro = await bibDb.getLivro(emprestimo.livroId);
+      const exemplar = await bibDb.getExemplar(emprestimo.exemplarId);
+      const colaborador = emprestimo.colaboradorId ? await db.getColaboradorById(emprestimo.colaboradorId) : null;
+      // Look up setor name if colaborador has setorId
+      let setorNome = '-';
+      if (colaborador?.setorId) {
+        try {
+          const setores = await db.listSetores();
+          const setor = setores.find((s: any) => s.id === colaborador.setorId);
+          if (setor) setorNome = setor.nome;
+        } catch { /* ignore */ }
+      }
+
+      const doc = createPDF();
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => {
+        const pdfBuf = Buffer.concat(chunks);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="termo-responsabilidade-${emprestimoId}.pdf"`);
+        res.send(pdfBuf);
+      });
+
+      const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+
+      addHeader(doc, 'Termo de Responsabilidade — Biblioteca Evox', `Evox Fiscal — Gestão RH | Gerado em ${dataHora}`);
+
+      // Dados do Colaborador
+      addSectionTitle(doc, 'Dados do Colaborador');
+      const colabCols = [
+        { header: 'Campo', key: 'campo', width: 150 },
+        { header: 'Informação', key: 'valor', width: 350 },
+      ];
+      const colabRows = [
+        { campo: 'Nome Completo', valor: emprestimo.colaboradorNome || '-' },
+        { campo: 'CPF', valor: colaborador?.cpf || '-' },
+        { campo: 'Cargo', valor: colaborador?.cargo || '-' },
+        { campo: 'Setor', valor: setorNome },
+        { campo: 'E-mail', valor: colaborador?.email || '-' },
+        { campo: 'Telefone', valor: colaborador?.telefone || '-' },
+      ];
+      addTable(doc, colabCols, colabRows);
+
+      // Dados do Livro
+      addSectionTitle(doc, 'Dados do Livro');
+      const livroCols = [
+        { header: 'Campo', key: 'campo', width: 150 },
+        { header: 'Informação', key: 'valor', width: 350 },
+      ];
+      const livroRows = [
+        { campo: 'Título', valor: livro?.titulo || '-' },
+        { campo: 'Autor(es)', valor: livro?.autores || '-' },
+        { campo: 'Editora', valor: livro?.editora || '-' },
+        { campo: 'ISBN', valor: livro?.isbn || '-' },
+        { campo: 'Edição', valor: livro?.edicao || '-' },
+        { campo: 'Categoria', valor: livro?.categoria || '-' },
+      ];
+      addTable(doc, livroCols, livroRows);
+
+      // Dados do Exemplar
+      addSectionTitle(doc, 'Dados do Exemplar');
+      const exCols = [
+        { header: 'Campo', key: 'campo', width: 150 },
+        { header: 'Informação', key: 'valor', width: 350 },
+      ];
+      const exRows = [
+        { campo: 'Código Patrimonial', valor: exemplar?.codigoPatrimonial || '-' },
+        { campo: 'Localização', valor: exemplar?.localizacao || '-' },
+        { campo: 'Condição', valor: (exemplar?.condicao || '-').charAt(0).toUpperCase() + (exemplar?.condicao || '-').slice(1) },
+      ];
+      addTable(doc, exCols, exRows);
+
+      // Dados do Empréstimo
+      addSectionTitle(doc, 'Dados do Empréstimo');
+      const empCols = [
+        { header: 'Campo', key: 'campo', width: 150 },
+        { header: 'Informação', key: 'valor', width: 350 },
+      ];
+      const empRows = [
+        { campo: 'Nº Empréstimo', valor: `#${emprestimo.id}` },
+        { campo: 'Data de Retirada', valor: emprestimo.dataRetirada ? fmtDate(emprestimo.dataRetirada) : '-' },
+        { campo: 'Data Prevista Devolução', valor: emprestimo.dataPrevistaDevolucao ? fmtDate(emprestimo.dataPrevistaDevolucao) : '-' },
+        { campo: 'Registrado por', valor: emprestimo.registradoPorNome || '-' },
+        { campo: 'Observações', valor: emprestimo.observacoes || 'Nenhuma' },
+      ];
+      addTable(doc, empCols, empRows);
+
+      // Cláusulas do Termo
+      addSectionTitle(doc, 'Cláusulas e Condições');
+      const clausulas = [
+        '1. O colaborador declara ter recebido o exemplar acima descrito em bom estado de conservação, comprometendo-se a devolvê-lo nas mesmas condições.',
+        '2. O prazo máximo para devolução é a data prevista acima indicada, podendo ser renovado mediante solicitação prévia, desde que não haja reservas pendentes.',
+        '3. Em caso de atraso na devolução, o colaborador estará sujeito a suspensão temporária do direito de empréstimo, conforme política vigente da Biblioteca Evox.',
+        '4. Em caso de perda, extravio ou dano ao exemplar, o colaborador se compromete a repor o material ou ressarcir o valor equivalente à reposição.',
+        '5. O colaborador se compromete a não emprestar, ceder ou reproduzir integralmente a obra sem autorização expressa da Biblioteca Evox.',
+        '6. A Biblioteca Evox reserva-se o direito de solicitar a devolução antecipada do exemplar, caso necessário, mediante comunicação prévia ao colaborador.',
+      ];
+      doc.fontSize(8.5).fillColor('#374151');
+      clausulas.forEach(c => {
+        doc.text(c, 40, undefined, { width: 515, lineGap: 2 });
+        doc.moveDown(0.5);
+      });
+
+      doc.moveDown(1.5);
+
+      // Assinaturas
+      const sigY = doc.y;
+      const leftX = 40;
+      const rightX = 310;
+      const lineWidth = 200;
+
+      // Linha esquerda - Colaborador
+      doc.moveTo(leftX, sigY).lineTo(leftX + lineWidth, sigY).strokeColor('#9ca3af').lineWidth(0.5).stroke();
+      doc.fontSize(8).fillColor('#374151').text(emprestimo.colaboradorNome || 'Colaborador', leftX, sigY + 5, { width: lineWidth, align: 'center' });
+      doc.fontSize(7).fillColor('#9ca3af').text('Colaborador Responsável', leftX, sigY + 17, { width: lineWidth, align: 'center' });
+
+      // Linha direita - Responsável Biblioteca
+      doc.moveTo(rightX, sigY).lineTo(rightX + lineWidth, sigY).strokeColor('#9ca3af').lineWidth(0.5).stroke();
+      doc.fontSize(8).fillColor('#374151').text(emprestimo.registradoPorNome || 'Responsável', rightX, sigY + 5, { width: lineWidth, align: 'center' });
+      doc.fontSize(7).fillColor('#9ca3af').text('Responsável pela Biblioteca', rightX, sigY + 17, { width: lineWidth, align: 'center' });
+
+      doc.moveDown(2);
+
+      addFooter(doc);
+      doc.end();
+    } catch (err: any) {
+      console.error('[Biblioteca Termo PDF Error]', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Public REST API v1
   app.use("/api/v1", apiRouter);
   // tRPC API
