@@ -117,6 +117,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'fila-ressarcimento': Wallet,
   'fila-restituicao': Landmark,
   'gestao-creditos': DollarSign,
+  'relatorios': FileBarChart,
   'inbox': Mail,
   'conflito-carteira': ArrowLeftRight,
 };

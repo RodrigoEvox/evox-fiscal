@@ -15,8 +15,12 @@ import { toast } from 'sonner';
 import {
   ChevronRight, Loader2, Search, AlertTriangle, CheckCircle,
   User, PlusCircle, Receipt, Eye, FileText, ShieldCheck, CalendarClock, RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import GuiaUploadOcr from '@/components/GuiaUploadOcr';
+import BackToDashboard from '@/components/BackToDashboard';
+import TarefasAtrasadasBanner from '@/components/TarefasAtrasadasBanner';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   a_fazer: { label: 'A Fazer', color: 'bg-amber-100 text-amber-800' },
@@ -131,6 +135,12 @@ export default function CreditoFilaRessarcimento() {
 
   return (
     <div className="space-y-6">
+      {/* Back to Dashboard */}
+      <BackToDashboard />
+
+      {/* Tarefas Atrasadas */}
+      <TarefasAtrasadasBanner fila="ressarcimento" />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -305,9 +315,15 @@ export default function CreditoFilaRessarcimento() {
 
       {/* New Guia Dialog */}
       <Dialog open={showGuiaDialog} onOpenChange={setShowGuiaDialog}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Adicionar Guia — Ressarcimento</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {/* OCR Upload */}
+            <GuiaUploadOcr
+              clienteId={selectedTask?.clienteId}
+              onGuiaProcessed={() => {}}
+              onAutoFillGuia={(data) => setGuiaForm(f => ({ ...f, ...data, valorCompensado: f.valorCompensado }))}
+            />
             <div className="grid grid-cols-2 gap-3">
               <div><Label className="text-xs">CNPJ da Guia</Label><Input placeholder="00.000.000/0000-00" value={guiaForm.cnpjGuia} onChange={(e) => setGuiaForm(f => ({ ...f, cnpjGuia: e.target.value }))} /></div>
               <div><Label className="text-xs">Código da Receita</Label><Input placeholder="Ex: 2172" value={guiaForm.codigoReceita} onChange={(e) => setGuiaForm(f => ({ ...f, codigoReceita: e.target.value }))} /></div>

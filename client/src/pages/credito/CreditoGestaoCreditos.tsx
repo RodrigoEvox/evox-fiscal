@@ -13,6 +13,7 @@ import {
   CalendarClock, CheckCircle, XCircle, Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import BackToDashboard from '@/components/BackToDashboard';
 
 const PERDCOMP_STATUS: Record<string, { label: string; color: string }> = {
   transmitido: { label: 'Transmitido', color: 'bg-blue-100 text-blue-800' },
@@ -82,6 +83,9 @@ export default function CreditoGestaoCreditos() {
 
   return (
     <div className="space-y-6">
+      {/* Back to Dashboard */}
+      <BackToDashboard />
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">

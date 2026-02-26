@@ -16,6 +16,7 @@ import {
   CheckCircle, XCircle, ShieldAlert, FileText, Info, ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import BackToDashboard from '@/components/BackToDashboard';
 
 const FILAS = [
   { value: 'apuracao', label: 'Apuração', requiresContract: false, ndaOptional: true },
@@ -219,6 +220,9 @@ export default function CreditoNovaTarefa() {
 
   return (
     <div className="space-y-6">
+      {/* Back to Dashboard */}
+      <BackToDashboard />
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">

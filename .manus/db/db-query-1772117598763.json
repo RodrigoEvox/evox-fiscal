@@ -1,0 +1,37 @@
+{
+  "query": "SHOW TABLES LIKE '%setor%'; SHOW TABLES LIKE '%config%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW TABLES LIKE '%setor%'; SHOW TABLES LIKE '%config%'",
+  "rows": [
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "setor_config"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "setores"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "tarefas_setor"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "usuario_setores"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "Tables_in_i9dRshPFnDefFw9MJLeLri (%config%)"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "credit_sla_configs"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "email_aniversariante_config"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "setor_config"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)": "sla_configuracoes"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_i9dRshPFnDefFw9MJLeLri (%setor%)\nsetor_config\nsetores\ntarefas_setor\nusuario_setores\nTables_in_i9dRshPFnDefFw9MJLeLri (%config%)\ncredit_sla_configs\nemail_aniversariante_config\nsetor_config\nsla_configuracoes\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

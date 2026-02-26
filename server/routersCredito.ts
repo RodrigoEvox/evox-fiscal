@@ -3,6 +3,8 @@ import { router, protectedProcedure } from "./_core/trpc";
 import * as credDb from "./dbCredito";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
+import { storagePut } from "./storage";
+import crypto from "crypto";
 
 function getUser(ctx: any): { id: number; name: string } {
   return { id: ctx.user.id, name: ctx.user.name };
@@ -1033,6 +1035,25 @@ const creditoRouter = router({
         return credDb.evaluateTesesAderencia(input.clienteId);
       }),
   }),
+  // --- Relatórios ---
+  reports: router({
+    getData: protectedProcedure
+      .input(z.object({
+        periodoInicio: z.string().optional(),
+        periodoFim: z.string().optional(),
+        teseId: z.number().optional(),
+        parceiroId: z.number().optional(),
+        classificacao: z.string().optional(),
+        segmento: z.string().optional(),
+        fila: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return credDb.getReportData(input || {});
+      }),
+    segmentos: protectedProcedure.query(async () => {
+      return credDb.getDistinctSegmentos();
+    }),
+  }),
 });
 
 // ===== ADMIN ROUTER =====
@@ -1657,8 +1678,8 @@ const adminRouter = router({
           entidadeId: result.id,
           acao: 'criou',
           descricao: `Retificação ${input.tipoRetificacao} registrada para tese ${input.teseNome || 'N/A'}`,
-          userId: ctx.user.id,
-          userName: ctx.user.name || ctx.user.openId,
+          usuarioId: ctx.user.id,
+          usuarioNome: ctx.user.name || ctx.user.openId,
         });
         return result;
       }),
@@ -1770,8 +1791,8 @@ const adminRouter = router({
           entidadeId: result.id,
           acao: 'criou',
           descricao: `PerdComp ${input.numeroPerdcomp} registrada (${input.modalidade})`,
-          userId: ctx.user.id,
-          userName: ctx.user.name || ctx.user.openId,
+          usuarioId: ctx.user.id,
+          usuarioNome: ctx.user.name || ctx.user.openId,
         });
         return result;
       }),
@@ -1804,10 +1825,56 @@ const adminRouter = router({
         entidadeId: result.id,
         acao: 'criou',
         descricao: `Tarefa automática criada para fila ${input.fila}`,
-        userId: ctx.user.id,
-        userName: ctx.user.name || ctx.user.openId,
+        usuarioId: ctx.user.id,
+        usuarioNome: ctx.user.name || ctx.user.openId,
       });
       return result;
+    }),
+
+  // ===== OCR / PARSER DE GUIAS =====
+  parseGuia: protectedProcedure
+    .input(z.object({ fileUrl: z.string(), mimeType: z.string() }))
+    .mutation(async ({ input }) => {
+      return credDb.parseGuiaWithOcr(input.fileUrl, input.mimeType);
+    }),
+
+  uploadAndParseGuia: protectedProcedure
+    .input(z.object({
+      base64Data: z.string(),
+      fileName: z.string(),
+      mimeType: z.string(),
+      clienteId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.base64Data, 'base64');
+      const suffix = crypto.randomBytes(4).toString('hex');
+      const key = `evox-fiscal/guias/${suffix}-${input.fileName}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      const ocrResult = await credDb.parseGuiaWithOcr(url, input.mimeType);
+      let cnpjValidation = null;
+      if (input.clienteId && ocrResult.cnpj) {
+        cnpjValidation = await credDb.validateGuiaCnpj(ocrResult.cnpj, input.clienteId);
+      }
+      return { ...ocrResult, fileUrl: url, fileKey: key, cnpjValidation };
+    }),
+
+  validateGuiaCnpj: protectedProcedure
+    .input(z.object({ cnpj: z.string(), clienteId: z.number() }))
+    .query(async ({ input }) => {
+      return credDb.validateGuiaCnpj(input.cnpj, input.clienteId);
+    }),
+
+  // ===== TAREFAS ATRASADAS =====
+  tarefasAtrasadas: protectedProcedure
+    .input(z.object({ fila: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      return credDb.listTarefasAtrasadas(input?.fila);
+    }),
+
+  countAtrasadas: protectedProcedure
+    .input(z.object({ fila: z.string().optional() }).optional())
+    .query(async ({ input }) => {
+      return credDb.countTarefasAtrasadas(input?.fila);
     }),
 });
 

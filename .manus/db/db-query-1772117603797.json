@@ -1,0 +1,22 @@
+{
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%setor%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%setor%'",
+  "rows": [
+    {
+      "table_name": "usuario_setores"
+    },
+    {
+      "table_name": "tarefas_setor"
+    },
+    {
+      "table_name": "setores"
+    },
+    {
+      "table_name": "setor_config"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\nusuario_setores\ntarefas_setor\nsetores\nsetor_config\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

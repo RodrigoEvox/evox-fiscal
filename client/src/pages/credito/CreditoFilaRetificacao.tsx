@@ -18,6 +18,8 @@ import {
   DollarSign, ShieldAlert, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import BackToDashboard from '@/components/BackToDashboard';
+import TarefasAtrasadasBanner from '@/components/TarefasAtrasadasBanner';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   a_fazer: { label: 'A Fazer', color: 'bg-amber-100 text-amber-800' },
@@ -189,6 +191,12 @@ export default function CreditoFilaRetificacao() {
 
   return (
     <div className="space-y-6">
+      {/* Back to Dashboard */}
+      <BackToDashboard />
+
+      {/* Tarefas Atrasadas */}
+      <TarefasAtrasadasBanner fila="retificacao" />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -6,7 +6,7 @@ import {
   DollarSign, ClipboardList, CheckCircle, AlertTriangle,
   TrendingUp, Loader2, ArrowRight, ChevronRight, Calculator,
   UserPlus, FileEdit, ArrowLeftRight, RefreshCw, Undo2,
-  PlusCircle, Clock,
+  PlusCircle, Clock, BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -209,6 +209,10 @@ export default function CreditoDashboard() {
             <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={() => navigate('/credito/fila-apuracao')}>
               <Calculator className="w-4 h-4" />
               Fila de Apuração
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={() => navigate('/credito/relatorios')}>
+              <BarChart3 className="w-4 h-4" />
+              Relatórios Gerenciais
             </Button>
           </CardContent>
         </Card>

@@ -1250,3 +1250,351 @@ export async function getRetificacaoStats(clienteId?: number) {
   const [rows] = await db_.execute(sql.raw(`SELECT COUNT(*) as total, COALESCE(SUM(valorApuradoRti),0) as totalApurado, COALESCE(SUM(valorCreditoDisponivel),0) as totalDisponivel, COALESCE(SUM(divergencia),0) as totalDivergencia, SUM(CASE WHEN alertaDivergencia = 1 THEN 1 ELSE 0 END) as totalAlertas FROM credit_retificacao_records ${where}`));
   return (rows as unknown as any[])[0];
 }
+
+
+// ===== OCR / PARSER DE GUIAS TRIBUTÁRIAS =====
+import { invokeLLM } from "./_core/llm";
+
+export interface GuiaOcrResult {
+  cnpj: string;
+  razaoSocial: string;
+  periodoApuracao: string;
+  dataVencimento: string;
+  numeroDocumento: string;
+  valorTotal: number;
+  observacoes: string;
+  itens: Array<{
+    codigo: string;
+    denominacao: string;
+    subtipo: string;
+    periodoApuracao: string;
+    vencimento: string;
+    principal: number;
+    multa: number;
+    juros: number;
+    total: number;
+  }>;
+  grupoTributo: string;
+  tipoGuia: string;
+  statusVencimento: string;
+  confianca: number;
+}
+
+const CODIGO_GRUPO_MAP: Record<string, string> = {
+  '8109': 'PIS/COFINS', '6912': 'PIS/COFINS',
+  '2172': 'PIS/COFINS', '5856': 'PIS/COFINS',
+  '3373': 'IRPJ/CSLL', '2089': 'IRPJ/CSLL', '2362': 'IRPJ/CSLL', '0220': 'IRPJ/CSLL', '5993': 'IRPJ/CSLL',
+  '6012': 'IRPJ/CSLL', '2484': 'IRPJ/CSLL', '6773': 'IRPJ/CSLL', '2372': 'IRPJ/CSLL',
+  '1138': 'INSS/PREVIDENCIÁRIOS', '1646': 'INSS/PREVIDENCIÁRIOS',
+  '1170': 'INSS/PREVIDENCIÁRIOS', '1176': 'INSS/PREVIDENCIÁRIOS',
+  '1191': 'INSS/PREVIDENCIÁRIOS', '1196': 'INSS/PREVIDENCIÁRIOS',
+  '1200': 'INSS/PREVIDENCIÁRIOS',
+};
+
+const CODIGO_TIPO_MAP: Record<string, string> = {
+  '8109': 'PIS', '6912': 'PIS',
+  '2172': 'COFINS', '5856': 'COFINS',
+  '3373': 'IRPJ', '2089': 'IRPJ', '2362': 'IRPJ', '0220': 'IRPJ', '5993': 'IRPJ',
+  '6012': 'CSLL', '2484': 'CSLL', '6773': 'CSLL', '2372': 'CSLL',
+  '1138': 'INSS', '1646': 'INSS', '1170': 'INSS', '1176': 'INSS',
+  '1191': 'INSS', '1196': 'INSS', '1200': 'INSS',
+};
+
+function classifyGuia(itens: Array<{ codigo: string }>): { grupoTributo: string; tipoGuia: string } {
+  const tipos = new Set<string>();
+  const grupos = new Set<string>();
+  for (const item of itens) {
+    const code = item.codigo?.trim();
+    if (CODIGO_TIPO_MAP[code]) tipos.add(CODIGO_TIPO_MAP[code]);
+    if (CODIGO_GRUPO_MAP[code]) grupos.add(CODIGO_GRUPO_MAP[code]);
+  }
+  let tipoGuia = 'OUTROS';
+  if (tipos.has('PIS') && tipos.has('COFINS')) tipoGuia = 'PIS+COFINS';
+  else if (tipos.has('IRPJ') && tipos.has('CSLL')) tipoGuia = 'IRPJ+CSLL';
+  else if (tipos.has('PIS')) tipoGuia = 'PIS';
+  else if (tipos.has('COFINS')) tipoGuia = 'COFINS';
+  else if (tipos.has('IRPJ')) tipoGuia = 'IRPJ';
+  else if (tipos.has('CSLL')) tipoGuia = 'CSLL';
+  else if (tipos.has('INSS')) tipoGuia = 'DCTFWEB';
+  const grupoTributo = grupos.size === 1 ? Array.from(grupos)[0] : grupos.size > 1 ? Array.from(grupos).join(' / ') : 'OUTROS';
+  return { grupoTributo, tipoGuia };
+}
+
+function calcStatusVencimento(dataVencimento: string): string {
+  try {
+    const parts = dataVencimento.split('/');
+    if (parts.length !== 3) return 'desconhecido';
+    const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return 'vencida';
+    if (diffDays <= 5) return 'proxima_vencer';
+    return 'a_vencer';
+  } catch { return 'desconhecido'; }
+}
+
+export async function parseGuiaWithOcr(fileUrl: string, mimeType: string): Promise<GuiaOcrResult> {
+  const isImage = mimeType.startsWith('image/');
+  const content: any[] = [
+    {
+      type: "text",
+      text: `Analise este Documento de Arrecadação de Receitas Federais (DARF) e extraia TODOS os dados estruturados.
+
+Retorne um JSON com exatamente esta estrutura:
+{
+  "cnpj": "XX.XXX.XXX/XXXX-XX",
+  "razaoSocial": "NOME DA EMPRESA",
+  "periodoApuracao": "Mês/Ano conforme documento",
+  "dataVencimento": "DD/MM/AAAA",
+  "numeroDocumento": "XX.XX.XXXXX.XXXXXXX-X",
+  "valorTotal": 0.00,
+  "observacoes": "texto das observações ou vazio",
+  "itens": [
+    {
+      "codigo": "XXXX",
+      "denominacao": "NOME DO TRIBUTO",
+      "subtipo": "DETALHAMENTO",
+      "periodoApuracao": "PA:MM/AAAA",
+      "vencimento": "DD/MM/AAAA",
+      "principal": 0.00,
+      "multa": 0.00,
+      "juros": 0.00,
+      "total": 0.00
+    }
+  ],
+  "confianca": 95
+}
+
+IMPORTANTE:
+- Valores monetários devem ser números decimais (use ponto como separador decimal, ex: 1234.56)
+- Extraia TODOS os itens da tabela "Composição do Documento de Arrecadação"
+- O código é o número de 4 dígitos à esquerda de cada item
+- Se não encontrar multa ou juros, use 0
+- confianca é um número de 0 a 100 indicando sua confiança na extração`
+    }
+  ];
+  if (isImage) {
+    content.push({ type: "image_url", image_url: { url: fileUrl, detail: "high" } });
+  } else {
+    content.push({ type: "file_url", file_url: { url: fileUrl, mime_type: "application/pdf" } });
+  }
+
+  const result = await invokeLLM({
+    messages: [
+      { role: "system", content: "Você é um especialista em documentos fiscais brasileiros. Extraia dados de DARFs (Documentos de Arrecadação de Receitas Federais) com máxima precisão. Retorne APENAS JSON válido, sem markdown ou texto adicional." },
+      { role: "user", content: content }
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  const rawContent = result.choices[0]?.message?.content;
+  const textContent = typeof rawContent === 'string' ? rawContent : Array.isArray(rawContent) ? rawContent.map((p: any) => p.type === 'text' ? p.text : '').join('') : '';
+  let parsed: any;
+  try {
+    parsed = JSON.parse(textContent);
+  } catch {
+    const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) parsed = JSON.parse(jsonMatch[1].trim());
+    else throw new Error('Não foi possível extrair dados da guia. Verifique se o arquivo é um DARF válido.');
+  }
+
+  const itens = (parsed.itens || []).map((item: any) => ({
+    codigo: String(item.codigo || '').trim(),
+    denominacao: String(item.denominacao || ''),
+    subtipo: String(item.subtipo || ''),
+    periodoApuracao: String(item.periodoApuracao || ''),
+    vencimento: String(item.vencimento || ''),
+    principal: parseFloat(item.principal) || 0,
+    multa: parseFloat(item.multa) || 0,
+    juros: parseFloat(item.juros) || 0,
+    total: parseFloat(item.total) || 0,
+  }));
+  const { grupoTributo, tipoGuia } = classifyGuia(itens);
+  const dataVencimento = String(parsed.dataVencimento || '');
+  const statusVencimento = calcStatusVencimento(dataVencimento);
+
+  return {
+    cnpj: String(parsed.cnpj || ''),
+    razaoSocial: String(parsed.razaoSocial || ''),
+    periodoApuracao: String(parsed.periodoApuracao || ''),
+    dataVencimento,
+    numeroDocumento: String(parsed.numeroDocumento || ''),
+    valorTotal: parseFloat(parsed.valorTotal) || 0,
+    observacoes: String(parsed.observacoes || ''),
+    itens, grupoTributo, tipoGuia, statusVencimento,
+    confianca: parseInt(parsed.confianca) || 0,
+  };
+}
+
+export async function validateGuiaCnpj(guiaCnpj: string, clienteId: number): Promise<{ valido: boolean; clienteCnpj: string; razaoSocial: string }> {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT cnpj, razaoSocial FROM clientes WHERE id = ${clienteId}`));
+  const cliente = (rows as unknown as any[])[0];
+  if (!cliente) return { valido: false, clienteCnpj: '', razaoSocial: '' };
+  const normalize = (cnpj: string) => cnpj.replace(/[.\-\/]/g, '');
+  const valido = normalize(guiaCnpj) === normalize(cliente.cnpj);
+  return { valido, clienteCnpj: cliente.cnpj, razaoSocial: cliente.razaoSocial };
+}
+
+// ===== TAREFAS ATRASADAS =====
+export async function listTarefasAtrasadas(fila?: string) {
+  const db_ = (await getDb())!;
+  const filaFilter = fila ? `AND ct.fila = '${fila}'` : '';
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT ct.*, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    WHERE ct.status IN ('a_fazer', 'fazendo')
+    AND ct.prazo IS NOT NULL
+    AND ct.prazo < NOW()
+    ${filaFilter}
+    ORDER BY ct.prazo ASC
+  `));
+  return rows as unknown as any[];
+}
+
+export async function countTarefasAtrasadas(fila?: string) {
+  const db_ = (await getDb())!;
+  const filaFilter = fila ? `AND fila = '${fila}'` : '';
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT COUNT(*) as total FROM credit_tasks
+    WHERE status IN ('a_fazer', 'fazendo')
+    AND prazo IS NOT NULL AND prazo < NOW()
+    ${filaFilter}
+  `));
+  return (rows as unknown as any[])[0]?.total || 0;
+}
+
+
+// ===== RELATÓRIOS EXPORTÁVEIS =====
+export interface ReportFilters {
+  periodoInicio?: string; // YYYY-MM-DD
+  periodoFim?: string;
+  teseId?: number;
+  parceiroId?: number;
+  classificacao?: string; // novo, base
+  segmento?: string;
+  fila?: string;
+}
+
+export async function getReportData(filters: ReportFilters) {
+  const db_ = (await getDb())!;
+  const conditions: string[] = [];
+
+  if (filters.periodoInicio) conditions.push(`ct.createdAt >= '${filters.periodoInicio}'`);
+  if (filters.periodoFim) conditions.push(`ct.createdAt <= '${filters.periodoFim} 23:59:59'`);
+  if (filters.fila) conditions.push(`ct.fila = '${filters.fila}'`);
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Tarefas com dados do cliente e case
+  const [taskRows] = await db_.execute(sql.raw(`
+    SELECT 
+      ct.id, ct.codigo, ct.fila, ct.titulo, ct.status, ct.prioridade,
+      ct.responsavelNome, ct.dataVencimento, ct.dataConclusao, ct.slaStatus,
+      ct.createdAt, ct.updatedAt,
+      c.razaoSocial as clienteNome, c.cnpj as clienteCnpj,
+      c.segmentoEconomico as segmento, c.classificacaoCliente as classificacao,
+      c.parceiroId,
+      p.nomeFantasia as parceiroNome,
+      cc.numero as caseNumero, cc.fase as caseFase, cc.valorEstimado, cc.valorContratado
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    LEFT JOIN parceiros p ON c.parceiroId = p.id
+    LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+    ${whereClause}
+    ORDER BY ct.createdAt DESC
+  `));
+
+  let tasks = taskRows as unknown as any[];
+
+  // Apply client-level filters
+  if (filters.parceiroId) tasks = tasks.filter(t => t.parceiroId === filters.parceiroId);
+  if (filters.classificacao) tasks = tasks.filter(t => t.classificacao === filters.classificacao);
+  if (filters.segmento) tasks = tasks.filter(t => t.segmento === filters.segmento);
+
+  // Tese filter via case tesesIds
+  if (filters.teseId) {
+    const [caseRows] = await db_.execute(sql.raw(`
+      SELECT id, tesesIds FROM credit_cases WHERE tesesIds IS NOT NULL
+    `));
+    const casesWithTese = new Set(
+      (caseRows as unknown as any[])
+        .filter(c => {
+          try {
+            const ids = typeof c.tesesIds === 'string' ? JSON.parse(c.tesesIds) : c.tesesIds;
+            return Array.isArray(ids) && ids.includes(filters.teseId);
+          } catch { return false; }
+        })
+        .map(c => c.id)
+    );
+    tasks = tasks.filter(t => t.caseId && casesWithTese.has(t.caseId));
+  }
+
+  // Summary stats
+  const totalTarefas = tasks.length;
+  const porFila: Record<string, number> = {};
+  const porStatus: Record<string, number> = {};
+  const porPrioridade: Record<string, number> = {};
+  const porParceiro: Record<string, number> = {};
+  const porSegmento: Record<string, number> = {};
+  const porClassificacao: Record<string, number> = {};
+  let totalEstimado = 0;
+  let totalContratado = 0;
+  let totalEmAtraso = 0;
+
+  for (const t of tasks) {
+    porFila[t.fila] = (porFila[t.fila] || 0) + 1;
+    porStatus[t.status] = (porStatus[t.status] || 0) + 1;
+    porPrioridade[t.prioridade] = (porPrioridade[t.prioridade] || 0) + 1;
+    if (t.parceiroNome) porParceiro[t.parceiroNome] = (porParceiro[t.parceiroNome] || 0) + 1;
+    if (t.segmento) porSegmento[t.segmento] = (porSegmento[t.segmento] || 0) + 1;
+    if (t.classificacao) porClassificacao[t.classificacao] = (porClassificacao[t.classificacao] || 0) + 1;
+    totalEstimado += Number(t.valorEstimado || 0);
+    totalContratado += Number(t.valorContratado || 0);
+    if (t.slaStatus === 'vencido') totalEmAtraso++;
+  }
+
+  // Ledger summary
+  const [ledgerRows] = await db_.execute(sql.raw(`
+    SELECT 
+      cl.teseNome, cl.grupoDebito, cl.status,
+      SUM(COALESCE(cl.valorEstimado, 0)) as totalEstimado,
+      SUM(COALESCE(cl.valorValidado, 0)) as totalValidado,
+      SUM(COALESCE(cl.valorEfetivado, 0)) as totalEfetivado,
+      SUM(COALESCE(cl.saldoResidual, 0)) as totalResidual,
+      COUNT(*) as qtd
+    FROM credit_ledger cl
+    LEFT JOIN clientes c ON cl.clienteId = c.id
+    ${filters.parceiroId ? `WHERE c.parceiroId = ${filters.parceiroId}` : ''}
+    GROUP BY cl.teseNome, cl.grupoDebito, cl.status
+    ORDER BY totalEstimado DESC
+  `));
+
+  return {
+    tasks,
+    summary: {
+      totalTarefas,
+      totalEmAtraso,
+      totalEstimado,
+      totalContratado,
+      porFila,
+      porStatus,
+      porPrioridade,
+      porParceiro,
+      porSegmento,
+      porClassificacao,
+    },
+    ledger: ledgerRows as unknown as any[],
+  };
+}
+
+export async function getDistinctSegmentos() {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT DISTINCT segmentoEconomico as segmento FROM clientes 
+    WHERE segmentoEconomico IS NOT NULL AND segmentoEconomico != ''
+    ORDER BY segmentoEconomico
+  `));
+  return (rows as unknown as any[]).map(r => r.segmento);
+}

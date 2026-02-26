@@ -2048,3 +2048,19 @@
 - [x] Histórico de utilização (compensação, ressarcimento, restituição)
 - [x] Relação de números e informações de PerdComps vinculadas
 - [x] Alerta de risco de prescrição de crédito
+
+### OCR/Parser de Guias Tributárias
+- [x] Analisar modelos de guias: PIS, COFINS, PIS+COFINS, INSS, IRPJ, CSLL, IRPJ+CSLL, DCTFWeb
+- [x] Implementar backend OCR/parser com LLM vision para PDF e imagem
+- [x] Extrair automaticamente: tributo, valor, vencimento, CNPJ, período de apuração
+- [x] Validar se a guia pertence ao cliente (cruzar CNPJ)
+- [x] Integrar OCR nas páginas de Compensação, Ressarcimento e Restituição
+
+### Relatórios Exportáveis no Dashboard
+- [x] Filtros por período, tese, parceiro, classificação e segmento
+- [x] Exportação em CSV/Excel dos relatórios gerenciais
+- [x] Métricas: valor total apurado, por tese, por parceiro, por classificação, por regime, por segmento
+
+### UX — Navegação e Visão de Atraso
+- [x] Botão voltar ao dashboard em todos os submenus do crédito
+- [x] Visão de tarefas atrasadas em todas as filas do crédito
