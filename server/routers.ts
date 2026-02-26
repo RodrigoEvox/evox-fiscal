@@ -907,10 +907,23 @@ export const appRouter = router({
             }
           }
         }
-        return { id };
+         return { id };
+      }),
+    setorStats: protectedProcedure
+      .input(z.object({
+        setorId: z.number(),
+        responsavelId: z.number().optional(),
+        periodoInicio: z.string().optional(),
+        periodoFim: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.getSetorTaskStats(input.setorId, {
+          responsavelId: input.responsavelId,
+          periodoInicio: input.periodoInicio,
+          periodoFim: input.periodoFim,
+        });
       }),
   }),
-
   // ---- ARQUIVOS ----
   arquivos: router({
     list: protectedProcedure

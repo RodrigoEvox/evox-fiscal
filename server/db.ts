@@ -4901,3 +4901,79 @@ export async function getRelatorioMensalConsolidado(mes: number, ano: number) {
     planosAtivos,
   };
 }
+
+// ===== SETOR DASHBOARD STATS =====
+export async function getSetorTaskStats(setorId: number, filters?: {
+  responsavelId?: number;
+  periodoInicio?: string;
+  periodoFim?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const conditions: any[] = [eq(tarefas.setorId, setorId)];
+  if (filters?.responsavelId) conditions.push(eq(tarefas.responsavelId, filters.responsavelId));
+  if (filters?.periodoInicio) conditions.push(sql`${tarefas.createdAt} >= ${filters.periodoInicio}`);
+  if (filters?.periodoFim) conditions.push(sql`${tarefas.createdAt} <= ${filters.periodoFim}`);
+
+  const whereClause = and(...conditions);
+
+  const [stats] = await db.select({
+    total: sql<number>`COUNT(*)`,
+    a_fazer: sql<number>`SUM(CASE WHEN ${tarefas.status} IN ('a_fazer','backlog') THEN 1 ELSE 0 END)`,
+    em_andamento: sql<number>`SUM(CASE WHEN ${tarefas.status} IN ('fazendo','em_andamento') THEN 1 ELSE 0 END)`,
+    revisao: sql<number>`SUM(CASE WHEN ${tarefas.status} = 'revisao' THEN 1 ELSE 0 END)`,
+    concluido: sql<number>`SUM(CASE WHEN ${tarefas.status} = 'concluido' THEN 1 ELSE 0 END)`,
+    cancelado: sql<number>`SUM(CASE WHEN ${tarefas.status} = 'cancelado' THEN 1 ELSE 0 END)`,
+    vencido: sql<number>`SUM(CASE WHEN ${tarefas.slaStatus} = 'vencido' THEN 1 ELSE 0 END)`,
+    atencao: sql<number>`SUM(CASE WHEN ${tarefas.slaStatus} = 'atencao' THEN 1 ELSE 0 END)`,
+    urgente: sql<number>`SUM(CASE WHEN ${tarefas.prioridade} IN ('urgente','alta') THEN 1 ELSE 0 END)`,
+  }).from(tarefas).where(whereClause);
+
+  // Get per-responsible stats
+  const responsavelStats = await db.select({
+    responsavelId: tarefas.responsavelId,
+    total: sql<number>`COUNT(*)`,
+    concluido: sql<number>`SUM(CASE WHEN ${tarefas.status} = 'concluido' THEN 1 ELSE 0 END)`,
+    vencido: sql<number>`SUM(CASE WHEN ${tarefas.slaStatus} = 'vencido' THEN 1 ELSE 0 END)`,
+  }).from(tarefas).where(whereClause).groupBy(tarefas.responsavelId);
+
+  // Get per-status breakdown
+  const statusBreakdown = await db.select({
+    status: tarefas.status,
+    count: sql<number>`COUNT(*)`,
+  }).from(tarefas).where(whereClause).groupBy(tarefas.status);
+
+  // Get per-priority breakdown
+  const prioridadeBreakdown = await db.select({
+    prioridade: tarefas.prioridade,
+    count: sql<number>`COUNT(*)`,
+  }).from(tarefas).where(whereClause).groupBy(tarefas.prioridade);
+
+  return {
+    total: Number(stats?.total || 0),
+    aFazer: Number(stats?.a_fazer || 0),
+    emAndamento: Number(stats?.em_andamento || 0),
+    revisao: Number(stats?.revisao || 0),
+    concluido: Number(stats?.concluido || 0),
+    cancelado: Number(stats?.cancelado || 0),
+    vencido: Number(stats?.vencido || 0),
+    atencao: Number(stats?.atencao || 0),
+    urgente: Number(stats?.urgente || 0),
+    pendentes: Number(stats?.a_fazer || 0) + Number(stats?.em_andamento || 0) + Number(stats?.revisao || 0),
+    responsavelStats: responsavelStats.map(r => ({
+      responsavelId: r.responsavelId,
+      total: Number(r.total),
+      concluido: Number(r.concluido),
+      vencido: Number(r.vencido),
+    })),
+    statusBreakdown: statusBreakdown.map(s => ({
+      status: s.status,
+      count: Number(s.count),
+    })),
+    prioridadeBreakdown: prioridadeBreakdown.map(p => ({
+      prioridade: p.prioridade,
+      count: Number(p.count),
+    })),
+  };
+}

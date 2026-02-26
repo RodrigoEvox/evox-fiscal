@@ -1,0 +1,85 @@
+{
+  "query": "SELECT sc.sigla, s.nome, JSON_LENGTH(sc.submenus) as submenu_count FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY sc.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT sc.sigla, s.nome, JSON_LENGTH(sc.submenus) as submenu_count FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY sc.id;",
+  "rows": [
+    {
+      "sigla": "SUP",
+      "nome": "Suporte",
+      "submenu_count": "6"
+    },
+    {
+      "sigla": "CRE",
+      "nome": "Crédito",
+      "submenu_count": "10"
+    },
+    {
+      "sigla": "TRA",
+      "nome": "Transação",
+      "submenu_count": "3"
+    },
+    {
+      "sigla": "JUR",
+      "nome": "Jurídico",
+      "submenu_count": "2"
+    },
+    {
+      "sigla": "REF",
+      "nome": "Reforma",
+      "submenu_count": "2"
+    },
+    {
+      "sigla": "CON",
+      "nome": "Contratos",
+      "submenu_count": "1"
+    },
+    {
+      "sigla": "FIN",
+      "nome": "Financeiro",
+      "submenu_count": "4"
+    },
+    {
+      "sigla": "MKT",
+      "nome": "Marketing",
+      "submenu_count": "5"
+    },
+    {
+      "sigla": "GEG",
+      "nome": "GEG – Gente & Gestão",
+      "submenu_count": "6"
+    },
+    {
+      "sigla": "COM",
+      "nome": "Comercial",
+      "submenu_count": "3"
+    },
+    {
+      "sigla": "CTN",
+      "nome": "Contencioso",
+      "submenu_count": "3"
+    },
+    {
+      "sigla": "MON",
+      "nome": "Evox Monitor",
+      "submenu_count": "3"
+    },
+    {
+      "sigla": "SOF",
+      "nome": "Soluções Financeiras",
+      "submenu_count": "3"
+    },
+    {
+      "sigla": "UNI",
+      "nome": "Universidade Evox",
+      "submenu_count": "3"
+    },
+    {
+      "sigla": "IAT",
+      "nome": "IAT – IA e Tecnologia",
+      "submenu_count": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "sigla\tnome\tsubmenu_count\nSUP\tSuporte\t6\nCRE\tCrédito\t10\nTRA\tTransação\t3\nJUR\tJurídico\t2\nREF\tReforma\t2\nCON\tContratos\t1\nFIN\tFinanceiro\t4\nMKT\tMarketing\t5\nGEG\tGEG – Gente & Gestão\t6\nCOM\tComercial\t3\nCTN\tContencioso\t3\nMON\tEvox Monitor\t3\nSOF\tSoluções Financeiras\t3\nUNI\tUniversidade Evox\t3\nIAT\tIAT – IA e Tecnologia\t1\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

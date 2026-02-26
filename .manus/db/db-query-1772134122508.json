@@ -1,0 +1,115 @@
+{
+  "query": "SELECT sc.id, sc.sigla, sc.setorId, s.nome, sc.workflowStatuses FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY sc.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT sc.id, sc.sigla, sc.setorId, s.nome, sc.workflowStatuses FROM setor_config sc JOIN setores s ON s.id = sc.setorId ORDER BY sc.id;",
+  "rows": [
+    {
+      "id": "1",
+      "sigla": "SUP",
+      "setorId": "1",
+      "nome": "Suporte",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "2",
+      "sigla": "CRE",
+      "setorId": "2",
+      "nome": "Crédito",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "3",
+      "sigla": "TRA",
+      "setorId": "3",
+      "nome": "Transação",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "4",
+      "sigla": "JUR",
+      "setorId": "4",
+      "nome": "Jurídico",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "5",
+      "sigla": "REF",
+      "setorId": "5",
+      "nome": "Reforma",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "6",
+      "sigla": "CON",
+      "setorId": "6",
+      "nome": "Contratos",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "7",
+      "sigla": "FIN",
+      "setorId": "7",
+      "nome": "Financeiro",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "8",
+      "sigla": "MKT",
+      "setorId": "8",
+      "nome": "Marketing",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "9",
+      "sigla": "GEG",
+      "setorId": "9",
+      "nome": "GEG – Gente & Gestão",
+      "workflowStatuses": "[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]"
+    },
+    {
+      "id": "30001",
+      "sigla": "COM",
+      "setorId": "30001",
+      "nome": "Comercial",
+      "workflowStatuses": "[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]"
+    },
+    {
+      "id": "30002",
+      "sigla": "CTN",
+      "setorId": "30002",
+      "nome": "Contencioso",
+      "workflowStatuses": "[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]"
+    },
+    {
+      "id": "30003",
+      "sigla": "MON",
+      "setorId": "30003",
+      "nome": "Evox Monitor",
+      "workflowStatuses": "[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]"
+    },
+    {
+      "id": "30004",
+      "sigla": "SOF",
+      "setorId": "30004",
+      "nome": "Soluções Financeiras",
+      "workflowStatuses": "[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]"
+    },
+    {
+      "id": "30005",
+      "sigla": "UNI",
+      "setorId": "30005",
+      "nome": "Universidade Evox",
+      "workflowStatuses": "[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]"
+    },
+    {
+      "id": "60001",
+      "sigla": "IAT",
+      "setorId": "60001",
+      "nome": "IAT – IA e Tecnologia",
+      "workflowStatuses": "[\"pendente\", \"em_andamento\", \"concluido\"]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsigla\tsetorId\tnome\tworkflowStatuses\n1\tSUP\t1\tSuporte\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n2\tCRE\t2\tCrédito\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n3\tTRA\t3\tTransação\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n4\tJUR\t4\tJurídico\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n5\tREF\t5\tReforma\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n6\tCON\t6\tContratos\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n7\tFIN\t7\tFinanceiro\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n8\tMKT\t8\tMarketing\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n9\tGEG\t9\tGEG – Gente & Gestão\t[\"a_fazer\", \"fazendo\", \"feito\", \"concluido\"]\n30001\tCOM\t30001\tComercial\t[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]\n30002\tCTN\t30002\tContencioso\t[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]\n30003\tMON\t30003\tEvox Monitor\t[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]\n30004\tSOF\t30004\tSoluções Financeiras\t[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]\n30005\tUNI\t30005\tUniversidade Evox\t[\"a_fazer\", \"em_andamento\", \"revisao\", \"concluido\"]\n60001\tIAT\t60001\tIAT – IA e Tecnologia\t[\"pendente\", \"em_andamento\", \"concluido\"]\n",
+  "stderr": "",
+  "execution_time_ms": 197
+}

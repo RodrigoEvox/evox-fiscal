@@ -2112,3 +2112,36 @@
 - [x] Implementar alerta de confirmação ao sair durante criação/edição de tarefa
 - [x] Detectar: cancelar, clicar fora, voltar, início, navegação lateral
 - [x] Aplicar em Nova Tarefa e em todos os diálogos de edição das filas
+
+## v79 — Filtros Dashboard, Notificações Email, Dashboards Setoriais
+
+### Filtros no Dashboard Crédito
+- [x] Filtro por responsável (dropdown com lista de usuários)
+- [x] Filtro por parceiro (dropdown com lista de parceiros)
+- [x] Filtro por período (date range picker)
+- [x] Cards e filas de trabalho devem respeitar os filtros aplicados
+- [x] Botão limpar filtros
+
+### Notificações por Email — Tarefas Atrasadas
+- [ ] Enviar email individual para cada responsável com suas tarefas atrasadas (adiado - aguardando SMTP)
+- [ ] Email com resumo diário para o owner/coordenador (adiado - aguardando SMTP)
+- [ ] Integrar com Gmail MCP ou SMTP do sistema (adiado - aguardando SMTP)
+- [x] Template de email profissional com detalhes das tarefas (emailService.ts criado)
+
+### Dashboard Tempo Real — Transação
+- [x] Criar página DashboardTransacao com cards e filas em tempo real
+- [x] Query backend para buscar stats de tarefas do setor Transação
+- [x] Auto-refresh a cada 30 segundos
+- [x] Registrar rota e adicionar ao menu do setor
+
+### Dashboard Tempo Real — Jurídico
+- [x] Criar página DashboardJuridico com cards e filas em tempo real
+- [x] Query backend para buscar stats de tarefas do setor Jurídico
+- [x] Auto-refresh a cada 30 segundos
+- [x] Registrar rota e adicionar ao menu do setor
+
+### Dashboard Tempo Real — Contencioso
+- [x] Criar página DashboardContencioso com cards e filas em tempo real
+- [x] Query backend para buscar stats de tarefas do setor Contencioso
+- [x] Auto-refresh a cada 30 segundos
+- [x] Registrar rota e adicionar ao menu do setor

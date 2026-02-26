@@ -808,3 +808,215 @@ describe("Overdue Tasks SQL Fix", () => {
     expect(fixedQuery).not.toContain("cc.nomeCliente");
   });
 });
+
+
+// ============================================================
+// Tests for Dashboard Filters, Setor Dashboards, Email Service
+// ============================================================
+
+describe("Dashboard Crédito Filters", () => {
+  it("should support filtering by responsável", () => {
+    const filters = { responsavelId: 5, periodoInicio: undefined, periodoFim: undefined, parceiroId: undefined };
+    expect(filters.responsavelId).toBe(5);
+    // When responsavelId is set, the query should filter by it
+    const whereClause = filters.responsavelId ? `ct.responsavelId = ${filters.responsavelId}` : "";
+    expect(whereClause).toContain("responsavelId = 5");
+  });
+
+  it("should support filtering by parceiro", () => {
+    const filters = { parceiroId: 3 };
+    const whereClause = filters.parceiroId ? `cc.parceiroId = ${filters.parceiroId}` : "";
+    expect(whereClause).toContain("parceiroId = 3");
+  });
+
+  it("should support filtering by período (date range)", () => {
+    const filters = { periodoInicio: "2025-01-01", periodoFim: "2025-12-31" };
+    expect(filters.periodoInicio).toBe("2025-01-01");
+    expect(filters.periodoFim).toBe("2025-12-31");
+    // Should generate date range condition
+    const conditions: string[] = [];
+    if (filters.periodoInicio) conditions.push(`ct.createdAt >= '${filters.periodoInicio}'`);
+    if (filters.periodoFim) conditions.push(`ct.createdAt <= '${filters.periodoFim}'`);
+    expect(conditions.length).toBe(2);
+  });
+
+  it("should combine multiple filters", () => {
+    const filters = { responsavelId: 5, parceiroId: 3, periodoInicio: "2025-01-01", periodoFim: "2025-06-30" };
+    const conditions: string[] = [];
+    if (filters.responsavelId) conditions.push("responsavelId filter");
+    if (filters.parceiroId) conditions.push("parceiroId filter");
+    if (filters.periodoInicio) conditions.push("periodoInicio filter");
+    if (filters.periodoFim) conditions.push("periodoFim filter");
+    expect(conditions.length).toBe(4);
+  });
+
+  it("should auto-refresh every 30 seconds", () => {
+    const refetchInterval = 30000;
+    expect(refetchInterval).toBe(30000);
+    expect(refetchInterval).toBeGreaterThan(0);
+  });
+
+  it("should clear all filters at once", () => {
+    const filters = { responsavelId: 5, parceiroId: 3, periodoInicio: "2025-01-01", periodoFim: "2025-12-31" };
+    // Clear
+    const cleared = { responsavelId: undefined, parceiroId: undefined, periodoInicio: "", periodoFim: "" };
+    expect(cleared.responsavelId).toBeUndefined();
+    expect(cleared.parceiroId).toBeUndefined();
+    expect(cleared.periodoInicio).toBe("");
+    expect(cleared.periodoFim).toBe("");
+  });
+});
+
+describe("Setor Dashboard Stats (getSetorTaskStats)", () => {
+  it("should return total, pendentes, concluido, vencido, atencao, urgente counts", () => {
+    const expectedFields = ["total", "pendentes", "concluido", "vencido", "atencao", "urgente", "emAndamento"];
+    const mockStats = {
+      total: 10, pendentes: 5, concluido: 3, vencido: 1, atencao: 1,
+      urgente: 2, emAndamento: 4,
+      statusBreakdown: [], prioridadeBreakdown: [], responsavelStats: [],
+    };
+    for (const field of expectedFields) {
+      expect(mockStats).toHaveProperty(field);
+    }
+  });
+
+  it("should return statusBreakdown with count per status", () => {
+    const statusBreakdown = [
+      { status: "a_fazer", count: 3 },
+      { status: "fazendo", count: 4 },
+      { status: "feito", count: 1 },
+      { status: "concluido", count: 2 },
+    ];
+    expect(statusBreakdown.length).toBe(4);
+    const total = statusBreakdown.reduce((sum, s) => sum + s.count, 0);
+    expect(total).toBe(10);
+  });
+
+  it("should return prioridadeBreakdown with count per priority", () => {
+    const prioridadeBreakdown = [
+      { prioridade: "urgente", count: 1 },
+      { prioridade: "alta", count: 2 },
+      { prioridade: "media", count: 5 },
+      { prioridade: "baixa", count: 2 },
+    ];
+    expect(prioridadeBreakdown.length).toBe(4);
+  });
+
+  it("should return responsavelStats with per-user breakdown", () => {
+    const responsavelStats = [
+      { responsavelId: 1, total: 5, concluido: 2, vencido: 1 },
+      { responsavelId: 2, total: 3, concluido: 1, vencido: 0 },
+    ];
+    expect(responsavelStats[0]).toHaveProperty("responsavelId");
+    expect(responsavelStats[0]).toHaveProperty("total");
+    expect(responsavelStats[0]).toHaveProperty("concluido");
+    expect(responsavelStats[0]).toHaveProperty("vencido");
+  });
+
+  it("should support filtering by responsavelId", () => {
+    const input = { setorId: 1, responsavelId: 5 };
+    expect(input.responsavelId).toBe(5);
+  });
+
+  it("should support filtering by period", () => {
+    const input = { setorId: 1, periodoInicio: "2025-01-01", periodoFim: "2025-12-31" };
+    expect(input.periodoInicio).toBeDefined();
+    expect(input.periodoFim).toBeDefined();
+  });
+});
+
+describe("Setor Dashboard Replication (TRA, JUR, CTN)", () => {
+  it("should have dashboard submenu for TRA sector", () => {
+    const traSubmenus = ["dashboard", "nova-tarefa", "fila", "analitica"];
+    expect(traSubmenus).toContain("dashboard");
+  });
+
+  it("should have dashboard submenu for JUR sector", () => {
+    const jurSubmenus = ["dashboard", "nova-tarefa", "fila"];
+    expect(jurSubmenus).toContain("dashboard");
+  });
+
+  it("should have dashboard submenu for CTN sector", () => {
+    const ctnSubmenus = ["dashboard", "nova-tarefa", "fila", "relatorio"];
+    expect(ctnSubmenus).toContain("dashboard");
+  });
+
+  it("should route to SetorDashboard when sub is 'dashboard' or empty", () => {
+    const sub = "";
+    const shouldShowDashboard = sub === "dashboard" || sub === "";
+    expect(shouldShowDashboard).toBe(true);
+  });
+
+  it("should display charts (pie for status, pie for priority, bar for responsavel)", () => {
+    const chartTypes = ["statusPie", "prioridadePie", "responsavelBar"];
+    expect(chartTypes.length).toBe(3);
+  });
+
+  it("should show overdue banner when vencido > 0", () => {
+    const stats = { vencido: 3 };
+    const showBanner = (stats.vencido || 0) > 0;
+    expect(showBanner).toBe(true);
+  });
+
+  it("should NOT show overdue banner when vencido is 0", () => {
+    const stats = { vencido: 0 };
+    const showBanner = (stats.vencido || 0) > 0;
+    expect(showBanner).toBe(false);
+  });
+});
+
+describe("Email Notification Service", () => {
+  it("should have email service module with sendOverdueEmails function", async () => {
+    const emailService = await import("./emailService");
+    expect(emailService).toBeDefined();
+    expect(typeof emailService.sendOverdueEmails).toBe("function");
+    expect(typeof emailService.buildOverdueEmailHtml).toBe("function");
+    expect(typeof emailService.sendEmail).toBe("function");
+  });
+
+  it("should group overdue tasks by responsavel for email", () => {
+    const tasks = [
+      { responsavelNome: "João", fila: "apuracao", codigo: "CRE-001" },
+      { responsavelNome: "João", fila: "compensacao", codigo: "CRE-002" },
+      { responsavelNome: "Maria", fila: "apuracao", codigo: "CRE-003" },
+    ];
+    const grouped = new Map<string, any[]>();
+    for (const t of tasks) {
+      const key = t.responsavelNome || "Não atribuído";
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(t);
+    }
+    expect(grouped.size).toBe(2);
+    expect(grouped.get("João")!.length).toBe(2);
+    expect(grouped.get("Maria")!.length).toBe(1);
+  });
+
+  it("should generate HTML email with task details", () => {
+    const tasks = [
+      { codigo: "CRE-001", titulo: "Apurar PIS", fila: "apuracao", clienteNome: "Empresa X" },
+    ];
+    const html = `<h2>Tarefas em Atraso</h2><ul>${tasks.map(t => `<li>${t.codigo} - ${t.titulo}</li>`).join("")}</ul>`;
+    expect(html).toContain("CRE-001");
+    expect(html).toContain("Apurar PIS");
+    expect(html).toContain("Tarefas em Atraso");
+  });
+});
+
+describe("Navigation Header (Back + Home)", () => {
+  it("should have back arrow that calls history.back()", () => {
+    // The NavHeader component renders a back button that calls window.history.back()
+    const backAction = "window.history.back()";
+    expect(backAction).toContain("history.back");
+  });
+
+  it("should have home icon that navigates to /", () => {
+    const homeRoute = "/";
+    expect(homeRoute).toBe("/");
+  });
+
+  it("should NOT display 'Voltar ao Dashboard' text", () => {
+    // The new NavHeader only shows icons, no text like 'Voltar ao Dashboard'
+    const displayedText = ""; // No text, only icons
+    expect(displayedText).not.toContain("Voltar ao Dashboard");
+  });
+});

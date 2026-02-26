@@ -1,12 +1,18 @@
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useLocation } from 'wouter';
+import { useState, useMemo } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   DollarSign, ClipboardList, CheckCircle, AlertTriangle,
   TrendingUp, Loader2, ArrowRight, ChevronRight, Calculator,
   UserPlus, FileEdit, ArrowLeftRight, RefreshCw, Undo2,
-  PlusCircle, Clock, BarChart3,
+  PlusCircle, Clock, BarChart3, Filter, X, CalendarIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,13 +27,44 @@ const FILAS = [
 
 export default function CreditoDashboard() {
   const [, navigate] = useLocation();
+
+  // Filter state
+  const [responsavelId, setResponsavelId] = useState<number | undefined>();
+  const [parceiroId, setParceiroId] = useState<number | undefined>();
+  const [dataInicio, setDataInicio] = useState<Date | undefined>();
+  const [dataFim, setDataFim] = useState<Date | undefined>();
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Build filter input for the query
+  const filterInput = useMemo(() => {
+    const f: any = {};
+    if (responsavelId) f.responsavelId = responsavelId;
+    if (parceiroId) f.parceiroId = parceiroId;
+    if (dataInicio) f.dataInicio = format(dataInicio, 'yyyy-MM-dd');
+    if (dataFim) f.dataFim = format(dataFim, 'yyyy-MM-dd');
+    return Object.keys(f).length > 0 ? f : undefined;
+  }, [responsavelId, parceiroId, dataInicio, dataFim]);
+
+  const hasFilters = !!(responsavelId || parceiroId || dataInicio || dataFim);
+
+  // Fetch data for filters
+  const { data: users } = trpc.users.list.useQuery();
+  const { data: parceiros } = trpc.parceiros.list.useQuery();
+
   // Auto-refresh every 15 seconds for real-time data
-  const { data: taskStats, isLoading } = trpc.creditRecovery.credito.tasks.stats.useQuery(undefined, {
+  const { data: taskStats, isLoading } = trpc.creditRecovery.credito.tasks.stats.useQuery(filterInput, {
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
 
   const ts = (taskStats || {}) as Record<string, number>;
+
+  const clearFilters = () => {
+    setResponsavelId(undefined);
+    setParceiroId(undefined);
+    setDataInicio(undefined);
+    setDataFim(undefined);
+  };
 
   if (isLoading) {
     return (
@@ -66,11 +103,128 @@ export default function CreditoDashboard() {
           <h1 className="text-2xl font-bold text-foreground">Dashboard — Recuperação de Créditos</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão consolidada das filas de trabalho do setor</p>
         </div>
-        <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
-          <PlusCircle className="w-4 h-4" />
-          Nova Tarefa
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showFilters ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="gap-2"
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
+            {hasFilters && (
+              <span className="ml-1 w-5 h-5 rounded-full bg-white text-primary text-xs font-bold flex items-center justify-center">
+                {[responsavelId, parceiroId, dataInicio, dataFim].filter(Boolean).length}
+              </span>
+            )}
+          </Button>
+          <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
+            <PlusCircle className="w-4 h-4" />
+            Nova Tarefa
+          </Button>
+        </div>
       </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <Card className="border-dashed">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Filtros de Análise
+              </h3>
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs text-muted-foreground">
+                  <X className="w-3 h-3" />
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Responsável */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Responsável</label>
+                <Select
+                  value={responsavelId?.toString() || 'all'}
+                  onValueChange={(v) => setResponsavelId(v === 'all' ? undefined : Number(v))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {(users || []).map((u: any) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>
+                        {u.apelido || u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Parceiro */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Parceiro</label>
+                <Select
+                  value={parceiroId?.toString() || 'all'}
+                  onValueChange={(v) => setParceiroId(v === 'all' ? undefined : Number(v))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {(parceiros || []).map((p: any) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>
+                        {p.nomeFantasia || p.razaoSocial || p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Data Início */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Data Início</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full h-9 justify-start text-left font-normal', !dataInicio && 'text-muted-foreground')}>
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {dataInicio ? format(dataInicio, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecionar'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio} locale={ptBR} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Data Fim */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Data Fim</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full h-9 justify-start text-left font-normal', !dataFim && 'text-muted-foreground')}>
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {dataFim ? format(dataFim, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecionar'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dataFim} onSelect={setDataFim} locale={ptBR} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            {hasFilters && (
+              <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                <Filter className="w-3 h-3" />
+                Filtros aplicados — os dados abaixo refletem apenas as tarefas que correspondem aos critérios selecionados.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

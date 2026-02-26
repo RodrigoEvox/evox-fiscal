@@ -606,9 +606,16 @@ const creditoRouter = router({
         return { success: true };
       }),
 
-    stats: protectedProcedure.query(async () => {
-      return credDb.getCreditTaskStats();
-    }),
+    stats: protectedProcedure
+      .input(z.object({
+        responsavelId: z.number().optional(),
+        parceiroId: z.number().optional(),
+        dataInicio: z.string().optional(),
+        dataFim: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return credDb.getCreditTaskStats(input || undefined);
+      }),
   }),
 
   // --- Tickets ---

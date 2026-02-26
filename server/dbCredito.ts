@@ -227,7 +227,7 @@ export async function updateCreditTask(id: number, data: Partial<InsertCreditTas
   await db_.update(creditTasks).set(data as any).where(eq(creditTasks.id, id));
 }
 
-export async function getCreditTaskStats() {
+export async function getCreditTaskStats(filters?: { responsavelId?: number; parceiroId?: number; dataInicio?: string; dataFim?: string }) {
   const db_ = await getDb();
   if (!db_) return {
     total: 0, a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0,
@@ -238,18 +238,33 @@ export async function getCreditTaskStats() {
     ressarcimento_total: 0, ressarcimento_a_fazer: 0, ressarcimento_fazendo: 0, ressarcimento_feito: 0, ressarcimento_concluido: 0, ressarcimento_em_atraso: 0,
     restituicao_total: 0, restituicao_a_fazer: 0, restituicao_fazendo: 0, restituicao_feito: 0, restituicao_concluido: 0, restituicao_em_atraso: 0,
   };
-  const [rows] = await db_.execute(sql`
+
+  // Build WHERE conditions dynamically
+  const conditions: string[] = [];
+  if (filters?.responsavelId) conditions.push(`ct.responsavelId = ${Number(filters.responsavelId)}`);
+  if (filters?.parceiroId) conditions.push(`cc.parceiroId = ${Number(filters.parceiroId)}`);
+  if (filters?.dataInicio) conditions.push(`ct.createdAt >= '${filters.dataInicio}'`);
+  if (filters?.dataFim) conditions.push(`ct.createdAt <= '${filters.dataFim} 23:59:59'`);
+
+  const needsJoin = !!filters?.parceiroId;
+  const fromClause = needsJoin
+    ? `credit_tasks ct LEFT JOIN credit_cases cc ON ct.caseId = cc.id`
+    : `credit_tasks ct`;
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [rows] = await db_.execute(sql.raw(`
     SELECT 
-      fila,
+      ct.fila,
       COUNT(*) as total,
-      SUM(CASE WHEN status = 'a_fazer' THEN 1 ELSE 0 END) as a_fazer,
-      SUM(CASE WHEN status = 'fazendo' THEN 1 ELSE 0 END) as fazendo,
-      SUM(CASE WHEN status = 'feito' THEN 1 ELSE 0 END) as feito,
-      SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) as concluido,
-      SUM(CASE WHEN slaStatus = 'vencido' THEN 1 ELSE 0 END) as em_atraso
-    FROM credit_tasks
-    GROUP BY fila
-  `);
+      SUM(CASE WHEN ct.status = 'a_fazer' THEN 1 ELSE 0 END) as a_fazer,
+      SUM(CASE WHEN ct.status = 'fazendo' THEN 1 ELSE 0 END) as fazendo,
+      SUM(CASE WHEN ct.status = 'feito' THEN 1 ELSE 0 END) as feito,
+      SUM(CASE WHEN ct.status = 'concluido' THEN 1 ELSE 0 END) as concluido,
+      SUM(CASE WHEN ct.slaStatus = 'vencido' THEN 1 ELSE 0 END) as em_atraso
+    FROM ${fromClause}
+    ${whereClause}
+    GROUP BY ct.fila
+  `));
   
   const filas = ['apuracao', 'onboarding', 'retificacao', 'compensacao', 'ressarcimento', 'restituicao'];
   const result: Record<string, number> = {
@@ -263,7 +278,7 @@ export async function getCreditTaskStats() {
     result[`${f}_concluido`] = 0;
     result[`${f}_em_atraso`] = 0;
   }
-  for (const row of rows as any[]) {
+  for (const row of (rows as unknown as any[])) {
     const fila = row.fila as string;
     const total = Number(row.total) || 0;
     const aFazer = Number(row.a_fazer) || 0;

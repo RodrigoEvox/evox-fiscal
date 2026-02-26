@@ -469,6 +469,17 @@ async function runCreditOverdueCheck() {
       } catch (e) { /* ignore individual errors */ }
     }
 
+    // 4. Send email notifications to admins and responsible users
+    try {
+      const { sendOverdueEmails } = await import('../emailService');
+      const emailsSent = await sendOverdueEmails(overdueTasks, summary, allUsers as any);
+      if (emailsSent > 0) {
+        console.log(`[Credit Overdue Scheduler] Sent ${emailsSent} email notification(s)`);
+      }
+    } catch (emailErr) {
+      console.warn('[Credit Overdue Scheduler] Email sending failed (SMTP may not be configured):', emailErr);
+    }
+
     console.log(`[Credit Overdue Scheduler] Sent notifications for ${summary.total} overdue task(s)`);
   } catch (err) {
     console.error('[Credit Overdue Scheduler Error]', err);
