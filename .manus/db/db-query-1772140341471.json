@@ -1,0 +1,13 @@
+{
+  "query": "SELECT DISTINCT codigo FROM credit_tasks ORDER BY codigo",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT DISTINCT codigo FROM credit_tasks ORDER BY codigo",
+  "rows": [
+    {
+      "codigo": "CT-0001"
+    }
+  ],
+  "messages": [],
+  "stdout": "codigo\nCT-0001\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

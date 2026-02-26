@@ -1,0 +1,73 @@
+{
+  "query": "SELECT id, codigo, clienteId, titulo, fila, status, createdAt FROM credit_tasks ORDER BY id LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, codigo, clienteId, titulo, fila, status, createdAt FROM credit_tasks ORDER BY id LIMIT 10",
+  "rows": [
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "clienteId": "450012",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 14:35:52"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0001",
+      "clienteId": "450010",
+      "titulo": "Teste",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 14:44:28"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0001",
+      "clienteId": "30029",
+      "titulo": "Reapuração",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 14:52:27"
+    },
+    {
+      "id": "30001",
+      "codigo": "CT-0001",
+      "clienteId": "510005",
+      "titulo": "Compensação PIS/Cofins",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 17:58:55"
+    },
+    {
+      "id": "30002",
+      "codigo": "CT-0001",
+      "clienteId": "510004",
+      "titulo": "Compensação PIS Cofins",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 18:28:16"
+    },
+    {
+      "id": "30003",
+      "codigo": "CT-0001",
+      "clienteId": "510001",
+      "titulo": "Compensação IRPJ",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 19:59:00"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-0001",
+      "clienteId": "510027",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "createdAt": "2026-02-26 20:54:54"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tclienteId\ttitulo\tfila\tstatus\tcreatedAt\n1\tCT-0001\t450012\tApuração PERSE\tapuracao\ta_fazer\t2026-02-26 14:35:52\n2\tCT-0001\t450010\tTeste\tapuracao\ta_fazer\t2026-02-26 14:44:28\n3\tCT-0001\t30029\tReapuração\tapuracao\ta_fazer\t2026-02-26 14:52:27\n30001\tCT-0001\t510005\tCompensação PIS/Cofins\tcompensacao\ta_fazer\t2026-02-26 17:58:55\n30002\tCT-0001\t510004\tCompensação PIS Cofins\tcompensacao\ta_fazer\t2026-02-26 18:28:16\n30003\tCT-0001\t510001\tCompensação IRPJ\tcompensacao\ta_fazer\t2026-02-26 19:59:00\n30004\tCT-0001\t510027\tApuração PERSE\tapuracao\ta_fazer\t2026-02-26 20:54:54\n",
+  "stderr": "",
+  "execution_time_ms": 138
+}

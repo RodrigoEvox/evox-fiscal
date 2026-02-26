@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, codigo, clienteId, titulo, fila, status, criadoPorNome, DATE_FORMAT(createdAt, '%d/%m/%Y %H:%i') as criadoEm FROM credit_tasks ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, codigo, clienteId, titulo, fila, status, criadoPorNome, DATE_FORMAT(createdAt, '%d/%m/%Y %H:%i') as criadoEm FROM credit_tasks ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "clienteId": "450012",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 14:35"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0001",
+      "clienteId": "450010",
+      "titulo": "Teste",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 14:44"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0001",
+      "clienteId": "30029",
+      "titulo": "Reapuração",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 14:52"
+    },
+    {
+      "id": "30001",
+      "codigo": "CT-0001",
+      "clienteId": "510005",
+      "titulo": "Compensação PIS/Cofins",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 17:58"
+    },
+    {
+      "id": "30002",
+      "codigo": "CT-0001",
+      "clienteId": "510004",
+      "titulo": "Compensação PIS Cofins",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 18:28"
+    },
+    {
+      "id": "30003",
+      "codigo": "CT-0001",
+      "clienteId": "510001",
+      "titulo": "Compensação IRPJ",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 19:59"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-0001",
+      "clienteId": "510027",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "criadoEm": "26/02/2026 20:54"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tclienteId\ttitulo\tfila\tstatus\tcriadoPorNome\tcriadoEm\n1\tCT-0001\t450012\tApuração PERSE\tapuracao\ta_fazer\trodrigo\t26/02/2026 14:35\n2\tCT-0001\t450010\tTeste\tapuracao\ta_fazer\trodrigo\t26/02/2026 14:44\n3\tCT-0001\t30029\tReapuração\tapuracao\ta_fazer\trodrigo\t26/02/2026 14:52\n30001\tCT-0001\t510005\tCompensação PIS/Cofins\tcompensacao\ta_fazer\trodrigo\t26/02/2026 17:58\n30002\tCT-0001\t510004\tCompensação PIS Cofins\tcompensacao\ta_fazer\trodrigo\t26/02/2026 18:28\n30003\tCT-0001\t510001\tCompensação IRPJ\tcompensacao\ta_fazer\trodrigo\t26/02/2026 19:59\n30004\tCT-0001\t510027\tApuração PERSE\tapuracao\ta_fazer\trodrigo\t26/02/2026 20:54\n",
+  "stderr": "",
+  "execution_time_ms": 78
+}

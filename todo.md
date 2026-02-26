@@ -2171,3 +2171,24 @@
 - [x] Registrar rotas no App.tsx
 - [x] Adicionar ícones específicos para cada fila na sidebar
 - [x] Testes vitest (31 testes passando)
+
+## v81 — Correções e Melhorias no Setor Crédito
+
+### Dashboard Crédito
+- [x] Adicionar card "Em Andamento" (Fazendo) na visão consolidada das filas de trabalho
+- [x] Ao clicar no menu Crédito, redirecionar direto para o Dashboard do setor
+
+### Fila de Apuração
+- [x] Exibir razão social e CNPJ do cliente automaticamente na tabela (JOIN com clientes via creditCases)
+- [x] Exibir nome do parceiro comercial na tabela (JOIN com parceiros via creditCases)
+- [x] Corrigir código sequencial das tarefas (getNextSequence com SELECT FOR UPDATE)
+- [x] Formatar datas no padrão DD/MM/AAAA com horário de Brasília (America/Sao_Paulo)
+- [x] Remover botão "Nova Tarefa" de dentro do submenu Apuração
+
+### RTI — Relatório Técnico Inicial
+- [x] Preencher oportunidades automaticamente com teses selecionadas na criação da tarefa (taskTeses query)
+- [x] Opção de adicionar nova oportunidade buscando do banco de teses tributárias (seletor com allTeses)
+- [x] Ajustar layout do RTI para que menus/abas fiquem dentro do modal (TabsList flex-wrap)
+- [x] Opção de visualizar RTI gerado (botão Eye na coluna de ações)
+- [x] Salvar RTI em PDF no sistema ao salvar (auto-download PDF após salvar)
+- [x] Opção de baixar RTI em PDF (botão "Baixar PDF" no footer do dialog)

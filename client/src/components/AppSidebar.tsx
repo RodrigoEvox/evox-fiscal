@@ -290,6 +290,10 @@ export default function AppSidebar() {
             if (setor.sigla === 'GEG') {
               navigate('/rh/dashboard');
             }
+            // CRE: navigate directly to Crédito Dashboard
+            if (setor.sigla === 'CRE') {
+              navigate('/credito/dashboard-credito');
+            }
           }}
           className={cn(
             'flex items-center gap-2.5 w-full px-3 py-1.5 rounded-lg transition-all duration-150 text-[14px] font-medium',

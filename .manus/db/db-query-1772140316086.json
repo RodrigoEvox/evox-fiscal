@@ -1,0 +1,87 @@
+{
+  "query": "SELECT ct.id, ct.codigo, ct.clienteId, ct.titulo, ct.fila, ct.status, ct.criadoPorNome, c.razaoSocial, c.cnpj FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id ORDER BY ct.id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.codigo, ct.clienteId, ct.titulo, ct.fila, ct.status, ct.criadoPorNome, c.razaoSocial, c.cnpj FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id ORDER BY ct.id",
+  "rows": [
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "clienteId": "450012",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "Teste",
+      "cnpj": "12.345.678/0001-99"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0001",
+      "clienteId": "450010",
+      "titulo": "Teste",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "cnpj": "98.765.432/0001-10"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0001",
+      "clienteId": "30029",
+      "titulo": "Reapuração",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "EVOX FISCAL LTDA",
+      "cnpj": "44.041.520/0001-18"
+    },
+    {
+      "id": "30001",
+      "codigo": "CT-0001",
+      "clienteId": "510005",
+      "titulo": "Compensação PIS/Cofins",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "LOCALIZA RENT A CAR S.A.",
+      "cnpj": "02.558.157/0001-62"
+    },
+    {
+      "id": "30002",
+      "codigo": "CT-0001",
+      "clienteId": "510004",
+      "titulo": "Compensação PIS Cofins",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "AMBEV S.A.",
+      "cnpj": "76.535.764/0001-43"
+    },
+    {
+      "id": "30003",
+      "codigo": "CT-0001",
+      "clienteId": "510001",
+      "titulo": "Compensação IRPJ",
+      "fila": "compensacao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "PETROBRAS DISTRIBUIDORA S.A.",
+      "cnpj": "33.000.167/0001-01"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-0001",
+      "clienteId": "510027",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "criadoPorNome": "rodrigo",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "cnpj": "98.765.432/0001-10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tclienteId\ttitulo\tfila\tstatus\tcriadoPorNome\trazaoSocial\tcnpj\n1\tCT-0001\t450012\tApuração PERSE\tapuracao\ta_fazer\trodrigo\tTeste\t12.345.678/0001-99\n2\tCT-0001\t450010\tTeste\tapuracao\ta_fazer\trodrigo\tEmpresa Procuração LTDA\t98.765.432/0001-10\n3\tCT-0001\t30029\tReapuração\tapuracao\ta_fazer\trodrigo\tEVOX FISCAL LTDA\t44.041.520/0001-18\n30001\tCT-0001\t510005\tCompensação PIS/Cofins\tcompensacao\ta_fazer\trodrigo\tLOCALIZA RENT A CAR S.A.\t02.558.157/0001-62\n30002\tCT-0001\t510004\tCompensação PIS Cofins\tcompensacao\ta_fazer\trodrigo\tAMBEV S.A.\t76.535.764/0001-43\n30003\tCT-0001\t510001\tCompensação IRPJ\tcompensacao\ta_fazer\trodrigo\tPETROBRAS DISTRIBUIDORA S.A.\t33.000.167/0001-01\n30004\tCT-0001\t510027\tApuração PERSE\tapuracao\ta_fazer\trodrigo\tEmpresa Procuração LTDA\t98.765.432/0001-10\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

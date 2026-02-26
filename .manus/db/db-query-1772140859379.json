@@ -1,0 +1,210 @@
+{
+  "query": "DESCRIBE rti_reports",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute DESCRIBE rti_reports",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "caseId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "clienteId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "numero",
+      "Type": "varchar(20)",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "versao",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "tesesAnalisadas",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "valorTotalEstimado",
+      "Type": "decimal(15,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "periodoAnalise",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "resumoExecutivo",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "metodologia",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "conclusao",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "observacoes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "pdfUrl",
+      "Type": "varchar(1000)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "pdfHash",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('rascunho','emitido','revisado')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "rascunho",
+      "Extra": ""
+    },
+    {
+      "Field": "emitidoPorId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "emitidoPorNome",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "emitidoEm",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "slaDevolutivaDias",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "7",
+      "Extra": ""
+    },
+    {
+      "Field": "slaDevolutivaVenceEm",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "devolutivaRecebidaEm",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "devolutivaStatus",
+      "Type": "enum('pendente','recebida','expirada')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "pendente",
+      "Extra": ""
+    },
+    {
+      "Field": "devolutivaObservacao",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ncaseId\tint\tNO\tMUL\tNULL\t\nclienteId\tint\tNO\tMUL\tNULL\t\nnumero\tvarchar(20)\tNO\tMUL\tNULL\t\nversao\tint\tNO\t\t1\t\ntesesAnalisadas\tjson\tYES\t\tNULL\t\nvalorTotalEstimado\tdecimal(15,2)\tYES\t\t0\t\nperiodoAnalise\tvarchar(100)\tYES\t\tNULL\t\nresumoExecutivo\ttext\tYES\t\tNULL\t\nmetodologia\ttext\tYES\t\tNULL\t\nconclusao\ttext\tYES\t\tNULL\t\nobservacoes\ttext\tYES\t\tNULL\t\npdfUrl\tvarchar(1000)\tYES\t\tNULL\t\npdfHash\tvarchar(64)\tYES\t\tNULL\t\nstatus\tenum('rascunho','emitido','revisado')\tNO\t\trascunho\t\nemitidoPorId\tint\tYES\t\tNULL\t\nemitidoPorNome\tvarchar(255)\tYES\t\tNULL\t\nemitidoEm\ttimestamp\tYES\t\tNULL\t\nslaDevolutivaDias\tint\tYES\t\t7\t\nslaDevolutivaVenceEm\ttimestamp\tYES\t\tNULL\t\ndevolutivaRecebidaEm\ttimestamp\tYES\t\tNULL\t\ndevolutivaStatus\tenum('pendente','recebida','expirada')\tYES\t\tpendente\t\ndevolutivaObservacao\ttext\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 130
+}

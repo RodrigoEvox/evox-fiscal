@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, codigo, clienteId FROM credit_tasks ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, codigo, clienteId FROM credit_tasks ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "clienteId": "450012"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0002",
+      "clienteId": "450010"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0003",
+      "clienteId": "30029"
+    },
+    {
+      "id": "30001",
+      "codigo": "CT-0004",
+      "clienteId": "510005"
+    },
+    {
+      "id": "30002",
+      "codigo": "CT-0005",
+      "clienteId": "510004"
+    },
+    {
+      "id": "30003",
+      "codigo": "CT-0006",
+      "clienteId": "510001"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-0007",
+      "clienteId": "510027"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tclienteId\n1\tCT-0001\t450012\n2\tCT-0002\t450010\n3\tCT-0003\t30029\n30001\tCT-0004\t510005\n30002\tCT-0005\t510004\n30003\tCT-0006\t510001\n30004\tCT-0007\t510027\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

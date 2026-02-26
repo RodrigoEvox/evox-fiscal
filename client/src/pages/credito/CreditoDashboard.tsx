@@ -86,7 +86,8 @@ export default function CreditoDashboard() {
   });
 
   const totalTarefas = ts.total || 0;
-  const totalPendentes = (ts.a_fazer || 0) + (ts.fazendo || 0);
+  const totalAFazer = ts.a_fazer || 0;
+  const totalFazendo = ts.fazendo || 0;
   const totalConcluidas = (ts.feito || 0) + (ts.concluido || 0);
   const totalEmAtraso = ts.em_atraso || 0;
 
@@ -227,7 +228,7 @@ export default function CreditoDashboard() {
       )}
 
       {/* Main KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="border-l-4" style={{ borderLeftColor: '#3B82F6' }}>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -246,11 +247,25 @@ export default function CreditoDashboard() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pendentes</p>
-                <p className="text-3xl font-bold mt-2 text-foreground">{totalPendentes}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">A Fazer</p>
+                <p className="text-3xl font-bold mt-2 text-foreground">{totalAFazer}</p>
               </div>
               <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
                 <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4" style={{ borderLeftColor: '#6366F1' }}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fazendo</p>
+                <p className="text-3xl font-bold mt-2 text-foreground">{totalFazendo}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <Loader2 className="w-5 h-5 text-indigo-600" />
               </div>
             </div>
           </CardContent>

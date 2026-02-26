@@ -16,7 +16,7 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import {
   Calculator, ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
-  User, PlusCircle, FileText, ClipboardList, Send, Eye, Trash2,
+  User, FileText, ClipboardList, Send, Eye, Trash2, Download,
   Plus, ArrowRight, Building2, BarChart3, Handshake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,8 +47,11 @@ export default function CreditoFilaApuracao() {
 
   // RTI Dialog
   const [rtiDialogOpen, setRtiDialogOpen] = useState(false);
+  const [rtiViewDialogOpen, setRtiViewDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [rtiTab, setRtiTab] = useState('dados');
+  const [viewingRti, setViewingRti] = useState<any>(null);
+  const [showTeseSelector, setShowTeseSelector] = useState(false);
 
   // RTI Form
   const [rtiForm, setRtiForm] = useState({
@@ -78,8 +81,14 @@ export default function CreditoFilaApuracao() {
   const { data: tasks, isLoading, refetch: refetchTasks } = trpc.creditRecovery.credito.tasks.list.useQuery({ fila: 'apuracao' } as any);
   const { data: partnerReturns, refetch: refetchReturns } = trpc.creditRecovery.admin.partnerReturns.list.useQuery({});
   const { data: partnerReturnStats } = trpc.creditRecovery.admin.partnerReturns.stats.useQuery();
-  const { data: checklistTemplates } = trpc.creditRecovery.admin.checklists.list.useQuery({ fila: 'apuracao' });
+  const { data: checklistTemplates } = trpc.creditRecovery.admin.checklists.templates.useQuery({ fila: 'apuracao' });
   const { data: rtiTemplates } = trpc.creditRecovery.admin.rtiTemplates.list.useQuery();
+  const { data: allTeses } = trpc.teses.list.useQuery();
+  // Query task teses when a task is selected
+  const { data: taskTesesData } = trpc.creditRecovery.admin.taskTeses.list.useQuery(
+    { taskId: selectedTask?.id },
+    { enabled: !!selectedTask?.id }
+  );
 
   // Mutations
   const createRti = trpc.creditRecovery.credito.rti.create.useMutation();
@@ -120,8 +129,8 @@ export default function CreditoFilaApuracao() {
     };
   }, [tasks]);
 
-  const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
-  const formatDateTime = (d: string) => d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+  const formatDateTime = (d: string) => d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
   const formatCurrency = (v: number | string) => {
     const num = typeof v === 'string' ? parseFloat(v) : v;
     return isNaN(num) ? 'R$ 0,00' : num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -131,7 +140,6 @@ export default function CreditoFilaApuracao() {
   const handleOpenRtiDialog = (task: any) => {
     setSelectedTask(task);
     setRtiForm({ periodoAnalise: '', resumoExecutivo: '', metodologia: '', conclusao: '', observacoes: '' });
-    setOportunidades([]);
     setCenarioCompensacao([
       { tributo: 'PIS/COFINS', mediaMensal: 0 },
       { tributo: 'IRPJ/CSLL', mediaMensal: 0 },
@@ -139,6 +147,21 @@ export default function CreditoFilaApuracao() {
     ]);
     setAlertas([]);
     setRtiTab('dados');
+    setShowTeseSelector(false);
+
+    // Auto-populate oportunidades from task teses
+    if (taskTesesData && (taskTesesData as any[]).length > 0) {
+      const autoOps = (taskTesesData as any[]).map((tt: any, idx: number) => ({
+        descricao: tt.teseNome || `Tese #${tt.teseId}`,
+        classificacao: tt.classificacao === 'pacificada' ? 'pacificado' : 'nao_pacificado',
+        valorApurado: parseFloat(tt.valorEstimado) || 0,
+        teseId: tt.teseId,
+        ordem: idx,
+      }));
+      setOportunidades(autoOps);
+    } else {
+      setOportunidades([]);
+    }
 
     // Load template if available
     if (rtiTemplates && (rtiTemplates as any[]).length > 0) {
@@ -164,13 +187,206 @@ export default function CreditoFilaApuracao() {
     setRtiDialogOpen(true);
   };
 
+  // Add oportunidade from tese catalog
+  const addOportunidadeFromTese = (tese: any) => {
+    setOportunidades(prev => [...prev, {
+      descricao: tese.nome,
+      classificacao: tese.classificacao === 'pacificada' ? 'pacificado' : 'nao_pacificado',
+      valorApurado: 0,
+      teseId: tese.id,
+      ordem: prev.length,
+    }]);
+    setShowTeseSelector(false);
+  };
+
+  // Generate RTI PDF client-side
+  const generateRtiPdf = async (rtiData: { clienteNome: string; clienteCnpj: string; periodoAnalise: string; resumoExecutivo: string; metodologia: string; conclusao: string; observacoes: string; oportunidades: any[]; cenario: any[]; alertas: any[]; totalOportunidades: number; totalPacificado: number; totalNaoPacificado: number; numero?: string; data?: string }) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let y = 20;
+
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EVOX FISCAL', margin, 15);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('RTI — Relatório Técnico Inicial', margin, 23);
+    doc.text(`${rtiData.numero || ''} | ${rtiData.data || new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, margin, 30);
+    y = 45;
+
+    // Client info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dados do Cliente', margin, y);
+    y += 7;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Razão Social: ${rtiData.clienteNome || '—'}`, margin, y); y += 5;
+    doc.text(`CNPJ: ${rtiData.clienteCnpj || '—'}`, margin, y); y += 5;
+    doc.text(`Período Analisado: ${rtiData.periodoAnalise || '—'}`, margin, y); y += 10;
+
+    // Resumo Executivo
+    if (rtiData.resumoExecutivo) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Introdução / Resumo Executivo', margin, y); y += 6;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(rtiData.resumoExecutivo, pageWidth - margin * 2);
+      doc.text(lines, margin, y); y += lines.length * 4.5 + 6;
+    }
+
+    // Metodologia
+    if (rtiData.metodologia) {
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Metodologia', margin, y); y += 6;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(rtiData.metodologia, pageWidth - margin * 2);
+      doc.text(lines, margin, y); y += lines.length * 4.5 + 6;
+    }
+
+    // Oportunidades table
+    if (rtiData.oportunidades.length > 0) {
+      if (y > 230) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Oportunidades Identificadas', margin, y); y += 6;
+      (doc as any).autoTable({
+        startY: y,
+        head: [['Descrição', 'Classificação', 'Valor Apurado (R$)']],
+        body: [
+          ...rtiData.oportunidades.map((op: any) => [
+            op.descricao,
+            op.classificacao === 'pacificado' ? 'Pacificado' : 'Não Pacificado',
+            formatCurrency(op.valorApurado),
+          ]),
+          ['Somatório Bruto', '', formatCurrency(rtiData.totalOportunidades)],
+          ['Total Pacificado', '', formatCurrency(rtiData.totalPacificado)],
+          ['Total Não Pacificado', '', formatCurrency(rtiData.totalNaoPacificado)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: margin, right: margin },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+    }
+
+    // Cenário Compensação
+    if (rtiData.cenario.length > 0) {
+      if (y > 230) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cenário de Compensação', margin, y); y += 6;
+      (doc as any).autoTable({
+        startY: y,
+        head: [['Tributo', 'Média Mensal (R$)']],
+        body: rtiData.cenario.map((c: any) => [c.tributo, formatCurrency(c.mediaMensal)]),
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: margin, right: margin },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+    }
+
+    // Alertas
+    if (rtiData.alertas.length > 0) {
+      if (y > 240) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Observações / Alertas', margin, y); y += 6;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      rtiData.alertas.forEach((a: any) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.text(`• [${a.tipo?.toUpperCase() || 'OBS'}] ${a.texto}`, margin, y);
+        y += 5;
+      });
+      y += 5;
+    }
+
+    // Conclusão
+    if (rtiData.conclusao) {
+      if (y > 240) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Conclusão', margin, y); y += 6;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(rtiData.conclusao, pageWidth - margin * 2);
+      doc.text(lines, margin, y); y += lines.length * 4.5 + 6;
+    }
+
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`EVOX FISCAL — RTI — Página ${i}/${totalPages}`, margin, doc.internal.pageSize.getHeight() - 10);
+      doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} às ${new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, pageWidth - margin, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+    }
+
+    return doc;
+  };
+
+  // View existing RTI
+  const handleViewRti = async (task: any) => {
+    // For now, open the RTI dialog in preview mode with the saved data
+    setSelectedTask(task);
+    setViewingRti(task);
+    setRtiViewDialogOpen(true);
+  };
+
+  // Download RTI as PDF
+  const handleDownloadRtiPdf = async () => {
+    try {
+      const doc = await generateRtiPdf({
+        clienteNome: selectedTask?.clienteNome || '—',
+        clienteCnpj: selectedTask?.clienteCnpj || '—',
+        periodoAnalise: rtiForm.periodoAnalise,
+        resumoExecutivo: rtiForm.resumoExecutivo,
+        metodologia: rtiForm.metodologia,
+        conclusao: rtiForm.conclusao,
+        observacoes: rtiForm.observacoes,
+        oportunidades,
+        cenario: cenarioCompensacao,
+        alertas,
+        totalOportunidades,
+        totalPacificado,
+        totalNaoPacificado,
+      });
+      doc.save(`RTI_${selectedTask?.clienteNome || 'Cliente'}_${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).replace(/\//g, '-')}.pdf`);
+      toast.success('PDF do RTI baixado com sucesso!');
+    } catch (err: any) {
+      toast.error('Erro ao gerar PDF: ' + (err.message || ''));
+    }
+  };
+
   const addOportunidade = () => {
+    setShowTeseSelector(true);
+  };
+
+  const addOportunidadeManual = () => {
     setOportunidades(prev => [...prev, {
       descricao: '',
       classificacao: 'pacificado',
       valorApurado: 0,
       ordem: prev.length,
     }]);
+    setShowTeseSelector(false);
   };
 
   const removeOportunidade = (idx: number) => {
@@ -231,7 +447,30 @@ export default function CreditoFilaApuracao() {
         }
       }
 
-      toast.success('RTI criado com sucesso!');
+      // Auto-generate and download PDF
+      try {
+        const doc = await generateRtiPdf({
+          clienteNome: selectedTask?.clienteNome || '—',
+          clienteCnpj: selectedTask?.clienteCnpj || '—',
+          periodoAnalise: rtiForm.periodoAnalise,
+          resumoExecutivo: rtiForm.resumoExecutivo,
+          metodologia: rtiForm.metodologia,
+          conclusao: rtiForm.conclusao,
+          observacoes: rtiForm.observacoes,
+          oportunidades,
+          cenario: cenarioCompensacao,
+          alertas,
+          totalOportunidades,
+          totalPacificado,
+          totalNaoPacificado,
+          numero: `RTI-${rtiId || ''}`,
+        });
+        doc.save(`RTI_${selectedTask?.clienteNome || 'Cliente'}_${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).replace(/\//g, '-')}.pdf`);
+      } catch (pdfErr) {
+        console.warn('PDF auto-download failed:', pdfErr);
+      }
+
+      toast.success('RTI criado e PDF salvo com sucesso!');
       setRtiDialogOpen(false);
       refetchTasks();
     } catch (err: any) {
@@ -303,10 +542,6 @@ export default function CreditoFilaApuracao() {
             Checklist de apuração por tese, geração de RTI e gestão de retorno dos parceiros.
           </p>
         </div>
-        <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
-          <PlusCircle className="w-4 h-4" />
-          Nova Tarefa
-        </Button>
       </div>
 
       {/* Tabs */}
@@ -372,66 +607,69 @@ export default function CreditoFilaApuracao() {
               {filteredTasks.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <p className="text-sm">Nenhuma tarefa de apuração encontrada.</p>
-                  <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa-credito')}>
-                    <PlusCircle className="w-4 h-4" />
-                    Criar Nova Tarefa
-                  </Button>
                 </div>
               ) : (
                 <div className="divide-y">
-                  <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <div className="col-span-1">Código</div>
-                    <div className="col-span-2">Cliente</div>
-                    <div className="col-span-2">Título</div>
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-1">Responsável</div>
-                    <div className="col-span-1">SLA</div>
-                    <div className="col-span-1">Criado</div>
-                    <div className="col-span-1">Por</div>
-                    <div className="col-span-2 text-center">Ações</div>
+                  <div className="grid grid-cols-[80px_1fr_1fr_1fr_80px_80px_80px_120px_80px_100px] gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <div>Código</div>
+                    <div>Cliente</div>
+                    <div>Parceiro</div>
+                    <div>Título</div>
+                    <div>Status</div>
+                    <div>SLA</div>
+                    <div>Resp.</div>
+                    <div>Criado</div>
+                    <div>Por</div>
+                    <div className="text-center">Ações</div>
                   </div>
                   {filteredTasks.map((task: any) => {
                     const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
                     const isOverdue = task.slaStatus === 'vencido';
                     return (
-                      <div key={task.id} className={cn('grid grid-cols-12 gap-2 px-4 py-3 hover:bg-muted/30 transition-colors items-center text-sm', isOverdue && 'bg-red-50/50')}>
-                        <div className="col-span-1">
+                      <div key={task.id} className={cn('grid grid-cols-[80px_1fr_1fr_1fr_80px_80px_80px_120px_80px_100px] gap-2 px-4 py-3 hover:bg-muted/30 transition-colors items-center text-sm', isOverdue && 'bg-red-50/50')}>
+                        <div>
                           <span className="font-mono text-xs text-muted-foreground">{task.codigo}</span>
                         </div>
-                        <div className="col-span-2 min-w-0">
+                        <div className="min-w-0">
                           <p className="text-xs font-medium truncate">{task.clienteNome || '—'}</p>
                           <p className="text-[10px] text-muted-foreground">{task.clienteCnpj || ''}</p>
                         </div>
-                        <div className="col-span-2 min-w-0">
+                        <div className="min-w-0">
+                          <p className="text-xs truncate">{task.parceiroNome || '—'}</p>
+                        </div>
+                        <div className="min-w-0">
                           <p className="font-medium text-foreground truncate text-xs">{task.titulo}</p>
                         </div>
-                        <div className="col-span-1">
+                        <div>
                           <Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge>
                         </div>
-                        <div className="col-span-1 flex items-center gap-1 min-w-0">
-                          <User className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="text-[10px] text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
-                        </div>
-                        <div className="col-span-1">
+                        <div>
                           {isOverdue ? (
                             <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" />Atraso</Badge>
                           ) : (
                             <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-0.5"><CheckCircle className="w-3 h-3" />OK</Badge>
                           )}
                         </div>
-                        <div className="col-span-1">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <User className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-[10px] text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
+                        </div>
+                        <div>
                           <span className="text-[10px] text-muted-foreground">{formatDateTime(task.createdAt)}</span>
                         </div>
-                        <div className="col-span-1">
+                        <div>
                           <span className="text-[10px] text-muted-foreground truncate">{task.criadoPorNome || '—'}</span>
                         </div>
-                        <div className="col-span-2 flex items-center gap-1 justify-center">
+                        <div className="flex items-center gap-1 justify-center">
                           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => handleOpenChecklist(task)} title="Checklist">
                             <ClipboardList className="w-3.5 h-3.5" />
                           </Button>
                           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-primary" onClick={() => handleOpenRtiDialog(task)} title="Gerar RTI">
                             <FileText className="w-3.5 h-3.5" />
                             RTI
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-emerald-600" onClick={() => handleViewRti(task)} title="Visualizar RTI">
+                            <Eye className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -581,13 +819,13 @@ export default function CreditoFilaApuracao() {
             </p>
           </DialogHeader>
 
-          <Tabs value={rtiTab} onValueChange={setRtiTab}>
-            <TabsList className="w-full justify-start">
-              <TabsTrigger value="dados">Dados Gerais</TabsTrigger>
-              <TabsTrigger value="oportunidades">Oportunidades</TabsTrigger>
-              <TabsTrigger value="cenario">Cenário Compensação</TabsTrigger>
-              <TabsTrigger value="alertas">Alertas</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
+          <Tabs value={rtiTab} onValueChange={setRtiTab} className="w-full">
+            <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
+              <TabsTrigger value="dados" className="text-xs">Dados Gerais</TabsTrigger>
+              <TabsTrigger value="oportunidades" className="text-xs">Oportunidades</TabsTrigger>
+              <TabsTrigger value="cenario" className="text-xs">Cenário Compensação</TabsTrigger>
+              <TabsTrigger value="alertas" className="text-xs">Alertas</TabsTrigger>
+              <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dados" className="space-y-4 mt-4">
@@ -618,16 +856,57 @@ export default function CreditoFilaApuracao() {
             <TabsContent value="oportunidades" className="space-y-4 mt-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Oportunidades Identificadas</h3>
-                <Button variant="outline" size="sm" className="gap-1" onClick={addOportunidade}>
-                  <Plus className="w-4 h-4" />
-                  Adicionar
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="gap-1" onClick={addOportunidade}>
+                    <Plus className="w-4 h-4" />
+                    Adicionar
+                  </Button>
+                </div>
               </div>
 
-              {oportunidades.length === 0 ? (
+              {/* Tese Selector Dropdown */}
+              {showTeseSelector && (
+                <Card className="border-2 border-primary/30">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">Selecione uma tese do banco:</p>
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowTeseSelector(false)}>Fechar</Button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {(allTeses as any[] || []).filter((t: any) => t.ativa).map((tese: any) => {
+                        const alreadyAdded = oportunidades.some(o => o.teseId === tese.id);
+                        return (
+                          <div key={tese.id} className={cn('flex items-center justify-between p-2 rounded hover:bg-muted/50 text-sm cursor-pointer', alreadyAdded && 'opacity-50')} onClick={() => !alreadyAdded && addOportunidadeFromTese(tese)}>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium truncate">{tese.nome}</p>
+                              <p className="text-xs text-muted-foreground">{tese.tributoEnvolvido} • {tese.classificacao}</p>
+                            </div>
+                            {alreadyAdded ? (
+                              <Badge variant="secondary" className="text-[10px] shrink-0">Já adicionada</Badge>
+                            ) : (
+                              <Plus className="w-4 h-4 text-primary shrink-0" />
+                            )}
+                          </div>
+                        );
+                      })}
+                      {(!allTeses || (allTeses as any[]).length === 0) && (
+                        <p className="text-sm text-muted-foreground text-center py-2">Nenhuma tese cadastrada no banco.</p>
+                      )}
+                    </div>
+                    <Separator />
+                    <Button variant="ghost" size="sm" className="w-full text-xs gap-1" onClick={addOportunidadeManual}>
+                      <Plus className="w-3 h-3" />
+                      Adicionar manualmente
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {oportunidades.length === 0 && !showTeseSelector ? (
                 <div className="p-6 text-center text-muted-foreground border rounded-lg border-dashed">
                   <p className="text-sm">Nenhuma oportunidade adicionada.</p>
-                  <Button variant="outline" size="sm" className="mt-2 gap-1" onClick={addOportunidade}>
+                  <p className="text-xs mt-1">As teses selecionadas na criação da tarefa são preenchidas automaticamente.</p>
+                  <Button variant="outline" size="sm" className="mt-3 gap-1" onClick={addOportunidade}>
                     <Plus className="w-4 h-4" />
                     Adicionar Oportunidade
                   </Button>
@@ -844,12 +1123,18 @@ export default function CreditoFilaApuracao() {
             </TabsContent>
           </Tabs>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRtiDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveRti} disabled={createRti.isPending} className="gap-2">
-              {createRti.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Salvar RTI
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleDownloadRtiPdf}>
+              <Download className="w-4 h-4" />
+              Baixar PDF
             </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setRtiDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveRti} disabled={createRti.isPending} className="gap-2">
+                {createRti.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                Salvar RTI
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -35,11 +35,13 @@ type InsertTicketMessage = typeof creditTicketMessages.$inferInsert;
 async function getNextSequence(prefix: string, table: string, column: string): Promise<string> {
   const db_ = await getDb();
   if (!db_) return `${prefix}-0001`;
-  const [row] = await db_.execute(sql.raw(`SELECT MAX(${column}) as maxNum FROM ${table}`));
-  const maxNum = (row as any)?.maxNum;
-  if (!maxNum) return `${prefix}-0001`;
-  const num = parseInt(maxNum.replace(`${prefix}-`, '')) + 1;
-  return `${prefix}-${String(num).padStart(4, '0')}`;
+  // Use CAST to extract numeric part for proper MAX comparison
+  const [row] = await db_.execute(sql.raw(
+    `SELECT MAX(CAST(SUBSTRING(${column}, ${prefix.length + 2}) AS UNSIGNED)) as maxNum FROM ${table} WHERE ${column} LIKE '${prefix}-%'`
+  ));
+  const maxNum = Number((row as any)?.maxNum) || 0;
+  const next = maxNum + 1;
+  return `${prefix}-${String(next).padStart(4, '0')}`;
 }
 
 // ===== DEMAND REQUESTS =====
@@ -197,13 +199,27 @@ export async function updateRtiReport(id: number, data: Partial<InsertRtiReport>
 export async function listCreditTasks(filters?: { fila?: string; status?: string; caseId?: number; clienteId?: number; responsavelId?: number }) {
   const db_ = await getDb();
   if (!db_) return [];
-  const conditions = [];
-  if (filters?.fila) conditions.push(eq(creditTasks.fila, filters.fila as any));
-  if (filters?.status) conditions.push(eq(creditTasks.status, filters.status as any));
-  if (filters?.caseId) conditions.push(eq(creditTasks.caseId, filters.caseId));
-  if (filters?.clienteId) conditions.push(eq(creditTasks.clienteId, filters.clienteId));
-  if (filters?.responsavelId) conditions.push(eq(creditTasks.responsavelId, filters.responsavelId));
-  return db_.select().from(creditTasks).where(conditions.length ? and(...conditions) : undefined).orderBy(asc(creditTasks.ordem), desc(creditTasks.createdAt));
+  const conditions: any[] = [];
+  if (filters?.fila) conditions.push(`ct.fila = '${filters.fila}'`);
+  if (filters?.status) conditions.push(`ct.status = '${filters.status}'`);
+  if (filters?.caseId) conditions.push(`ct.caseId = ${filters.caseId}`);
+  if (filters?.clienteId) conditions.push(`ct.clienteId = ${filters.clienteId}`);
+  if (filters?.responsavelId) conditions.push(`ct.responsavelId = ${filters.responsavelId}`);
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT ct.*,
+      c.razaoSocial as clienteNome,
+      c.cnpj as clienteCnpj,
+      cc.parceiroId as _parceiroId,
+      p.nome as parceiroNome
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+    LEFT JOIN parceiros p ON cc.parceiroId = p.id
+    ${whereClause}
+    ORDER BY ct.ordem ASC, ct.createdAt DESC
+  `));
+  return rows as any[];
 }
 
 export async function getCreditTaskById(id: number) {

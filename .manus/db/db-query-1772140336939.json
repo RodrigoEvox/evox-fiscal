@@ -1,0 +1,14 @@
+{
+  "query": "SELECT MAX(codigo) as maxNum, COUNT(*) as cnt FROM credit_tasks",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT MAX(codigo) as maxNum, COUNT(*) as cnt FROM credit_tasks",
+  "rows": [
+    {
+      "maxNum": "CT-0001",
+      "cnt": "7"
+    }
+  ],
+  "messages": [],
+  "stdout": "maxNum\tcnt\nCT-0001\t7\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}
