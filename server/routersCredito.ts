@@ -1617,6 +1617,198 @@ const adminRouter = router({
     .query(async ({ input }) => {
       return credDb.getRtiReportFull(input.rtiId);
     }),
+
+  // ===== RETIFICAÇÃO =====
+  retificacao: router({
+    listByTask: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ input }) => credDb.listRetificacaoRecords(input.taskId)),
+    listByCase: protectedProcedure
+      .input(z.object({ caseId: z.number() }))
+      .query(async ({ input }) => credDb.getRetificacaoByCase(input.caseId)),
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        caseId: z.number(),
+        clienteId: z.number(),
+        teseId: z.number().optional(),
+        teseNome: z.string().optional(),
+        tipoRetificacao: z.enum(['total', 'parcial']).default('total'),
+        periodoInicio: z.string().optional(),
+        periodoFim: z.string().optional(),
+        valorApuradoRti: z.number().default(0),
+        valorCreditoDisponivel: z.number().default(0),
+        divergencia: z.number().default(0),
+        divergenciaPct: z.number().default(0),
+        alertaDivergencia: z.boolean().default(false),
+        justificativaDivergencia: z.string().optional(),
+        saldoPorGrupo: z.any().optional(),
+        obrigacoesAcessorias: z.any().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await credDb.createRetificacaoRecord({
+          ...input,
+          registradoPorId: ctx.user.id,
+          registradoPorNome: ctx.user.name || ctx.user.openId,
+        });
+        await credDb.logCreditAudit({
+          entidade: 'retificacao' as any,
+          entidadeId: result.id,
+          acao: 'criou',
+          descricao: `Retificação ${input.tipoRetificacao} registrada para tese ${input.teseNome || 'N/A'}`,
+          userId: ctx.user.id,
+          userName: ctx.user.name || ctx.user.openId,
+        });
+        return result;
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), data: z.any() }))
+      .mutation(async ({ input }) => credDb.updateRetificacaoRecord(input.id, input.data)),
+    stats: protectedProcedure
+      .input(z.object({ clienteId: z.number().optional() }).optional())
+      .query(async ({ input }) => credDb.getRetificacaoStats(input?.clienteId)),
+  }),
+
+  // ===== GUIAS =====
+  guias: router({
+    list: protectedProcedure
+      .input(z.object({
+        taskId: z.number().optional(),
+        caseId: z.number().optional(),
+        clienteId: z.number().optional(),
+        perdcompId: z.number().optional(),
+      }))
+      .query(async ({ input }) => credDb.listGuias(input)),
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number().optional(),
+        caseId: z.number().optional(),
+        clienteId: z.number(),
+        perdcompId: z.number().optional(),
+        cnpjGuia: z.string().optional(),
+        codigoReceita: z.string().optional(),
+        grupoTributo: z.string().optional(),
+        periodoApuracao: z.string().optional(),
+        dataVencimento: z.string().optional(),
+        valorOriginal: z.number().default(0),
+        valorMulta: z.number().default(0),
+        valorJuros: z.number().default(0),
+        valorTotal: z.number().default(0),
+        valorCompensado: z.number().default(0),
+        statusGuia: z.string().default('a_vencer'),
+        validacaoCliente: z.boolean().default(false),
+        guiaUrl: z.string().optional(),
+        comprovanteUrl: z.string().optional(),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return credDb.createGuia({
+          ...input,
+          registradoPorId: ctx.user.id,
+          registradoPorNome: ctx.user.name || ctx.user.openId,
+        });
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), data: z.any() }))
+      .mutation(async ({ input }) => credDb.updateGuia(input.id, input.data)),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => credDb.deleteGuia(input.id)),
+  }),
+
+  // ===== PERDCOMP FULL =====
+  perdcompFull: router({
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number().optional(),
+        caseId: z.number().optional(),
+        clienteId: z.number(),
+        ledgerEntryId: z.number().optional(),
+        numeroPerdcomp: z.string(),
+        tipoDocumento: z.string().optional(),
+        numeroControle: z.string().optional(),
+        cnpjDeclarante: z.string().optional(),
+        nomeEmpresarial: z.string().optional(),
+        tipoCredito: z.string().optional(),
+        oriundoAcaoJudicial: z.boolean().default(false),
+        creditoSucedida: z.boolean().default(false),
+        numeroDocArrecadacao: z.string().optional(),
+        codigoReceita: z.string().optional(),
+        grupoTributo: z.string().optional(),
+        dataArrecadacao: z.string().optional(),
+        periodoApuracao: z.string().optional(),
+        valorCredito: z.number().default(0),
+        valorDebitosCompensados: z.number().default(0),
+        debitosCompensadosJson: z.any().optional(),
+        saldoRemanescente: z.number().default(0),
+        dataTransmissao: z.string().optional(),
+        dataVencimentoGuia: z.string().optional(),
+        guiaNumero: z.string().optional(),
+        guiaUrl: z.string().optional(),
+        comprovanteUrl: z.string().optional(),
+        reciboUrl: z.string().optional(),
+        status: z.string().default('transmitido'),
+        despachoDecisorio: z.string().optional(),
+        representanteNome: z.string().optional(),
+        representanteCpf: z.string().optional(),
+        versaoSistema: z.string().optional(),
+        codigoSerpro: z.string().optional(),
+        dataRecebimentoSerpro: z.string().optional(),
+        feitoPelaEvox: z.boolean().default(true),
+        modalidade: z.enum(['compensacao', 'ressarcimento', 'restituicao']).default('compensacao'),
+        observacoes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await credDb.createPerdcompFull({
+          ...input,
+          registradoPorId: ctx.user.id,
+          registradoPorNome: ctx.user.name || ctx.user.openId,
+        });
+        await credDb.logCreditAudit({
+          entidade: 'perdcomp' as any,
+          entidadeId: result.id,
+          acao: 'criou',
+          descricao: `PerdComp ${input.numeroPerdcomp} registrada (${input.modalidade})`,
+          userId: ctx.user.id,
+          userName: ctx.user.name || ctx.user.openId,
+        });
+        return result;
+      }),
+    search: protectedProcedure
+      .input(z.object({ query: z.string() }))
+      .query(async ({ input }) => credDb.searchPerdcomps(input.query)),
+  }),
+
+  // ===== GESTÃO COMPLETA DE CRÉDITOS =====
+  gestaoCompleta: protectedProcedure
+    .input(z.object({ clienteId: z.number() }))
+    .query(async ({ input }) => credDb.getGestaoCompletaCreditos(input.clienteId)),
+
+  // ===== AUTO-CREATE NEXT QUEUE TASK =====
+  createNextQueueTask: protectedProcedure
+    .input(z.object({
+      caseId: z.number(),
+      clienteId: z.number(),
+      fila: z.string(),
+      titulo: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const result = await credDb.createNextQueueTask({
+        ...input,
+        criadoPorId: ctx.user.id,
+        criadoPorNome: ctx.user.name || ctx.user.openId,
+      });
+      await credDb.logCreditAudit({
+        entidade: 'task' as any,
+        entidadeId: result.id,
+        acao: 'criou',
+        descricao: `Tarefa automática criada para fila ${input.fila}`,
+        userId: ctx.user.id,
+        userName: ctx.user.name || ctx.user.openId,
+      });
+      return result;
+    }),
 });
 
 // ===== COMBINED EXPORT =====

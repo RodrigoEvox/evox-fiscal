@@ -1065,3 +1065,188 @@ export async function getApuracaoStats(filters?: { periodoInicio?: string; perio
   
   return { ...(rows as unknown as any[])[0], porTese: teseRows as unknown as any[] };
 }
+
+
+// ===== RETIFICAÇÃO =====
+export async function listRetificacaoRecords(taskId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_retificacao_records WHERE taskId = ${taskId} ORDER BY createdAt DESC`));
+  return rows as unknown as any[];
+}
+
+export async function getRetificacaoByCase(caseId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT crr.*, ct.titulo as taskTitulo FROM credit_retificacao_records crr LEFT JOIN credit_tasks ct ON crr.taskId = ct.id WHERE crr.caseId = ${caseId} ORDER BY crr.createdAt DESC`));
+  return rows as unknown as any[];
+}
+
+export async function createRetificacaoRecord(data: any) {
+  const db_ = (await getDb())!;
+  const esc = (v: string) => v ? v.replace(/'/g, "''") : '';
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_retificacao_records (taskId, caseId, clienteId, teseId, teseNome, tipoRetificacao, periodoInicio, periodoFim, valorApuradoRti, valorCreditoDisponivel, divergencia, divergenciaPct, alertaDivergencia, justificativaDivergencia, saldoPorGrupo, obrigacoesAcessorias, observacoes, registradoPorId, registradoPorNome) VALUES (${data.taskId}, ${data.caseId}, ${data.clienteId}, ${data.teseId || 'NULL'}, ${data.teseNome ? `'${esc(data.teseNome)}'` : 'NULL'}, '${data.tipoRetificacao || 'total'}', ${data.periodoInicio ? `'${data.periodoInicio}'` : 'NULL'}, ${data.periodoFim ? `'${data.periodoFim}'` : 'NULL'}, ${data.valorApuradoRti || 0}, ${data.valorCreditoDisponivel || 0}, ${data.divergencia || 0}, ${data.divergenciaPct || 0}, ${data.alertaDivergencia ? 1 : 0}, ${data.justificativaDivergencia ? `'${esc(data.justificativaDivergencia)}'` : 'NULL'}, ${data.saldoPorGrupo ? `'${JSON.stringify(data.saldoPorGrupo)}'` : 'NULL'}, ${data.obrigacoesAcessorias ? `'${JSON.stringify(data.obrigacoesAcessorias)}'` : 'NULL'}, ${data.observacoes ? `'${esc(data.observacoes)}'` : 'NULL'}, ${data.registradoPorId || 'NULL'}, ${data.registradoPorNome ? `'${esc(data.registradoPorNome)}'` : 'NULL'})`));
+  return { id: (result as unknown as any).insertId };
+}
+
+export async function updateRetificacaoRecord(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const esc = (v: string) => v ? v.replace(/'/g, "''") : '';
+  const sets: string[] = [];
+  if (data.tipoRetificacao !== undefined) sets.push(`tipoRetificacao = '${data.tipoRetificacao}'`);
+  if (data.periodoInicio !== undefined) sets.push(`periodoInicio = '${data.periodoInicio}'`);
+  if (data.periodoFim !== undefined) sets.push(`periodoFim = '${data.periodoFim}'`);
+  if (data.valorApuradoRti !== undefined) sets.push(`valorApuradoRti = ${data.valorApuradoRti}`);
+  if (data.valorCreditoDisponivel !== undefined) sets.push(`valorCreditoDisponivel = ${data.valorCreditoDisponivel}`);
+  if (data.divergencia !== undefined) sets.push(`divergencia = ${data.divergencia}`);
+  if (data.divergenciaPct !== undefined) sets.push(`divergenciaPct = ${data.divergenciaPct}`);
+  if (data.alertaDivergencia !== undefined) sets.push(`alertaDivergencia = ${data.alertaDivergencia ? 1 : 0}`);
+  if (data.justificativaDivergencia !== undefined) sets.push(`justificativaDivergencia = '${esc(data.justificativaDivergencia)}'`);
+  if (data.saldoPorGrupo !== undefined) sets.push(`saldoPorGrupo = '${JSON.stringify(data.saldoPorGrupo)}'`);
+  if (data.obrigacoesAcessorias !== undefined) sets.push(`obrigacoesAcessorias = '${JSON.stringify(data.obrigacoesAcessorias)}'`);
+  if (data.checklistConcluido !== undefined) sets.push(`checklistConcluido = ${data.checklistConcluido ? 1 : 0}`);
+  if (data.observacoes !== undefined) sets.push(`observacoes = '${esc(data.observacoes)}'`);
+  if (sets.length > 0) {
+    await db_.execute(sql.raw(`UPDATE credit_retificacao_records SET ${sets.join(', ')} WHERE id = ${id}`));
+  }
+  return { success: true };
+}
+
+// ===== CREDIT GUIAS =====
+export async function listGuias(filters: { taskId?: number; caseId?: number; clienteId?: number; perdcompId?: number }) {
+  const db_ = (await getDb())!;
+  const wheres: string[] = [];
+  if (filters.taskId) wheres.push(`cg.taskId = ${filters.taskId}`);
+  if (filters.caseId) wheres.push(`cg.caseId = ${filters.caseId}`);
+  if (filters.clienteId) wheres.push(`cg.clienteId = ${filters.clienteId}`);
+  if (filters.perdcompId) wheres.push(`cg.perdcompId = ${filters.perdcompId}`);
+  const where = wheres.length > 0 ? `WHERE ${wheres.join(' AND ')}` : '';
+  const [rows] = await db_.execute(sql.raw(`SELECT cg.* FROM credit_guias cg ${where} ORDER BY cg.dataVencimento ASC`));
+  return rows as unknown as any[];
+}
+
+export async function createGuia(data: any) {
+  const db_ = (await getDb())!;
+  const esc = (v: string) => v ? v.replace(/'/g, "''") : '';
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_guias (taskId, caseId, clienteId, perdcompId, cnpjGuia, codigoReceita, grupoTributo, periodoApuracao, dataVencimento, valorOriginal, valorMulta, valorJuros, valorTotal, valorCompensado, statusGuia, validacaoCliente, guiaUrl, comprovanteUrl, observacoes, registradoPorId, registradoPorNome) VALUES (${data.taskId || 'NULL'}, ${data.caseId || 'NULL'}, ${data.clienteId}, ${data.perdcompId || 'NULL'}, ${data.cnpjGuia ? `'${data.cnpjGuia}'` : 'NULL'}, ${data.codigoReceita ? `'${data.codigoReceita}'` : 'NULL'}, ${data.grupoTributo ? `'${esc(data.grupoTributo)}'` : 'NULL'}, ${data.periodoApuracao ? `'${data.periodoApuracao}'` : 'NULL'}, ${data.dataVencimento ? `'${data.dataVencimento}'` : 'NULL'}, ${data.valorOriginal || 0}, ${data.valorMulta || 0}, ${data.valorJuros || 0}, ${data.valorTotal || 0}, ${data.valorCompensado || 0}, '${data.statusGuia || 'a_vencer'}', ${data.validacaoCliente ? 1 : 0}, ${data.guiaUrl ? `'${data.guiaUrl}'` : 'NULL'}, ${data.comprovanteUrl ? `'${data.comprovanteUrl}'` : 'NULL'}, ${data.observacoes ? `'${esc(data.observacoes)}'` : 'NULL'}, ${data.registradoPorId || 'NULL'}, ${data.registradoPorNome ? `'${esc(data.registradoPorNome)}'` : 'NULL'})`));
+  return { id: (result as unknown as any).insertId };
+}
+
+export async function updateGuia(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const esc = (v: string) => v ? v.replace(/'/g, "''") : '';
+  const sets: string[] = [];
+  if (data.cnpjGuia !== undefined) sets.push(`cnpjGuia = '${data.cnpjGuia}'`);
+  if (data.codigoReceita !== undefined) sets.push(`codigoReceita = '${data.codigoReceita}'`);
+  if (data.grupoTributo !== undefined) sets.push(`grupoTributo = '${esc(data.grupoTributo)}'`);
+  if (data.periodoApuracao !== undefined) sets.push(`periodoApuracao = '${data.periodoApuracao}'`);
+  if (data.dataVencimento !== undefined) sets.push(`dataVencimento = '${data.dataVencimento}'`);
+  if (data.valorOriginal !== undefined) sets.push(`valorOriginal = ${data.valorOriginal}`);
+  if (data.valorMulta !== undefined) sets.push(`valorMulta = ${data.valorMulta}`);
+  if (data.valorJuros !== undefined) sets.push(`valorJuros = ${data.valorJuros}`);
+  if (data.valorTotal !== undefined) sets.push(`valorTotal = ${data.valorTotal}`);
+  if (data.valorCompensado !== undefined) sets.push(`valorCompensado = ${data.valorCompensado}`);
+  if (data.statusGuia !== undefined) sets.push(`statusGuia = '${data.statusGuia}'`);
+  if (data.validacaoCliente !== undefined) sets.push(`validacaoCliente = ${data.validacaoCliente ? 1 : 0}`);
+  if (data.guiaUrl !== undefined) sets.push(`guiaUrl = '${data.guiaUrl}'`);
+  if (data.comprovanteUrl !== undefined) sets.push(`comprovanteUrl = '${data.comprovanteUrl}'`);
+  if (data.perdcompId !== undefined) sets.push(`perdcompId = ${data.perdcompId}`);
+  if (data.observacoes !== undefined) sets.push(`observacoes = '${esc(data.observacoes)}'`);
+  if (sets.length > 0) {
+    await db_.execute(sql.raw(`UPDATE credit_guias SET ${sets.join(', ')} WHERE id = ${id}`));
+  }
+  return { success: true };
+}
+
+export async function deleteGuia(id: number) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(`DELETE FROM credit_guias WHERE id = ${id}`));
+  return { success: true };
+}
+
+// ===== ENHANCED PERDCOMP WITH FULL RECEIPT FIELDS =====
+export async function createPerdcompFull(data: any) {
+  const db_ = (await getDb())!;
+  const esc = (v: string) => v ? v.replace(/'/g, "''") : '';
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_perdcomps (taskId, caseId, clienteId, ledgerEntryId, numeroPerdcomp, tipoDocumento, numeroControle, cnpjDeclarante, nomeEmpresarial, tipoCredito, oriundoAcaoJudicial, creditoSucedida, numeroDocArrecadacao, codigoReceita, grupoTributo, dataArrecadacao, periodoApuracao, valorCredito, valorDebitosCompensados, debitosCompensadosJson, saldoRemanescente, dataTransmissao, dataVencimentoGuia, guiaNumero, guiaUrl, comprovanteUrl, reciboUrl, status, despachoDecisorio, representanteNome, representanteCpf, versaoSistema, codigoSerpro, dataRecebimentoSerpro, feitoPelaEvox, modalidade, observacoes, registradoPorId, registradoPorNome) VALUES (${data.taskId || 'NULL'}, ${data.caseId || 'NULL'}, ${data.clienteId}, ${data.ledgerEntryId || 'NULL'}, '${esc(data.numeroPerdcomp || '')}', ${data.tipoDocumento ? `'${data.tipoDocumento}'` : "'Original'"}, ${data.numeroControle ? `'${data.numeroControle}'` : 'NULL'}, ${data.cnpjDeclarante ? `'${data.cnpjDeclarante}'` : 'NULL'}, ${data.nomeEmpresarial ? `'${esc(data.nomeEmpresarial)}'` : 'NULL'}, ${data.tipoCredito ? `'${esc(data.tipoCredito)}'` : 'NULL'}, ${data.oriundoAcaoJudicial ? 1 : 0}, ${data.creditoSucedida ? 1 : 0}, ${data.numeroDocArrecadacao ? `'${data.numeroDocArrecadacao}'` : 'NULL'}, ${data.codigoReceita ? `'${data.codigoReceita}'` : 'NULL'}, ${data.grupoTributo ? `'${esc(data.grupoTributo)}'` : 'NULL'}, ${data.dataArrecadacao ? `'${data.dataArrecadacao}'` : 'NULL'}, ${data.periodoApuracao ? `'${data.periodoApuracao}'` : 'NULL'}, ${data.valorCredito || 0}, ${data.valorDebitosCompensados || 0}, ${data.debitosCompensadosJson ? `'${JSON.stringify(data.debitosCompensadosJson)}'` : 'NULL'}, ${data.saldoRemanescente || 0}, ${data.dataTransmissao ? `'${data.dataTransmissao}'` : 'NULL'}, ${data.dataVencimentoGuia ? `'${data.dataVencimentoGuia}'` : 'NULL'}, ${data.guiaNumero ? `'${data.guiaNumero}'` : 'NULL'}, ${data.guiaUrl ? `'${data.guiaUrl}'` : 'NULL'}, ${data.comprovanteUrl ? `'${data.comprovanteUrl}'` : 'NULL'}, ${data.reciboUrl ? `'${data.reciboUrl}'` : 'NULL'}, '${data.status || 'transmitido'}', ${data.despachoDecisorio ? `'${esc(data.despachoDecisorio)}'` : 'NULL'}, ${data.representanteNome ? `'${esc(data.representanteNome)}'` : 'NULL'}, ${data.representanteCpf ? `'${data.representanteCpf}'` : 'NULL'}, ${data.versaoSistema ? `'${data.versaoSistema}'` : 'NULL'}, ${data.codigoSerpro ? `'${data.codigoSerpro}'` : 'NULL'}, ${data.dataRecebimentoSerpro ? `'${data.dataRecebimentoSerpro}'` : 'NULL'}, ${data.feitoPelaEvox !== undefined ? (data.feitoPelaEvox ? 1 : 0) : 1}, '${data.modalidade || 'compensacao'}', ${data.observacoes ? `'${esc(data.observacoes)}'` : 'NULL'}, ${data.registradoPorId || 'NULL'}, ${data.registradoPorNome ? `'${esc(data.registradoPorNome)}'` : 'NULL'})`));
+  return { id: (result as unknown as any).insertId };
+}
+
+export async function searchPerdcomps(query: string) {
+  const db_ = (await getDb())!;
+  const q = query.replace(/'/g, "''");
+  const [rows] = await db_.execute(sql.raw(`SELECT cp.*, c.razaoSocial as clienteNome FROM credit_perdcomps cp LEFT JOIN clientes c ON cp.clienteId = c.id WHERE cp.numeroPerdcomp LIKE '%${q}%' OR cp.numeroControle LIKE '%${q}%' OR cp.cnpjDeclarante LIKE '%${q}%' OR c.razaoSocial LIKE '%${q}%' ORDER BY cp.createdAt DESC LIMIT 50`));
+  return rows as unknown as any[];
+}
+
+// ===== ENHANCED GESTÃO DE CRÉDITOS =====
+export async function getGestaoCompletaCreditos(clienteId: number) {
+  const db_ = (await getDb())!;
+  const [ledger] = await db_.execute(sql.raw(`SELECT cl.*, ccg.sigla as grupoSigla, ccg.nome as grupoNome FROM credit_ledger cl LEFT JOIN credit_compensation_groups ccg ON cl.compensationGroupId = ccg.id WHERE cl.clienteId = ${clienteId} ORDER BY cl.createdAt DESC`));
+  const [perdcomps] = await db_.execute(sql.raw(`SELECT * FROM credit_perdcomps WHERE clienteId = ${clienteId} ORDER BY dataTransmissao DESC`));
+  const [retificacoes] = await db_.execute(sql.raw(`SELECT * FROM credit_retificacao_records WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [guias] = await db_.execute(sql.raw(`SELECT * FROM credit_guias WHERE clienteId = ${clienteId} ORDER BY dataVencimento ASC`));
+  const [strategies] = await db_.execute(sql.raw(`SELECT ccs.*, cc.numero as caseNumero FROM credit_case_strategy ccs LEFT JOIN credit_cases cc ON ccs.caseId = cc.id WHERE ccs.clienteId = ${clienteId} ORDER BY ccs.createdAt DESC`));
+  const [exitos] = await db_.execute(sql.raw(`SELECT * FROM success_events WHERE clienteId = ${clienteId} ORDER BY createdAt DESC`));
+  const [rtis] = await db_.execute(sql.raw(`SELECT r.*, ct.titulo as taskTitulo FROM rti_reports r LEFT JOIN credit_tasks ct ON r.taskId = ct.id WHERE r.clienteId = ${clienteId} ORDER BY r.createdAt DESC`));
+  
+  const ledgerArr = ledger as unknown as any[];
+  const perdcompsArr = perdcomps as unknown as any[];
+  const retificacoesArr = retificacoes as unknown as any[];
+  
+  const totalEstimado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorEstimado || 0), 0);
+  const totalValidado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorValidado || 0), 0);
+  const totalRetificado = retificacoesArr.reduce((s: number, r: any) => s + Number(r.valorCreditoDisponivel || 0), 0);
+  const totalProtocolado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorProtocolado || 0), 0);
+  const totalEfetivado = ledgerArr.reduce((s: number, l: any) => s + Number(l.valorEfetivado || 0), 0);
+  const saldoDisponivel = ledgerArr.reduce((s: number, l: any) => s + Number(l.saldoDisponivel || l.saldoResidual || 0), 0);
+  const saldoUtilizado = ledgerArr.reduce((s: number, l: any) => s + Number(l.saldoUtilizado || 0), 0);
+  
+  const saldoPorGrupo: Record<string, { disponivel: number; utilizado: number; estimado: number }> = {};
+  ledgerArr.forEach((l: any) => {
+    const grupo = l.grupoSigla || l.grupoDebito || 'OUTROS';
+    if (!saldoPorGrupo[grupo]) saldoPorGrupo[grupo] = { disponivel: 0, utilizado: 0, estimado: 0 };
+    saldoPorGrupo[grupo].disponivel += Number(l.saldoDisponivel || l.saldoResidual || 0);
+    saldoPorGrupo[grupo].utilizado += Number(l.saldoUtilizado || 0);
+    saldoPorGrupo[grupo].estimado += Number(l.valorEstimado || 0);
+  });
+  
+  const now = Date.now();
+  const prescricaoRisk = ledgerArr.filter((l: any) => {
+    if (l.dataPrescricao) {
+      const prescDate = new Date(l.dataPrescricao).getTime();
+      return prescDate < now + (180 * 24 * 60 * 60 * 1000) && Number(l.saldoDisponivel || l.saldoResidual || 0) > 0;
+    }
+    const created = new Date(l.createdAt).getTime();
+    const yearsOld = (now - created) / (365.25 * 24 * 60 * 60 * 1000);
+    return yearsOld > 4.5 && Number(l.saldoDisponivel || l.saldoResidual || 0) > 0;
+  });
+  
+  const historicoUtilizacao = perdcompsArr.map((p: any) => ({
+    id: p.id, tipo: p.modalidade || 'compensacao', numeroPerdcomp: p.numeroPerdcomp,
+    valor: Number(p.valorDebitosCompensados || p.valorCredito || 0),
+    data: p.dataTransmissao, status: p.status, grupoTributo: p.grupoTributo,
+  }));
+  
+  return {
+    ledger: ledgerArr, perdcomps: perdcompsArr, retificacoes: retificacoesArr,
+    guias: guias as unknown as any[], strategies: strategies as unknown as any[],
+    exitos: exitos as unknown as any[], rtis: rtis as unknown as any[],
+    totals: { totalEstimado, totalValidado, totalRetificado, totalProtocolado, totalEfetivado, saldoDisponivel, saldoUtilizado },
+    saldoPorGrupo, prescricaoRisk, historicoUtilizacao,
+  };
+}
+
+// ===== AUTO-CREATE NEXT QUEUE TASK =====
+export async function createNextQueueTask(data: { caseId: number; clienteId: number; fila: string; titulo: string; criadoPorId: number; criadoPorNome: string; }) {
+  const db_ = (await getDb())!;
+  const esc = (v: string) => v ? v.replace(/'/g, "''") : '';
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_tasks (caseId, clienteId, titulo, fila, status, prioridade, criadoPorId, criadoPorNome) VALUES (${data.caseId}, ${data.clienteId}, '${esc(data.titulo)}', '${data.fila}', 'pendente', 'media', ${data.criadoPorId}, '${esc(data.criadoPorNome)}')`));
+  return { id: (result as unknown as any).insertId };
+}
+
+// ===== RETIFICAÇÃO STATS =====
+export async function getRetificacaoStats(clienteId?: number) {
+  const db_ = (await getDb())!;
+  const where = clienteId ? `WHERE clienteId = ${clienteId}` : '';
+  const [rows] = await db_.execute(sql.raw(`SELECT COUNT(*) as total, COALESCE(SUM(valorApuradoRti),0) as totalApurado, COALESCE(SUM(valorCreditoDisponivel),0) as totalDisponivel, COALESCE(SUM(divergencia),0) as totalDivergencia, SUM(CASE WHEN alertaDivergencia = 1 THEN 1 ELSE 0 END) as totalAlertas FROM credit_retificacao_records ${where}`));
+  return (rows as unknown as any[])[0];
+}

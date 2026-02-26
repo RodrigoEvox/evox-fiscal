@@ -1950,7 +1950,7 @@
 ### Gestão de Créditos
 - [ ] Histórico completo de créditos do cliente (apurado, revisado, validado, utilizado, disponível)
 - [ ] Relação de PerdComps vinculadas com dados para busca rápida
-- [ ] Alerta de risco de prescrição de crédito
+- [x] Alerta de risco de prescrição de crédito
 - [ ] Saldo por tese, saldo global, saldo por grupo de débitos
 
 ### Testes
@@ -2016,3 +2016,35 @@
 - [x] Estratégia determina para qual fila o cliente vai após retificação
 - [x] Campos de contatos validados (contábil, financeiro, empresário, outros)
 - [x] Registro de responsável técnico (coordenadora RCT)
+
+### Submenu Retificação — Implementação Completa
+- [x] Checklist padrão de retificação por tese (obrigações acessórias, etc.)
+- [x] Validação dos créditos: comparativo valor apurado RTI vs crédito efetivamente disponível
+- [x] Alerta de divergência discrepante entre apuração e saldo real
+- [x] Constituição do saldo disponível por tese e saldo global
+- [x] Saldo disponível para compensar por grupo de débitos: INSS/PREVIDENCIÁRIOS, PIS/COFINS, IRPJ/CSLL
+- [x] Registro se retificação foi total ou parcial, com período retificado
+- [x] Criação automática de tarefa na próxima fila conforme estratégia de monetização do onboarding
+- [x] Estratégia de monetização visível em todos os acessos ao cliente (aba crédito)
+
+### Submenu Compensação — Implementação Completa
+- [x] Campo para inserir guias a serem compensadas (data vencimento, valores)
+- [x] Validação da guia: se é do cliente, se está vencida/a vencer/perto do vencimento
+- [x] Campo para anexar comprovantes das compensações
+- [x] Dados do recibo PerdComp para busca futura (número, data, valor, tipo)
+- [x] Busca rápida de PerdComp por número para verificar se foi feito pela Evox
+- [x] Compilação de dados do PerdComp para consulta em despachos decisórios
+
+### Submenu Ressarcimento — Implementação Completa
+- [x] Mesmo cenário da Compensação adaptado para ressarcimento
+
+### Submenu Restituição — Implementação Completa
+- [x] Mesmo cenário da Compensação adaptado para restituição
+
+### Submenu Gestão de Créditos — Implementação Completa
+- [x] Histórico completo de créditos por cliente
+- [x] Valor apurado inicialmente, valor revisado, data da apuração
+- [x] Valor validado na retificação, saldo disponível, saldo utilizado
+- [x] Histórico de utilização (compensação, ressarcimento, restituição)
+- [x] Relação de números e informações de PerdComps vinculadas
+- [x] Alerta de risco de prescrição de crédito

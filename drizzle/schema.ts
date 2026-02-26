@@ -1949,9 +1949,15 @@ export const creditLedger = mysqlTable("credit_ledger", {
 	periodoFim: varchar({ length: 10 }),
 	valorEstimado: decimal({ precision: 15, scale: 2 }).default('0'),
 	valorValidado: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorRetificado: decimal({ precision: 15, scale: 2 }).default('0'),
 	valorProtocolado: decimal({ precision: 15, scale: 2 }).default('0'),
 	valorEfetivado: decimal({ precision: 15, scale: 2 }).default('0'), // compensado/restituído/ressarcido
 	saldoResidual: decimal({ precision: 15, scale: 2 }).default('0'),
+	saldoDisponivel: decimal({ precision: 15, scale: 2 }).default('0'),
+	saldoUtilizado: decimal({ precision: 15, scale: 2 }).default('0'),
+	grupoDebito: varchar({ length: 50 }), // INSS/PREVIDENCIARIOS, PIS/COFINS, IRPJ/CSLL
+	dataPrescricao: timestamp({ mode: 'string' }),
+	alertaPrescricao: tinyint().default(0),
 	tipoEfetivacao: mysqlEnum(['compensacao','restituicao','ressarcimento']),
 	status: mysqlEnum(['estimado','validado','protocolado','efetivado','parcial','cancelado']).default('estimado').notNull(),
 	observacoes: text(),
@@ -2153,10 +2159,21 @@ export const creditPerdcomps = mysqlTable("credit_perdcomps", {
 	clienteId: int().notNull(),
 	ledgerEntryId: int(),
 	numeroPerdcomp: varchar({ length: 50 }).notNull(),
-	tipoCredito: varchar({ length: 100 }), // PIS, COFINS, INSS, etc.
+	tipoDocumento: varchar({ length: 50 }).default('Original'), // Original, Retificadora
+	numeroControle: varchar({ length: 50 }),
+	cnpjDeclarante: varchar({ length: 20 }),
+	nomeEmpresarial: varchar({ length: 500 }),
+	tipoCredito: varchar({ length: 100 }), // Pagamento Indevido ou a Maior, etc.
+	oriundoAcaoJudicial: tinyint().default(0),
+	creditoSucedida: tinyint().default(0),
+	numeroDocArrecadacao: varchar({ length: 50 }),
+	codigoReceita: varchar({ length: 20 }),
+	grupoTributo: varchar({ length: 200 }), // Contribuição para o Financiamento da Seguridade Social, etc.
+	dataArrecadacao: timestamp({ mode: 'string' }),
 	periodoApuracao: varchar({ length: 20 }), // MM/YYYY
 	valorCredito: decimal({ precision: 15, scale: 2 }),
 	valorDebitosCompensados: decimal({ precision: 15, scale: 2 }),
+	debitosCompensadosJson: json(), // [{tributo: 'COFINS', valor: 10889.98}, ...]
 	saldoRemanescente: decimal({ precision: 15, scale: 2 }),
 	dataTransmissao: timestamp({ mode: 'string' }),
 	dataVencimentoGuia: timestamp({ mode: 'string' }),
@@ -2166,7 +2183,13 @@ export const creditPerdcomps = mysqlTable("credit_perdcomps", {
 	reciboUrl: varchar({ length: 1000 }),
 	status: mysqlEnum(['transmitido','homologado','nao_homologado','em_analise','cancelado']).default('transmitido').notNull(),
 	despachoDecisorio: text(),
+	representanteNome: varchar({ length: 255 }),
+	representanteCpf: varchar({ length: 20 }),
+	versaoSistema: varchar({ length: 20 }),
+	codigoSerpro: varchar({ length: 50 }),
+	dataRecebimentoSerpro: timestamp({ mode: 'string' }),
 	feitoPelaEvox: tinyint().default(1).notNull(),
+	modalidade: mysqlEnum(['compensacao','ressarcimento','restituicao']).default('compensacao'),
 	observacoes: text(),
 	registradoPorId: int(),
 	registradoPorNome: varchar({ length: 255 }),
@@ -2346,4 +2369,70 @@ export const creditOnboardingRecords = mysqlTable("credit_onboarding_records", {
 	index("idx_cor_task").on(table.taskId),
 	index("idx_cor_case").on(table.caseId),
 	index("idx_cor_cliente").on(table.clienteId),
+]);
+
+// Retificação Records — registro detalhado de retificações por tese
+export const creditRetificacaoRecords = mysqlTable("credit_retificacao_records", {
+	id: int().autoincrement().notNull(),
+	taskId: int().notNull(),
+	caseId: int().notNull(),
+	clienteId: int().notNull(),
+	teseId: int(),
+	teseNome: varchar({ length: 500 }),
+	tipoRetificacao: mysqlEnum(['total','parcial']).default('total').notNull(),
+	periodoInicio: varchar({ length: 10 }),
+	periodoFim: varchar({ length: 10 }),
+	valorApuradoRti: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorCreditoDisponivel: decimal({ precision: 15, scale: 2 }).default('0'),
+	divergencia: decimal({ precision: 15, scale: 2 }).default('0'),
+	divergenciaPct: decimal({ precision: 5, scale: 2 }).default('0'),
+	alertaDivergencia: tinyint().default(0),
+	justificativaDivergencia: text(),
+	saldoPorGrupo: json(), // {INSS: 50000, PIS_COFINS: 30000, IRPJ_CSLL: 20000}
+	obrigacoesAcessorias: json(), // [{nome: 'EFD-Contribuições', status: 'retificada'}, ...]
+	checklistConcluido: tinyint().default(0),
+	observacoes: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_crr_task").on(table.taskId),
+	index("idx_crr_case").on(table.caseId),
+	index("idx_crr_cliente").on(table.clienteId),
+]);
+
+// Credit Guias — guias a serem compensadas/ressarcidas/restituídas
+export const creditGuias = mysqlTable("credit_guias", {
+	id: int().autoincrement().notNull(),
+	taskId: int(),
+	caseId: int(),
+	clienteId: int().notNull(),
+	perdcompId: int(),
+	cnpjGuia: varchar({ length: 20 }),
+	codigoReceita: varchar({ length: 20 }),
+	grupoTributo: varchar({ length: 200 }),
+	periodoApuracao: varchar({ length: 20 }),
+	dataVencimento: timestamp({ mode: 'string' }),
+	valorOriginal: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorMulta: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorJuros: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorTotal: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorCompensado: decimal({ precision: 15, scale: 2 }).default('0'),
+	statusGuia: mysqlEnum(['a_vencer','vencida','perto_vencimento','compensada','parcial']).default('a_vencer'),
+	validacaoCliente: tinyint().default(0),
+	guiaUrl: varchar({ length: 1000 }),
+	comprovanteUrl: varchar({ length: 1000 }),
+	observacoes: text(),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cg_task").on(table.taskId),
+	index("idx_cg_case").on(table.caseId),
+	index("idx_cg_cliente").on(table.clienteId),
+	index("idx_cg_perdcomp").on(table.perdcompId),
 ]);
