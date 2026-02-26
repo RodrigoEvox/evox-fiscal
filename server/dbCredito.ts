@@ -229,18 +229,64 @@ export async function updateCreditTask(id: number, data: Partial<InsertCreditTas
 
 export async function getCreditTaskStats() {
   const db_ = await getDb();
-  if (!db_) return {};
+  if (!db_) return {
+    total: 0, a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0,
+    apuracao_total: 0, apuracao_a_fazer: 0, apuracao_fazendo: 0, apuracao_feito: 0, apuracao_concluido: 0, apuracao_em_atraso: 0,
+    onboarding_total: 0, onboarding_a_fazer: 0, onboarding_fazendo: 0, onboarding_feito: 0, onboarding_concluido: 0, onboarding_em_atraso: 0,
+    retificacao_total: 0, retificacao_a_fazer: 0, retificacao_fazendo: 0, retificacao_feito: 0, retificacao_concluido: 0, retificacao_em_atraso: 0,
+    compensacao_total: 0, compensacao_a_fazer: 0, compensacao_fazendo: 0, compensacao_feito: 0, compensacao_concluido: 0, compensacao_em_atraso: 0,
+    ressarcimento_total: 0, ressarcimento_a_fazer: 0, ressarcimento_fazendo: 0, ressarcimento_feito: 0, ressarcimento_concluido: 0, ressarcimento_em_atraso: 0,
+    restituicao_total: 0, restituicao_a_fazer: 0, restituicao_fazendo: 0, restituicao_feito: 0, restituicao_concluido: 0, restituicao_em_atraso: 0,
+  };
   const [rows] = await db_.execute(sql`
     SELECT 
       fila,
       COUNT(*) as total,
       SUM(CASE WHEN status = 'a_fazer' THEN 1 ELSE 0 END) as a_fazer,
       SUM(CASE WHEN status = 'fazendo' THEN 1 ELSE 0 END) as fazendo,
-      SUM(CASE WHEN status = 'feito' THEN 1 ELSE 0 END) as feito
+      SUM(CASE WHEN status = 'feito' THEN 1 ELSE 0 END) as feito,
+      SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) as concluido,
+      SUM(CASE WHEN slaStatus = 'vencido' THEN 1 ELSE 0 END) as em_atraso
     FROM credit_tasks
     GROUP BY fila
   `);
-  return rows;
+  
+  const filas = ['apuracao', 'onboarding', 'retificacao', 'compensacao', 'ressarcimento', 'restituicao'];
+  const result: Record<string, number> = {
+    total: 0, a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0,
+  };
+  for (const f of filas) {
+    result[`${f}_total`] = 0;
+    result[`${f}_a_fazer`] = 0;
+    result[`${f}_fazendo`] = 0;
+    result[`${f}_feito`] = 0;
+    result[`${f}_concluido`] = 0;
+    result[`${f}_em_atraso`] = 0;
+  }
+  for (const row of rows as any[]) {
+    const fila = row.fila as string;
+    const total = Number(row.total) || 0;
+    const aFazer = Number(row.a_fazer) || 0;
+    const fazendo = Number(row.fazendo) || 0;
+    const feito = Number(row.feito) || 0;
+    const concluido = Number(row.concluido) || 0;
+    const emAtraso = Number(row.em_atraso) || 0;
+    if (filas.includes(fila)) {
+      result[`${fila}_total`] = total;
+      result[`${fila}_a_fazer`] = aFazer;
+      result[`${fila}_fazendo`] = fazendo;
+      result[`${fila}_feito`] = feito;
+      result[`${fila}_concluido`] = concluido;
+      result[`${fila}_em_atraso`] = emAtraso;
+    }
+    result.total += total;
+    result.a_fazer += aFazer;
+    result.fazendo += fazendo;
+    result.feito += feito;
+    result.concluido += concluido;
+    result.em_atraso += emAtraso;
+  }
+  return result;
 }
 
 // ===== CREDIT TICKETS =====

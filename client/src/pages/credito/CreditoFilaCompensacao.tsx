@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import GuiaUploadOcr from '@/components/GuiaUploadOcr';
 import BackToDashboard from '@/components/BackToDashboard';
 import TarefasAtrasadasBanner from '@/components/TarefasAtrasadasBanner';
+import { useConfirmClose } from '@/components/ConfirmCloseDialog';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   a_fazer: { label: 'A Fazer', color: 'bg-amber-100 text-amber-800' },
@@ -81,6 +82,16 @@ export default function CreditoFilaCompensacao() {
     feitoPelaEvox: true, modalidade: 'compensacao' as const,
     debitosCompensadosJson: [] as Array<{ tributo: string; valor: number }>,
   });
+
+  // Guia form dirty check
+  const isGuiaFormDirty = !!(guiaForm.cnpjGuia || guiaForm.codigoReceita || guiaForm.valorOriginal || guiaForm.observacoes);
+  const closeGuiaDialog = useCallback(() => setShowGuiaDialog(false), []);
+  const { guardedClose: guardedCloseGuia, ConfirmAlert: GuiaConfirmAlert } = useConfirmClose(isGuiaFormDirty, closeGuiaDialog);
+
+  // PerdComp form dirty check
+  const isPerdcompFormDirty = !!(perdcompForm.numeroPerdcomp || perdcompForm.cnpjDeclarante || perdcompForm.valorCredito || perdcompForm.observacoes);
+  const closePerdcompDialog = useCallback(() => setShowPerdcompDialog(false), []);
+  const { guardedClose: guardedClosePerdcomp, ConfirmAlert: PerdcompConfirmAlert } = useConfirmClose(isPerdcompFormDirty, closePerdcompDialog);
 
   const { data: tasks, isLoading } = trpc.creditRecovery.credito.tasks.list.useQuery({ fila: 'compensacao' } as any);
   const guiasByTask = trpc.creditRecovery.admin.guias.list.useQuery(
@@ -314,7 +325,7 @@ export default function CreditoFilaCompensacao() {
       </Dialog>
 
       {/* New Guia Dialog */}
-      <Dialog open={showGuiaDialog} onOpenChange={setShowGuiaDialog}>
+      <Dialog open={showGuiaDialog} onOpenChange={(val) => { if (!val) guardedCloseGuia(); }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Adicionar Guia</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -356,14 +367,14 @@ export default function CreditoFilaCompensacao() {
             <div><Label className="text-xs">Observações</Label><Textarea value={guiaForm.observacoes} onChange={(e) => setGuiaForm(f => ({ ...f, observacoes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGuiaDialog(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={guardedCloseGuia}>Cancelar</Button>
             <Button onClick={handleSubmitGuia} disabled={createGuia.isPending} className="gap-2">{createGuia.isPending && <Loader2 className="w-4 h-4 animate-spin" />}Registrar Guia</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* New PerdComp Dialog */}
-      <Dialog open={showPerdcompDialog} onOpenChange={setShowPerdcompDialog}>
+      <Dialog open={showPerdcompDialog} onOpenChange={(val) => { if (!val) guardedClosePerdcomp(); }}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Receipt className="w-5 h-5 text-primary" />Registrar PerdComp</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -435,11 +446,13 @@ export default function CreditoFilaCompensacao() {
             <div><Label className="text-xs">Observações</Label><Textarea value={perdcompForm.observacoes} onChange={(e) => setPerdcompForm(f => ({ ...f, observacoes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPerdcompDialog(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={guardedClosePerdcomp}>Cancelar</Button>
             <Button onClick={handleSubmitPerdcomp} disabled={createPerdcomp.isPending} className="gap-2">{createPerdcomp.isPending && <Loader2 className="w-4 h-4 animate-spin" />}Registrar PerdComp</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <GuiaConfirmAlert />
+      <PerdcompConfirmAlert />
     </div>
   );
 }

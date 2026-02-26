@@ -21,9 +21,13 @@ const FILAS = [
 
 export default function CreditoDashboard() {
   const [, navigate] = useLocation();
-  const { data: taskStats, isLoading } = trpc.creditRecovery.credito.tasks.stats.useQuery();
+  // Auto-refresh every 15 seconds for real-time data
+  const { data: taskStats, isLoading } = trpc.creditRecovery.credito.tasks.stats.useQuery(undefined, {
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+  });
 
-  const ts = (taskStats || {}) as any;
+  const ts = (taskStats || {}) as Record<string, number>;
 
   if (isLoading) {
     return (
@@ -33,22 +37,20 @@ export default function CreditoDashboard() {
     );
   }
 
-  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-
-  // Aggregate stats by fila from task stats
+  // Aggregate stats by fila from the flat object
   const filaStats = FILAS.map(f => {
     const aFazer = ts[`${f.key}_a_fazer`] || 0;
     const fazendo = ts[`${f.key}_fazendo`] || 0;
     const feito = ts[`${f.key}_feito`] || 0;
     const concluido = ts[`${f.key}_concluido`] || 0;
     const emAtraso = ts[`${f.key}_em_atraso`] || 0;
-    const total = aFazer + fazendo + feito + concluido;
+    const total = ts[`${f.key}_total`] || 0;
     return { ...f, aFazer, fazendo, feito, concluido, emAtraso, total };
   });
 
   const totalTarefas = ts.total || 0;
-  const totalPendentes = (ts.pendente || 0) + (ts.em_andamento || 0);
-  const totalConcluidas = ts.concluida || 0;
+  const totalPendentes = (ts.a_fazer || 0) + (ts.fazendo || 0);
+  const totalConcluidas = (ts.feito || 0) + (ts.concluido || 0);
   const totalEmAtraso = ts.em_atraso || 0;
 
   return (

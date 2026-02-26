@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 const FILAS = [
   { value: 'apuracao', label: 'Apuração', requiresContract: false, ndaOptional: true },
@@ -45,6 +46,9 @@ export default function CreditoNovaTarefa() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
+  // Unsaved changes tracking
+  const { setDirty, confirmNavigation, UnsavedAlert } = useUnsavedChanges();
+
   // Step state
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -65,6 +69,12 @@ export default function CreditoNovaTarefa() {
   const [pendingTeseId, setPendingTeseId] = useState<number | null>(null);
   const [tempJustificativa, setTempJustificativa] = useState('');
 
+  // Track dirty state when form fields change
+  useEffect(() => {
+    const hasSomething = !!selectedClienteId || !!fila || !!titulo.trim() || !!descricao.trim() || selectedTeses.size > 0;
+    setDirty(hasSomething);
+  }, [selectedClienteId, fila, titulo, descricao, selectedTeses, setDirty]);
+
   // Data queries
   const { data: clientes, isLoading: loadingClientes } = trpc.clientes.list.useQuery();
   const { data: tesesResult, isLoading: loadingTeses } = trpc.creditRecovery.credito.clientes.evaluateTeses.useQuery(
@@ -81,6 +91,7 @@ export default function CreditoNovaTarefa() {
   const createTask = trpc.creditRecovery.credito.tasks.create.useMutation({
     onSuccess: (result) => {
       toast.success(`Tarefa ${result?.codigo} criada com sucesso!`);
+      setDirty(false);
       navigate('/credito/dashboard-credito');
     },
     onError: (err) => {
@@ -730,6 +741,7 @@ export default function CreditoNovaTarefa() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedAlert />
     </div>
   );
 }

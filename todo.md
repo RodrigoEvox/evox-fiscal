@@ -2094,3 +2094,21 @@
 - [x] Reordenar submenus: Dashboard, Nova Tarefa, Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição, Gestão de Créditos, Relatórios
 - [x] Remover subcategoria "Gestão" dentro do menu Crédito (lista plana)
 - [x] Remover "Teses Tributárias" do menu Crédito (fica apenas em Administração)
+
+## v78 — Dashboard Crédito Tempo Real, Navegação e Alertas
+
+### Dashboard Crédito — Números Reais
+- [x] Corrigir query do dashboard para buscar contagens reais de cada fila (Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição)
+- [x] Usar mesma nomenclatura das filas: A Fazer, Fazendo, Feito, Concluído
+- [x] Cards superiores (Total, Pendentes, Concluídas, Em Atraso) devem somar dados reais
+- [x] Auto-refresh automático (polling ou invalidação) para atualização em tempo real
+
+### Navegação — Seta Voltar + Ícone Início
+- [x] Substituir "← Voltar ao Dashboard" por seta de voltar (volta página anterior)
+- [x] Adicionar ícone de início ao lado da seta (volta direto para página inicial)
+- [x] Aplicar em todas as telas/abas do setor crédito
+
+### Alerta ao Sair de Formulários
+- [x] Implementar alerta de confirmação ao sair durante criação/edição de tarefa
+- [x] Detectar: cancelar, clicar fora, voltar, início, navegação lateral
+- [x] Aplicar em Nova Tarefa e em todos os diálogos de edição das filas

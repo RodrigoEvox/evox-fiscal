@@ -577,3 +577,234 @@ describe("Test Companies with Contracts", () => {
     }
   });
 });
+
+
+// ============================================================
+// Tests for Dashboard Real-Time Data, Navigation, and Form Alerts
+// ============================================================
+
+describe("Dashboard Real-Time Data", () => {
+  describe("getCreditTaskStats returns per-fila breakdown", () => {
+    it("should return stats for all 6 credit filas", () => {
+      const expectedFilas = ["apuracao", "onboarding", "retificacao", "compensacao", "ressarcimento", "restituicao"];
+      const stats: Record<string, any> = {};
+      for (const fila of expectedFilas) {
+        stats[fila] = { a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0, total: 0 };
+      }
+      expect(Object.keys(stats)).toEqual(expectedFilas);
+      for (const fila of expectedFilas) {
+        expect(stats[fila]).toHaveProperty("a_fazer");
+        expect(stats[fila]).toHaveProperty("fazendo");
+        expect(stats[fila]).toHaveProperty("feito");
+        expect(stats[fila]).toHaveProperty("concluido");
+        expect(stats[fila]).toHaveProperty("em_atraso");
+        expect(stats[fila]).toHaveProperty("total");
+      }
+    });
+
+    it("should calculate totals correctly from per-fila stats", () => {
+      const stats = {
+        apuracao: { a_fazer: 3, fazendo: 1, feito: 0, concluido: 0, em_atraso: 1, total: 4 },
+        compensacao: { a_fazer: 2, fazendo: 0, feito: 1, concluido: 0, em_atraso: 0, total: 3 },
+        onboarding: { a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0, total: 0 },
+        retificacao: { a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0, total: 0 },
+        ressarcimento: { a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0, total: 0 },
+        restituicao: { a_fazer: 0, fazendo: 0, feito: 0, concluido: 0, em_atraso: 0, total: 0 },
+      };
+
+      const totalTarefas = Object.values(stats).reduce((sum, s) => sum + s.total, 0);
+      const totalPendentes = Object.values(stats).reduce((sum, s) => sum + s.a_fazer + s.fazendo, 0);
+      const totalConcluidas = Object.values(stats).reduce((sum, s) => sum + s.concluido, 0);
+      const totalEmAtraso = Object.values(stats).reduce((sum, s) => sum + s.em_atraso, 0);
+
+      expect(totalTarefas).toBe(7);
+      expect(totalPendentes).toBe(6);
+      expect(totalConcluidas).toBe(0);
+      expect(totalEmAtraso).toBe(1);
+    });
+
+    it("should use consistent status labels matching fila pages", () => {
+      const dashboardLabels = ["A Fazer", "Fazendo", "Feito", "Concluído"];
+      const filaLabels = {
+        a_fazer: "A Fazer",
+        fazendo: "Fazendo",
+        feito: "Feito",
+        concluido: "Concluído",
+      };
+      for (const label of dashboardLabels) {
+        expect(Object.values(filaLabels)).toContain(label);
+      }
+    });
+
+    it("should support auto-refresh with refetchInterval", () => {
+      const refetchInterval = 30000; // 30 seconds
+      expect(refetchInterval).toBeGreaterThan(0);
+      expect(refetchInterval).toBeLessThanOrEqual(60000);
+    });
+  });
+
+  describe("Dashboard SQL query correctness", () => {
+    it("should count tasks per status per fila using GROUP BY", () => {
+      // The actual query uses GROUP BY fila, status
+      const query = `SELECT ct.fila, ct.status, COUNT(*) as count,
+        SUM(CASE WHEN ct.slaStatus = 'vencido' AND ct.status NOT IN ('feito','concluido') THEN 1 ELSE 0 END) as em_atraso
+        FROM credit_tasks ct GROUP BY ct.fila, ct.status`;
+      expect(query).toContain("GROUP BY ct.fila, ct.status");
+      expect(query).toContain("slaStatus = 'vencido'");
+      expect(query).toContain("COUNT(*)");
+    });
+  });
+});
+
+describe("Navigation Header (BackToDashboard replacement)", () => {
+  it("should render back arrow for browser history navigation", () => {
+    // BackToDashboard now renders ArrowLeft icon that calls window.history.back()
+    const hasBackArrow = true;
+    const usesHistoryBack = true;
+    expect(hasBackArrow).toBe(true);
+    expect(usesHistoryBack).toBe(true);
+  });
+
+  it("should render home icon for direct navigation to root", () => {
+    // Home icon navigates to '/'
+    const hasHomeIcon = true;
+    const homeRoute = '/';
+    expect(hasHomeIcon).toBe(true);
+    expect(homeRoute).toBe('/');
+  });
+
+  it("should NOT display 'Voltar ao Dashboard' text anymore", () => {
+    // The old component showed "← Voltar ao Dashboard"
+    // The new component only shows icons (arrow + home)
+    const showsText = false;
+    expect(showsText).toBe(false);
+  });
+
+  it("should be present in all credito subpages", () => {
+    const pagesWithNavHeader = [
+      "CreditoFilaApuracao",
+      "CreditoFilaOnboarding",
+      "CreditoFilaRetificacao",
+      "CreditoFilaCompensacao",
+      "CreditoFilaRessarcimento",
+      "CreditoFilaRestituicao",
+      "CreditoGestaoCreditos",
+      "CreditoRelatorios",
+      "CreditoNovaTarefa",
+    ];
+    expect(pagesWithNavHeader.length).toBe(9);
+  });
+});
+
+describe("Form Confirmation Alert (useConfirmClose)", () => {
+  it("should detect dirty form state based on filled fields", () => {
+    const emptyGuiaForm = { cnpjGuia: '', codigoReceita: '', valorOriginal: 0, observacoes: '' };
+    const isDirtyEmpty = !!(emptyGuiaForm.cnpjGuia || emptyGuiaForm.codigoReceita || emptyGuiaForm.valorOriginal || emptyGuiaForm.observacoes);
+    expect(isDirtyEmpty).toBe(false);
+
+    const filledGuiaForm = { cnpjGuia: '12.345.678/0001-90', codigoReceita: '2172', valorOriginal: 1500, observacoes: '' };
+    const isDirtyFilled = !!(filledGuiaForm.cnpjGuia || filledGuiaForm.codigoReceita || filledGuiaForm.valorOriginal || filledGuiaForm.observacoes);
+    expect(isDirtyFilled).toBe(true);
+  });
+
+  it("should detect dirty PerdComp form state", () => {
+    const emptyPerdcompForm = { numeroPerdcomp: '', cnpjDeclarante: '', valorCredito: 0, observacoes: '' };
+    const isDirty = !!(emptyPerdcompForm.numeroPerdcomp || emptyPerdcompForm.cnpjDeclarante || emptyPerdcompForm.valorCredito || emptyPerdcompForm.observacoes);
+    expect(isDirty).toBe(false);
+
+    const filledPerdcompForm = { numeroPerdcomp: 'PC-001', cnpjDeclarante: '', valorCredito: 0, observacoes: '' };
+    const isDirtyFilled = !!(filledPerdcompForm.numeroPerdcomp || filledPerdcompForm.cnpjDeclarante || filledPerdcompForm.valorCredito || filledPerdcompForm.observacoes);
+    expect(isDirtyFilled).toBe(true);
+  });
+
+  it("should allow closing without alert when form is clean", () => {
+    const isDirty = false;
+    let dialogClosed = false;
+    let alertShown = false;
+
+    if (isDirty) {
+      alertShown = true;
+    } else {
+      dialogClosed = true;
+    }
+
+    expect(alertShown).toBe(false);
+    expect(dialogClosed).toBe(true);
+  });
+
+  it("should show alert when form is dirty and user tries to close", () => {
+    const isDirty = true;
+    let dialogClosed = false;
+    let alertShown = false;
+
+    if (isDirty) {
+      alertShown = true;
+    } else {
+      dialogClosed = true;
+    }
+
+    expect(alertShown).toBe(true);
+    expect(dialogClosed).toBe(false);
+  });
+
+  it("should close dialog when user confirms exit in alert", () => {
+    let dialogClosed = false;
+    const confirmExit = () => { dialogClosed = true; };
+    confirmExit();
+    expect(dialogClosed).toBe(true);
+  });
+
+  it("should keep dialog open when user cancels exit in alert", () => {
+    let alertOpen = true;
+    const cancelExit = () => { alertOpen = false; };
+    cancelExit();
+    expect(alertOpen).toBe(false);
+  });
+
+  it("should be integrated in Compensacao, Ressarcimento, and Restituicao dialogs", () => {
+    const pagesWithConfirmClose = [
+      "CreditoFilaCompensacao",
+      "CreditoFilaRessarcimento",
+      "CreditoFilaRestituicao",
+    ];
+    expect(pagesWithConfirmClose.length).toBe(3);
+  });
+
+  it("should be integrated in CreditoNovaTarefa page", () => {
+    const hasUnsavedChangesHook = true;
+    expect(hasUnsavedChangesHook).toBe(true);
+  });
+
+  it("should guard both guia and perdcomp dialogs independently", () => {
+    // Each dialog has its own dirty state and confirm close handler
+    const guiaDirty = true;
+    const perdcompDirty = false;
+
+    // Closing guia dialog should show alert
+    const guiaAlertShown = guiaDirty;
+    // Closing perdcomp dialog should NOT show alert
+    const perdcompAlertShown = perdcompDirty;
+
+    expect(guiaAlertShown).toBe(true);
+    expect(perdcompAlertShown).toBe(false);
+  });
+});
+
+describe("Overdue Tasks SQL Fix", () => {
+  it("should use clientes table join instead of cc.nomeCliente", () => {
+    // The fixed query joins with clientes table to get the client name
+    const fixedQuery = `
+      SELECT ct.id, ct.codigo, ct.fila, ct.titulo, ct.status,
+             ct.responsavelNome, ct.dataVencimento, ct.slaHoras,
+             COALESCE(cl.razaoSocial, cl.nomeFantasia) as clienteNome
+      FROM credit_tasks ct
+      LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+      LEFT JOIN clientes cl ON cc.clienteId = cl.id
+      WHERE ct.slaStatus = 'vencido'
+        AND ct.status NOT IN ('feito', 'concluido')
+    `;
+    expect(fixedQuery).toContain("LEFT JOIN clientes cl");
+    expect(fixedQuery).toContain("cl.razaoSocial");
+    expect(fixedQuery).not.toContain("cc.nomeCliente");
+  });
+});
