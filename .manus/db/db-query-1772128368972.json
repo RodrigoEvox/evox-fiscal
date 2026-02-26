@@ -1,0 +1,100 @@
+{
+  "query": "SELECT c.id, c.razaoSocial, c.cnpj, cc.id as caseId, cc.fase, cc.status, cc.contratoAssinadoEm FROM clientes c LEFT JOIN credit_cases cc ON cc.clienteId = c.id ORDER BY c.id LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT c.id, c.razaoSocial, c.cnpj, cc.id as caseId, cc.fase, cc.status, cc.contratoAssinadoEm FROM clientes c LEFT JOIN credit_cases cc ON cc.clienteId = c.id ORDER BY c.id LIMIT 10",
+  "rows": [
+    {
+      "id": "2",
+      "razaoSocial": "Comércio Global SA",
+      "cnpj": "98765432000110",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "3",
+      "razaoSocial": "Indústria Forte Ltda",
+      "cnpj": "11223344000155",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "4",
+      "razaoSocial": "Farmácia Popular ME",
+      "cnpj": "55667788000199",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "5",
+      "razaoSocial": "Construtora Horizonte SA",
+      "cnpj": "99887766000133",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "30001",
+      "razaoSocial": "Empresa Teste LTDA",
+      "cnpj": "12.345.678/0001-99",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "30002",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "cnpj": "98.765.432/0001-10",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "30003",
+      "razaoSocial": "Empresa QS LTDA",
+      "cnpj": "11.222.333/0001-44",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "30004",
+      "razaoSocial": "Teste",
+      "cnpj": "12.345.678/0001-99",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "30005",
+      "razaoSocial": "Empresa Teste LTDA",
+      "cnpj": "12.345.678/0001-99",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    },
+    {
+      "id": "30006",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "cnpj": "98.765.432/0001-10",
+      "caseId": "NULL",
+      "fase": "NULL",
+      "status": "NULL",
+      "contratoAssinadoEm": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\trazaoSocial\tcnpj\tcaseId\tfase\tstatus\tcontratoAssinadoEm\n2\tComércio Global SA\t98765432000110\tNULL\tNULL\tNULL\tNULL\n3\tIndústria Forte Ltda\t11223344000155\tNULL\tNULL\tNULL\tNULL\n4\tFarmácia Popular ME\t55667788000199\tNULL\tNULL\tNULL\tNULL\n5\tConstrutora Horizonte SA\t99887766000133\tNULL\tNULL\tNULL\tNULL\n30001\tEmpresa Teste LTDA\t12.345.678/0001-99\tNULL\tNULL\tNULL\tNULL\n30002\tEmpresa Procuração LTDA\t98.765.432/0001-10\tNULL\tNULL\tNULL\tNULL\n30003\tEmpresa QS LTDA\t11.222.333/0001-44\tNULL\tNULL\tNULL\tNULL\n30004\tTeste\t12.345.678/0001-99\tNULL\tNULL\tNULL\tNULL\n30005\tEmpresa Teste LTDA\t12.345.678/0001-99\tNULL\tNULL\tNULL\tNULL\n30006\tEmpresa Procuração LTDA\t98.765.432/0001-10\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 111
+}

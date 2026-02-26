@@ -1281,23 +1281,48 @@ export interface GuiaOcrResult {
 }
 
 const CODIGO_GRUPO_MAP: Record<string, string> = {
+  // PIS/COFINS
   '8109': 'PIS/COFINS', '6912': 'PIS/COFINS',
   '2172': 'PIS/COFINS', '5856': 'PIS/COFINS',
+  '5952': 'PIS/COFINS', '5979': 'PIS/COFINS', '5960': 'PIS/COFINS',
+  // IRPJ/CSLL
   '3373': 'IRPJ/CSLL', '2089': 'IRPJ/CSLL', '2362': 'IRPJ/CSLL', '0220': 'IRPJ/CSLL', '5993': 'IRPJ/CSLL',
   '6012': 'IRPJ/CSLL', '2484': 'IRPJ/CSLL', '6773': 'IRPJ/CSLL', '2372': 'IRPJ/CSLL',
+  '1599': 'IRPJ/CSLL', '2430': 'IRPJ/CSLL', '2456': 'IRPJ/CSLL',
+  // INSS/PREVIDENCIÁRIOS (DARF codes for DCTFWeb)
   '1138': 'INSS/PREVIDENCIÁRIOS', '1646': 'INSS/PREVIDENCIÁRIOS',
   '1170': 'INSS/PREVIDENCIÁRIOS', '1176': 'INSS/PREVIDENCIÁRIOS',
   '1191': 'INSS/PREVIDENCIÁRIOS', '1196': 'INSS/PREVIDENCIÁRIOS',
   '1200': 'INSS/PREVIDENCIÁRIOS',
+  // GPS codes
+  '1007': 'INSS/PREVIDENCIÁRIOS', '1104': 'INSS/PREVIDENCIÁRIOS',
+  '1120': 'INSS/PREVIDENCIÁRIOS', '1147': 'INSS/PREVIDENCIÁRIOS',
+  '1163': 'INSS/PREVIDENCIÁRIOS', '1201': 'INSS/PREVIDENCIÁRIOS',
+  '1406': 'INSS/PREVIDENCIÁRIOS', '1473': 'INSS/PREVIDENCIÁRIOS',
+  '1503': 'INSS/PREVIDENCIÁRIOS', '1554': 'INSS/PREVIDENCIÁRIOS',
+  '2003': 'INSS/PREVIDENCIÁRIOS', '2100': 'INSS/PREVIDENCIÁRIOS',
+  '2208': 'INSS/PREVIDENCIÁRIOS', '2402': 'INSS/PREVIDENCIÁRIOS',
+  '2500': 'INSS/PREVIDENCIÁRIOS', '2607': 'INSS/PREVIDENCIÁRIOS',
+  '2631': 'INSS/PREVIDENCIÁRIOS', '2658': 'INSS/PREVIDENCIÁRIOS',
 };
-
 const CODIGO_TIPO_MAP: Record<string, string> = {
-  '8109': 'PIS', '6912': 'PIS',
-  '2172': 'COFINS', '5856': 'COFINS',
-  '3373': 'IRPJ', '2089': 'IRPJ', '2362': 'IRPJ', '0220': 'IRPJ', '5993': 'IRPJ',
-  '6012': 'CSLL', '2484': 'CSLL', '6773': 'CSLL', '2372': 'CSLL',
+  // PIS
+  '8109': 'PIS', '6912': 'PIS', '5952': 'PIS',
+  // COFINS
+  '2172': 'COFINS', '5856': 'COFINS', '5960': 'COFINS', '5979': 'COFINS',
+  // IRPJ
+  '3373': 'IRPJ', '2089': 'IRPJ', '2362': 'IRPJ', '0220': 'IRPJ', '5993': 'IRPJ', '1599': 'IRPJ', '2430': 'IRPJ',
+  // CSLL
+  '6012': 'CSLL', '2484': 'CSLL', '6773': 'CSLL', '2372': 'CSLL', '2456': 'CSLL',
+  // INSS (DARF DCTFWeb)
   '1138': 'INSS', '1646': 'INSS', '1170': 'INSS', '1176': 'INSS',
   '1191': 'INSS', '1196': 'INSS', '1200': 'INSS',
+  // INSS (GPS)
+  '1007': 'INSS', '1104': 'INSS', '1120': 'INSS', '1147': 'INSS',
+  '1163': 'INSS', '1201': 'INSS', '1406': 'INSS', '1473': 'INSS',
+  '1503': 'INSS', '1554': 'INSS', '2003': 'INSS', '2100': 'INSS',
+  '2208': 'INSS', '2402': 'INSS', '2500': 'INSS', '2607': 'INSS',
+  '2631': 'INSS', '2658': 'INSS',
 };
 
 function classifyGuia(itens: Array<{ codigo: string }>): { grupoTributo: string; tipoGuia: string } {
@@ -1338,24 +1363,30 @@ export async function parseGuiaWithOcr(fileUrl: string, mimeType: string): Promi
   const content: any[] = [
     {
       type: "text",
-      text: `Analise este Documento de Arrecadação de Receitas Federais (DARF) e extraia TODOS os dados estruturados.
+      text: `Analise esta guia tributária brasileira e extraia TODOS os dados estruturados.
+
+O documento pode ser um dos seguintes tipos:
+1. DARF (Documento de Arrecadação de Receitas Federais) — contém campos como "Período de Apuração", "Código da Receita", "Valor Principal", "Composição do Documento de Arrecadação" com códigos como 0220 (IRPJ), 6012 (CSLL), 8109 (PIS), 2172 (COFINS), 5856 (COFINS), 1138 (INSS).
+2. GPS (Guia da Previdência Social) — emitida pelo INSS/MPS, contém campos como "Código de Pagamento", "Competência", "Identificador (NIT/PIS/PASEP)", "Valor do INSS", "Valor de Outras Entidades", "ATM, Multa e Juros", "Total". Códigos comuns: 1007, 1104, 1120, 1163, 1201, 1406, 1473, 2003, 2100, 2208, 2402, 2500, 2607.
+3. DCTFWeb DARF — guia gerada pela DCTFWeb para contribuições previdenciárias, similar ao DARF mas com códigos INSS.
 
 Retorne um JSON com exatamente esta estrutura:
 {
+  "tipoDocumento": "DARF" ou "GPS" ou "DCTFWEB",
   "cnpj": "XX.XXX.XXX/XXXX-XX",
-  "razaoSocial": "NOME DA EMPRESA",
-  "periodoApuracao": "Mês/Ano conforme documento",
+  "razaoSocial": "NOME DA EMPRESA ou CONTRIBUINTE",
+  "periodoApuracao": "Mês/Ano conforme documento (ex: Março/2025, 03/2025, 1º Trimestre/2025)",
   "dataVencimento": "DD/MM/AAAA",
-  "numeroDocumento": "XX.XX.XXXXX.XXXXXXX-X",
+  "numeroDocumento": "número do documento se disponível",
   "valorTotal": 0.00,
   "observacoes": "texto das observações ou vazio",
   "itens": [
     {
       "codigo": "XXXX",
-      "denominacao": "NOME DO TRIBUTO",
-      "subtipo": "DETALHAMENTO",
-      "periodoApuracao": "PA:MM/AAAA",
-      "vencimento": "DD/MM/AAAA",
+      "denominacao": "NOME DO TRIBUTO (ex: IRPJ, CSLL, PIS, COFINS, INSS, Contribuição Previdenciária)",
+      "subtipo": "DETALHAMENTO (ex: OB L REAL-DEMAIS BAL TRIM, LUCRO REAL, etc)",
+      "periodoApuracao": "PA do item se disponível",
+      "vencimento": "DD/MM/AAAA do item se disponível",
       "principal": 0.00,
       "multa": 0.00,
       "juros": 0.00,
@@ -1365,12 +1396,16 @@ Retorne um JSON com exatamente esta estrutura:
   "confianca": 95
 }
 
-IMPORTANTE:
+REGRAS IMPORTANTES:
 - Valores monetários devem ser números decimais (use ponto como separador decimal, ex: 1234.56)
-- Extraia TODOS os itens da tabela "Composição do Documento de Arrecadação"
-- O código é o número de 4 dígitos à esquerda de cada item
-- Se não encontrar multa ou juros, use 0
-- confianca é um número de 0 a 100 indicando sua confiança na extração`
+- Para DARF: extraia TODOS os itens da tabela "Composição do Documento de Arrecadação". O código é o número de 4 dígitos à esquerda.
+- Para GPS: crie um único item com o código de pagamento (campo 3), denominação "Contribuição Previdenciária INSS", e o valor total do campo 11.
+  - O CNPJ da GPS pode estar no campo "Identificador" ou no cabeçalho.
+  - A competência (campo 4) é o período de apuração (formato MM/AAAA).
+  - O vencimento (campo 2) é a data de vencimento.
+- Se não encontrar multa ou juros, use 0.
+- O campo "confianca" é um número de 0 a 100 indicando sua confiança na extração.
+- Se o CNPJ estiver parcial ou ilegível, extraia o que for possível e reduza a confiança.`
     }
   ];
   if (isImage) {
@@ -1381,7 +1416,7 @@ IMPORTANTE:
 
   const result = await invokeLLM({
     messages: [
-      { role: "system", content: "Você é um especialista em documentos fiscais brasileiros. Extraia dados de DARFs (Documentos de Arrecadação de Receitas Federais) com máxima precisão. Retorne APENAS JSON válido, sem markdown ou texto adicional." },
+      { role: "system", content: "Você é um especialista em documentos fiscais brasileiros. Extraia dados de guias tributárias (DARF, GPS, DCTFWeb) com máxima precisão. Identifique primeiro o tipo de documento e depois extraia todos os campos relevantes. Retorne APENAS JSON válido, sem markdown ou texto adicional." },
       { role: "user", content: content }
     ],
     response_format: { type: "json_object" }
@@ -1597,4 +1632,84 @@ export async function getDistinctSegmentos() {
     ORDER BY segmentoEconomico
   `));
   return (rows as unknown as any[]).map(r => r.segmento);
+}
+
+
+// ---- Overdue Tasks Notification ----
+export async function getOverdueCreditTasks(): Promise<{
+  overdueTasks: Array<{
+    id: number;
+    codigo: string;
+    fila: string;
+    titulo: string;
+    status: string;
+    responsavelNome: string | null;
+    clienteNome: string | null;
+    dataVencimento: string | null;
+    slaHoras: number | null;
+  }>;
+  summary: {
+    total: number;
+    porFila: Record<string, number>;
+    porResponsavel: Record<string, number>;
+  };
+}> {
+  const db_ = (await getDb())!;
+  const rows = await db_.execute(sql`
+    SELECT ct.id, ct.codigo, ct.fila, ct.titulo, ct.status,
+           ct.responsavelNome, ct.dataVencimento, ct.slaHoras,
+           COALESCE(cl.razaoSocial, cl.nomeFantasia) as clienteNome
+    FROM credit_tasks ct
+    LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+    LEFT JOIN clientes cl ON cc.clienteId = cl.id
+    WHERE ct.slaStatus = 'vencido'
+      AND ct.status NOT IN ('feito', 'concluido')
+    ORDER BY ct.dataVencimento ASC
+  `);
+  const tasks = (rows[0] as unknown as any[]) || [];
+  const porFila: Record<string, number> = {};
+  const porResponsavel: Record<string, number> = {};
+  tasks.forEach((t: any) => {
+    const f = t.fila || 'outros';
+    porFila[f] = (porFila[f] || 0) + 1;
+    const r = t.responsavelNome || 'Sem responsável';
+    porResponsavel[r] = (porResponsavel[r] || 0) + 1;
+  });
+  return {
+    overdueTasks: tasks.map((t: any) => ({
+      id: t.id,
+      codigo: t.codigo,
+      fila: t.fila,
+      titulo: t.titulo,
+      status: t.status,
+      responsavelNome: t.responsavelNome,
+      clienteNome: t.clienteNome,
+      dataVencimento: t.dataVencimento,
+      slaHoras: t.slaHoras,
+    })),
+    summary: { total: tasks.length, porFila, porResponsavel },
+  };
+}
+
+export async function updateOverdueSlaStatuses(): Promise<number> {
+  const db_ = (await getDb())!;
+  // Update tasks that have passed their SLA deadline but aren't marked as vencido yet
+  const result = await db_.execute(sql`
+    UPDATE credit_tasks
+    SET slaStatus = 'vencido', updatedAt = NOW()
+    WHERE status NOT IN ('feito', 'concluido')
+      AND slaStatus != 'vencido'
+      AND dataVencimento IS NOT NULL
+      AND dataVencimento < NOW()
+  `);
+  // Also update tasks approaching deadline (within 24h) to 'atencao'
+  await db_.execute(sql`
+    UPDATE credit_tasks
+    SET slaStatus = 'atencao', updatedAt = NOW()
+    WHERE status NOT IN ('feito', 'concluido')
+      AND slaStatus = 'dentro_prazo'
+      AND dataVencimento IS NOT NULL
+      AND dataVencimento BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 24 HOUR)
+  `);
+  return (result[0] as any)?.affectedRows || 0;
 }

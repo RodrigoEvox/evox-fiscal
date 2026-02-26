@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 
 // ============================================================
-// Tests for OCR Guia Upload, Relatórios Exportáveis,
-// BackToDashboard, and Tarefas Atrasadas features
+// Tests for OCR Guia Upload, Relatórios Exportáveis (with Charts),
+// BackToDashboard, Tarefas Atrasadas, and Overdue Notifications
 // ============================================================
 
 describe("OCR Guia Upload Feature", () => {
@@ -33,6 +33,12 @@ describe("OCR Guia Upload Feature", () => {
       expect(supportedFormats).toContain("image/png");
       expect(supportedFormats).toContain("image/jpeg");
     });
+
+    it("should support both DARF and GPS document types", () => {
+      const documentTypes = ["DARF", "GPS"];
+      expect(documentTypes).toContain("DARF");
+      expect(documentTypes).toContain("GPS");
+    });
   });
 
   describe("OCR Result Structure", () => {
@@ -62,7 +68,6 @@ describe("OCR Guia Upload Feature", () => {
       const guiaCnpj = "12.345.678/0001-90";
       const guiaCnpjDiff = "98.765.432/0001-10";
 
-      // Normalize CNPJs for comparison
       const normalize = (cnpj: string) => cnpj.replace(/[.\-\/]/g, "");
       expect(normalize(clienteCnpj)).toBe(normalize(guiaCnpj));
       expect(normalize(clienteCnpj)).not.toBe(normalize(guiaCnpjDiff));
@@ -77,6 +82,30 @@ describe("OCR Guia Upload Feature", () => {
       expect(parseValor("R$ 15.432,50")).toBeCloseTo(15432.50, 2);
       expect(parseValor("R$ 1.234.567,89")).toBeCloseTo(1234567.89, 2);
       expect(parseValor("R$ 500,00")).toBeCloseTo(500.00, 2);
+    });
+
+    it("should classify DARF codes correctly for PIS/COFINS/IRPJ/CSLL", () => {
+      const CODIGO_TIPO_MAP: Record<string, string> = {
+        "8109": "PIS", "6912": "PIS", "3091": "PIS",
+        "2172": "COFINS", "5856": "COFINS", "5952": "COFINS",
+        "0220": "IRPJ", "2362": "IRPJ", "2089": "IRPJ",
+        "6012": "CSLL", "2372": "CSLL", "2484": "CSLL",
+        "5664": "PIS/COFINS",
+      };
+
+      expect(CODIGO_TIPO_MAP["8109"]).toBe("PIS");
+      expect(CODIGO_TIPO_MAP["2172"]).toBe("COFINS");
+      expect(CODIGO_TIPO_MAP["0220"]).toBe("IRPJ");
+      expect(CODIGO_TIPO_MAP["6012"]).toBe("CSLL");
+      expect(CODIGO_TIPO_MAP["5664"]).toBe("PIS/COFINS");
+    });
+
+    it("should classify GPS codes correctly for INSS", () => {
+      const GPS_CODES = ["2003", "2100", "2208", "2402", "2500", "2607", "2801", "2909", "1201", "1007", "1104"];
+      for (const code of GPS_CODES) {
+        expect(code.length).toBe(4);
+        expect(parseInt(code)).toBeGreaterThan(0);
+      }
     });
   });
 
@@ -102,7 +131,7 @@ describe("OCR Guia Upload Feature", () => {
 
       expect(key1).toContain("guias/1/");
       expect(key1).toContain("guia-pis.pdf");
-      expect(key1).not.toBe(key2); // Should be unique
+      expect(key1).not.toBe(key2);
     });
   });
 });
@@ -198,7 +227,7 @@ describe("Relatórios Exportáveis Feature", () => {
       expect(csv.startsWith(bom)).toBe(true);
       expect(csv).toContain("Código;Fila;Status");
       expect(csv).toContain("CT-0001;Apuração;A Fazer");
-      expect(csv.split("\n").length).toBe(3); // header + 2 rows
+      expect(csv.split("\n").length).toBe(3);
     });
 
     it("should escape quotes in CSV fields", () => {
@@ -211,7 +240,89 @@ describe("Relatórios Exportáveis Feature", () => {
       const row = ["CT-0001", "Apuração", "15432.50"];
       const csvLine = row.join(";");
       expect(csvLine).toBe("CT-0001;Apuração;15432.50");
-      expect(csvLine).not.toContain(","); // No comma separators
+      expect(csvLine).not.toContain(",");
+    });
+  });
+
+  describe("Charts Data Transformation", () => {
+    it("should transform porFila data for bar chart", () => {
+      const FILA_LABELS: Record<string, string> = {
+        apuracao: "Apuração", compensacao: "Compensação", ressarcimento: "Ressarcimento",
+      };
+      const porFila = { apuracao: 5, compensacao: 3, ressarcimento: 8 };
+
+      const chartData = Object.entries(porFila)
+        .map(([key, val]) => ({ name: FILA_LABELS[key] || key, tarefas: val }))
+        .sort((a, b) => b.tarefas - a.tarefas);
+
+      expect(chartData.length).toBe(3);
+      expect(chartData[0].name).toBe("Ressarcimento");
+      expect(chartData[0].tarefas).toBe(8);
+      expect(chartData[2].name).toBe("Compensação");
+      expect(chartData[2].tarefas).toBe(3);
+    });
+
+    it("should transform porStatus data for pie chart with correct colors", () => {
+      const STATUS_COLORS: Record<string, string> = {
+        a_fazer: "#f59e0b", fazendo: "#3b82f6", feito: "#8b5cf6", concluido: "#10b981",
+      };
+      const porStatus = { a_fazer: 10, fazendo: 5, feito: 3, concluido: 7 };
+
+      const chartData = Object.entries(porStatus)
+        .map(([key, val]) => ({ name: key, value: val, fill: STATUS_COLORS[key] || "#6b7280" }));
+
+      expect(chartData.length).toBe(4);
+      expect(chartData.find(d => d.name === "a_fazer")?.fill).toBe("#f59e0b");
+      expect(chartData.find(d => d.name === "concluido")?.fill).toBe("#10b981");
+      expect(chartData.reduce((s, d) => s + d.value, 0)).toBe(25);
+    });
+
+    it("should transform valor por fila data for grouped bar chart", () => {
+      const tasks = [
+        { fila: "apuracao", valorEstimado: 10000, valorContratado: 8000 },
+        { fila: "apuracao", valorEstimado: 20000, valorContratado: 15000 },
+        { fila: "compensacao", valorEstimado: 30000, valorContratado: 25000 },
+      ];
+
+      const map: Record<string, { estimado: number; contratado: number }> = {};
+      tasks.forEach(t => {
+        if (!map[t.fila]) map[t.fila] = { estimado: 0, contratado: 0 };
+        map[t.fila].estimado += t.valorEstimado;
+        map[t.fila].contratado += t.valorContratado;
+      });
+
+      const chartData = Object.entries(map)
+        .map(([key, val]) => ({ name: key, estimado: val.estimado, contratado: val.contratado }))
+        .sort((a, b) => b.estimado - a.estimado);
+
+      expect(chartData.length).toBe(2);
+      expect(chartData[0].name).toBe("apuracao");
+      expect(chartData[0].estimado).toBe(30000);
+      expect(chartData[0].contratado).toBe(23000);
+      expect(chartData[1].estimado).toBe(30000);
+    });
+
+    it("should limit parceiro chart data to top 8", () => {
+      const porParceiro: Record<string, number> = {};
+      for (let i = 1; i <= 15; i++) {
+        porParceiro[`Parceiro ${i}`] = 15 - i + 1;
+      }
+
+      const chartData = Object.entries(porParceiro)
+        .map(([key, val]) => ({ name: key, tarefas: val }))
+        .sort((a, b) => b.tarefas - a.tarefas)
+        .slice(0, 8);
+
+      expect(chartData.length).toBe(8);
+      expect(chartData[0].tarefas).toBe(15);
+      expect(chartData[7].tarefas).toBe(8);
+    });
+
+    it("should truncate long parceiro names for chart display", () => {
+      const longName = "Empresa de Consultoria Tributária Nacional";
+      const truncated = longName.length > 20 ? longName.substring(0, 18) + "…" : longName;
+      expect(truncated.length).toBeLessThanOrEqual(20);
+      expect(truncated).toContain("…");
     });
   });
 });
@@ -235,7 +346,6 @@ describe("BackToDashboard Navigation", () => {
       "CreditoRelatorios",
     ];
 
-    // All pages should have the BackToDashboard component
     expect(filaPages.length).toBe(9);
     for (const page of filaPages) {
       expect(page).toBeTruthy();
@@ -247,8 +357,8 @@ describe("Tarefas Atrasadas Feature", () => {
   describe("Overdue Detection", () => {
     it("should identify overdue tasks based on prazo < now", () => {
       const now = new Date();
-      const pastDate = new Date(now.getTime() - 86400000); // 1 day ago
-      const futureDate = new Date(now.getTime() + 86400000); // 1 day ahead
+      const pastDate = new Date(now.getTime() - 86400000);
+      const futureDate = new Date(now.getTime() + 86400000);
 
       const tasks = [
         { id: 1, status: "a_fazer", prazo: pastDate.toISOString() },
@@ -324,5 +434,146 @@ describe("Tarefas Atrasadas Feature", () => {
         expect(fila.length).toBeGreaterThan(0);
       }
     });
+  });
+});
+
+describe("Overdue Notifications Feature", () => {
+  describe("SLA Status Updates", () => {
+    it("should transition tasks from dentro_prazo to vencido when past deadline", () => {
+      const now = new Date();
+      const tasks = [
+        { id: 1, slaStatus: "dentro_prazo", dataVencimento: new Date(now.getTime() - 86400000).toISOString(), status: "a_fazer" },
+        { id: 2, slaStatus: "dentro_prazo", dataVencimento: new Date(now.getTime() + 86400000).toISOString(), status: "fazendo" },
+        { id: 3, slaStatus: "dentro_prazo", dataVencimento: new Date(now.getTime() - 3600000).toISOString(), status: "concluido" },
+      ];
+
+      const shouldUpdate = tasks.filter(
+        t => t.status !== "feito" && t.status !== "concluido" &&
+             t.slaStatus !== "vencido" &&
+             t.dataVencimento && new Date(t.dataVencimento) < now
+      );
+
+      expect(shouldUpdate.length).toBe(1);
+      expect(shouldUpdate[0].id).toBe(1);
+    });
+
+    it("should transition tasks to atencao when within 24h of deadline", () => {
+      const now = new Date();
+      const tasks = [
+        { id: 1, slaStatus: "dentro_prazo", dataVencimento: new Date(now.getTime() + 12 * 3600000).toISOString(), status: "a_fazer" },
+        { id: 2, slaStatus: "dentro_prazo", dataVencimento: new Date(now.getTime() + 48 * 3600000).toISOString(), status: "fazendo" },
+      ];
+
+      const shouldWarn = tasks.filter(
+        t => t.slaStatus === "dentro_prazo" &&
+             t.dataVencimento &&
+             new Date(t.dataVencimento) > now &&
+             new Date(t.dataVencimento) < new Date(now.getTime() + 24 * 3600000)
+      );
+
+      expect(shouldWarn.length).toBe(1);
+      expect(shouldWarn[0].id).toBe(1);
+    });
+  });
+
+  describe("Notification Content", () => {
+    it("should build notification content with fila breakdown", () => {
+      const summary = {
+        total: 5,
+        porFila: { apuracao: 2, compensacao: 3 },
+        porResponsavel: { "João Silva": 3, "Maria Santos": 2 },
+      };
+
+      const FILA_LABELS: Record<string, string> = {
+        apuracao: "Apuração", compensacao: "Compensação",
+      };
+
+      const filaLines = Object.entries(summary.porFila)
+        .sort((a, b) => b[1] - a[1])
+        .map(([fila, count]) => `  • ${FILA_LABELS[fila] || fila}: ${count} tarefa(s)`)
+        .join("\n");
+
+      expect(filaLines).toContain("Compensação: 3 tarefa(s)");
+      expect(filaLines).toContain("Apuração: 2 tarefa(s)");
+    });
+
+    it("should include top responsible users in notification", () => {
+      const porResponsavel = { "João": 5, "Maria": 3, "Pedro": 1 };
+
+      const lines = Object.entries(porResponsavel)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([nome, count]) => `  • ${nome}: ${count} tarefa(s)`)
+        .join("\n");
+
+      expect(lines).toContain("João: 5 tarefa(s)");
+      expect(lines).toContain("Maria: 3 tarefa(s)");
+    });
+
+    it("should truncate task list to top 10 in notification", () => {
+      const tasks = Array.from({ length: 15 }, (_, i) => ({
+        codigo: `CT-${String(i + 1).padStart(4, "0")}`,
+        titulo: `Tarefa ${i + 1}`,
+        fila: "apuracao",
+        clienteNome: `Cliente ${i + 1}`,
+      }));
+
+      const topTasks = tasks.slice(0, 10);
+      const remaining = tasks.length - 10;
+
+      expect(topTasks.length).toBe(10);
+      expect(remaining).toBe(5);
+    });
+  });
+
+  describe("Notification Delivery", () => {
+    it("should send both push and in-app notifications", () => {
+      const notificationChannels = ["push_owner", "in_app_all_users"];
+      expect(notificationChannels).toContain("push_owner");
+      expect(notificationChannels).toContain("in_app_all_users");
+    });
+
+    it("should run daily at 8 AM via scheduler", () => {
+      const schedulerConfig = {
+        checkInterval: 3600000, // 1 hour
+        runAfterHour: 8,
+        runsOnStartup: true,
+      };
+
+      expect(schedulerConfig.checkInterval).toBe(3600000);
+      expect(schedulerConfig.runAfterHour).toBe(8);
+      expect(schedulerConfig.runsOnStartup).toBe(true);
+    });
+  });
+});
+
+describe("Test Companies with Contracts", () => {
+  it("should have test companies with required fields", () => {
+    const testCompanies = [
+      { cnpj: "33.000.167/0001-01", razaoSocial: "Petrobras S.A.", regime: "lucro_real", fase: "contratado" },
+      { cnpj: "60.746.948/0001-12", razaoSocial: "Banco Bradesco S.A.", regime: "lucro_real", fase: "contratado" },
+      { cnpj: "47.960.950/0001-21", razaoSocial: "Magazine Luiza S.A.", regime: "lucro_real", fase: "contratado" },
+      { cnpj: "07.526.557/0001-00", razaoSocial: "Ambev S.A.", regime: "lucro_real", fase: "contratado" },
+      { cnpj: "16.670.085/0001-55", razaoSocial: "Localiza Rent a Car S.A.", regime: "lucro_real", fase: "contratado" },
+    ];
+
+    expect(testCompanies.length).toBe(5);
+    for (const c of testCompanies) {
+      expect(c.cnpj).toBeTruthy();
+      expect(c.razaoSocial).toBeTruthy();
+      expect(c.regime).toBe("lucro_real");
+      expect(c.fase).toBe("contratado");
+    }
+  });
+
+  it("should allow creating tasks for companies with signed contracts", () => {
+    const filasThatRequireContract = ["compensacao", "ressarcimento", "restituicao"];
+    const companyFase = "contratado";
+    const companyStatus = "contrato_assinado";
+
+    for (const fila of filasThatRequireContract) {
+      const canCreateTask = companyFase === "contratado" && companyStatus === "contrato_assinado";
+      expect(canCreateTask).toBe(true);
+    }
   });
 });

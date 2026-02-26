@@ -405,6 +405,76 @@ async function runBibliotecaEmprestimoAlerts() {
   }
 }
 
+async function runCreditOverdueCheck() {
+  try {
+    const dbCredito = await import('../dbCredito');
+    const db = await import('../db');
+    const { notifyOwner } = await import('./notification');
+
+    // 1. Update SLA statuses for tasks that have passed their deadline
+    const updated = await dbCredito.updateOverdueSlaStatuses();
+    if (updated > 0) {
+      console.log(`[Credit Overdue Scheduler] Updated ${updated} task(s) to vencido status`);
+    }
+
+    // 2. Get all overdue tasks and send notifications
+    const { overdueTasks, summary } = await dbCredito.getOverdueCreditTasks();
+    if (overdueTasks.length === 0) return;
+
+    const FILA_LABELS: Record<string, string> = {
+      apuracao: 'Apuração', onboarding: 'Onboarding', retificacao: 'Retificação',
+      compensacao: 'Compensação', ressarcimento: 'Ressarcimento', restituicao: 'Restituição',
+      revisao: 'Revisão', chamados: 'Chamados',
+    };
+
+    // Build notification content
+    const filaLines = Object.entries(summary.porFila)
+      .sort((a, b) => b[1] - a[1])
+      .map(([fila, count]) => `  • ${FILA_LABELS[fila] || fila}: ${count} tarefa(s)`)
+      .join('\n');
+
+    const responsavelLines = Object.entries(summary.porResponsavel)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([nome, count]) => `  • ${nome}: ${count} tarefa(s)`)
+      .join('\n');
+
+    const topTasks = overdueTasks.slice(0, 10)
+      .map(t => `  • [${t.codigo}] ${t.titulo} (${FILA_LABELS[t.fila] || t.fila}) - ${t.clienteNome || 'Sem cliente'}`)
+      .join('\n');
+
+    const content = `⚠️ Existem ${summary.total} tarefa(s) de crédito tributário em atraso.\n\n` +
+      `📋 Por Fila:\n${filaLines}\n\n` +
+      `👤 Por Responsável:\n${responsavelLines}\n\n` +
+      `📌 Tarefas mais críticas:\n${topTasks}` +
+      (overdueTasks.length > 10 ? `\n  ... e mais ${overdueTasks.length - 10} tarefa(s)` : '');
+
+    // Notify owner via push notification
+    await notifyOwner({
+      title: `🔴 ${summary.total} Tarefa(s) de Crédito em Atraso`,
+      content,
+    });
+
+    // Also create in-app notifications for all users
+    const allUsers = await db.listUsers();
+    for (const user of allUsers) {
+      try {
+        await db.createNotificacao({
+          usuarioId: user.id,
+          tipo: 'geral' as any,
+          titulo: `⚠️ ${summary.total} Tarefa(s) de Crédito em Atraso`,
+          mensagem: `Existem ${summary.total} tarefa(s) de crédito tributário em atraso. Acesse o setor de Crédito para verificar.\n\nPor fila:\n${filaLines}`,
+          lida: false,
+        });
+      } catch (e) { /* ignore individual errors */ }
+    }
+
+    console.log(`[Credit Overdue Scheduler] Sent notifications for ${summary.total} overdue task(s)`);
+  } catch (err) {
+    console.error('[Credit Overdue Scheduler Error]', err);
+  }
+}
+
 function startScheduledJobs() {
   // Run birthday emails daily at 8:00 AM (check every hour)
   const HOUR_MS = 60 * 60 * 1000;
@@ -414,6 +484,7 @@ function startScheduledJobs() {
   let lastExperienciaRun = '';
   let lastCCTRun = '';
   let lastBibliotecaRun = '';
+  let lastCreditOverdueRun = '';
 
   setInterval(async () => {
     const now = new Date();
@@ -455,6 +526,12 @@ function startScheduledJobs() {
       lastBibliotecaRun = todayKey;
       await runBibliotecaEmprestimoAlerts();
     }
+
+    // Run credit overdue check once per day (after 8 AM)
+    if (now.getHours() >= 8 && lastCreditOverdueRun !== todayKey) {
+      lastCreditOverdueRun = todayKey;
+      await runCreditOverdueCheck();
+    }
   }, HOUR_MS);
 
   // Also run once on startup after a short delay
@@ -466,9 +543,10 @@ function startScheduledJobs() {
     await runExperienciaExpirationCheck();
     await checkCCTExpiration();
     await runBibliotecaEmprestimoAlerts();
+    await runCreditOverdueCheck();
   }, 10000);
 
-  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, CCT expiration checks, and biblioteca loan alerts scheduled');
+  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, CCT expiration checks, biblioteca loan alerts, and credit overdue checks scheduled');
 }
 
 async function startServer() {

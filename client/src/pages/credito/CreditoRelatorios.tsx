@@ -13,6 +13,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell,
+} from 'recharts';
 
 const FILAS_OPTIONS = [
   { value: 'all', label: 'Todas as Filas' },
@@ -42,6 +46,44 @@ const FILA_LABELS: Record<string, string> = {
 
 const PRIORIDADE_LABELS: Record<string, string> = {
   urgente: 'Urgente', alta: 'Alta', media: 'Média', baixa: 'Baixa',
+};
+
+const CHART_COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1',
+  '#84cc16', '#a855f7',
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  a_fazer: '#f59e0b', fazendo: '#3b82f6', feito: '#8b5cf6', concluido: '#10b981',
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg p-3 text-xs">
+      <p className="font-semibold mb-1">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: p.color }} />
+          <span>{p.name}: <strong>{typeof p.value === 'number' && p.value > 100 ? `R$ ${p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : p.value}</strong></span>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+const PieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+  if (percent < 0.05) return null;
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}>
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
 };
 
 export default function CreditoRelatorios() {
@@ -76,6 +118,46 @@ export default function CreditoRelatorios() {
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
   const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+
+  // Chart data transformations
+  const filaChartData = useMemo(() => {
+    return Object.entries(summary.porFila || {})
+      .map(([key, val]: any) => ({ name: FILA_LABELS[key] || key, tarefas: val }))
+      .sort((a, b) => b.tarefas - a.tarefas);
+  }, [summary.porFila]);
+
+  const statusChartData = useMemo(() => {
+    return Object.entries(summary.porStatus || {})
+      .map(([key, val]: any) => ({ name: STATUS_LABELS[key] || key, value: val, fill: STATUS_COLORS[key] || '#6b7280' }));
+  }, [summary.porStatus]);
+
+  const parceiroChartData = useMemo(() => {
+    return Object.entries(summary.porParceiro || {})
+      .map(([key, val]: any) => ({ name: key.length > 20 ? key.substring(0, 18) + '…' : key, tarefas: val }))
+      .sort((a, b) => b.tarefas - a.tarefas)
+      .slice(0, 8);
+  }, [summary.porParceiro]);
+
+  const segmentoChartData = useMemo(() => {
+    return Object.entries(summary.porSegmento || {})
+      .map(([key, val]: any) => ({ name: key.length > 20 ? key.substring(0, 18) + '…' : key, value: val }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [summary.porSegmento]);
+
+  const valorPorFilaData = useMemo(() => {
+    if (!tasks.length) return [];
+    const map: Record<string, { estimado: number; contratado: number }> = {};
+    tasks.forEach((t: any) => {
+      const f = t.fila || 'outros';
+      if (!map[f]) map[f] = { estimado: 0, contratado: 0 };
+      map[f].estimado += Number(t.valorEstimado || 0);
+      map[f].contratado += Number(t.valorContratado || 0);
+    });
+    return Object.entries(map)
+      .map(([key, val]) => ({ name: FILA_LABELS[key] || key, estimado: val.estimado, contratado: val.contratado }))
+      .sort((a, b) => b.estimado - a.estimado);
+  }, [tasks]);
 
   const exportCSV = () => {
     if (!tasks.length) return;
@@ -293,10 +375,12 @@ export default function CreditoRelatorios() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="resumo">Resumo</TabsTrigger>
+              <TabsTrigger value="graficos">Gráficos</TabsTrigger>
               <TabsTrigger value="tarefas">Tarefas ({tasks.length})</TabsTrigger>
               <TabsTrigger value="creditos">Créditos ({ledger.length})</TabsTrigger>
             </TabsList>
 
+            {/* ===== RESUMO TAB ===== */}
             <TabsContent value="resumo" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Por Fila */}
@@ -400,6 +484,198 @@ export default function CreditoRelatorios() {
               </div>
             </TabsContent>
 
+            {/* ===== GRÁFICOS TAB ===== */}
+            <TabsContent value="graficos" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Bar Chart - Tarefas por Fila */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Tarefas por Fila</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {filaChartData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={filaChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={50} />
+                          <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar dataKey="tarefas" name="Tarefas" radius={[4, 4, 0, 0]}>
+                            {filaChartData.map((_, idx) => (
+                              <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Pie Chart - Status */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Distribuição por Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {statusChartData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                          <Pie
+                            data={statusChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={PieLabel}
+                            outerRadius={100}
+                            dataKey="value"
+                          >
+                            {statusChartData.map((entry, idx) => (
+                              <Cell key={idx} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend
+                            formatter={(value) => <span className="text-xs">{value}</span>}
+                            iconSize={10}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Bar Chart - Valores por Fila */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Valores por Fila (Estimado vs Contratado)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {valorPorFilaData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={valorPorFilaData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={50} />
+                          <YAxis
+                            tick={{ fontSize: 9 }}
+                            tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
+                          />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend formatter={(value) => <span className="text-xs">{value === 'estimado' ? 'Estimado' : 'Contratado'}</span>} iconSize={10} />
+                          <Bar dataKey="estimado" name="Estimado" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="contratado" name="Contratado" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Pie Chart - Parceiros */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Distribuição por Parceiro</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {parceiroChartData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                          <Pie
+                            data={parceiroChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={PieLabel}
+                            outerRadius={100}
+                            dataKey="tarefas"
+                            nameKey="name"
+                          >
+                            {parceiroChartData.map((_, idx) => (
+                              <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend
+                            formatter={(value) => <span className="text-xs">{value}</span>}
+                            iconSize={10}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Bar Chart - Parceiros */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Top Parceiros por Tarefas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {parceiroChartData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={parceiroChartData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                          <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+                          <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={75} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar dataKey="tarefas" name="Tarefas" radius={[0, 4, 4, 0]}>
+                            {parceiroChartData.map((_, idx) => (
+                              <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Pie Chart - Segmentos */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Distribuição por Segmento</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {segmentoChartData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                          <Pie
+                            data={segmentoChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={PieLabel}
+                            outerRadius={100}
+                            dataKey="value"
+                            nameKey="name"
+                          >
+                            {segmentoChartData.map((_, idx) => (
+                              <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend
+                            formatter={(value) => <span className="text-xs">{value}</span>}
+                            iconSize={10}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* ===== TAREFAS TAB ===== */}
             <TabsContent value="tarefas" className="space-y-4">
               <Card>
                 <CardContent className="p-0">
@@ -461,6 +737,7 @@ export default function CreditoRelatorios() {
               </Card>
             </TabsContent>
 
+            {/* ===== CRÉDITOS TAB ===== */}
             <TabsContent value="creditos" className="space-y-4">
               <Card>
                 <CardContent className="p-0">

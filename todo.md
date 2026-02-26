@@ -2064,3 +2064,26 @@
 ### UX — Navegação e Visão de Atraso
 - [x] Botão voltar ao dashboard em todos os submenus do crédito
 - [x] Visão de tarefas atrasadas em todas as filas do crédito
+
+## v76 — Testes OCR, Gráficos Relatórios, Notificações Atraso
+
+### Empresas Teste com Contrato Assinado
+- [x] Criar empresas teste com contrato assinado via SQL/seed para liberar filas
+- [x] Testar criação de tarefas nas filas de Compensação, Ressarcimento e Restituição
+
+### Teste OCR com Guias Reais
+- [x] Buscar/gerar guias reais de PIS, COFINS, INSS, IRPJ, CSLL
+- [x] Testar OCR com cada modelo de guia e validar precisão da extração
+- [x] Ajustar prompt do LLM se necessário para melhorar extração
+
+### Gráficos Visuais nos Relatórios
+- [x] Gráfico de barras: tarefas por fila/status
+- [x] Gráfico de pizza: distribuição por tese/classificação
+- [x] Gráfico de barras: valor estimado por período
+- [x] Integrar gráficos na página CreditoRelatorios
+
+### Notificações Automáticas de Tarefas Atrasadas
+- [x] Implementar scheduler/cron para verificar tarefas vencidas
+- [x] Enviar notificação ao responsável quando tarefa atrasar
+- [x] Enviar notificação ao coordenador quando tarefa ultrapassar SLA crítico
+- [x] Registrar notificações no sistema de notificações existente
