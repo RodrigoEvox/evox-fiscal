@@ -2192,3 +2192,28 @@
 - [x] Opção de visualizar RTI gerado (botão Eye na coluna de ações)
 - [x] Salvar RTI em PDF no sistema ao salvar (auto-download PDF após salvar)
 - [x] Opção de baixar RTI em PDF (botão "Baixar PDF" no footer do dialog)
+
+## v82 — Melhorias Avançadas no Setor Crédito
+
+### Correção Fila de Apuração
+- [x] Corrigir fila de apuração para aparecer dentro do submenu Apuração (fix: p.nome → p.nomeCompleto no SQL JOIN)
+
+### Histórico de RTIs por Tarefa
+- [x] Criar consulta backend para listar RTIs por tarefa com versionamento (listRtiByTaskId, createRtiVersion)
+- [x] Criar UI de histórico de RTIs com lista de versões (dialog com timeline)
+- [x] Permitir comparação entre versões de RTI (visualização lado a lado com diff de valores)
+- [x] Exibir botão de histórico na coluna de ações da fila (botão History ao lado de View/RTI)
+
+### Filtros Avançados na Fila de Apuração
+- [x] Adicionar filtro por parceiro comercial (dropdown com lista de parceiros)
+- [x] Adicionar filtro por tese/tributo (dropdown com teses do banco)
+- [x] Adicionar filtro por período de criação (data início/fim com inputs date)
+- [x] Integrar filtros com a query frontend (filteredTasks com useMemo)
+- [x] Botão "Filtros" com badge de contagem de filtros ativos e "Limpar Filtros"
+
+### Notificações de SLA
+- [x] Criar lógica backend para detectar tarefas próximas do vencimento (getApproachingSLATasks: 24h e 48h)
+- [x] Scheduler runSlaApproachingCheck executa 2x/dia (8h e 14h) + startup
+- [x] Notificação push via notifyOwner com detalhes das tarefas urgentes
+- [x] Notificações in-app para responsáveis e admins
+- [x] 12 testes vitest passando (sla-notifications.test.ts)

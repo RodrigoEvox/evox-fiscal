@@ -486,6 +486,84 @@ async function runCreditOverdueCheck() {
   }
 }
 
+async function runSlaApproachingCheck() {
+  try {
+    const dbCredito = await import('../dbCredito');
+    const db = await import('../db');
+    const { notifyOwner } = await import('./notification');
+
+    const { tasks48h, tasks24h } = await dbCredito.getApproachingSLATasks();
+
+    if (tasks24h.length === 0 && tasks48h.length === 0) return;
+
+    const FILA_LABELS: Record<string, string> = {
+      apuracao: 'Apuração', onboarding: 'Onboarding', retificacao: 'Retificação',
+      compensacao: 'Compensação', ressarcimento: 'Ressarcimento', restituicao: 'Restituição',
+      revisao: 'Revisão', chamados: 'Chamados',
+    };
+
+    let content = '';
+
+    if (tasks24h.length > 0) {
+      const lines24 = tasks24h.slice(0, 10).map(t =>
+        `  ⚠️ [${t.codigo}] ${t.titulo} (${FILA_LABELS[t.fila] || t.fila}) - ${t.clienteNome || 'Sem cliente'} - ${t.horasRestantes}h restantes`
+      ).join('\n');
+      content += `🚨 URGENTE - ${tasks24h.length} tarefa(s) vencem em menos de 24h:\n${lines24}\n\n`;
+    }
+
+    if (tasks48h.length > 0) {
+      const lines48 = tasks48h.slice(0, 10).map(t =>
+        `  ⏰ [${t.codigo}] ${t.titulo} (${FILA_LABELS[t.fila] || t.fila}) - ${t.clienteNome || 'Sem cliente'} - ${t.horasRestantes}h restantes`
+      ).join('\n');
+      content += `⏳ ATENÇÃO - ${tasks48h.length} tarefa(s) vencem em 24-48h:\n${lines48}`;
+    }
+
+    const total = tasks24h.length + tasks48h.length;
+    const title = tasks24h.length > 0
+      ? `🚨 ${tasks24h.length} Tarefa(s) de Crédito Vencem em <24h`
+      : `⏳ ${tasks48h.length} Tarefa(s) de Crédito Próximas do Vencimento`;
+
+    await notifyOwner({ title, content });
+
+    // Create in-app notifications for responsible users
+    const allUsers = await db.listUsers();
+    const notifiedResponsaveis = new Set<string>();
+
+    for (const task of [...tasks24h, ...tasks48h]) {
+      if (!task.responsavelNome || notifiedResponsaveis.has(task.responsavelNome)) continue;
+      notifiedResponsaveis.add(task.responsavelNome);
+
+      const userTasks = [...tasks24h, ...tasks48h].filter(t => t.responsavelNome === task.responsavelNome);
+      const urgentCount = tasks24h.filter(t => t.responsavelNome === task.responsavelNome).length;
+      const warningCount = tasks48h.filter(t => t.responsavelNome === task.responsavelNome).length;
+
+      const taskLines = userTasks.slice(0, 5).map(t =>
+        `[${t.codigo}] ${t.titulo} - ${t.horasRestantes}h restantes`
+      ).join('\n');
+
+      for (const user of allUsers) {
+        if (user.name === task.responsavelNome || (user as any).role === 'admin') {
+          try {
+            await db.createNotificacao({
+              usuarioId: user.id,
+              tipo: 'geral' as any,
+              titulo: urgentCount > 0
+                ? `🚨 ${urgentCount} tarefa(s) vencem em <24h`
+                : `⏳ ${warningCount} tarefa(s) próximas do vencimento`,
+              mensagem: `Você tem tarefas de crédito próximas do vencimento do SLA:\n${taskLines}`,
+              lida: false,
+            });
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
+
+    console.log(`[SLA Approaching Scheduler] Notified about ${total} approaching task(s) (${tasks24h.length} urgent, ${tasks48h.length} warning)`);
+  } catch (err) {
+    console.error('[SLA Approaching Scheduler Error]', err);
+  }
+}
+
 function startScheduledJobs() {
   // Run birthday emails daily at 8:00 AM (check every hour)
   const HOUR_MS = 60 * 60 * 1000;
@@ -496,6 +574,7 @@ function startScheduledJobs() {
   let lastCCTRun = '';
   let lastBibliotecaRun = '';
   let lastCreditOverdueRun = '';
+  let lastSlaApproachingRun = '';
 
   setInterval(async () => {
     const now = new Date();
@@ -543,6 +622,13 @@ function startScheduledJobs() {
       lastCreditOverdueRun = todayKey;
       await runCreditOverdueCheck();
     }
+
+    // Run SLA approaching check twice per day (8 AM and 2 PM)
+    const slaKey = `${todayKey}-${now.getHours() >= 14 ? 'pm' : 'am'}`;
+    if ((now.getHours() === 8 || now.getHours() === 14) && lastSlaApproachingRun !== slaKey) {
+      lastSlaApproachingRun = slaKey;
+      await runSlaApproachingCheck();
+    }
   }, HOUR_MS);
 
   // Also run once on startup after a short delay
@@ -555,9 +641,10 @@ function startScheduledJobs() {
     await checkCCTExpiration();
     await runBibliotecaEmprestimoAlerts();
     await runCreditOverdueCheck();
+    await runSlaApproachingCheck();
   }, 10000);
 
-  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, CCT expiration checks, biblioteca loan alerts, and credit overdue checks scheduled');
+  console.log('[Scheduler] Birthday emails, contract checks, reajuste alerts, experiencia checks, CCT expiration checks, biblioteca loan alerts, credit overdue checks, and SLA approaching checks scheduled');
 }
 
 async function startServer() {

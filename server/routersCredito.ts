@@ -399,10 +399,17 @@ const creditoRouter = router({
         return credDb.getRtiReportById(input.id);
       }),
 
+    listByTask: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.listRtiByTaskId(input.taskId);
+      }),
+
     create: protectedProcedure
       .input(z.object({
         caseId: z.number(),
         clienteId: z.number(),
+        taskId: z.number().optional(),
         tesesAnalisadas: z.any().optional(),
         valorTotalEstimado: z.string().optional(),
         periodoAnalise: z.string().optional(),
@@ -413,6 +420,24 @@ const creditoRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
+        // If taskId is provided, use versioning
+        if (input.taskId) {
+          const result = await credDb.createRtiVersion(
+            input.taskId, input.caseId, input.clienteId,
+            input, user.id, user.name
+          );
+          if (result) {
+            await credDb.logCreditAudit({
+              entidade: 'rti',
+              entidadeId: result.id,
+              acao: 'criacao',
+              descricao: `RTI ${result.numero} v${result.versao} criado para tarefa #${input.taskId}`,
+              usuarioId: user.id,
+              usuarioNome: user.name,
+            });
+          }
+          return result;
+        }
         const result = await credDb.createRtiReport({
           ...input,
           status: 'rascunho',

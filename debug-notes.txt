@@ -1,0 +1,15 @@
+Crédito sidebar - WORKING CORRECTLY:
+The Crédito submenu (index 11) expands to show: Dashboard, Nova Tarefa, Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição, Gestão de Créditos, Relatórios.
+Clicking Crédito also redirected to /credito/dashboard-credito (the redirect we added works).
+The Dashboard now shows the "FAZENDO" card (index 48-49 area) with value 0.
+The filas de trabalho show all 6 filas with A Fazer, Fazendo, Feito, Concluído columns.
+
+The user's complaint "fila de apuração não está aparecendo dentro do submenu apuração" means:
+The fila content (task list table) was not showing when navigating to the Apuração page.
+This was caused by the SQL error (p.nome should be p.nomeCompleto).
+Now it's FIXED - the page renders properly.
+
+Remaining issues to address:
+1. Duplicate CT-0001 codes (3 tasks have CT-0001) - need to fix existing data
+2. Parceiro column shows "—" for all tasks - need to check if parceiro is linked via credit_cases
+3. Need to implement: Histórico de RTIs, Filtros avançados, Notificações de SLA

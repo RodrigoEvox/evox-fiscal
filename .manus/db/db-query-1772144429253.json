@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'parceiros' AND COLUMN_NAME LIKE '%nom%' OR (TABLE_NAME = 'parceiros' AND COLUMN_NAME LIKE '%razao%')",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'parceiros' AND COLUMN_NAME LIKE '%nom%' OR (TABLE_NAME = 'parceiros' AND COLUMN_NAME LIKE '%razao%')",
+  "rows": [
+    {
+      "COLUMN_NAME": "nomeCompleto"
+    },
+    {
+      "COLUMN_NAME": "razaoSocial"
+    },
+    {
+      "COLUMN_NAME": "nomeFantasia"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nnomeCompleto\nrazaoSocial\nnomeFantasia\n",
+  "stderr": "",
+  "execution_time_ms": 138
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `rti_reports` ADD `taskId` int;

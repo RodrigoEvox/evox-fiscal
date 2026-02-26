@@ -1,0 +1,8 @@
+{
+  "query": "SELECT ct.id, ct.fila, ct.status, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj, cc.parceiroId as _parceiroId, p.nome as parceiroNome FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p ON cc.parceiroId = p.id WHERE ct.fila = 'apuracao' ORDER BY ct.ordem ASC, ct.createdAt DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.fila, ct.status, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj, cc.parceiroId as _parceiroId, p.nome as parceiroNome FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p ON cc.parceiroId = p.id WHERE ct.fila = 'apuracao' ORDER BY ct.ordem ASC, ct.createdAt DESC LIMIT 5",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'p.nome' in 'field list'"
+  ]
+}

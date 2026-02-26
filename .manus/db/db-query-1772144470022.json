@@ -1,0 +1,50 @@
+{
+  "query": "SELECT ct.id, ct.fila, ct.status, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj, p.nomeCompleto as parceiroNome FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p ON cc.parceiroId = p.id WHERE ct.fila = 'apuracao' ORDER BY ct.ordem ASC, ct.createdAt DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.fila, ct.status, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj, p.nomeCompleto as parceiroNome FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p ON cc.parceiroId = p.id WHERE ct.fila = 'apuracao' ORDER BY ct.ordem ASC, ct.createdAt DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "30006",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "clienteNome": "Teste",
+      "clienteCnpj": "12.345.678/0001-99",
+      "parceiroNome": "NULL"
+    },
+    {
+      "id": "30005",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "clienteNome": "AMBEV S.A.",
+      "clienteCnpj": "76.535.764/0001-43",
+      "parceiroNome": "NULL"
+    },
+    {
+      "id": "30004",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "clienteNome": "Empresa Procuração LTDA",
+      "clienteCnpj": "98.765.432/0001-10",
+      "parceiroNome": "NULL"
+    },
+    {
+      "id": "3",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "clienteNome": "EVOX FISCAL LTDA",
+      "clienteCnpj": "44.041.520/0001-18",
+      "parceiroNome": "NULL"
+    },
+    {
+      "id": "2",
+      "fila": "apuracao",
+      "status": "a_fazer",
+      "clienteNome": "Empresa Procuração LTDA",
+      "clienteCnpj": "98.765.432/0001-10",
+      "parceiroNome": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tfila\tstatus\tclienteNome\tclienteCnpj\tparceiroNome\n30006\tapuracao\ta_fazer\tTeste\t12.345.678/0001-99\tNULL\n30005\tapuracao\ta_fazer\tAMBEV S.A.\t76.535.764/0001-43\tNULL\n30004\tapuracao\ta_fazer\tEmpresa Procuração LTDA\t98.765.432/0001-10\tNULL\n3\tapuracao\ta_fazer\tEVOX FISCAL LTDA\t44.041.520/0001-18\tNULL\n2\tapuracao\ta_fazer\tEmpresa Procuração LTDA\t98.765.432/0001-10\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

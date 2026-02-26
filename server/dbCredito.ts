@@ -211,7 +211,7 @@ export async function listCreditTasks(filters?: { fila?: string; status?: string
       c.razaoSocial as clienteNome,
       c.cnpj as clienteCnpj,
       cc.parceiroId as _parceiroId,
-      p.nome as parceiroNome
+      p.nomeCompleto as parceiroNome
     FROM credit_tasks ct
     LEFT JOIN clientes c ON ct.clienteId = c.id
     LEFT JOIN credit_cases cc ON ct.caseId = cc.id
@@ -997,6 +997,35 @@ export async function getRtiReportFull(rtiId: number) {
   return { ...rti, oportunidades, cenarioCompensacao, alertas };
 }
 
+// ===== RTI HISTORY BY TASK =====
+export async function listRtiByTaskId(taskId: number) {
+  const db_ = await getDb();
+  if (!db_) return [];
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT r.*, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj
+    FROM rti_reports r
+    LEFT JOIN clientes c ON r.clienteId = c.id
+    WHERE r.taskId = ${taskId}
+    ORDER BY r.versao DESC, r.createdAt DESC
+  `));
+  return rows as unknown as any[];
+}
+
+export async function createRtiVersion(taskId: number, caseId: number, clienteId: number, data: any, userId: number, userName: string) {
+  const db_ = await getDb();
+  if (!db_) return null;
+  // Get current max version for this task
+  const [existing] = await db_.execute(sql.raw(`SELECT MAX(versao) as maxVersao FROM rti_reports WHERE taskId = ${taskId}`));
+  const maxVersao = (existing as any)?.[0]?.maxVersao || 0;
+  const newVersao = maxVersao + 1;
+  const numero = await getNextSequence('RTI', 'rti_reports', 'numero');
+  const [result] = await db_.execute(sql.raw(`
+    INSERT INTO rti_reports (caseId, clienteId, taskId, numero, versao, tesesAnalisadas, valorTotalEstimado, periodoAnalise, resumoExecutivo, metodologia, conclusao, observacoes, status, emitidoPorId, emitidoPorNome)
+    VALUES (${caseId}, ${clienteId}, ${taskId}, '${numero}', ${newVersao}, ${data.tesesAnalisadas ? `'${JSON.stringify(data.tesesAnalisadas).replace(/'/g, "''")}'` : 'NULL'}, '${data.valorTotalEstimado || '0'}', ${data.periodoAnalise ? `'${data.periodoAnalise.replace(/'/g, "''")}'` : 'NULL'}, ${data.resumoExecutivo ? `'${data.resumoExecutivo.replace(/'/g, "''")}'` : 'NULL'}, ${data.metodologia ? `'${data.metodologia.replace(/'/g, "''")}'` : 'NULL'}, ${data.conclusao ? `'${data.conclusao.replace(/'/g, "''")}'` : 'NULL'}, ${data.observacoes ? `'${data.observacoes.replace(/'/g, "''")}'` : 'NULL'}, 'rascunho', ${userId}, '${userName.replace(/'/g, "''")}')
+  `));
+  return { id: (result as any).insertId, numero, versao: newVersao };
+}
+
 // ===== PARTNER RETURNS =====
 export async function listPartnerReturns(filters?: { rtiId?: number; clienteId?: number; parceiroId?: number; status?: string }) {
   const db_ = (await getDb())!;
@@ -1571,7 +1600,7 @@ export async function countTarefasAtrasadas(fila?: string) {
   const [rows] = await db_.execute(sql.raw(`
     SELECT COUNT(*) as total FROM credit_tasks
     WHERE status IN ('a_fazer', 'fazendo')
-    AND prazo IS NOT NULL AND prazo < NOW()
+    AND dataVencimento IS NOT NULL AND dataVencimento < NOW()
     ${filaFilter}
   `));
   return (rows as unknown as any[])[0]?.total || 0;
@@ -1789,4 +1818,65 @@ export async function updateOverdueSlaStatuses(): Promise<number> {
       AND dataVencimento BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 24 HOUR)
   `);
   return (result[0] as any)?.affectedRows || 0;
+}
+
+
+// ===== SLA APPROACHING NOTIFICATIONS =====
+export async function getApproachingSLATasks(): Promise<{
+  tasks48h: Array<{
+    id: number; codigo: string; fila: string; titulo: string;
+    responsavelNome: string | null; clienteNome: string | null;
+    dataVencimento: string | null; horasRestantes: number;
+  }>;
+  tasks24h: Array<{
+    id: number; codigo: string; fila: string; titulo: string;
+    responsavelNome: string | null; clienteNome: string | null;
+    dataVencimento: string | null; horasRestantes: number;
+  }>;
+}> {
+  const db_ = (await getDb())!;
+
+  // Tasks approaching in 24-48h
+  const [rows48h] = await db_.execute(sql`
+    SELECT ct.id, ct.codigo, ct.fila, ct.titulo,
+           ct.responsavelNome, ct.dataVencimento,
+           COALESCE(cl.razaoSocial, cl.nomeFantasia) as clienteNome,
+           TIMESTAMPDIFF(HOUR, NOW(), ct.dataVencimento) as horasRestantes
+    FROM credit_tasks ct
+    LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+    LEFT JOIN clientes cl ON cc.clienteId = cl.id
+    WHERE ct.status NOT IN ('feito', 'concluido')
+      AND ct.slaStatus = 'dentro_prazo'
+      AND ct.dataVencimento IS NOT NULL
+      AND ct.dataVencimento BETWEEN DATE_ADD(NOW(), INTERVAL 24 HOUR) AND DATE_ADD(NOW(), INTERVAL 48 HOUR)
+    ORDER BY ct.dataVencimento ASC
+  `);
+
+  // Tasks approaching in <24h (urgent)
+  const [rows24h] = await db_.execute(sql`
+    SELECT ct.id, ct.codigo, ct.fila, ct.titulo,
+           ct.responsavelNome, ct.dataVencimento,
+           COALESCE(cl.razaoSocial, cl.nomeFantasia) as clienteNome,
+           TIMESTAMPDIFF(HOUR, NOW(), ct.dataVencimento) as horasRestantes
+    FROM credit_tasks ct
+    LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+    LEFT JOIN clientes cl ON cc.clienteId = cl.id
+    WHERE ct.status NOT IN ('feito', 'concluido')
+      AND ct.dataVencimento IS NOT NULL
+      AND ct.dataVencimento BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 24 HOUR)
+    ORDER BY ct.dataVencimento ASC
+  `);
+
+  return {
+    tasks48h: (rows48h as unknown as any[]).map((t: any) => ({
+      id: t.id, codigo: t.codigo, fila: t.fila, titulo: t.titulo,
+      responsavelNome: t.responsavelNome, clienteNome: t.clienteNome,
+      dataVencimento: t.dataVencimento, horasRestantes: t.horasRestantes || 0,
+    })),
+    tasks24h: (rows24h as unknown as any[]).map((t: any) => ({
+      id: t.id, codigo: t.codigo, fila: t.fila, titulo: t.titulo,
+      responsavelNome: t.responsavelNome, clienteNome: t.clienteNome,
+      dataVencimento: t.dataVencimento, horasRestantes: t.horasRestantes || 0,
+    })),
+  };
 }

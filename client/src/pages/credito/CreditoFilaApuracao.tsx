@@ -16,7 +16,7 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import {
   Calculator, ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
-  User, FileText, ClipboardList, Send, Eye, Trash2, Download,
+  User, FileText, ClipboardList, Send, Eye, Trash2, Download, Filter,
   Plus, ArrowRight, Building2, BarChart3, Handshake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,11 @@ export default function CreditoFilaApuracao() {
   const [activeTab, setActiveTab] = useState('fila');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [parceiroFilter, setParceiroFilter] = useState('all');
+  const [teseFilter, setTeseFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // RTI Dialog
   const [rtiDialogOpen, setRtiDialogOpen] = useState(false);
@@ -77,6 +82,11 @@ export default function CreditoFilaApuracao() {
   const [retornoDialogOpen, setRetornoDialogOpen] = useState(false);
   const [retornoForm, setRetornoForm] = useState<any>({});
 
+  // RTI History
+  const [rtiHistoryDialogOpen, setRtiHistoryDialogOpen] = useState(false);
+  const [rtiHistoryTaskId, setRtiHistoryTaskId] = useState<number | null>(null);
+  const [comparingRtis, setComparingRtis] = useState<[any, any] | null>(null);
+
   // Queries
   const { data: tasks, isLoading, refetch: refetchTasks } = trpc.creditRecovery.credito.tasks.list.useQuery({ fila: 'apuracao' } as any);
   const { data: partnerReturns, refetch: refetchReturns } = trpc.creditRecovery.admin.partnerReturns.list.useQuery({});
@@ -84,6 +94,7 @@ export default function CreditoFilaApuracao() {
   const { data: checklistTemplates } = trpc.creditRecovery.admin.checklists.templates.useQuery({ fila: 'apuracao' });
   const { data: rtiTemplates } = trpc.creditRecovery.admin.rtiTemplates.list.useQuery();
   const { data: allTeses } = trpc.teses.list.useQuery();
+  const { data: parceirosData } = trpc.parceiros.list.useQuery();
   // Query task teses when a task is selected
   const { data: taskTesesData } = trpc.creditRecovery.admin.taskTeses.list.useQuery(
     { taskId: selectedTask?.id },
@@ -106,17 +117,34 @@ export default function CreditoFilaApuracao() {
     if (!tasks) return [];
     let result = tasks as any[];
     if (statusFilter !== 'all') result = result.filter(t => t.status === statusFilter);
+    if (parceiroFilter !== 'all') result = result.filter(t => String(t._parceiroId) === parceiroFilter || t.parceiroNome === parceiroFilter);
+    if (teseFilter !== 'all') result = result.filter(t => {
+      // Match by task title containing tese name or by tese association
+      const teseName = (allTeses as any[])?.find((ts: any) => String(ts.id) === teseFilter)?.nome || '';
+      return t.titulo?.toLowerCase().includes(teseName.toLowerCase());
+    });
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      result = result.filter(t => new Date(t.createdAt) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo + 'T23:59:59');
+      result = result.filter(t => new Date(t.createdAt) <= to);
+    }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       result = result.filter(t =>
         t.titulo?.toLowerCase().includes(term) ||
         t.codigo?.toLowerCase().includes(term) ||
-        t.responsavelNome?.toLowerCase().includes(term)
+        t.responsavelNome?.toLowerCase().includes(term) ||
+        t.clienteNome?.toLowerCase().includes(term) ||
+        t.clienteCnpj?.includes(term) ||
+        t.parceiroNome?.toLowerCase().includes(term)
       );
     }
     result.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return result;
-  }, [tasks, statusFilter, searchTerm]);
+  }, [tasks, statusFilter, parceiroFilter, teseFilter, dateFrom, dateTo, searchTerm, allTeses]);
 
   const stats = useMemo(() => {
     const all = (tasks as any[]) || [];
@@ -342,12 +370,12 @@ export default function CreditoFilaApuracao() {
     return doc;
   };
 
-  // View existing RTI
+  // View existing RTI history
   const handleViewRti = async (task: any) => {
-    // For now, open the RTI dialog in preview mode with the saved data
     setSelectedTask(task);
-    setViewingRti(task);
-    setRtiViewDialogOpen(true);
+    setRtiHistoryTaskId(task.id);
+    setRtiHistoryDialogOpen(true);
+    setComparingRtis(null);
   };
 
   // Download RTI as PDF
@@ -419,6 +447,7 @@ export default function CreditoFilaApuracao() {
       const rti = await createRti.mutateAsync({
         caseId: selectedTask.caseId || 0,
         clienteId: selectedTask.clienteId,
+        taskId: selectedTask.id,
         periodoAnalise: rtiForm.periodoAnalise,
         resumoExecutivo: rtiForm.resumoExecutivo,
         metodologia: rtiForm.metodologia,
@@ -582,23 +611,85 @@ export default function CreditoFilaApuracao() {
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar por código, título ou responsável..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Buscar por código, cliente, parceiro..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="a_fazer">A Fazer</SelectItem>
+                  <SelectItem value="fazendo">Fazendo</SelectItem>
+                  <SelectItem value="feito">Feito</SelectItem>
+                  <SelectItem value="concluido">Concluído</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
+                <Filter className="w-4 h-4" />
+                Filtros
+                {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo) && (
+                  <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
+                    {[parceiroFilter !== 'all', teseFilter !== 'all', dateFrom, dateTo].filter(Boolean).length}
+                  </Badge>
+                )}
+              </Button>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="a_fazer">A Fazer</SelectItem>
-                <SelectItem value="fazendo">Fazendo</SelectItem>
-                <SelectItem value="feito">Feito</SelectItem>
-                <SelectItem value="concluido">Concluído</SelectItem>
-              </SelectContent>
-            </Select>
+            {showAdvancedFilters && (
+              <Card className="border-dashed">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Parceiro</label>
+                      <Select value={parceiroFilter} onValueChange={setParceiroFilter}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os Parceiros</SelectItem>
+                          {(parceirosData as any[] || []).map((p: any) => (
+                            <SelectItem key={p.id} value={p.nomeCompleto || p.nome}>{p.nomeCompleto || p.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Tese/Tributo</label>
+                      <Select value={teseFilter} onValueChange={setTeseFilter}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Todas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as Teses</SelectItem>
+                          {(allTeses as any[] || []).map((t: any) => (
+                            <SelectItem key={t.id} value={String(t.id)}>{t.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Data Início</label>
+                      <Input type="date" className="h-9 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Data Fim</label>
+                      <Input type="date" className="h-9 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                    </div>
+                  </div>
+                  {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo) && (
+                    <div className="flex justify-end mt-3">
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setParceiroFilter('all'); setTeseFilter('all'); setDateFrom(''); setDateTo(''); }}>
+                        Limpar Filtros
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Task List */}
@@ -1139,6 +1230,22 @@ export default function CreditoFilaApuracao() {
         </DialogContent>
       </Dialog>
 
+      {/* ===== RTI HISTORY DIALOG ===== */}
+      <Dialog open={rtiHistoryDialogOpen} onOpenChange={setRtiHistoryDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Histórico de RTIs — {selectedTask?.clienteNome || 'Tarefa'}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {selectedTask?.titulo} ({selectedTask?.codigo})
+            </p>
+          </DialogHeader>
+          {rtiHistoryTaskId && <RtiHistoryContent taskId={rtiHistoryTaskId} comparingRtis={comparingRtis} setComparingRtis={setComparingRtis} formatDate={formatDate} formatCurrency={formatCurrency} generateRtiPdf={generateRtiPdf} selectedTask={selectedTask} />}
+        </DialogContent>
+      </Dialog>
+
       {/* ===== CHECKLIST DIALOG ===== */}
       <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -1331,6 +1438,255 @@ function ApuracaoRelatorios() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+
+// ===== RTI HISTORY COMPONENT =====
+function RtiHistoryContent({ taskId, comparingRtis, setComparingRtis, formatDate, formatCurrency, generateRtiPdf, selectedTask }: {
+  taskId: number;
+  comparingRtis: [any, any] | null;
+  setComparingRtis: (v: [any, any] | null) => void;
+  formatDate: (d: string) => string;
+  formatCurrency: (v: number | string) => string;
+  generateRtiPdf: (data: any) => Promise<any>;
+  selectedTask: any;
+}) {
+  const { data: rtiHistory, isLoading } = trpc.creditRecovery.credito.rti.listByTask.useQuery({ taskId });
+  const [selectedRtiId, setSelectedRtiId] = useState<number | null>(null);
+  const { data: selectedRtiFull } = trpc.creditRecovery.credito.rti.getById.useQuery(
+    { id: selectedRtiId! },
+    { enabled: !!selectedRtiId }
+  );
+  const { data: selectedRtiOps } = trpc.creditRecovery.admin.rtiOportunidades.list.useQuery(
+    { rtiId: selectedRtiId! },
+    { enabled: !!selectedRtiId }
+  );
+
+  const handleDownloadVersion = async (rti: any) => {
+    try {
+      // Load oportunidades for this RTI
+      const teses = rti.tesesAnalisadas ? (typeof rti.tesesAnalisadas === 'string' ? JSON.parse(rti.tesesAnalisadas) : rti.tesesAnalisadas) : [];
+      const doc = await generateRtiPdf({
+        clienteNome: rti.clienteNome || selectedTask?.clienteNome || '—',
+        clienteCnpj: rti.clienteCnpj || selectedTask?.clienteCnpj || '—',
+        periodoAnalise: rti.periodoAnalise || '—',
+        resumoExecutivo: rti.resumoExecutivo || '',
+        metodologia: rti.metodologia || '',
+        conclusao: rti.conclusao || '',
+        observacoes: rti.observacoes || '',
+        oportunidades: teses,
+        cenario: [],
+        alertas: [],
+        totalOportunidades: parseFloat(rti.valorTotalEstimado) || 0,
+        totalPacificado: 0,
+        totalNaoPacificado: 0,
+        numero: rti.numero,
+        data: formatDate(rti.createdAt),
+      });
+      doc.save(`${rti.numero}_v${rti.versao}_${formatDate(rti.createdAt).replace(/\//g, '-')}.pdf`);
+    } catch (err: any) {
+      console.error('PDF download error:', err);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const rtis = (rtiHistory as any[]) || [];
+
+  if (rtis.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+        <p className="font-medium">Nenhum RTI gerado para esta tarefa</p>
+        <p className="text-sm mt-1">Clique em "Gerar RTI" na tabela para criar o primeiro relatório.</p>
+      </div>
+    );
+  }
+
+  // Comparison mode
+  if (comparingRtis) {
+    const [rtiA, rtiB] = comparingRtis;
+    const parseField = (v: any) => typeof v === 'string' ? v : JSON.stringify(v) || '';
+    const fields = [
+      { label: 'Período Analisado', a: rtiA.periodoAnalise, b: rtiB.periodoAnalise },
+      { label: 'Valor Total Estimado', a: formatCurrency(rtiA.valorTotalEstimado || 0), b: formatCurrency(rtiB.valorTotalEstimado || 0) },
+      { label: 'Resumo Executivo', a: rtiA.resumoExecutivo || '—', b: rtiB.resumoExecutivo || '—' },
+      { label: 'Metodologia', a: rtiA.metodologia || '—', b: rtiB.metodologia || '—' },
+      { label: 'Conclusão', a: rtiA.conclusao || '—', b: rtiB.conclusao || '—' },
+      { label: 'Status', a: rtiA.status, b: rtiB.status },
+    ];
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium text-sm">Comparando {rtiA.numero} (v{rtiA.versao}) vs {rtiB.numero} (v{rtiB.versao})</h3>
+          <Button variant="outline" size="sm" onClick={() => setComparingRtis(null)}>Voltar</Button>
+        </div>
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50">
+                <th className="border-b p-3 text-left font-medium w-1/4">Campo</th>
+                <th className="border-b p-3 text-left font-medium w-[37.5%]">{rtiA.numero} (v{rtiA.versao})</th>
+                <th className="border-b p-3 text-left font-medium w-[37.5%]">{rtiB.numero} (v{rtiB.versao})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((f, idx) => {
+                const isDiff = parseField(f.a) !== parseField(f.b);
+                return (
+                  <tr key={idx} className={isDiff ? 'bg-amber-50' : ''}>
+                    <td className="border-b p-3 font-medium text-muted-foreground">{f.label}</td>
+                    <td className={cn('border-b p-3', isDiff && 'text-red-600')}>{f.a || '—'}</td>
+                    <td className={cn('border-b p-3', isDiff && 'text-emerald-600')}>{f.b || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // Detail view
+  if (selectedRtiId && selectedRtiFull) {
+    const rti = selectedRtiFull as any;
+    const ops = (selectedRtiOps as any[]) || [];
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">{rti.numero} — Versão {rti.versao}</h3>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadVersion(rti)}>
+              <Download className="w-4 h-4" />
+              PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedRtiId(null)}>Voltar</Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div><span className="font-medium text-muted-foreground">Status:</span> <Badge className="ml-1">{rti.status}</Badge></div>
+          <div><span className="font-medium text-muted-foreground">Valor Total:</span> {formatCurrency(rti.valorTotalEstimado || 0)}</div>
+          <div><span className="font-medium text-muted-foreground">Período:</span> {rti.periodoAnalise || '—'}</div>
+          <div><span className="font-medium text-muted-foreground">Criado em:</span> {formatDate(rti.createdAt)}</div>
+          <div><span className="font-medium text-muted-foreground">Emitido por:</span> {rti.emitidoPorNome || '—'}</div>
+        </div>
+        {rti.resumoExecutivo && (
+          <div>
+            <h4 className="font-medium text-sm mb-1">Resumo Executivo</h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{rti.resumoExecutivo}</p>
+          </div>
+        )}
+        {rti.metodologia && (
+          <div>
+            <h4 className="font-medium text-sm mb-1">Metodologia</h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{rti.metodologia}</p>
+          </div>
+        )}
+        {ops.length > 0 && (
+          <div>
+            <h4 className="font-medium text-sm mb-2">Oportunidades ({ops.length})</h4>
+            <table className="w-full text-sm border rounded">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="border-b p-2 text-left">Descrição</th>
+                  <th className="border-b p-2 text-center">Classificação</th>
+                  <th className="border-b p-2 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ops.map((op: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className="border-b p-2">{op.descricao}</td>
+                    <td className="border-b p-2 text-center">
+                      <Badge className={cn('text-[10px]', op.classificacao === 'pacificado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>
+                        {op.classificacao === 'pacificado' ? 'Pacificado' : 'Não Pacificado'}
+                      </Badge>
+                    </td>
+                    <td className="border-b p-2 text-right">{formatCurrency(op.valorApurado || 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rti.conclusao && (
+          <div>
+            <h4 className="font-medium text-sm mb-1">Conclusão</h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{rti.conclusao}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{rtis.length} versão(ões) encontrada(s)</p>
+        {rtis.length >= 2 && (
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => setComparingRtis([rtis[0], rtis[1]])}>
+            <ArrowRight className="w-4 h-4" />
+            Comparar últimas 2 versões
+          </Button>
+        )}
+      </div>
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="border-b p-3 text-left font-medium">Número</th>
+              <th className="border-b p-3 text-center font-medium">Versão</th>
+              <th className="border-b p-3 text-center font-medium">Status</th>
+              <th className="border-b p-3 text-right font-medium">Valor Total</th>
+              <th className="border-b p-3 text-left font-medium">Criado em</th>
+              <th className="border-b p-3 text-left font-medium">Emitido por</th>
+              <th className="border-b p-3 text-center font-medium">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rtis.map((rti: any) => (
+              <tr key={rti.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedRtiId(rti.id)}>
+                <td className="border-b p-3 font-medium text-primary">{rti.numero}</td>
+                <td className="border-b p-3 text-center">
+                  <Badge variant="outline">v{rti.versao}</Badge>
+                </td>
+                <td className="border-b p-3 text-center">
+                  <Badge className={cn('text-[10px]',
+                    rti.status === 'emitido' ? 'bg-emerald-100 text-emerald-800' :
+                    rti.status === 'rascunho' ? 'bg-amber-100 text-amber-800' :
+                    'bg-gray-100 text-gray-800'
+                  )}>
+                    {rti.status === 'emitido' ? 'Emitido' : rti.status === 'rascunho' ? 'Rascunho' : rti.status}
+                  </Badge>
+                </td>
+                <td className="border-b p-3 text-right font-medium">{formatCurrency(rti.valorTotalEstimado || 0)}</td>
+                <td className="border-b p-3 text-muted-foreground">{formatDate(rti.createdAt)}</td>
+                <td className="border-b p-3 text-muted-foreground">{rti.emitidoPorNome || '—'}</td>
+                <td className="border-b p-3 text-center">
+                  <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setSelectedRtiId(rti.id)} title="Visualizar">
+                      <Eye className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleDownloadVersion(rti)} title="Baixar PDF">
+                      <Download className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1831,6 +1831,7 @@ export const rtiReports = mysqlTable("rti_reports", {
 	id: int().autoincrement().notNull(),
 	caseId: int().notNull(),
 	clienteId: int().notNull(),
+	taskId: int(),
 	numero: varchar({ length: 20 }).notNull(), // RTI-0001
 	versao: int().default(1).notNull(),
 	// Campos estruturados do RTI
