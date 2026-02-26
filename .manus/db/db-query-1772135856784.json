@@ -1,0 +1,35 @@
+{
+  "query": "SELECT sc.sigla, s.nome, sc.submenus FROM setor_config sc JOIN setores s ON sc.setorId = s.id WHERE sc.sigla IN ('CON', 'CRE', 'TRA', 'JUR', 'CTN') ORDER BY sc.sigla;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT sc.sigla, s.nome, sc.submenus FROM setor_config sc JOIN setores s ON sc.setorId = s.id WHERE sc.sigla IN ('CON', 'CRE', 'TRA', 'JUR', 'CTN') ORDER BY sc.sigla;",
+  "rows": [
+    {
+      "sigla": "CON",
+      "nome": "Contratos",
+      "submenus": "[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/ct/nova-tarefa\"}]"
+    },
+    {
+      "sigla": "CRE",
+      "nome": "Crédito",
+      "submenus": "[{\"key\": \"dashboard-credito\", \"label\": \"Dashboard\", \"rota\": \"/credito/dashboard-credito\"}, {\"key\": \"nova-tarefa-credito\", \"label\": \"Nova Tarefa\", \"rota\": \"/credito/nova-tarefa-credito\"}, {\"key\": \"fila-apuracao\", \"label\": \"Apuração\", \"rota\": \"/credito/fila-apuracao\"}, {\"key\": \"fila-onboarding\", \"label\": \"Onboarding\", \"rota\": \"/credito/fila-onboarding\"}, {\"key\": \"fila-retificacao\", \"label\": \"Retificação\", \"rota\": \"/credito/fila-retificacao\"}, {\"key\": \"fila-compensacao\", \"label\": \"Compensação\", \"rota\": \"/credito/fila-compensacao\"}, {\"key\": \"fila-ressarcimento\", \"label\": \"Ressarcimento\", \"rota\": \"/credito/fila-ressarcimento\"}, {\"key\": \"fila-restituicao\", \"label\": \"Restituição\", \"rota\": \"/credito/fila-restituicao\"}, {\"key\": \"gestao-creditos\", \"label\": \"Gestão de Créditos\", \"rota\": \"/credito/gestao-creditos\"}, {\"key\": \"relatorios-credito\", \"label\": \"Relatórios\", \"rota\": \"/credito/relatorios\"}]"
+    },
+    {
+      "sigla": "CTN",
+      "nome": "Contencioso",
+      "submenus": "[{\"icon\": \"LayoutDashboard\", \"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/ctn/dashboard\"}, {\"icon\": \"Plus\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/ctn/nova-tarefa\"}, {\"icon\": \"ListTodo\", \"key\": \"fila\", \"label\": \"Fila de Trabalho\", \"rota\": \"/setor/ctn/fila\"}, {\"icon\": \"BarChart3\", \"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/ctn/relatorio\"}]"
+    },
+    {
+      "sigla": "JUR",
+      "nome": "Jurídico",
+      "submenus": "[{\"icon\": \"LayoutDashboard\", \"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/jur/dashboard\"}, {\"icon\": \"Plus\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/jur/nova-tarefa\"}, {\"icon\": \"ListTodo\", \"key\": \"fila\", \"label\": \"Fila de Trabalho\", \"rota\": \"/setor/jur/fila\"}]"
+    },
+    {
+      "sigla": "TRA",
+      "nome": "Transação",
+      "submenus": "[{\"icon\": \"LayoutDashboard\", \"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/tra/dashboard\"}, {\"icon\": \"Plus\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/tra/nova-tarefa\"}, {\"icon\": \"ListTodo\", \"key\": \"fila\", \"label\": \"Fila de Trabalho\", \"rota\": \"/setor/tra/fila\"}, {\"icon\": \"BarChart3\", \"key\": \"analitica\", \"label\": \"Visão Analítica\", \"rota\": \"/setor/tra/analitica\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "sigla\tnome\tsubmenus\nCON\tContratos\t[{\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/ct/nova-tarefa\"}]\nCRE\tCrédito\t[{\"key\": \"dashboard-credito\", \"label\": \"Dashboard\", \"rota\": \"/credito/dashboard-credito\"}, {\"key\": \"nova-tarefa-credito\", \"label\": \"Nova Tarefa\", \"rota\": \"/credito/nova-tarefa-credito\"}, {\"key\": \"fila-apuracao\", \"label\": \"Apuração\", \"rota\": \"/credito/fila-apuracao\"}, {\"key\": \"fila-onboarding\", \"label\": \"Onboarding\", \"rota\": \"/credito/fila-onboarding\"}, {\"key\": \"fila-retificacao\", \"label\": \"Retificação\", \"rota\": \"/credito/fila-retificacao\"}, {\"key\": \"fila-compensacao\", \"label\": \"Compensação\", \"rota\": \"/credito/fila-compensacao\"}, {\"key\": \"fila-ressarcimento\", \"label\": \"Ressarcimento\", \"rota\": \"/credito/fila-ressarcimento\"}, {\"key\": \"fila-restituicao\", \"label\": \"Restituição\", \"rota\": \"/credito/fila-restituicao\"}, {\"key\": \"gestao-creditos\", \"label\": \"Gestão de Créditos\", \"rota\": \"/credito/gestao-creditos\"}, {\"key\": \"relatorios-credito\", \"label\": \"Relatórios\", \"rota\": \"/credito/relatorios\"}]\nCTN\tContencioso\t[{\"icon\": \"LayoutDashboard\", \"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/ctn/dashboard\"}, {\"icon\": \"Plus\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/ctn/nova-tarefa\"}, {\"icon\": \"ListTodo\", \"key\": \"fila\", \"label\": \"Fila de Trabalho\", \"rota\": \"/setor/ctn/fila\"}, {\"icon\": \"BarChart3\", \"key\": \"relatorio\", \"label\": \"Relatório\", \"rota\": \"/setor/ctn/relatorio\"}]\nJUR\tJurídico\t[{\"icon\": \"LayoutDashboard\", \"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/jur/dashboard\"}, {\"icon\": \"Plus\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/jur/nova-tarefa\"}, {\"icon\": \"ListTodo\", \"key\": \"fila\", \"label\": \"Fila de Trabalho\", \"rota\": \"/setor/jur/fila\"}]\nTRA\tTransação\t[{\"icon\": \"LayoutDashboard\", \"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/tra/dashboard\"}, {\"icon\": \"Plus\", \"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/tra/nova-tarefa\"}, {\"icon\": \"ListTodo\", \"key\": \"fila\", \"label\": \"Fila de Trabalho\", \"rota\": \"/setor/tra/fila\"}, {\"icon\": \"BarChart3\", \"key\": \"analitica\", \"label\": \"Visão Analítica\", \"rota\": \"/setor/tra/analitica\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

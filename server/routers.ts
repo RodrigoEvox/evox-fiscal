@@ -9,6 +9,7 @@ import { storagePut } from "./storage";
 import crypto from "crypto";
 import { bibliotecaRouter } from "./routersBiblioteca";
 import { creditRecoveryRouter } from "./routersCredito";
+import { contratosRouter } from "./routersContratos";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== 'admin') {
@@ -37,6 +38,7 @@ export const appRouter = router({
   system: systemRouter,
   biblioteca: bibliotecaRouter,
   creditRecovery: creditRecoveryRouter,
+  contratos: contratosRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

@@ -2145,3 +2145,29 @@
 - [x] Query backend para buscar stats de tarefas do setor Contencioso
 - [x] Auto-refresh a cada 30 segundos
 - [x] Registrar rota e adicionar ao menu do setor
+
+## v80 — Exportação PDF nos Relatórios + Setor Contratos
+
+### Exportação PDF nos Relatórios do Crédito
+- [x] Criar exportação PDF com layout profissional (geração client-side com jsPDF + autoTable)
+- [x] Template PDF com cabeçalho Evox, filtros aplicados, tabela de dados e gráficos
+- [x] Botão "Exportar PDF" ao lado do "Exportar CSV" existente
+- [x] Incluir resumo com cards de métricas no PDF
+- [x] Incluir tabela de tarefas e tabela de créditos no PDF
+
+### Setor Contratos — Schema e Backend
+- [x] Criar tabela contratos no schema (número, clienteId, parceiroId, tipo, valor, vigência, status)
+- [x] Criar tabela contrato_documentos para anexos do contrato
+- [x] Definir filas do setor: Elaboração, Revisão, Assinatura, Vigência, Renovação, Encerrado
+- [x] Criar procedures tRPC para CRUD de contratos (create, update, changeFila, changeStatus, dashboard, listByFila, getById, historico, documentos)
+- [x] Criar procedure de stats do dashboard de contratos
+
+### Setor Contratos — Frontend
+- [x] Criar Dashboard do setor Contratos com cards, gráficos e filas em tempo real
+- [x] Criar página de Nova Contratação (formulário completo com cliente, parceiro, tipo, valor, cobrança, datas, SLA, responsáveis)
+- [x] Criar páginas de filas: Elaboração, Revisão, Assinatura, Vigência, Renovação, Encerrado
+- [x] Criar página de detalhe do contrato com edição, histórico e documentos
+- [x] Atualizar submenus do setor CT no banco de dados (8 submenus com grupos Gestão e Filas)
+- [x] Registrar rotas no App.tsx
+- [x] Adicionar ícones específicos para cada fila na sidebar
+- [x] Testes vitest (31 testes passando)

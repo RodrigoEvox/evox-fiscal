@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ChevronRight, Loader2, Download, FileSpreadsheet, BarChart3,
-  Filter, TrendingUp, DollarSign, ClipboardList, AlertTriangle,
+  Filter, TrendingUp, DollarSign, ClipboardList, AlertTriangle, FileText,
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
 import {
@@ -212,6 +214,209 @@ export default function CreditoRelatorios() {
 
   const hasActiveFilters = periodoInicio || periodoFim || teseId !== 'all' || parceiroId !== 'all' || classificacao !== 'all' || segmento !== 'all' || fila !== 'all';
 
+  const exportPDF = () => {
+    if (!tasks.length && !ledger.length) return;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    let y = margin;
+
+    // ---- Header ----
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageW, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EVOX FISCAL', margin, 12);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Relatório Gerencial — Setor Crédito', margin, 19);
+    doc.setFontSize(8);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageW - margin, 12, { align: 'right' });
+
+    // Filters applied
+    const activeFilters: string[] = [];
+    if (periodoInicio) activeFilters.push(`De: ${periodoInicio}`);
+    if (periodoFim) activeFilters.push(`Até: ${periodoFim}`);
+    if (teseId !== 'all') { const t = (teses as any[])?.find((t: any) => String(t.id) === teseId); if (t) activeFilters.push(`Tese: ${t.nome}`); }
+    if (parceiroId !== 'all') { const p = (parceiros as any[])?.find((p: any) => String(p.id) === parceiroId); if (p) activeFilters.push(`Parceiro: ${p.nomeFantasia}`); }
+    if (classificacao !== 'all') activeFilters.push(`Classificação: ${classificacao}`);
+    if (segmento !== 'all') activeFilters.push(`Segmento: ${segmento}`);
+    if (fila !== 'all') activeFilters.push(`Fila: ${FILA_LABELS[fila] || fila}`);
+    if (activeFilters.length) {
+      doc.text(`Filtros: ${activeFilters.join(' | ')}`, pageW - margin, 19, { align: 'right' });
+    }
+
+    y = 36;
+
+    // ---- Summary Cards ----
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo Geral', margin, y);
+    y += 6;
+
+    const cardData = [
+      { label: 'Total de Tarefas', value: String(summary.totalTarefas || 0), color: [59, 130, 246] },
+      { label: 'Valor Estimado', value: formatCurrency(summary.totalEstimado || 0), color: [16, 185, 129] },
+      { label: 'Valor Contratado', value: formatCurrency(summary.totalContratado || 0), color: [139, 92, 246] },
+      { label: 'Em Atraso', value: String(summary.totalEmAtraso || 0), color: [239, 68, 68] },
+    ];
+    const cardW = (pageW - margin * 2 - 12) / 4;
+    cardData.forEach((card, i) => {
+      const x = margin + i * (cardW + 4);
+      doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+      doc.roundedRect(x, y, cardW, 18, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(card.label.toUpperCase(), x + 4, y + 6);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(card.value, x + 4, y + 14);
+    });
+    y += 26;
+
+    // ---- Distribution by Fila ----
+    if (Object.keys(summary.porFila || {}).length > 0) {
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Distribuição por Fila', margin, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Fila', 'Quantidade', '% do Total']],
+        body: Object.entries(summary.porFila || {}).sort(([,a]: any, [,b]: any) => b - a).map(([k, v]: any) => [
+          FILA_LABELS[k] || k, String(v), `${((v / (summary.totalTarefas || 1)) * 100).toFixed(1)}%`
+        ]),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+      y = (doc as any).lastAutoTable.finalY + 8;
+    }
+
+    // ---- Distribution by Status ----
+    if (Object.keys(summary.porStatus || {}).length > 0) {
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Distribuição por Status', margin, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Status', 'Quantidade', '% do Total']],
+        body: Object.entries(summary.porStatus || {}).map(([k, v]: any) => [
+          STATUS_LABELS[k] || k, String(v), `${((v / (summary.totalTarefas || 1)) * 100).toFixed(1)}%`
+        ]),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+      y = (doc as any).lastAutoTable.finalY + 8;
+    }
+
+    // ---- New page for Tasks table ----
+    if (tasks.length > 0) {
+      doc.addPage();
+      y = margin;
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageW, 14, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Detalhamento de Tarefas', margin, 9);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${tasks.length} tarefa(s)`, pageW - margin, 9, { align: 'right' });
+      y = 20;
+
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Código', 'Fila', 'Título', 'Status', 'Prioridade', 'Responsável', 'Cliente', 'CNPJ', 'Parceiro', 'V. Estimado', 'V. Contratado', 'SLA', 'Vencimento']],
+        body: tasks.slice(0, 500).map(t => [
+          t.codigo || '',
+          FILA_LABELS[t.fila] || t.fila || '',
+          (t.titulo || '').substring(0, 40),
+          STATUS_LABELS[t.status] || t.status || '',
+          PRIORIDADE_LABELS[t.prioridade] || t.prioridade || '',
+          t.responsavelNome || '',
+          (t.clienteNome || '').substring(0, 25),
+          t.clienteCnpj || '',
+          (t.parceiroNome || '').substring(0, 20),
+          formatCurrency(Number(t.valorEstimado || 0)),
+          formatCurrency(Number(t.valorContratado || 0)),
+          t.slaStatus || '',
+          formatDate(t.dataVencimento),
+        ]),
+        styles: { fontSize: 6, cellPadding: 1.5, overflow: 'ellipsize' },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.5 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { cellWidth: 16 }, 1: { cellWidth: 20 }, 2: { cellWidth: 40 },
+          3: { cellWidth: 16 }, 4: { cellWidth: 16 }, 5: { cellWidth: 25 },
+          6: { cellWidth: 28 }, 7: { cellWidth: 28 }, 8: { cellWidth: 22 },
+          9: { cellWidth: 22, halign: 'right' }, 10: { cellWidth: 22, halign: 'right' },
+          11: { cellWidth: 16 }, 12: { cellWidth: 18 },
+        },
+      });
+    }
+
+    // ---- Ledger page ----
+    if (ledger.length > 0) {
+      doc.addPage();
+      y = margin;
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageW, 14, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Gestão de Créditos — Resumo por Tese', margin, 9);
+      y = 20;
+
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Tese', 'Grupo Débito', 'Status', 'Qtd', 'Estimado', 'Validado', 'Efetivado', 'Residual']],
+        body: ledger.map((l: any) => [
+          (l.teseNome || '').substring(0, 40),
+          l.grupoDebito || '',
+          l.status || '',
+          String(l.qtd || 0),
+          formatCurrency(Number(l.totalEstimado || 0)),
+          formatCurrency(Number(l.totalValidado || 0)),
+          formatCurrency(Number(l.totalEfetivado || 0)),
+          formatCurrency(Number(l.totalResidual || 0)),
+        ]),
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' },
+        },
+      });
+    }
+
+    // ---- Footer on all pages ----
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFillColor(241, 245, 249);
+      doc.rect(0, pageH - 10, pageW, 10, 'F');
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(7);
+      doc.text('Evox Fiscal — Relatório Gerencial Confidencial', margin, pageH - 4);
+      doc.text(`Página ${i} de ${totalPages}`, pageW - margin, pageH - 4, { align: 'right' });
+    }
+
+    doc.save(`relatorio-credito-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       <BackToDashboard />
@@ -232,7 +437,11 @@ export default function CreditoRelatorios() {
             Análise gerencial com filtros por período, tese, parceiro, classificação e segmento.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="default" className="gap-2 text-xs" onClick={exportPDF} disabled={!tasks.length && !ledger.length}>
+            <FileText className="w-4 h-4" />
+            Exportar PDF
+          </Button>
           <Button variant="outline" className="gap-2 text-xs" onClick={exportCSV} disabled={!tasks.length}>
             <FileSpreadsheet className="w-4 h-4" />
             Exportar Tarefas (CSV)

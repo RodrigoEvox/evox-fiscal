@@ -2436,3 +2436,99 @@ export const creditGuias = mysqlTable("credit_guias", {
 	index("idx_cg_cliente").on(table.clienteId),
 	index("idx_cg_perdcomp").on(table.perdcompId),
 ]);
+
+// ===== SETOR CONTRATOS =====
+
+// Contratos — gestão de contratos de prestação de serviços
+export const contratos = mysqlTable("contratos", {
+	id: int().autoincrement().notNull(),
+	numero: varchar({ length: 30 }).notNull(), // CON-0001
+	clienteId: int().notNull(),
+	clienteNome: varchar({ length: 500 }),
+	clienteCnpj: varchar({ length: 20 }),
+	parceiroId: int(),
+	parceiroNome: varchar({ length: 500 }),
+	servicoId: int(),
+	servicoNome: varchar({ length: 500 }),
+	tipo: mysqlEnum(['prestacao_servicos','honorarios','parceria','nda','aditivo','distrato','outro']).default('prestacao_servicos').notNull(),
+	fila: mysqlEnum(['elaboracao','revisao','assinatura','vigencia','renovacao','encerrado']).default('elaboracao').notNull(),
+	status: mysqlEnum(['a_fazer','fazendo','feito','concluido']).default('a_fazer').notNull(),
+	prioridade: mysqlEnum(['urgente','alta','media','baixa']).default('media').notNull(),
+	// Valores
+	valorContrato: decimal({ precision: 15, scale: 2 }).default('0'),
+	formaCobranca: mysqlEnum(['percentual_credito','valor_fixo','mensalidade','exito','hibrido','entrada_exito','valor_fixo_parcelado']).default('valor_fixo'),
+	percentualExito: decimal({ precision: 5, scale: 2 }),
+	valorEntrada: decimal({ precision: 15, scale: 2 }),
+	quantidadeParcelas: int(),
+	valorParcela: decimal({ precision: 15, scale: 2 }),
+	// Datas
+	dataInicio: timestamp({ mode: 'string' }),
+	dataFim: timestamp({ mode: 'string' }),
+	dataAssinatura: timestamp({ mode: 'string' }),
+	dataVencimento: timestamp({ mode: 'string' }),
+	// SLA
+	slaHoras: int(),
+	slaStatus: mysqlEnum(['dentro_prazo','atencao','vencido']).default('dentro_prazo'),
+	// Responsáveis
+	responsavelId: int(),
+	responsavelNome: varchar({ length: 255 }),
+	revisorId: int(),
+	revisorNome: varchar({ length: 255 }),
+	// Documentos
+	contratoUrl: varchar({ length: 1000 }),
+	contratoAssinadoUrl: varchar({ length: 1000 }),
+	// Observações
+	objetoContrato: text(),
+	clausulasEspeciais: text(),
+	observacoes: text(),
+	// Rastreabilidade
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_con_cliente").on(table.clienteId),
+	index("idx_con_parceiro").on(table.parceiroId),
+	index("idx_con_fila").on(table.fila),
+	index("idx_con_status").on(table.status),
+	index("idx_con_numero").on(table.numero),
+	index("idx_con_tipo").on(table.tipo),
+]);
+
+// Contrato Documentos — anexos e versões de documentos do contrato
+export const contratoDocumentos = mysqlTable("contrato_documentos", {
+	id: int().autoincrement().notNull(),
+	contratoId: int().notNull(),
+	nome: varchar({ length: 500 }).notNull(),
+	tipo: mysqlEnum(['minuta','contrato_final','aditivo','distrato','procuracao','nda','comprovante','outro']).default('outro').notNull(),
+	versao: int().default(1).notNull(),
+	url: varchar({ length: 1000 }).notNull(),
+	tamanho: int(), // bytes
+	mimeType: varchar({ length: 100 }),
+	observacoes: text(),
+	uploadPorId: int(),
+	uploadPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_cd_contrato").on(table.contratoId),
+	index("idx_cd_tipo").on(table.tipo),
+]);
+
+// Contrato Histórico — audit log de alterações no contrato
+export const contratoHistorico = mysqlTable("contrato_historico", {
+	id: int().autoincrement().notNull(),
+	contratoId: int().notNull(),
+	acao: varchar({ length: 100 }).notNull(), // criacao, edicao, mudanca_fila, mudanca_status, upload_documento, assinatura, renovacao, encerramento
+	descricao: text(),
+	dadosAntigos: json(),
+	dadosNovos: json(),
+	usuarioId: int(),
+	usuarioNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_ch_contrato").on(table.contratoId),
+	index("idx_ch_acao").on(table.acao),
+]);

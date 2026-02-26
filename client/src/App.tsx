@@ -94,6 +94,17 @@ const CreditoFilaRestituicao = lazy(() => import("./pages/credito/CreditoFilaRes
 const CreditoGestaoCreditos = lazy(() => import("./pages/credito/CreditoGestaoCreditos"));
 const CreditoRelatorios = lazy(() => import("./pages/credito/CreditoRelatorios"));
 
+// Contratos
+const ContratosDashboard = lazy(() => import("./pages/contratos/ContratosDashboard"));
+const NovoContrato = lazy(() => import("./pages/contratos/NovoContrato"));
+const ContratoDetalhe = lazy(() => import("./pages/contratos/ContratoDetalhe"));
+const ContratosFilaElaboracao = lazy(() => import("./pages/contratos/ContratosFilaElaboracao"));
+const ContratosFilaRevisao = lazy(() => import("./pages/contratos/ContratosFilaRevisao"));
+const ContratosFilaAssinatura = lazy(() => import("./pages/contratos/ContratosFilaAssinatura"));
+const ContratosFilaVigencia = lazy(() => import("./pages/contratos/ContratosFilaVigencia"));
+const ContratosFilaRenovacao = lazy(() => import("./pages/contratos/ContratosFilaRenovacao"));
+const ContratosFilaEncerrado = lazy(() => import("./pages/contratos/ContratosFilaEncerrado"));
+
 // Suporte Comercial
 const InboxDemandas = lazy(() => import("./pages/suporte/InboxDemandas"));
 const ConflitoCarteira = lazy(() => import("./pages/suporte/ConflitoCarteira"));
@@ -197,6 +208,16 @@ function Router() {
         {/* Suporte Comercial */}
         <Route path="/suporte/inbox" component={InboxDemandas} />
         <Route path="/suporte/conflito-carteira" component={ConflitoCarteira} />
+        {/* Contratos */}
+        <Route path="/contratos/dashboard" component={ContratosDashboard} />
+        <Route path="/contratos/novo" component={NovoContrato} />
+        <Route path="/contratos/fila/elaboracao" component={ContratosFilaElaboracao} />
+        <Route path="/contratos/fila/revisao" component={ContratosFilaRevisao} />
+        <Route path="/contratos/fila/assinatura" component={ContratosFilaAssinatura} />
+        <Route path="/contratos/fila/vigencia" component={ContratosFilaVigencia} />
+        <Route path="/contratos/fila/renovacao" component={ContratosFilaRenovacao} />
+        <Route path="/contratos/fila/encerrado" component={ContratosFilaEncerrado} />
+        <Route path="/contratos/:id" component={ContratoDetalhe} />
         {/* App do Parceiro */}
         <Route path="/app-parceiro" component={AppParceiro} />
 

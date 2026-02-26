@@ -12,6 +12,7 @@ import {
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu, Library,
   MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
   Bus, Dumbbell, DollarSign, Cake, Heart, Layers, Award, Inbox, AlertTriangle,
+  PenTool, FileSignature, RefreshCw, XCircle, Eye,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -108,6 +109,14 @@ const SUBMENU_ICONS: Record<string, any> = {
   'admin-hub': Settings,
   'biblioteca-hub': BookOpen,
   'cct': Shield,
+  'dashboard-contratos': LayoutDashboard,
+  'novo-contrato': Plus,
+  'fila-elaboracao': PenTool,
+  'fila-revisao': Eye,
+  'fila-assinatura': FileSignature,
+  'fila-vigencia': ShieldCheck,
+  'fila-renovacao': RefreshCw,
+  'fila-encerrado': XCircle,
   'dashboard-credito': LayoutDashboard,
   'nova-tarefa-credito': Plus,
   'fila-apuracao': ListOrdered,

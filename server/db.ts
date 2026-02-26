@@ -850,7 +850,14 @@ export async function seedSetoresEvox() {
       ] },
     { nome: "CT – Contratos", descricao: "Gestão de contratos", cor: "#F97316", icone: "FileText", sigla: "CT",
       submenus: [
-        { key: "nova-tarefa", label: "Nova Tarefa", rota: "/setor/ct/nova-tarefa" },
+        { key: "dashboard-contratos", label: "Dashboard", rota: "/contratos/dashboard", grupo: "Gestão" },
+        { key: "novo-contrato", label: "Novo Contrato", rota: "/contratos/novo", grupo: "Gestão" },
+        { key: "fila-elaboracao", label: "Elaboração", rota: "/contratos/fila/elaboracao", grupo: "Filas" },
+        { key: "fila-revisao", label: "Revisão", rota: "/contratos/fila/revisao", grupo: "Filas" },
+        { key: "fila-assinatura", label: "Assinatura", rota: "/contratos/fila/assinatura", grupo: "Filas" },
+        { key: "fila-vigencia", label: "Vigência", rota: "/contratos/fila/vigencia", grupo: "Filas" },
+        { key: "fila-renovacao", label: "Renovação", rota: "/contratos/fila/renovacao", grupo: "Filas" },
+        { key: "fila-encerrado", label: "Encerrados", rota: "/contratos/fila/encerrado", grupo: "Filas" },
       ] },
     { nome: "FIN – Financeiro", descricao: "Departamento financeiro", cor: "#22C55E", icone: "Wallet", sigla: "FIN",
       submenus: [
