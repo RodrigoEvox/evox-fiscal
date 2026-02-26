@@ -1990,3 +1990,29 @@
 - [x] Registrar todas as novas rotas no App.tsx
 - [x] Atualizar sidebar com ícones para os novos submenus
 - [x] Testes vitest para Nova Tarefa e motor de regras (15 testes passando)
+
+### Submenu Apuração — Implementação Completa
+- [x] Checklist padrão customizável pelo admin (passo a passo por tese)
+- [x] Geração de RTI dentro do sistema a partir de template editável
+- [x] RTI: campos básicos preenchidos automaticamente (razão social, CNPJ, regime, segmento, etc.)
+- [x] RTI: analista preenche apenas teses, classificação e valores
+- [x] RTI: tabela de oportunidades com Descrição, Classificação (Pacificado/Não Pacificado), Valor Apurado
+- [x] RTI: somatório bruto, total pacificado, total não pacificado
+- [x] RTI: cenário de compensação (tributo x média mensal)
+- [x] RTI: observações/alertas customizáveis
+- [x] RTI: texto legal padrão (template editável pelo admin)
+- [x] Dados refletindo no dashboard para relatórios (valor total por período, por tese, por parceiro, por classificação, regime, segmento)
+- [x] Gestão de retorno dos parceiros (comercial) com SLA dos RTIs enviados
+- [x] Controle de status: enviado, aguardando retorno, fechou, não fechou
+- [x] Apuração só é classificada como feita quando RTI é gerado
+
+### Submenu Onboarding — Implementação Completa
+- [x] Geração automática de tarefa de onboarding quando contrato é assinado
+- [x] Checklist completo das 3 fases: Revisão, Refinamento, Registro
+- [x] Checklist com todos os itens do manual de onboarding (40+ checks)
+- [x] Campo/pasta para anexar link da reunião gravada
+- [x] Campo para anexar arquivo da reunião e/ou transcrição
+- [x] Definição da estratégia de monetização (compensação, ressarcimento, restituição, mista)
+- [x] Estratégia determina para qual fila o cliente vai após retificação
+- [x] Campos de contatos validados (contábil, financeiro, empresário, outros)
+- [x] Registro de responsável técnico (coordenadora RCT)

@@ -815,3 +815,253 @@ export async function getGestaoCreditos(clienteId: number) {
     prescricaoRisk: prescricaoRisk.length,
   };
 }
+
+
+// ===== RTI TEMPLATES =====
+export async function listRtiTemplates() {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM rti_templates WHERE ativo = 1 ORDER BY nome`));
+  return rows as unknown as any[];
+}
+
+export async function getRtiTemplateById(id: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM rti_templates WHERE id = ${id}`));
+  return (rows as unknown as any[])[0] || null;
+}
+
+export async function createRtiTemplate(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO rti_templates (nome, textoIntro, textoObservacoes, textoProximasEtapas, cenarioCompensacaoDefault, alertasDefault, criadoPorId, criadoPorNome) VALUES ('${(data.nome || '').replace(/'/g, "''")}', ${data.textoIntro ? `'${data.textoIntro.replace(/'/g, "''")}'` : 'NULL'}, ${data.textoObservacoes ? `'${data.textoObservacoes.replace(/'/g, "''")}'` : 'NULL'}, ${data.textoProximasEtapas ? `'${data.textoProximasEtapas.replace(/'/g, "''")}'` : 'NULL'}, ${data.cenarioCompensacaoDefault ? `'${JSON.stringify(data.cenarioCompensacaoDefault)}'` : 'NULL'}, ${data.alertasDefault ? `'${JSON.stringify(data.alertasDefault)}'` : 'NULL'}, ${data.criadoPorId || 'NULL'}, ${data.criadoPorNome ? `'${data.criadoPorNome.replace(/'/g, "''")}'` : 'NULL'})`));
+  return (result as unknown as any).insertId;
+}
+
+export async function updateRtiTemplate(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  if (data.nome !== undefined) sets.push(`nome = '${data.nome.replace(/'/g, "''")}'`);
+  if (data.textoIntro !== undefined) sets.push(`textoIntro = '${data.textoIntro.replace(/'/g, "''")}'`);
+  if (data.textoObservacoes !== undefined) sets.push(`textoObservacoes = '${data.textoObservacoes.replace(/'/g, "''")}'`);
+  if (data.textoProximasEtapas !== undefined) sets.push(`textoProximasEtapas = '${data.textoProximasEtapas.replace(/'/g, "''")}'`);
+  if (data.cenarioCompensacaoDefault !== undefined) sets.push(`cenarioCompensacaoDefault = '${JSON.stringify(data.cenarioCompensacaoDefault)}'`);
+  if (data.alertasDefault !== undefined) sets.push(`alertasDefault = '${JSON.stringify(data.alertasDefault)}'`);
+  if (data.ativo !== undefined) sets.push(`ativo = ${data.ativo}`);
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE rti_templates SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+// ===== RTI OPORTUNIDADES =====
+export async function listRtiOportunidades(rtiId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM rti_oportunidades WHERE rtiId = ${rtiId} ORDER BY ordem`));
+  return rows as unknown as any[];
+}
+
+export async function createRtiOportunidade(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO rti_oportunidades (rtiId, teseId, descricao, classificacao, valorApurado, detalhamento, ordem) VALUES (${data.rtiId}, ${data.teseId || 'NULL'}, '${(data.descricao || '').replace(/'/g, "''")}', '${data.classificacao}', ${data.valorApurado || 0}, ${data.detalhamento ? `'${JSON.stringify(data.detalhamento)}'` : 'NULL'}, ${data.ordem || 0})`));
+  return (result as unknown as any).insertId;
+}
+
+export async function updateRtiOportunidade(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  if (data.descricao !== undefined) sets.push(`descricao = '${data.descricao.replace(/'/g, "''")}'`);
+  if (data.classificacao !== undefined) sets.push(`classificacao = '${data.classificacao}'`);
+  if (data.valorApurado !== undefined) sets.push(`valorApurado = ${data.valorApurado}`);
+  if (data.detalhamento !== undefined) sets.push(`detalhamento = '${JSON.stringify(data.detalhamento)}'`);
+  if (data.ordem !== undefined) sets.push(`ordem = ${data.ordem}`);
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE rti_oportunidades SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+export async function deleteRtiOportunidade(id: number) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(`DELETE FROM rti_oportunidades WHERE id = ${id}`));
+}
+
+// ===== RTI CENÁRIO COMPENSAÇÃO =====
+export async function listRtiCenarioCompensacao(rtiId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM rti_cenario_compensacao WHERE rtiId = ${rtiId} ORDER BY ordem`));
+  return rows as unknown as any[];
+}
+
+export async function upsertRtiCenarioCompensacao(rtiId: number, items: any[]) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(`DELETE FROM rti_cenario_compensacao WHERE rtiId = ${rtiId}`));
+  for (const item of items) {
+    await db_.execute(sql.raw(`INSERT INTO rti_cenario_compensacao (rtiId, tributo, mediaMensal, ordem) VALUES (${rtiId}, '${item.tributo}', ${item.mediaMensal || 0}, ${item.ordem || 0})`));
+  }
+}
+
+// ===== RTI ALERTAS =====
+export async function listRtiAlertas(rtiId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM rti_alertas WHERE rtiId = ${rtiId} ORDER BY ordem`));
+  return rows as unknown as any[];
+}
+
+export async function upsertRtiAlertas(rtiId: number, items: any[]) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(`DELETE FROM rti_alertas WHERE rtiId = ${rtiId}`));
+  for (const item of items) {
+    await db_.execute(sql.raw(`INSERT INTO rti_alertas (rtiId, tipo, texto, ordem) VALUES (${rtiId}, '${item.tipo}', '${(item.texto || '').replace(/'/g, "''")}', ${item.ordem || 0})`));
+  }
+}
+
+// ===== RTI FULL (with oportunidades, cenário, alertas) =====
+export async function getRtiReportFull(rtiId: number) {
+  const rti = await getRtiReportById(rtiId);
+  if (!rti) return null;
+  const oportunidades = await listRtiOportunidades(rtiId);
+  const cenarioCompensacao = await listRtiCenarioCompensacao(rtiId);
+  const alertas = await listRtiAlertas(rtiId);
+  return { ...rti, oportunidades, cenarioCompensacao, alertas };
+}
+
+// ===== PARTNER RETURNS =====
+export async function listPartnerReturns(filters?: { rtiId?: number; clienteId?: number; parceiroId?: number; status?: string }) {
+  const db_ = (await getDb())!;
+  let where = '1=1';
+  if (filters?.rtiId) where += ` AND cpr.rtiId = ${filters.rtiId}`;
+  if (filters?.clienteId) where += ` AND cpr.clienteId = ${filters.clienteId}`;
+  if (filters?.parceiroId) where += ` AND cpr.parceiroId = ${filters.parceiroId}`;
+  if (filters?.status) where += ` AND cpr.retornoStatus = '${filters.status}'`;
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT cpr.*, c.razaoSocial as clienteNome, c.cnpj as clienteCnpj,
+           r.numero as rtiNumero, r.valorTotalEstimado as rtiValorTotal
+    FROM credit_partner_returns cpr
+    LEFT JOIN clientes c ON cpr.clienteId = c.id
+    LEFT JOIN rti_reports r ON cpr.rtiId = r.id
+    WHERE ${where}
+    ORDER BY cpr.createdAt DESC
+  `));
+  return rows as unknown as any[];
+}
+
+export async function createPartnerReturn(data: any) {
+  const db_ = (await getDb())!;
+  const now = new Date();
+  const venceEm = new Date(now.getTime() + (data.slaDias || 7) * 24 * 60 * 60 * 1000);
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_partner_returns (rtiId, caseId, clienteId, parceiroId, parceiroNome, enviadoEm, slaDias, slaVenceEm, valorRti, registradoPorId, registradoPorNome) VALUES (${data.rtiId}, ${data.caseId || 'NULL'}, ${data.clienteId}, ${data.parceiroId || 'NULL'}, ${data.parceiroNome ? `'${data.parceiroNome.replace(/'/g, "''")}'` : 'NULL'}, '${now.toISOString().slice(0, 19).replace('T', ' ')}', ${data.slaDias || 7}, '${venceEm.toISOString().slice(0, 19).replace('T', ' ')}', ${data.valorRti || 0}, ${data.registradoPorId || 'NULL'}, ${data.registradoPorNome ? `'${data.registradoPorNome.replace(/'/g, "''")}'` : 'NULL'})`));
+  return (result as unknown as any).insertId;
+}
+
+export async function updatePartnerReturn(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  if (data.retornoStatus !== undefined) sets.push(`retornoStatus = '${data.retornoStatus}'`);
+  if (data.retornoObservacao !== undefined) sets.push(`retornoObservacao = '${(data.retornoObservacao || '').replace(/'/g, "''")}'`);
+  if (data.motivoNaoFechamento !== undefined) sets.push(`motivoNaoFechamento = '${(data.motivoNaoFechamento || '').replace(/'/g, "''")}'`);
+  if (data.valorContratado !== undefined) sets.push(`valorContratado = ${data.valorContratado}`);
+  if (data.retornoRecebidoEm !== undefined) sets.push(`retornoRecebidoEm = '${data.retornoRecebidoEm}'`);
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE credit_partner_returns SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+export async function getPartnerReturnStats() {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN retornoStatus = 'aguardando' THEN 1 ELSE 0 END) as aguardando,
+      SUM(CASE WHEN retornoStatus = 'fechou' THEN 1 ELSE 0 END) as fechou,
+      SUM(CASE WHEN retornoStatus = 'nao_fechou' THEN 1 ELSE 0 END) as naoFechou,
+      SUM(CASE WHEN retornoStatus = 'sem_retorno' THEN 1 ELSE 0 END) as semRetorno,
+      SUM(CASE WHEN retornoStatus = 'em_negociacao' THEN 1 ELSE 0 END) as emNegociacao,
+      SUM(CASE WHEN retornoStatus = 'aguardando' AND slaVenceEm < NOW() THEN 1 ELSE 0 END) as slaVencido,
+      COALESCE(SUM(valorRti), 0) as valorTotalRti,
+      COALESCE(SUM(valorContratado), 0) as valorTotalContratado
+    FROM credit_partner_returns
+  `));
+  return (rows as unknown as any[])[0];
+}
+
+// ===== ONBOARDING RECORDS =====
+export async function getOnboardingRecord(taskId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_onboarding_records WHERE taskId = ${taskId}`));
+  return (rows as unknown as any[])[0] || null;
+}
+
+export async function getOnboardingRecordByCase(caseId: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_onboarding_records WHERE caseId = ${caseId}`));
+  return (rows as unknown as any[])[0] || null;
+}
+
+export async function createOnboardingRecord(data: any) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(`INSERT INTO credit_onboarding_records (taskId, caseId, clienteId, checklistRevisao, checklistRefinamento, checklistRegistro, status) VALUES (${data.taskId}, ${data.caseId || 'NULL'}, ${data.clienteId}, '${JSON.stringify(data.checklistRevisao || [])}', '${JSON.stringify(data.checklistRefinamento || [])}', '${JSON.stringify(data.checklistRegistro || [])}', 'em_andamento')`));
+  return (result as unknown as any).insertId;
+}
+
+export async function updateOnboardingRecord(id: number, data: any) {
+  const db_ = (await getDb())!;
+  const sets: string[] = [];
+  if (data.checklistRevisao !== undefined) sets.push(`checklistRevisao = '${JSON.stringify(data.checklistRevisao)}'`);
+  if (data.checklistRefinamento !== undefined) sets.push(`checklistRefinamento = '${JSON.stringify(data.checklistRefinamento)}'`);
+  if (data.checklistRegistro !== undefined) sets.push(`checklistRegistro = '${JSON.stringify(data.checklistRegistro)}'`);
+  if (data.reuniaoGravacaoUrl !== undefined) sets.push(`reuniaoGravacaoUrl = '${data.reuniaoGravacaoUrl}'`);
+  if (data.reuniaoGravacaoFileKey !== undefined) sets.push(`reuniaoGravacaoFileKey = '${data.reuniaoGravacaoFileKey}'`);
+  if (data.reuniaoTranscricaoUrl !== undefined) sets.push(`reuniaoTranscricaoUrl = '${data.reuniaoTranscricaoUrl}'`);
+  if (data.reuniaoTranscricaoFileKey !== undefined) sets.push(`reuniaoTranscricaoFileKey = '${data.reuniaoTranscricaoFileKey}'`);
+  if (data.reuniaoData !== undefined) sets.push(`reuniaoData = '${data.reuniaoData}'`);
+  if (data.reuniaoParticipantes !== undefined) sets.push(`reuniaoParticipantes = '${JSON.stringify(data.reuniaoParticipantes)}'`);
+  if (data.creditoDescricao !== undefined) sets.push(`creditoDescricao = '${(data.creditoDescricao || '').replace(/'/g, "''")}'`);
+  if (data.periodoCredito !== undefined) sets.push(`periodoCredito = '${data.periodoCredito}'`);
+  if (data.valorEstimadoCredito !== undefined) sets.push(`valorEstimadoCredito = ${data.valorEstimadoCredito}`);
+  if (data.estrategia !== undefined) sets.push(`estrategia = '${data.estrategia}'`);
+  if (data.estrategiaDetalhes !== undefined) sets.push(`estrategiaDetalhes = '${JSON.stringify(data.estrategiaDetalhes)}'`);
+  if (data.contatoContabil !== undefined) sets.push(`contatoContabil = '${JSON.stringify(data.contatoContabil)}'`);
+  if (data.contatoFinanceiro !== undefined) sets.push(`contatoFinanceiro = '${JSON.stringify(data.contatoFinanceiro)}'`);
+  if (data.contatoEmpresario !== undefined) sets.push(`contatoEmpresario = '${JSON.stringify(data.contatoEmpresario)}'`);
+  if (data.contatoOutros !== undefined) sets.push(`contatoOutros = '${JSON.stringify(data.contatoOutros)}'`);
+  if (data.responsavelTecnicoId !== undefined) sets.push(`responsavelTecnicoId = ${data.responsavelTecnicoId}`);
+  if (data.responsavelTecnicoNome !== undefined) sets.push(`responsavelTecnicoNome = '${(data.responsavelTecnicoNome || '').replace(/'/g, "''")}'`);
+  if (data.empresaTemDebitos !== undefined) sets.push(`empresaTemDebitos = ${data.empresaTemDebitos}`);
+  if (data.empresaPrecisaCnd !== undefined) sets.push(`empresaPrecisaCnd = ${data.empresaPrecisaCnd}`);
+  if (data.empresaNoEmac !== undefined) sets.push(`empresaNoEmac = ${data.empresaNoEmac}`);
+  if (data.empresaHistoricoMalha !== undefined) sets.push(`empresaHistoricoMalha = ${data.empresaHistoricoMalha}`);
+  if (data.empresaAssinanteMonitor !== undefined) sets.push(`empresaAssinanteMonitor = ${data.empresaAssinanteMonitor}`);
+  if (data.status !== undefined) sets.push(`status = '${data.status}'`);
+  if (data.concluidoEm !== undefined) sets.push(`concluidoEm = '${data.concluidoEm}'`);
+  if (data.concluidoPorId !== undefined) sets.push(`concluidoPorId = ${data.concluidoPorId}`);
+  if (data.concluidoPorNome !== undefined) sets.push(`concluidoPorNome = '${(data.concluidoPorNome || '').replace(/'/g, "''")}'`);
+  if (sets.length === 0) return;
+  await db_.execute(sql.raw(`UPDATE credit_onboarding_records SET ${sets.join(', ')} WHERE id = ${id}`));
+}
+
+// ===== APURAÇÃO STATS (for dashboard/reports) =====
+export async function getApuracaoStats(filters?: { periodoInicio?: string; periodoFim?: string }) {
+  const db_ = (await getDb())!;
+  let dateFilter = '';
+  if (filters?.periodoInicio) dateFilter += ` AND r.emitidoEm >= '${filters.periodoInicio}'`;
+  if (filters?.periodoFim) dateFilter += ` AND r.emitidoEm <= '${filters.periodoFim}'`;
+  
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT 
+      COUNT(DISTINCT r.id) as totalRtis,
+      COUNT(DISTINCT r.clienteId) as totalClientes,
+      COALESCE(SUM(r.valorTotalEstimado), 0) as valorTotalApurado,
+      COUNT(DISTINCT CASE WHEN r.status = 'emitido' THEN r.id END) as rtisEmitidos,
+      COUNT(DISTINCT CASE WHEN r.status = 'rascunho' THEN r.id END) as rtisRascunho
+    FROM rti_reports r
+    WHERE 1=1 ${dateFilter}
+  `));
+  
+  // Stats por tese
+  const [teseRows] = await db_.execute(sql.raw(`
+    SELECT ro.descricao as tese, ro.classificacao,
+           COUNT(*) as quantidade,
+           COALESCE(SUM(ro.valorApurado), 0) as valorTotal
+    FROM rti_oportunidades ro
+    JOIN rti_reports r ON ro.rtiId = r.id
+    WHERE 1=1 ${dateFilter}
+    GROUP BY ro.descricao, ro.classificacao
+    ORDER BY valorTotal DESC
+  `));
+  
+  return { ...(rows as unknown as any[])[0], porTese: teseRows as unknown as any[] };
+}

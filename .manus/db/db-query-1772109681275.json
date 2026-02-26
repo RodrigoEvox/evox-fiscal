@@ -1,0 +1,13 @@
+{
+  "query": "SELECT JSON_EXTRACT(submenus, '$[*].slug') as slugs FROM setor_config WHERE sigla = 'CRE';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT JSON_EXTRACT(submenus, '$[*].slug') as slugs FROM setor_config WHERE sigla = 'CRE';",
+  "rows": [
+    {
+      "slugs": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "slugs\nNULL\n",
+  "stderr": "",
+  "execution_time_ms": 72
+}

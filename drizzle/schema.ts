@@ -2023,7 +2023,7 @@ export const successEvents = mysqlTable("success_events", {
 // Credit Audit Log — auditoria e histórico imutável
 export const creditAuditLog = mysqlTable("credit_audit_log", {
 	id: int().autoincrement().notNull(),
-	entidade: mysqlEnum(['demand_request','case','rti','task','ticket','ledger','policy','migration','sla','exito']).notNull(),
+	entidade: mysqlEnum(['demand_request','case','rti','task','ticket','ledger','policy','migration','sla','exito','partner_return','onboarding']).notNull(),
 	entidadeId: int().notNull(),
 	acao: varchar({ length: 100 }).notNull(), // ex: 'rti_emitido', 'status_alterado', 'roteamento', 'cancelamento', 'exito_registrado'
 	descricao: text(),
@@ -2217,4 +2217,133 @@ export const creditCaseStrategy = mysqlTable("credit_case_strategy", {
 (table) => [
 	index("idx_ccs_case").on(table.caseId),
 	index("idx_ccs_cliente").on(table.clienteId),
+]);
+
+// RTI Templates — template editável pelo admin para geração de RTI
+export const rtiTemplates = mysqlTable("rti_templates", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	textoIntro: text(),
+	textoObservacoes: text(),
+	textoProximasEtapas: text(),
+	cenarioCompensacaoDefault: json(),
+	alertasDefault: json(),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int(),
+	criadoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// RTI Oportunidades — linhas de oportunidades dentro de um RTI
+export const rtiOportunidades = mysqlTable("rti_oportunidades", {
+	id: int().autoincrement().notNull(),
+	rtiId: int().notNull(),
+	teseId: int(),
+	descricao: varchar({ length: 500 }).notNull(),
+	classificacao: mysqlEnum(['pacificado','nao_pacificado']).notNull(),
+	valorApurado: decimal({ precision: 15, scale: 2 }).default('0'),
+	detalhamento: json(),
+	ordem: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_rtio_rti").on(table.rtiId),
+]);
+
+// RTI Cenário Compensação
+export const rtiCenarioCompensacao = mysqlTable("rti_cenario_compensacao", {
+	id: int().autoincrement().notNull(),
+	rtiId: int().notNull(),
+	tributo: varchar({ length: 100 }).notNull(),
+	mediaMensal: decimal({ precision: 15, scale: 2 }).default('0'),
+	ordem: int().default(0).notNull(),
+},
+(table) => [
+	index("idx_rticc_rti").on(table.rtiId),
+]);
+
+// RTI Alertas
+export const rtiAlertas = mysqlTable("rti_alertas", {
+	id: int().autoincrement().notNull(),
+	rtiId: int().notNull(),
+	tipo: varchar({ length: 100 }).notNull(),
+	texto: text().notNull(),
+	ordem: int().default(0).notNull(),
+},
+(table) => [
+	index("idx_rtia_rti").on(table.rtiId),
+]);
+
+// Partner Return Management — gestão de retorno dos parceiros
+export const creditPartnerReturns = mysqlTable("credit_partner_returns", {
+	id: int().autoincrement().notNull(),
+	rtiId: int().notNull(),
+	caseId: int(),
+	clienteId: int().notNull(),
+	parceiroId: int(),
+	parceiroNome: varchar({ length: 255 }),
+	enviadoEm: timestamp({ mode: 'string' }).notNull(),
+	slaDias: int().default(7).notNull(),
+	slaVenceEm: timestamp({ mode: 'string' }).notNull(),
+	retornoRecebidoEm: timestamp({ mode: 'string' }),
+	retornoStatus: mysqlEnum(['aguardando','fechou','nao_fechou','sem_retorno','em_negociacao']).default('aguardando').notNull(),
+	retornoObservacao: text(),
+	motivoNaoFechamento: text(),
+	valorRti: decimal({ precision: 15, scale: 2 }).default('0'),
+	valorContratado: decimal({ precision: 15, scale: 2 }),
+	registradoPorId: int(),
+	registradoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cpr_rti").on(table.rtiId),
+	index("idx_cpr_cliente").on(table.clienteId),
+	index("idx_cpr_parceiro").on(table.parceiroId),
+	index("idx_cpr_status").on(table.retornoStatus),
+]);
+
+// Onboarding Records — registro completo do onboarding de crédito
+export const creditOnboardingRecords = mysqlTable("credit_onboarding_records", {
+	id: int().autoincrement().notNull(),
+	taskId: int().notNull(),
+	caseId: int(),
+	clienteId: int().notNull(),
+	checklistRevisao: json(),
+	checklistRefinamento: json(),
+	checklistRegistro: json(),
+	reuniaoGravacaoUrl: varchar({ length: 1000 }),
+	reuniaoGravacaoFileKey: varchar({ length: 500 }),
+	reuniaoTranscricaoUrl: varchar({ length: 1000 }),
+	reuniaoTranscricaoFileKey: varchar({ length: 500 }),
+	reuniaoData: timestamp({ mode: 'string' }),
+	reuniaoParticipantes: json(),
+	creditoDescricao: text(),
+	periodoCredito: varchar({ length: 100 }),
+	valorEstimadoCredito: decimal({ precision: 15, scale: 2 }),
+	estrategia: mysqlEnum(['compensacao','ressarcimento','restituicao','judicial','mista']).default('compensacao'),
+	estrategiaDetalhes: json(),
+	contatoContabil: json(),
+	contatoFinanceiro: json(),
+	contatoEmpresario: json(),
+	contatoOutros: json(),
+	responsavelTecnicoId: int(),
+	responsavelTecnicoNome: varchar({ length: 255 }),
+	empresaTemDebitos: tinyint().default(0),
+	empresaPrecisaCnd: tinyint().default(0),
+	empresaNoEmac: tinyint().default(0),
+	empresaHistoricoMalha: tinyint().default(0),
+	empresaAssinanteMonitor: tinyint().default(0),
+	status: mysqlEnum(['em_andamento','concluido','cancelado']).default('em_andamento').notNull(),
+	concluidoEm: timestamp({ mode: 'string' }),
+	concluidoPorId: int(),
+	concluidoPorNome: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_cor_task").on(table.taskId),
+	index("idx_cor_case").on(table.caseId),
+	index("idx_cor_cliente").on(table.clienteId),
 ]);

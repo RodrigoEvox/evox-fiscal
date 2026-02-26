@@ -1,0 +1,13 @@
+{
+  "query": "SELECT CAST(submenus AS CHAR) as subs FROM setor_config WHERE sigla = 'CRE';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT CAST(submenus AS CHAR) as subs FROM setor_config WHERE sigla = 'CRE';",
+  "rows": [
+    {
+      "subs": "[{\"icon\": \"BookOpen\", \"key\": \"teses\", \"label\": \"Teses Tributárias\"}, {\"icon\": \"LayoutDashboard\", \"key\": \"dashboard-credito\", \"label\": \"Dashboard\"}, {\"icon\": \"PlusCircle\", \"key\": \"nova-tarefa-credito\", \"label\": \"Nova Tarefa\"}, {\"icon\": \"Calculator\", \"key\": \"fila-apuracao\", \"label\": \"Apuração\"}, {\"icon\": \"UserPlus\", \"key\": \"fila-onboarding\", \"label\": \"Onboarding\"}, {\"icon\": \"FileEdit\", \"key\": \"fila-retificacao\", \"label\": \"Retificação\"}, {\"icon\": \"ArrowLeftRight\", \"key\": \"fila-compensacao\", \"label\": \"Compensação\"}, {\"icon\": \"RefreshCw\", \"key\": \"fila-ressarcimento\", \"label\": \"Ressarcimento\"}, {\"icon\": \"Undo2\", \"key\": \"fila-restituicao\", \"label\": \"Restituição\"}, {\"icon\": \"DollarSign\", \"key\": \"gestao-creditos\", \"label\": \"Gestão de Créditos\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "subs\n[{\"icon\": \"BookOpen\", \"key\": \"teses\", \"label\": \"Teses Tributárias\"}, {\"icon\": \"LayoutDashboard\", \"key\": \"dashboard-credito\", \"label\": \"Dashboard\"}, {\"icon\": \"PlusCircle\", \"key\": \"nova-tarefa-credito\", \"label\": \"Nova Tarefa\"}, {\"icon\": \"Calculator\", \"key\": \"fila-apuracao\", \"label\": \"Apuração\"}, {\"icon\": \"UserPlus\", \"key\": \"fila-onboarding\", \"label\": \"Onboarding\"}, {\"icon\": \"FileEdit\", \"key\": \"fila-retificacao\", \"label\": \"Retificação\"}, {\"icon\": \"ArrowLeftRight\", \"key\": \"fila-compensacao\", \"label\": \"Compensação\"}, {\"icon\": \"RefreshCw\", \"key\": \"fila-ressarcimento\", \"label\": \"Ressarcimento\"}, {\"icon\": \"Undo2\", \"key\": \"fila-restituicao\", \"label\": \"Restituição\"}, {\"icon\": \"DollarSign\", \"key\": \"gestao-creditos\", \"label\": \"Gestão de Créditos\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

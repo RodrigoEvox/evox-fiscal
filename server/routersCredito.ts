@@ -1325,6 +1325,298 @@ const adminRouter = router({
         return credDb.upsertCaseStrategy({ ...input, definidoPorId: user.id, definidoPorNome: user.name });
       }),
   }),
+
+  // ===== RTI TEMPLATES (admin) =====
+  rtiTemplates: router({
+    list: protectedProcedure.query(async () => {
+      return credDb.listRtiTemplates();
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getRtiTemplateById(input.id);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        nome: z.string(),
+        textoIntro: z.string().optional(),
+        textoObservacoes: z.string().optional(),
+        textoProximasEtapas: z.string().optional(),
+        cenarioCompensacaoDefault: z.any().optional(),
+        alertasDefault: z.any().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        return credDb.createRtiTemplate({ ...input, criadoPorId: user.id, criadoPorNome: user.name });
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        nome: z.string().optional(),
+        textoIntro: z.string().optional(),
+        textoObservacoes: z.string().optional(),
+        textoProximasEtapas: z.string().optional(),
+        cenarioCompensacaoDefault: z.any().optional(),
+        alertasDefault: z.any().optional(),
+        ativo: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await credDb.updateRtiTemplate(id, data);
+        return { success: true };
+      }),
+  }),
+
+  // ===== PARTNER RETURNS =====
+  partnerReturns: router({
+    list: protectedProcedure
+      .input(z.object({
+        rtiId: z.number().optional(),
+        clienteId: z.number().optional(),
+        parceiroId: z.number().optional(),
+        status: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return credDb.listPartnerReturns(input || {});
+      }),
+    stats: protectedProcedure.query(async () => {
+      return credDb.getPartnerReturnStats();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        rtiId: z.number(),
+        caseId: z.number().optional(),
+        clienteId: z.number(),
+        parceiroId: z.number().optional(),
+        parceiroNome: z.string().optional(),
+        slaDias: z.number().default(7),
+        valorRti: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const id = await credDb.createPartnerReturn({ ...input, registradoPorId: user.id, registradoPorNome: user.name });
+        await credDb.logCreditAudit({
+          entidade: 'partner_return',
+          entidadeId: id,
+          acao: 'criacao',
+          descricao: `RTI enviado ao parceiro ${input.parceiroNome || 'N/A'} com SLA de ${input.slaDias} dias`,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        retornoStatus: z.string().optional(),
+        retornoObservacao: z.string().optional(),
+        motivoNaoFechamento: z.string().optional(),
+        valorContratado: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const { id, ...data } = input;
+        if (data.retornoStatus && data.retornoStatus !== 'aguardando') {
+          (data as any).retornoRecebidoEm = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        }
+        await credDb.updatePartnerReturn(id, data);
+        await credDb.logCreditAudit({
+          entidade: 'partner_return',
+          entidadeId: id,
+          acao: 'atualizacao',
+          descricao: `Retorno atualizado: ${data.retornoStatus || 'edição'}`,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ===== ONBOARDING =====
+  onboarding: router({
+    getByTask: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getOnboardingRecord(input.taskId);
+      }),
+    getByCase: protectedProcedure
+      .input(z.object({ caseId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getOnboardingRecordByCase(input.caseId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        caseId: z.number().optional(),
+        clienteId: z.number(),
+        checklistRevisao: z.any().optional(),
+        checklistRefinamento: z.any().optional(),
+        checklistRegistro: z.any().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const id = await credDb.createOnboardingRecord(input);
+        await credDb.logCreditAudit({
+          entidade: 'onboarding',
+          entidadeId: id,
+          acao: 'criacao',
+          descricao: `Onboarding iniciado para tarefa ${input.taskId}`,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        checklistRevisao: z.any().optional(),
+        checklistRefinamento: z.any().optional(),
+        checklistRegistro: z.any().optional(),
+        reuniaoGravacaoUrl: z.string().optional(),
+        reuniaoGravacaoFileKey: z.string().optional(),
+        reuniaoTranscricaoUrl: z.string().optional(),
+        reuniaoTranscricaoFileKey: z.string().optional(),
+        reuniaoData: z.string().optional(),
+        reuniaoParticipantes: z.any().optional(),
+        creditoDescricao: z.string().optional(),
+        periodoCredito: z.string().optional(),
+        valorEstimadoCredito: z.number().optional(),
+        estrategia: z.string().optional(),
+        estrategiaDetalhes: z.any().optional(),
+        contatoContabil: z.any().optional(),
+        contatoFinanceiro: z.any().optional(),
+        contatoEmpresario: z.any().optional(),
+        contatoOutros: z.any().optional(),
+        responsavelTecnicoId: z.number().optional(),
+        responsavelTecnicoNome: z.string().optional(),
+        empresaTemDebitos: z.number().optional(),
+        empresaPrecisaCnd: z.number().optional(),
+        empresaNoEmac: z.number().optional(),
+        empresaHistoricoMalha: z.number().optional(),
+        empresaAssinanteMonitor: z.number().optional(),
+        status: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const { id, ...data } = input;
+        if (data.status === 'concluido') {
+          (data as any).concluidoEm = new Date().toISOString().slice(0, 19).replace('T', ' ');
+          (data as any).concluidoPorId = user.id;
+          (data as any).concluidoPorNome = user.name;
+        }
+        await credDb.updateOnboardingRecord(id, data);
+        await credDb.logCreditAudit({
+          entidade: 'onboarding',
+          entidadeId: id,
+          acao: 'atualizacao',
+          descricao: `Onboarding atualizado${data.status === 'concluido' ? ' - CONCLUÍDO' : ''}`,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ===== RTI OPORTUNIDADES =====
+  rtiOportunidades: router({
+    list: protectedProcedure
+      .input(z.object({ rtiId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.listRtiOportunidades(input.rtiId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        rtiId: z.number(),
+        teseId: z.number().optional(),
+        descricao: z.string(),
+        classificacao: z.enum(['pacificado', 'nao_pacificado']),
+        valorApurado: z.number().optional(),
+        detalhamento: z.any().optional(),
+        ordem: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return credDb.createRtiOportunidade(input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        descricao: z.string().optional(),
+        classificacao: z.enum(['pacificado', 'nao_pacificado']).optional(),
+        valorApurado: z.number().optional(),
+        detalhamento: z.any().optional(),
+        ordem: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await credDb.updateRtiOportunidade(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await credDb.deleteRtiOportunidade(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ===== RTI CENÁRIO & ALERTAS =====
+  rtiCenario: router({
+    list: protectedProcedure
+      .input(z.object({ rtiId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.listRtiCenarioCompensacao(input.rtiId);
+      }),
+    upsert: protectedProcedure
+      .input(z.object({
+        rtiId: z.number(),
+        items: z.array(z.object({
+          tributo: z.string(),
+          mediaMensal: z.number().optional(),
+          ordem: z.number().optional(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        await credDb.upsertRtiCenarioCompensacao(input.rtiId, input.items);
+        return { success: true };
+      }),
+  }),
+  rtiAlertas: router({
+    list: protectedProcedure
+      .input(z.object({ rtiId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.listRtiAlertas(input.rtiId);
+      }),
+    upsert: protectedProcedure
+      .input(z.object({
+        rtiId: z.number(),
+        items: z.array(z.object({
+          tipo: z.string(),
+          texto: z.string(),
+          ordem: z.number().optional(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        await credDb.upsertRtiAlertas(input.rtiId, input.items);
+        return { success: true };
+      }),
+  }),
+
+  // ===== APURAÇÃO STATS =====
+  apuracaoStats: protectedProcedure
+    .input(z.object({
+      periodoInicio: z.string().optional(),
+      periodoFim: z.string().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return credDb.getApuracaoStats(input || {});
+    }),
+
+  // ===== RTI FULL =====
+  rtiFull: protectedProcedure
+    .input(z.object({ rtiId: z.number() }))
+    .query(async ({ input }) => {
+      return credDb.getRtiReportFull(input.rtiId);
+    }),
 });
 
 // ===== COMBINED EXPORT =====
