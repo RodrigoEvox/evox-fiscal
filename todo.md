@@ -2087,3 +2087,10 @@
 - [x] Enviar notificação ao responsável quando tarefa atrasar
 - [x] Enviar notificação ao coordenador quando tarefa ultrapassar SLA crítico
 - [x] Registrar notificações no sistema de notificações existente
+
+## v77 — Reorganizar Menu Crédito
+
+### Menu Crédito
+- [x] Reordenar submenus: Dashboard, Nova Tarefa, Apuração, Onboarding, Retificação, Compensação, Ressarcimento, Restituição, Gestão de Créditos, Relatórios
+- [x] Remover subcategoria "Gestão" dentro do menu Crédito (lista plana)
+- [x] Remover "Teses Tributárias" do menu Crédito (fica apenas em Administração)

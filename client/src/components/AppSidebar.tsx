@@ -118,6 +118,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'fila-restituicao': Landmark,
   'gestao-creditos': DollarSign,
   'relatorios': FileBarChart,
+  'relatorios-credito': FileBarChart,
   'inbox': Mail,
   'conflito-carteira': ArrowLeftRight,
 };
@@ -315,7 +316,7 @@ export default function AppSidebar() {
                     </Link>
                   );
                 })}
-                {setor.sigla !== 'GEG' && (
+                {setor.sigla !== 'GEG' && setor.sigla !== 'CRE' && (
                   <Link href={`/setor/${setor.sigla.toLowerCase()}/relatorio`}>
                     <div className={cn(
                       'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all duration-150 text-[13px]',
