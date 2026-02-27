@@ -52,6 +52,7 @@ export default function CreditoFilaApuracao() {
   const [procuracaoFilter, setProcuracaoFilter] = useState('all');
   const [tipoClienteFilter, setTipoClienteFilter] = useState('all');
   const [slaStatusFilter, setSlaStatusFilter] = useState('all');
+  const [viabilidadeFilter, setViabilidadeFilter] = useState('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // RTI Dialog
@@ -255,6 +256,9 @@ export default function CreditoFilaApuracao() {
         return sla === slaStatusFilter;
       });
     }
+    if (viabilidadeFilter !== 'all') {
+      result = result.filter(t => t.viabilidade === viabilidadeFilter);
+    }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       result = result.filter(t =>
@@ -268,7 +272,7 @@ export default function CreditoFilaApuracao() {
     }
     result.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return result;
-  }, [tasks, statusFilter, parceiroFilter, teseFilter, dateFrom, dateTo, procuracaoFilter, tipoClienteFilter, slaStatusFilter, searchTerm, allTeses]);
+  }, [tasks, statusFilter, parceiroFilter, teseFilter, dateFrom, dateTo, procuracaoFilter, tipoClienteFilter, slaStatusFilter, viabilidadeFilter, searchTerm, allTeses]);
 
   const stats = useMemo(() => {
     const all = (tasks as any[]) || [];
@@ -762,9 +766,9 @@ export default function CreditoFilaApuracao() {
               <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
                 <Filter className="w-4 h-4" />
                 Filtros
-                {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo || procuracaoFilter !== 'all' || tipoClienteFilter !== 'all' || slaStatusFilter !== 'all') && (
+                {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo || procuracaoFilter !== 'all' || tipoClienteFilter !== 'all' || slaStatusFilter !== 'all' || viabilidadeFilter !== 'all') && (
                   <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
-                    {[parceiroFilter !== 'all', teseFilter !== 'all', dateFrom, dateTo, procuracaoFilter !== 'all', tipoClienteFilter !== 'all', slaStatusFilter !== 'all'].filter(Boolean).length}
+                    {[parceiroFilter !== 'all', teseFilter !== 'all', dateFrom, dateTo, procuracaoFilter !== 'all', tipoClienteFilter !== 'all', slaStatusFilter !== 'all', viabilidadeFilter !== 'all'].filter(Boolean).length}
                   </Badge>
                 )}
               </Button>
@@ -846,6 +850,19 @@ export default function CreditoFilaApuracao() {
                       </Select>
                     </div>
                     <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Viabilidade</label>
+                      <Select value={viabilidadeFilter} onValueChange={setViabilidadeFilter}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Todas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas</SelectItem>
+                          <SelectItem value="viavel">Viável (≥ R$ 20 mil)</SelectItem>
+                          <SelectItem value="inviavel">Inviável (&lt; R$ 20 mil)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">Data Início</label>
                       <Input type="date" className="h-9 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                     </div>
@@ -854,9 +871,9 @@ export default function CreditoFilaApuracao() {
                       <Input type="date" className="h-9 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                     </div>
                   </div>
-                  {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo || procuracaoFilter !== 'all' || tipoClienteFilter !== 'all' || slaStatusFilter !== 'all') && (
+                  {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo || procuracaoFilter !== 'all' || tipoClienteFilter !== 'all' || slaStatusFilter !== 'all' || viabilidadeFilter !== 'all') && (
                     <div className="flex justify-end mt-3">
-                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setParceiroFilter('all'); setTeseFilter('all'); setDateFrom(''); setDateTo(''); setProcuracaoFilter('all'); setTipoClienteFilter('all'); setSlaStatusFilter('all'); }}>
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setParceiroFilter('all'); setTeseFilter('all'); setDateFrom(''); setDateTo(''); setProcuracaoFilter('all'); setTipoClienteFilter('all'); setSlaStatusFilter('all'); setViabilidadeFilter('all'); }}>
                         Limpar Filtros
                       </Button>
                     </div>
@@ -2029,6 +2046,181 @@ function ApuracaoRelatorios() {
                   <div className="col-span-1 text-right font-medium">{formatCurrency(t.valorTotal)}</div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== RELATÓRIO DE VIABILIDADE ===== */}
+      <Separator className="my-4" />
+      <h2 className="text-lg font-semibold flex items-center gap-2">
+        <BarChart3 className="w-5 h-5 text-primary" />
+        Relatório de Viabilidade
+      </h2>
+
+      {/* Cards de Viabilidade */}
+      {stats?.viabilidade && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">{Number(stats.viabilidade.totalAvaliadas) || 0}</p>
+              <p className="text-xs text-muted-foreground">Total Avaliadas</p>
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-200">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{Number(stats.viabilidade.totalViavel) || 0}</p>
+              <p className="text-xs text-muted-foreground">Viáveis</p>
+            </CardContent>
+          </Card>
+          <Card className="border-red-200">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-red-600">{Number(stats.viabilidade.totalInviavel) || 0}</p>
+              <p className="text-xs text-muted-foreground">Inviáveis</p>
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-200">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.viabilidade.valorTotalViavel)}</p>
+              <p className="text-xs text-muted-foreground">Valor Viável</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-primary">
+                {Number(stats.viabilidade.totalAvaliadas) > 0
+                  ? `${Math.round((Number(stats.viabilidade.totalViavel) / Number(stats.viabilidade.totalAvaliadas)) * 100)}%`
+                  : '0%'}
+              </p>
+              <p className="text-xs text-muted-foreground">Taxa de Viabilidade</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Viabilidade por Tese */}
+      {stats?.viabilidadePorTese && (stats.viabilidadePorTese as any[]).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Taxa de Viabilidade por Tese</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              <div className="grid grid-cols-7 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase">
+                <div className="col-span-2">Tese</div>
+                <div className="col-span-1">Tributo</div>
+                <div className="col-span-1 text-center">Viável</div>
+                <div className="col-span-1 text-center">Inviável</div>
+                <div className="col-span-1 text-center">Taxa</div>
+                <div className="col-span-1 text-right">Valor Total</div>
+              </div>
+              {(stats.viabilidadePorTese as any[]).map((t: any, idx: number) => (
+                <div key={idx} className="grid grid-cols-7 gap-2 px-4 py-3 text-sm items-center">
+                  <div className="col-span-2 font-medium truncate">{t.teseNome}</div>
+                  <div className="col-span-1 text-xs text-muted-foreground">{t.tributoEnvolvido}</div>
+                  <div className="col-span-1 text-center">
+                    <Badge className="text-[10px] bg-emerald-100 text-emerald-800">{Number(t.viavel)}</Badge>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <Badge className="text-[10px] bg-red-100 text-red-800">{Number(t.inviavel)}</Badge>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <div className="flex items-center gap-1 justify-center">
+                      <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Number(t.taxaViabilidade) || 0}%` }} />
+                      </div>
+                      <span className="text-xs font-medium">{Number(t.taxaViabilidade) || 0}%</span>
+                    </div>
+                  </div>
+                  <div className="col-span-1 text-right font-medium">{formatCurrency(t.valorTotal)}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Viabilidade por Parceiro */}
+      {stats?.viabilidadePorParceiro && (stats.viabilidadePorParceiro as any[]).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Taxa de Viabilidade por Parceiro</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              <div className="grid grid-cols-6 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase">
+                <div className="col-span-2">Parceiro</div>
+                <div className="col-span-1 text-center">Viável</div>
+                <div className="col-span-1 text-center">Inviável</div>
+                <div className="col-span-1 text-center">Taxa</div>
+                <div className="col-span-1 text-right">Valor Total</div>
+              </div>
+              {(stats.viabilidadePorParceiro as any[]).map((p: any, idx: number) => (
+                <div key={idx} className="grid grid-cols-6 gap-2 px-4 py-3 text-sm items-center">
+                  <div className="col-span-2 font-medium">{p.parceiroNome}</div>
+                  <div className="col-span-1 text-center">
+                    <Badge className="text-[10px] bg-emerald-100 text-emerald-800">{Number(p.viavel)}</Badge>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <Badge className="text-[10px] bg-red-100 text-red-800">{Number(p.inviavel)}</Badge>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <div className="flex items-center gap-1 justify-center">
+                      <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Number(p.taxaViabilidade) || 0}%` }} />
+                      </div>
+                      <span className="text-xs font-medium">{Number(p.taxaViabilidade) || 0}%</span>
+                    </div>
+                  </div>
+                  <div className="col-span-1 text-right font-medium">{formatCurrency(p.valorTotal)}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Viabilidade por Mês */}
+      {stats?.viabilidadePorMes && (stats.viabilidadePorMes as any[]).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Evolução Mensal da Viabilidade</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              <div className="grid grid-cols-6 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase">
+                <div className="col-span-1">Mês</div>
+                <div className="col-span-1 text-center">Viável</div>
+                <div className="col-span-1 text-center">Inviável</div>
+                <div className="col-span-1 text-center">Total</div>
+                <div className="col-span-1 text-center">Taxa</div>
+                <div className="col-span-1 text-right">Valor Total</div>
+              </div>
+              {(stats.viabilidadePorMes as any[]).map((m: any, idx: number) => {
+                const [year, month] = (m.mes || '').split('-');
+                const mesLabel = month ? `${month}/${year}` : m.mes;
+                return (
+                  <div key={idx} className="grid grid-cols-6 gap-2 px-4 py-3 text-sm items-center">
+                    <div className="col-span-1 font-medium">{mesLabel}</div>
+                    <div className="col-span-1 text-center">
+                      <Badge className="text-[10px] bg-emerald-100 text-emerald-800">{Number(m.viavel)}</Badge>
+                    </div>
+                    <div className="col-span-1 text-center">
+                      <Badge className="text-[10px] bg-red-100 text-red-800">{Number(m.inviavel)}</Badge>
+                    </div>
+                    <div className="col-span-1 text-center">{Number(m.total)}</div>
+                    <div className="col-span-1 text-center">
+                      <div className="flex items-center gap-1 justify-center">
+                        <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Number(m.taxaViabilidade) || 0}%` }} />
+                        </div>
+                        <span className="text-xs font-medium">{Number(m.taxaViabilidade) || 0}%</span>
+                      </div>
+                    </div>
+                    <div className="col-span-1 text-right font-medium">{formatCurrency(m.valorTotal)}</div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

@@ -882,6 +882,55 @@ const creditoRouter = router({
           usuarioNome: user.name,
         });
 
+        // ===== NOTIFICAÇÃO AUTOMÁTICA AO PARCEIRO =====
+        // Notify parceiro when apuração is concluded with viabilidade result
+        if (task.fila === 'apuracao' && task.viabilidade) {
+          try {
+            // Get client info to find parceiro
+            const clienteInfo = task.clienteId ? await db.getClienteById(task.clienteId) : null;
+            const parceiroId = clienteInfo?.parceiroId;
+            if (parceiroId) {
+              const parceiro = await db.getParceiroById(parceiroId);
+              if (parceiro) {
+                const viabLabel = task.viabilidade === 'viavel' ? 'VIÁVEL' : 'INVIÁVEL';
+                const valorFormatado = task.valorGlobalApurado
+                  ? Number(task.valorGlobalApurado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  : 'N/A';
+                const clienteNome = clienteInfo?.razaoSocial || clienteInfo?.nomeFantasia || 'Cliente';
+                const clienteCodigo = clienteInfo?.codigo || '';
+
+                // Create internal notification for the owner
+                await notifyOwner({
+                  title: `Apuração Concluída - ${viabLabel}`,
+                  content: `A apuração do cliente ${clienteNome} (Cód: ${clienteCodigo}) foi concluída como ${viabLabel}. Valor global apurado: ${valorFormatado}. Parceiro: ${parceiro.nomeCompleto || parceiro.nomeFantasia || 'N/A'}.`,
+                });
+
+                // Create notification record in the system
+                await db.createNotificacao({
+                  tipo: 'analise_concluida' as any,
+                  titulo: `Apuração Concluída - ${clienteNome}`,
+                  mensagem: `A análise do cliente ${clienteNome} (Código: ${clienteCodigo}) foi concluída com resultado ${viabLabel}. Valor global apurado: ${valorFormatado}. Parceiro vinculado: ${parceiro.nomeCompleto || parceiro.nomeFantasia || 'N/A'} (${parceiro.email || 'sem e-mail'}).`,
+                  lida: false,
+                  clienteId: task.clienteId,
+                  tarefaId: task.id,
+                });
+
+                // Log the notification in audit
+                await credDb.logCreditAudit({
+                  entidade: 'task',
+                  entidadeId: input.id,
+                  acao: 'notificacao_parceiro',
+                  descricao: `Notificação enviada ao parceiro ${parceiro.nomeCompleto || parceiro.nomeFantasia} sobre conclusão da apuração (${viabLabel}) do cliente ${clienteNome}`,
+                  usuarioId: user.id,
+                  usuarioNome: user.name,
+                });
+              }
+            }
+          } catch (notifErr) {
+            console.error('[Notificação Parceiro] Erro ao enviar notificação:', notifErr);
+          }
+        }
+
         return { success: true, nextFila, nextTaskId };
       }),
 

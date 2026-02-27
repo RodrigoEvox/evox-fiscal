@@ -1285,7 +1285,77 @@ export async function getApuracaoStats(filters?: { periodoInicio?: string; perio
     ORDER BY valorTotal DESC
   `));
   
-  return { ...(rows as unknown as any[])[0], porTese: teseRows as unknown as any[] };
+  // Stats de viabilidade
+  const [viabRows] = await db_.execute(sql.raw(`
+    SELECT 
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) as totalViavel,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'inviavel' THEN ct.id END) as totalInviavel,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade IS NOT NULL THEN ct.id END) as totalAvaliadas,
+      COALESCE(SUM(CASE WHEN ct.viabilidade = 'viavel' THEN ct.valorGlobalApurado ELSE 0 END), 0) as valorTotalViavel,
+      COALESCE(SUM(CASE WHEN ct.viabilidade = 'inviavel' THEN ct.valorGlobalApurado ELSE 0 END), 0) as valorTotalInviavel
+    FROM credit_tasks ct
+    WHERE ct.fila = 'apuracao' AND ct.viabilidade IS NOT NULL
+  `));
+
+  // Viabilidade por tese
+  const [viabTeseRows] = await db_.execute(sql.raw(`
+    SELECT 
+      t.nome as teseNome,
+      t.tributoEnvolvido,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) as viavel,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'inviavel' THEN ct.id END) as inviavel,
+      COUNT(DISTINCT ct.id) as total,
+      ROUND(COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) * 100.0 / NULLIF(COUNT(DISTINCT ct.id), 0), 1) as taxaViabilidade,
+      COALESCE(SUM(ct.valorGlobalApurado), 0) as valorTotal
+    FROM credit_tasks ct
+    JOIN credit_task_teses ctt ON ctt.taskId = ct.id
+    JOIN teses t ON t.id = ctt.teseId
+    WHERE ct.fila = 'apuracao' AND ct.viabilidade IS NOT NULL
+    GROUP BY t.id, t.nome, t.tributoEnvolvido
+    ORDER BY taxaViabilidade DESC
+  `));
+
+  // Viabilidade por parceiro
+  const [viabParceiroRows] = await db_.execute(sql.raw(`
+    SELECT 
+      COALESCE(p.nome, 'Sem parceiro') as parceiroNome,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) as viavel,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'inviavel' THEN ct.id END) as inviavel,
+      COUNT(DISTINCT ct.id) as total,
+      ROUND(COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) * 100.0 / NULLIF(COUNT(DISTINCT ct.id), 0), 1) as taxaViabilidade,
+      COALESCE(SUM(ct.valorGlobalApurado), 0) as valorTotal
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON c.id = ct.clienteId
+    LEFT JOIN parceiros p ON p.id = c.parceiroId
+    WHERE ct.fila = 'apuracao' AND ct.viabilidade IS NOT NULL
+    GROUP BY p.id, p.nome
+    ORDER BY total DESC
+  `));
+
+  // Viabilidade por mês
+  const [viabMensalRows] = await db_.execute(sql.raw(`
+    SELECT 
+      DATE_FORMAT(ct.updatedAt, '%Y-%m') as mes,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) as viavel,
+      COUNT(DISTINCT CASE WHEN ct.viabilidade = 'inviavel' THEN ct.id END) as inviavel,
+      COUNT(DISTINCT ct.id) as total,
+      ROUND(COUNT(DISTINCT CASE WHEN ct.viabilidade = 'viavel' THEN ct.id END) * 100.0 / NULLIF(COUNT(DISTINCT ct.id), 0), 1) as taxaViabilidade,
+      COALESCE(SUM(ct.valorGlobalApurado), 0) as valorTotal
+    FROM credit_tasks ct
+    WHERE ct.fila = 'apuracao' AND ct.viabilidade IS NOT NULL
+    GROUP BY mes
+    ORDER BY mes DESC
+    LIMIT 12
+  `));
+
+  return {
+    ...(rows as unknown as any[])[0],
+    porTese: teseRows as unknown as any[],
+    viabilidade: (viabRows as unknown as any[])[0],
+    viabilidadePorTese: viabTeseRows as unknown as any[],
+    viabilidadePorParceiro: viabParceiroRows as unknown as any[],
+    viabilidadePorMes: viabMensalRows as unknown as any[],
+  };
 }
 
 

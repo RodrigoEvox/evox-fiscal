@@ -2336,3 +2336,23 @@
 - [x] Cálculo automático: somatório das teses apuradas ≥ R$20.000 = Viável, < R$20.000 = Inviável
 - [x] Permitir override manual pelo operador (sugestão automática mas editável)
 - [x] Exibir badge Viável/Inviável na fila nas etapas "Feito" e "Concluído"
+
+## v89 — Relatório de Viabilidade, Filtro Viabilidade, Notificação ao Parceiro
+
+### Relatório de Viabilidade Consolidado
+- [x] Criar procedure backend para relatório de viabilidade com filtros (período, tese, parceiro)
+- [x] Calcular taxa de viabilidade por tese (% viável vs inviável)
+- [x] Calcular taxa de viabilidade por parceiro
+- [x] Calcular taxa de viabilidade por período (mensal)
+- [x] Criar página de relatório com gráficos e tabelas consolidadas
+- [x] Integrado na aba Relatórios existente da fila de apuração
+
+### Filtro por Viabilidade na Fila de Apuração
+- [x] Adicionar filtro "Viabilidade" (Todos, Viável, Inviável) na barra de filtros
+- [x] Aplicar filtro no frontend na listagem de tarefas
+
+### Notificação Automática ao Parceiro
+- [x] Ao concluir apuração (viável ou inviável), enviar notificação ao parceiro vinculado
+- [x] Notificação deve conter: nome do cliente, código, resultado da viabilidade e valor global
+- [x] Registrar log de auditoria da notificação enviada
+- [x] Notificação enviada ao owner (administrador) e registrada no sistema de notificações internas
