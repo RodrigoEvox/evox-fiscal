@@ -1251,6 +1251,7 @@ export const teses = mysqlTable("teses", {
 	aplicavelLucroReal: tinyint().default(0).notNull(),
 	aplicavelLucroPresumido: tinyint().default(0).notNull(),
 	aplicavelSimplesNacional: tinyint().default(0).notNull(),
+	slaApuracaoDias: int().default(15), // SLA em dias para apuração desta tese
 	versao: int().default(1).notNull(),
 	ativa: tinyint().default(1).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),

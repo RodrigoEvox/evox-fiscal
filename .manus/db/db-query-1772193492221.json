@@ -1,0 +1,120 @@
+{
+  "query": "SELECT id, codigo, fila, titulo, status, slaHoras, slaStatus, dataVencimento, createdAt FROM credit_tasks ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, codigo, fila, titulo, status, slaHoras, slaStatus, dataVencimento, createdAt FROM credit_tasks ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "60001",
+      "codigo": "CT-0007",
+      "fila": "apuracao",
+      "titulo": "TESTE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-27 11:46:42"
+    },
+    {
+      "id": "30007",
+      "codigo": "CT-3000",
+      "fila": "compensacao",
+      "titulo": "TESTE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 22:18:40"
+    },
+    {
+      "id": "30006",
+      "codigo": "CT-0006",
+      "fila": "apuracao",
+      "titulo": "TESTE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 22:12:22"
+    },
+    {
+      "id": "30005",
+      "codigo": "CT-0005",
+      "fila": "apuracao",
+      "titulo": "PERSE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 22:09:30"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-0004",
+      "fila": "apuracao",
+      "titulo": "Apuração PERSE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 20:54:54"
+    },
+    {
+      "id": "30003",
+      "codigo": "CT-3000",
+      "fila": "compensacao",
+      "titulo": "Compensação IRPJ",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 19:59:00"
+    },
+    {
+      "id": "30002",
+      "codigo": "CT-3000",
+      "fila": "compensacao",
+      "titulo": "Compensação PIS Cofins",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 18:28:16"
+    },
+    {
+      "id": "30001",
+      "codigo": "CT-3000",
+      "fila": "compensacao",
+      "titulo": "Compensação PIS/Cofins",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 17:58:55"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0003",
+      "fila": "apuracao",
+      "titulo": "Reapuração",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 14:52:27"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0002",
+      "fila": "apuracao",
+      "titulo": "Teste",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 14:44:28"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tfila\ttitulo\tstatus\tslaHoras\tslaStatus\tdataVencimento\tcreatedAt\n60001\tCT-0007\tapuracao\tTESTE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-27 11:46:42\n30007\tCT-3000\tcompensacao\tTESTE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 22:18:40\n30006\tCT-0006\tapuracao\tTESTE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 22:12:22\n30005\tCT-0005\tapuracao\tPERSE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 22:09:30\n30004\tCT-0004\tapuracao\tApuração PERSE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 20:54:54\n30003\tCT-3000\tcompensacao\tCompensação IRPJ\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 19:59:00\n30002\tCT-3000\tcompensacao\tCompensação PIS Cofins\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 18:28:16\n30001\tCT-3000\tcompensacao\tCompensação PIS/Cofins\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 17:58:55\n3\tCT-0003\tapuracao\tReapuração\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 14:52:27\n2\tCT-0002\tapuracao\tTeste\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 14:44:28\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

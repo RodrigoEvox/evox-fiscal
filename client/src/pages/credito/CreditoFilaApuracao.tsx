@@ -448,6 +448,12 @@ export default function CreditoFilaApuracao() {
         caseId: selectedTask.caseId || 0,
         clienteId: selectedTask.clienteId,
         taskId: selectedTask.id,
+        tesesAnalisadas: oportunidades.map(op => ({
+          descricao: op.descricao,
+          classificacao: op.classificacao,
+          valorApurado: parseFloat(op.valorApurado) || 0,
+          teseId: op.teseId,
+        })),
         periodoAnalise: rtiForm.periodoAnalise,
         resumoExecutivo: rtiForm.resumoExecutivo,
         metodologia: rtiForm.metodologia,
@@ -568,7 +574,7 @@ export default function CreditoFilaApuracao() {
             Fila de Apuração
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Checklist de apuração por tese, geração de RTI e gestão de retorno dos parceiros.
+            Geração de RTI, acompanhamento de SLA e gestão de retorno dos parceiros.
           </p>
         </div>
       </div>
@@ -700,72 +706,102 @@ export default function CreditoFilaApuracao() {
                   <p className="text-sm">Nenhuma tarefa de apuração encontrada.</p>
                 </div>
               ) : (
-                <div className="divide-y">
-                  <div className="grid grid-cols-[80px_1fr_1fr_1fr_80px_80px_80px_120px_80px_100px] gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <div>Código</div>
-                    <div>Cliente</div>
-                    <div>Parceiro</div>
-                    <div>Título</div>
-                    <div>Status</div>
-                    <div>SLA</div>
-                    <div>Resp.</div>
-                    <div>Criado</div>
-                    <div>Por</div>
-                    <div className="text-center">Ações</div>
-                  </div>
-                  {filteredTasks.map((task: any) => {
-                    const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
-                    const isOverdue = task.slaStatus === 'vencido';
-                    return (
-                      <div key={task.id} className={cn('grid grid-cols-[80px_1fr_1fr_1fr_80px_80px_80px_120px_80px_100px] gap-2 px-4 py-3 hover:bg-muted/30 transition-colors items-center text-sm', isOverdue && 'bg-red-50/50')}>
-                        <div>
-                          <span className="font-mono text-xs text-muted-foreground">{task.codigo}</span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium truncate">{task.clienteNome || '—'}</p>
-                          <p className="text-[10px] text-muted-foreground">{task.clienteCnpj || ''}</p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs truncate">{task.parceiroNome || '—'}</p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate text-xs">{task.titulo}</p>
-                        </div>
-                        <div>
-                          <Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge>
-                        </div>
-                        <div>
-                          {isOverdue ? (
-                            <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" />Atraso</Badge>
-                          ) : (
-                            <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-0.5"><CheckCircle className="w-3 h-3" />OK</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 min-w-0">
-                          <User className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="text-[10px] text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-foreground">{formatDateTime(task.createdAt)}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-foreground truncate">{task.criadoPorNome || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-1 justify-center">
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => handleOpenChecklist(task)} title="Checklist">
-                            <ClipboardList className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-primary" onClick={() => handleOpenRtiDialog(task)} title="Gerar RTI">
-                            <FileText className="w-3.5 h-3.5" />
-                            RTI
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-emerald-600" onClick={() => handleViewRti(task)} title="Visualizar RTI">
-                            <Eye className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Código</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parceiro</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Título</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Status</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[200px]">SLA</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[110px]">Resp.</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[170px]">Criado</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">RTI</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {filteredTasks.map((task: any) => {
+                        const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
+                        const slaStatus = task.slaStatus || 'dentro_prazo';
+                        const hasRti = (task.rtiCount && Number(task.rtiCount) > 0) || task.status === 'feito' || task.status === 'concluido';
+                        return (
+                          <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', slaStatus === 'vencido' && 'bg-red-50/50 dark:bg-red-950/20', slaStatus === 'atencao' && 'bg-amber-50/50 dark:bg-amber-950/20')}>
+                            <td className="px-4 py-3.5">
+                              <span className="font-mono text-sm font-semibold text-muted-foreground">{task.codigo}</span>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className="text-sm font-semibold text-foreground truncate">{task.clienteNome || '—'}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{task.clienteCnpj || ''}</p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {task.parceiroNome ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Handshake className="w-4 h-4 text-primary shrink-0" />
+                                  <span className="text-sm font-medium text-foreground truncate">{task.parceiroNome}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Sem parceiro vinculado</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className="text-sm font-medium text-foreground truncate">{task.titulo}</p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <Badge className={cn('text-xs', statusInfo.color)}>{statusInfo.label}</Badge>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex flex-col gap-1">
+                                {slaStatus === 'vencido' ? (
+                                  <Badge variant="destructive" className="text-xs gap-1 w-fit"><AlertTriangle className="w-3.5 h-3.5" />Vencido</Badge>
+                                ) : slaStatus === 'atencao' ? (
+                                  <Badge className="text-xs bg-amber-100 text-amber-800 gap-1 w-fit"><Clock className="w-3.5 h-3.5" />Atenção</Badge>
+                                ) : (
+                                  <Badge className="text-xs bg-emerald-100 text-emerald-800 gap-1 w-fit"><CheckCircle className="w-3.5 h-3.5" />No Prazo</Badge>
+                                )}
+                                <div className="text-xs text-muted-foreground space-y-0.5">
+                                  <p>Início: <span className="font-medium text-foreground">{formatDate(task.dataInicio || task.createdAt)}</span></p>
+                                  <p>Fim: <span className={cn('font-medium', slaStatus === 'vencido' ? 'text-red-600' : slaStatus === 'atencao' ? 'text-amber-600' : 'text-foreground')}>{task.dataFimPrevista ? formatDate(task.dataFimPrevista) : '—'}</span></p>
+                                  {task.slaDias && <p className="text-[10px]">({task.slaDias} dias)</p>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-1.5">
+                                <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                                <span className="text-sm font-medium text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className="text-sm font-medium text-foreground">{formatDateTime(task.createdAt)}</p>
+                              <p className="text-sm text-muted-foreground mt-1">por <span className="font-medium">{task.criadoPorNome || '—'}</span></p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-1.5 justify-center">
+                                {hasRti ? (
+                                  <>
+                                    <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" onClick={() => handleViewRti(task)} title="RTI Disponível — Clique para visualizar">
+                                      <Download className="w-4 h-4" />
+                                      RTI ({Number(task.rtiCount) || 1})
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-primary" onClick={() => handleOpenRtiDialog(task)} title="Gerar novo RTI">
+                                      <Plus className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 text-primary font-medium" onClick={() => handleOpenRtiDialog(task)} title="Gerar RTI">
+                                    <FileText className="w-4 h-4" />
+                                    Gerar RTI
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </CardContent>
@@ -912,12 +948,27 @@ export default function CreditoFilaApuracao() {
 
           <Tabs value={rtiTab} onValueChange={setRtiTab} className="w-full">
             <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
+              <TabsTrigger value="checklist" className="text-xs">Checklist por Tese</TabsTrigger>
               <TabsTrigger value="dados" className="text-xs">Dados Gerais</TabsTrigger>
               <TabsTrigger value="oportunidades" className="text-xs">Oportunidades</TabsTrigger>
               <TabsTrigger value="cenario" className="text-xs">Cenário Compensação</TabsTrigger>
               <TabsTrigger value="alertas" className="text-xs">Alertas</TabsTrigger>
               <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
             </TabsList>
+
+            {/* CHECKLIST POR TESE - Passo a passo para o operador/analista */}
+            <TabsContent value="checklist" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <h3 className="font-medium flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Checklist de Apuração por Tese
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Passo a passo de como deve ser executada a apuração de cada tese vinculada a esta tarefa.
+                </p>
+              </div>
+              {selectedTask && <TeseChecklistContent taskId={selectedTask.id} />}
+            </TabsContent>
 
             <TabsContent value="dados" className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
@@ -1246,21 +1297,7 @@ export default function CreditoFilaApuracao() {
         </DialogContent>
       </Dialog>
 
-      {/* ===== CHECKLIST DIALOG ===== */}
-      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="w-5 h-5" />
-              Checklist de Apuração
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              {checklistTask?.titulo} — {checklistTask?.clienteNome || 'Cliente'}
-            </p>
-          </DialogHeader>
-          <ChecklistContent taskId={checklistTask?.id} fila="apuracao" templates={checklistTemplates as any[]} />
-        </DialogContent>
-      </Dialog>
+      {/* Checklist foi movido para a visão do operador/analista por tese */}
     </div>
   );
 }
@@ -1368,6 +1405,200 @@ function ChecklistContent({ taskId, fila, templates }: { taskId: number; fila: s
   );
 }
 
+// ===== CHECKLIST POR TESE COMPONENT =====
+function TeseChecklistContent({ taskId }: { taskId: number }) {
+  const { data: taskTeses } = trpc.creditRecovery.admin.taskTeses.list.useQuery({ taskId }, { enabled: !!taskId });
+  const { data: allTemplates } = trpc.creditRecovery.admin.checklists.templates.useQuery({ fila: 'apuracao' });
+  const { data: instance, refetch } = trpc.creditRecovery.admin.checklists.getInstance.useQuery({ taskId }, { enabled: !!taskId });
+  const createInstance = trpc.creditRecovery.admin.checklists.createInstance.useMutation();
+  const updateInstance = trpc.creditRecovery.admin.checklists.updateInstance.useMutation();
+  const [items, setItems] = useState<any[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  // Parse existing instance items
+  if (instance && !initialized) {
+    try {
+      const parsed = typeof (instance as any).itens === 'string' ? JSON.parse((instance as any).itens) : (instance as any).itens;
+      if (Array.isArray(parsed)) setItems(parsed);
+    } catch {}
+    setInitialized(true);
+  }
+
+  const teses = (taskTeses as any[] || []);
+  const templates = (allTemplates as any[] || []);
+
+  // Group templates by tese
+  const getTemplatesForTese = (teseId: number) => {
+    return templates.filter(t => t.teseId === teseId || t.teseId === null);
+  };
+
+  // Initialize checklist from all tese templates combined
+  const handleInitAll = async () => {
+    try {
+      let allItems: any[] = [];
+      let itemIdx = 0;
+      for (const tese of teses) {
+        const teseTemplates = templates.filter(t => t.teseId === (tese as any).teseId);
+        // If no specific template, use generic ones
+        const useTemplates = teseTemplates.length > 0 ? teseTemplates : templates.filter(t => !t.teseId);
+        for (const tmpl of useTemplates) {
+          const tmplItems = typeof tmpl.itens === 'string' ? JSON.parse(tmpl.itens) : tmpl.itens;
+          for (const item of (tmplItems || [])) {
+            allItems.push({
+              id: itemIdx++,
+              teseId: (tese as any).teseId,
+              teseNome: (tese as any).teseNome || (tese as any).nome || 'Tese',
+              texto: typeof item === 'string' ? item : (item.titulo || item.texto || item.label || ''),
+              descricao: typeof item === 'object' ? (item.descricao || '') : '',
+              concluido: false,
+              concluidoEm: null,
+              concluidoPor: null,
+            });
+          }
+        }
+      }
+      if (allItems.length === 0) {
+        toast.error('Nenhum template de checklist encontrado para as teses desta tarefa.');
+        return;
+      }
+      await createInstance.mutateAsync({
+        taskId,
+        templateId: null,
+        fila: 'apuracao',
+        nome: 'Checklist de Apuração por Tese',
+        itens: allItems,
+      } as any);
+      setItems(allItems);
+      setInitialized(true);
+      refetch();
+      toast.success('Checklist iniciado com sucesso!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar checklist');
+    }
+  };
+
+  const toggleItem = async (idx: number) => {
+    if (!instance) return;
+    const updated = items.map((item, i) => i === idx ? { ...item, concluido: !item.concluido, concluidoEm: !item.concluido ? new Date().toISOString() : null } : item);
+    setItems(updated);
+    const progresso = Math.round((updated.filter(i => i.concluido).length / updated.length) * 100);
+    await updateInstance.mutateAsync({ id: (instance as any).id, itens: updated, progresso });
+  };
+
+  const progresso = items.length > 0 ? Math.round((items.filter(i => i.concluido).length / items.length) * 100) : 0;
+
+  if (!teses.length) {
+    return (
+      <div className="p-6 text-center text-muted-foreground border rounded-lg border-dashed">
+        <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">Nenhuma tese vinculada a esta tarefa.</p>
+        <p className="text-xs mt-1">Vincule teses à tarefa para ver o checklist de apuração.</p>
+      </div>
+    );
+  }
+
+  if (!instance && !initialized) {
+    return (
+      <div className="space-y-4">
+        <div className="p-4 border rounded-lg border-dashed text-center space-y-3">
+          <ClipboardList className="w-8 h-8 mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Nenhum checklist iniciado para esta tarefa.</p>
+          <p className="text-xs text-muted-foreground">O checklist será gerado com base nos templates configurados para cada tese.</p>
+          <div className="space-y-2">
+            <p className="text-xs font-medium">Teses vinculadas:</p>
+            {teses.map((t: any) => {
+              const teseTemplates = getTemplatesForTese(t.teseId);
+              return (
+                <div key={t.id} className="flex items-center justify-between text-xs px-3 py-2 bg-muted/50 rounded">
+                  <span>{t.teseNome || t.nome || `Tese #${t.teseId}`}</span>
+                  <Badge variant={teseTemplates.length > 0 ? 'default' : 'secondary'} className="text-[10px]">
+                    {teseTemplates.length > 0 ? `${teseTemplates.length} template(s)` : 'Sem template'}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+          <Button onClick={handleInitAll} className="gap-2">
+            <ClipboardList className="w-4 h-4" />
+            Iniciar Checklist
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Group items by tese
+  const groupedByTese = teses.reduce((acc: Record<string, any[]>, tese: any) => {
+    const teseId = tese.teseId;
+    const teseNome = tese.teseNome || tese.nome || `Tese #${teseId}`;
+    acc[teseNome] = items.filter(item => item.teseId === teseId);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  return (
+    <div className="space-y-4">
+      {/* Progress bar */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Progresso Geral</span>
+          <span className="font-semibold">{progresso}%</span>
+        </div>
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div className={cn('rounded-full h-2.5 transition-all', progresso === 100 ? 'bg-emerald-500' : progresso >= 50 ? 'bg-blue-500' : 'bg-amber-500')} style={{ width: `${progresso}%` }} />
+        </div>
+      </div>
+
+      {/* Items grouped by tese */}
+      <div className="space-y-4">
+        {Object.entries(groupedByTese).map(([teseNome, teseItems]) => {
+          const teseProgresso = teseItems.length > 0 ? Math.round((teseItems.filter((i: any) => i.concluido).length / teseItems.length) * 100) : 0;
+          return (
+            <Card key={teseNome}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4" />
+                    {teseNome}
+                  </span>
+                  <Badge variant={teseProgresso === 100 ? 'default' : 'secondary'} className={cn('text-[10px]', teseProgresso === 100 && 'bg-emerald-600')}>
+                    {teseProgresso}%
+                  </Badge>
+                </CardTitle>
+                <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+                  <div className={cn('rounded-full h-1.5 transition-all', teseProgresso === 100 ? 'bg-emerald-500' : 'bg-primary')} style={{ width: `${teseProgresso}%` }} />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-1">
+                {teseItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">Nenhum item de checklist para esta tese.</p>
+                ) : (
+                  teseItems.map((item: any) => {
+                    const globalIdx = items.findIndex(i => i.id === item.id);
+                    return (
+                      <div key={item.id} className={cn('flex items-start gap-3 p-2.5 rounded-lg transition-colors cursor-pointer hover:bg-muted/50', item.concluido && 'bg-emerald-50/50 dark:bg-emerald-950/20')} onClick={() => toggleItem(globalIdx)}>
+                        <Checkbox checked={item.concluido} onCheckedChange={() => toggleItem(globalIdx)} className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className={cn('text-sm', item.concluido && 'line-through text-muted-foreground')}>{item.texto}</p>
+                          {item.descricao && <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>}
+                          {item.concluidoEm && (
+                            <p className="text-[10px] text-emerald-600 mt-1">
+                              Concluído em {new Date(item.concluidoEm).toLocaleString('pt-BR')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ===== RELATÓRIOS COMPONENT =====
 function ApuracaoRelatorios() {
   const { data: stats, isLoading } = trpc.creditRecovery.admin.apuracaoStats.useQuery({});
@@ -1464,30 +1695,60 @@ function RtiHistoryContent({ taskId, comparingRtis, setComparingRtis, formatDate
     { enabled: !!selectedRtiId }
   );
 
+  const trpcUtils = trpc.useUtils();
+
   const handleDownloadVersion = async (rti: any) => {
     try {
-      // Load oportunidades for this RTI
-      const teses = rti.tesesAnalisadas ? (typeof rti.tesesAnalisadas === 'string' ? JSON.parse(rti.tesesAnalisadas) : rti.tesesAnalisadas) : [];
+      // Load full RTI data including oportunidades, cenário and alertas from the backend
+      const fullRti = await trpcUtils.creditRecovery.admin.rtiFull.fetch({ rtiId: rti.id });
+      const oportunidades = (fullRti as any)?.oportunidades || [];
+      const cenario = (fullRti as any)?.cenarioCompensacao || [];
+      const alertas = (fullRti as any)?.alertas || [];
+
+      // Calculate totals from oportunidades
+      const totalOps = oportunidades.reduce((sum: number, o: any) => sum + (parseFloat(o.valorApurado) || 0), 0);
+      const totalPac = oportunidades.filter((o: any) => o.classificacao === 'pacificado').reduce((sum: number, o: any) => sum + (parseFloat(o.valorApurado) || 0), 0);
+      const totalNaoPac = oportunidades.filter((o: any) => o.classificacao === 'nao_pacificado').reduce((sum: number, o: any) => sum + (parseFloat(o.valorApurado) || 0), 0);
+
+      // Use oportunidades from DB if available, otherwise fall back to tesesAnalisadas JSON
+      const opsForPdf = oportunidades.length > 0 ? oportunidades.map((o: any) => ({
+        descricao: o.descricao,
+        classificacao: o.classificacao,
+        valorApurado: parseFloat(o.valorApurado) || 0,
+      })) : (rti.tesesAnalisadas ? (typeof rti.tesesAnalisadas === 'string' ? JSON.parse(rti.tesesAnalisadas) : rti.tesesAnalisadas) : []);
+
+      const cenarioForPdf = cenario.map((c: any) => ({
+        tributo: c.tributo,
+        mediaMensal: parseFloat(c.mediaMensal) || 0,
+      }));
+
+      const alertasForPdf = alertas.map((a: any) => ({
+        tipo: a.tipo,
+        texto: a.texto,
+      }));
+
       const doc = await generateRtiPdf({
         clienteNome: rti.clienteNome || selectedTask?.clienteNome || '—',
         clienteCnpj: rti.clienteCnpj || selectedTask?.clienteCnpj || '—',
-        periodoAnalise: rti.periodoAnalise || '—',
-        resumoExecutivo: rti.resumoExecutivo || '',
-        metodologia: rti.metodologia || '',
-        conclusao: rti.conclusao || '',
-        observacoes: rti.observacoes || '',
-        oportunidades: teses,
-        cenario: [],
-        alertas: [],
-        totalOportunidades: parseFloat(rti.valorTotalEstimado) || 0,
-        totalPacificado: 0,
-        totalNaoPacificado: 0,
+        periodoAnalise: rti.periodoAnalise || (fullRti as any)?.periodoAnalise || '—',
+        resumoExecutivo: rti.resumoExecutivo || (fullRti as any)?.resumoExecutivo || '',
+        metodologia: rti.metodologia || (fullRti as any)?.metodologia || '',
+        conclusao: rti.conclusao || (fullRti as any)?.conclusao || '',
+        observacoes: rti.observacoes || (fullRti as any)?.observacoes || '',
+        oportunidades: opsForPdf,
+        cenario: cenarioForPdf,
+        alertas: alertasForPdf,
+        totalOportunidades: totalOps || parseFloat(rti.valorTotalEstimado) || 0,
+        totalPacificado: totalPac,
+        totalNaoPacificado: totalNaoPac,
         numero: rti.numero,
         data: formatDate(rti.createdAt),
       });
       doc.save(`${rti.numero}_v${rti.versao}_${formatDate(rti.createdAt).replace(/\//g, '-')}.pdf`);
+      toast.success('PDF baixado com sucesso!');
     } catch (err: any) {
       console.error('PDF download error:', err);
+      toast.error('Erro ao baixar PDF: ' + (err.message || ''));
     }
   };
 

@@ -1200,9 +1200,9 @@ const adminRouter = router({
   // --- Checklists ---
   checklists: router({
     templates: protectedProcedure
-      .input(z.object({ fila: z.string().optional() }).optional())
+      .input(z.object({ fila: z.string().optional(), teseId: z.number().optional() }).optional())
       .query(async ({ input }) => {
-        return credDb.listChecklistTemplates(input?.fila);
+        return credDb.listChecklistTemplates(input?.fila, input?.teseId);
       }),
     createTemplate: protectedProcedure
       .input(z.object({

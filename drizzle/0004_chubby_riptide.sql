@@ -1,0 +1,1 @@
+ALTER TABLE `teses` ADD `slaApuracaoDias` int DEFAULT 15;

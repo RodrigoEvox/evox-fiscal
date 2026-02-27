@@ -1,0 +1,59 @@
+{
+  "query": "SELECT ct.id, ct.codigo, ct.caseId, ct.clienteId, c.parceiroId FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id WHERE ct.fila = 'apuracao'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.codigo, ct.caseId, ct.clienteId, c.parceiroId FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id WHERE ct.fila = 'apuracao'",
+  "rows": [
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "caseId": "NULL",
+      "clienteId": "450012",
+      "parceiroId": "NULL"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0002",
+      "caseId": "NULL",
+      "clienteId": "450010",
+      "parceiroId": "NULL"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0003",
+      "caseId": "NULL",
+      "clienteId": "30029",
+      "parceiroId": "2"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-3000",
+      "caseId": "NULL",
+      "clienteId": "510027",
+      "parceiroId": "NULL"
+    },
+    {
+      "id": "30005",
+      "codigo": "CT-3000",
+      "caseId": "NULL",
+      "clienteId": "510004",
+      "parceiroId": "1"
+    },
+    {
+      "id": "30006",
+      "codigo": "CT-3000",
+      "caseId": "NULL",
+      "clienteId": "510045",
+      "parceiroId": "1"
+    },
+    {
+      "id": "60001",
+      "codigo": "CT-0001",
+      "caseId": "NULL",
+      "clienteId": "510015",
+      "parceiroId": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tcaseId\tclienteId\tparceiroId\n1\tCT-0001\tNULL\t450012\tNULL\n2\tCT-0002\tNULL\t450010\tNULL\n3\tCT-0003\tNULL\t30029\t2\n30004\tCT-3000\tNULL\t510027\tNULL\n30005\tCT-3000\tNULL\t510004\t1\n30006\tCT-3000\tNULL\t510045\t1\n60001\tCT-0001\tNULL\t510015\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}

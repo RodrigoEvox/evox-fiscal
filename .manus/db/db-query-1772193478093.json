@@ -1,0 +1,46 @@
+{
+  "query": "SELECT * FROM credit_sla_configs LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT * FROM credit_sla_configs LIMIT 20;",
+  "rows": [
+    {
+      "id": "1",
+      "nome": "Triagem de Demandas",
+      "categoria": "triagem",
+      "fila": "NULL",
+      "tipoTarefa": "NULL",
+      "tipoTicket": "NULL",
+      "statusCase": "NULL",
+      "slaHoras": "8",
+      "slaDias": "NULL",
+      "slaDiasUteis": "1",
+      "alertaDias": "[4, 7]",
+      "escalonamentoDias": "NULL",
+      "ativo": "1",
+      "criadoPorId": "NULL",
+      "updatedAt": "2026-02-25 18:55:38",
+      "createdAt": "2026-02-25 18:55:38"
+    },
+    {
+      "id": "2",
+      "nome": "RTI Devolutiva Parceiro",
+      "categoria": "rti_devolutiva",
+      "fila": "NULL",
+      "tipoTarefa": "NULL",
+      "tipoTicket": "NULL",
+      "statusCase": "NULL",
+      "slaHoras": "48",
+      "slaDias": "6",
+      "slaDiasUteis": "0",
+      "alertaDias": "[3, 6]",
+      "escalonamentoDias": "8",
+      "ativo": "1",
+      "criadoPorId": "NULL",
+      "updatedAt": "2026-02-25 19:59:40",
+      "createdAt": "2026-02-25 18:55:38"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnome\tcategoria\tfila\ttipoTarefa\ttipoTicket\tstatusCase\tslaHoras\tslaDias\tslaDiasUteis\talertaDias\tescalonamentoDias\tativo\tcriadoPorId\tupdatedAt\tcreatedAt\n1\tTriagem de Demandas\ttriagem\tNULL\tNULL\tNULL\tNULL\t8\tNULL\t1\t[4, 7]\tNULL\t1\tNULL\t2026-02-25 18:55:38\t2026-02-25 18:55:38\n2\tRTI Devolutiva Parceiro\trti_devolutiva\tNULL\tNULL\tNULL\tNULL\t48\t6\t0\t[3, 6]\t8\t1\tNULL\t2026-02-25 19:59:40\t2026-02-25 18:55:38\n",
+  "stderr": "",
+  "execution_time_ms": 152
+}

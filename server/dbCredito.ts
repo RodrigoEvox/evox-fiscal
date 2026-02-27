@@ -210,16 +210,45 @@ export async function listCreditTasks(filters?: { fila?: string; status?: string
     SELECT ct.*,
       c.razaoSocial as clienteNome,
       c.cnpj as clienteCnpj,
-      cc.parceiroId as _parceiroId,
-      p.nomeCompleto as parceiroNome
+      COALESCE(p_case.nomeCompleto, p_cli.nomeCompleto) as parceiroNome,
+      CASE
+        WHEN COALESCE(cc.parceiroId, c.parceiroId) IS NULL THEN 1
+        ELSE 0
+      END as semParceiro,
+      (SELECT COUNT(*) FROM rti_reports r WHERE r.taskId = ct.id) as rtiCount,
+      (SELECT MAX(t.slaApuracaoDias) FROM credit_task_teses ctt2 LEFT JOIN teses t ON ctt2.teseId = t.id WHERE ctt2.taskId = ct.id) as maxSlaDias
     FROM credit_tasks ct
     LEFT JOIN clientes c ON ct.clienteId = c.id
     LEFT JOIN credit_cases cc ON ct.caseId = cc.id
-    LEFT JOIN parceiros p ON cc.parceiroId = p.id
+    LEFT JOIN parceiros p_case ON cc.parceiroId = p_case.id
+    LEFT JOIN parceiros p_cli ON c.parceiroId = p_cli.id
     ${whereClause}
     ORDER BY ct.ordem ASC, ct.createdAt DESC
   `));
-  return rows as any[];
+  // Compute SLA dates based on max tese SLA
+  const enriched = (rows as unknown as any[]).map((task: any) => {
+    const maxSla = task.maxSlaDias ? Number(task.maxSlaDias) : null;
+    const dataInicio = task.createdAt;
+    let dataFimPrevista = task.dataVencimento;
+    if (!dataFimPrevista && maxSla && dataInicio) {
+      const dt = new Date(dataInicio);
+      dt.setDate(dt.getDate() + maxSla);
+      dataFimPrevista = dt.toISOString().slice(0, 19).replace('T', ' ');
+    }
+    // Compute SLA status dynamically
+    let slaStatusCalc = task.slaStatus || 'dentro_prazo';
+    if (dataFimPrevista && task.status !== 'concluido' && task.status !== 'feito') {
+      const now = new Date();
+      const venc = new Date(dataFimPrevista);
+      const diffMs = venc.getTime() - now.getTime();
+      const diffDias = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDias < 0) slaStatusCalc = 'vencido';
+      else if (diffDias <= 3) slaStatusCalc = 'atencao';
+      else slaStatusCalc = 'dentro_prazo';
+    }
+    return { ...task, dataInicio, dataFimPrevista, slaStatus: slaStatusCalc, slaDias: maxSla };
+  });
+  return enriched;
 }
 
 export async function getCreditTaskById(id: number) {
@@ -676,9 +705,13 @@ export async function listCreditClientes(filters?: { search?: string; parceiroId
 }
 
 // --- Checklist Templates ---
-export async function listChecklistTemplates(fila?: string) {
+export async function listChecklistTemplates(fila?: string, teseId?: number) {
   const db_ = (await getDb())!;
-  const conditions = [];
+  if (fila && teseId) {
+    // Get templates specific to this tese, plus generic ones for the fila
+    const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_checklist_templates WHERE ativo = 1 AND fila = '${fila}' AND (teseId = ${teseId} OR teseId IS NULL) ORDER BY teseId DESC, nome`));
+    return rows as unknown as any[];
+  }
   if (fila) {
     const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_checklist_templates WHERE ativo = 1 AND fila = '${fila}' ORDER BY fila, nome`));
     return rows as unknown as any[];
@@ -787,7 +820,7 @@ export async function updatePerdcomp(id: number, data: any) {
 // --- Task Teses ---
 export async function listTaskTeses(taskId: number) {
   const db_ = (await getDb())!;
-  const [rows] = await db_.execute(sql.raw(`SELECT ctt.*, t.tributoEnvolvido, t.tipo as teseTipo, t.classificacao, t.potencialFinanceiro FROM credit_task_teses ctt LEFT JOIN teses t ON ctt.teseId = t.id WHERE ctt.taskId = ${taskId} ORDER BY ctt.createdAt`));
+  const [rows] = await db_.execute(sql.raw(`SELECT ctt.*, t.tributoEnvolvido, t.tipo as teseTipo, t.classificacao, t.potencialFinanceiro, t.slaApuracaoDias FROM credit_task_teses ctt LEFT JOIN teses t ON ctt.teseId = t.id WHERE ctt.taskId = ${taskId} ORDER BY ctt.createdAt`));
   return rows as unknown as any[];
 }
 

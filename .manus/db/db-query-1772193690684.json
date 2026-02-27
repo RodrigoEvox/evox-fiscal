@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE teses SET slaApuracaoDias = CASE WHEN potencialFinanceiro = 'muito_alto' THEN 30 WHEN potencialFinanceiro = 'alto' THEN 20 WHEN potencialFinanceiro = 'medio' THEN 15 ELSE 10 END WHERE slaApuracaoDias IS NULL OR slaApuracaoDias = 15;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute UPDATE teses SET slaApuracaoDias = CASE WHEN potencialFinanceiro = 'muito_alto' THEN 30 WHEN potencialFinanceiro = 'alto' THEN 20 WHEN potencialFinanceiro = 'medio' THEN 15 ELSE 10 END WHERE slaApuracaoDias IS NULL OR slaApuracaoDias = 15;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 75
+}

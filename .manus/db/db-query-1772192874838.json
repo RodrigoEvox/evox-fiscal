@@ -1,0 +1,66 @@
+{
+  "query": "SELECT ct.id, ct.codigo, c.razaoSocial, c.parceiroId as clienteParceiroId, cc.parceiroId as caseParceiroId, COALESCE(p1.nomeCompleto, p2.nomeCompleto, 'Sem parceiro') as parceiroFinal FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p1 ON c.parceiroId = p1.id LEFT JOIN parceiros p2 ON cc.parceiroId = p2.id WHERE ct.fila = 'apuracao' LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.codigo, c.razaoSocial, c.parceiroId as clienteParceiroId, cc.parceiroId as caseParceiroId, COALESCE(p1.nomeCompleto, p2.nomeCompleto, 'Sem parceiro') as parceiroFinal FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p1 ON c.parceiroId = p1.id LEFT JOIN parceiros p2 ON cc.parceiroId = p2.id WHERE ct.fila = 'apuracao' LIMIT 10",
+  "rows": [
+    {
+      "id": "3",
+      "codigo": "CT-0003",
+      "razaoSocial": "EVOX FISCAL LTDA",
+      "clienteParceiroId": "2",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Ana Paula Contabilidade"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0002",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Sem parceiro"
+    },
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "razaoSocial": "Teste",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Sem parceiro"
+    },
+    {
+      "id": "30005",
+      "codigo": "CT-3000",
+      "razaoSocial": "AMBEV S.A.",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Dr. Carlos Mendes"
+    },
+    {
+      "id": "60001",
+      "codigo": "CT-0001",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Sem parceiro"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-3000",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Sem parceiro"
+    },
+    {
+      "id": "30006",
+      "codigo": "CT-3000",
+      "razaoSocial": "Teste",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroFinal": "Dr. Carlos Mendes"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\trazaoSocial\tclienteParceiroId\tcaseParceiroId\tparceiroFinal\n3\tCT-0003\tEVOX FISCAL LTDA\t2\tNULL\tAna Paula Contabilidade\n2\tCT-0002\tEmpresa Procuração LTDA\tNULL\tNULL\tSem parceiro\n1\tCT-0001\tTeste\tNULL\tNULL\tSem parceiro\n30005\tCT-3000\tAMBEV S.A.\t1\tNULL\tDr. Carlos Mendes\n60001\tCT-0001\tEmpresa Procuração LTDA\tNULL\tNULL\tSem parceiro\n30004\tCT-3000\tEmpresa Procuração LTDA\tNULL\tNULL\tSem parceiro\n30006\tCT-3000\tTeste\t1\tNULL\tDr. Carlos Mendes\n",
+  "stderr": "",
+  "execution_time_ms": 73
+}

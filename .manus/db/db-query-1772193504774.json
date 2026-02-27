@@ -1,0 +1,75 @@
+{
+  "query": "SELECT ct.id, ct.codigo, ct.fila, ct.titulo, ct.status, ct.slaHoras, ct.slaStatus, ct.dataVencimento, ct.createdAt, ct.clienteId, ct.caseId FROM credit_tasks ct WHERE ct.fila = 'apuracao' ORDER BY ct.id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.codigo, ct.fila, ct.titulo, ct.status, ct.slaHoras, ct.slaStatus, ct.dataVencimento, ct.createdAt, ct.clienteId, ct.caseId FROM credit_tasks ct WHERE ct.fila = 'apuracao' ORDER BY ct.id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "60001",
+      "codigo": "CT-0007",
+      "fila": "apuracao",
+      "titulo": "TESTE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-27 11:46:42",
+      "clienteId": "510015",
+      "caseId": "NULL"
+    },
+    {
+      "id": "30006",
+      "codigo": "CT-0006",
+      "fila": "apuracao",
+      "titulo": "TESTE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 22:12:22",
+      "clienteId": "510045",
+      "caseId": "NULL"
+    },
+    {
+      "id": "30005",
+      "codigo": "CT-0005",
+      "fila": "apuracao",
+      "titulo": "PERSE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 22:09:30",
+      "clienteId": "510004",
+      "caseId": "NULL"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-0004",
+      "fila": "apuracao",
+      "titulo": "Apuração PERSE",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 20:54:54",
+      "clienteId": "510027",
+      "caseId": "NULL"
+    },
+    {
+      "id": "3",
+      "codigo": "CT-0003",
+      "fila": "apuracao",
+      "titulo": "Reapuração",
+      "status": "a_fazer",
+      "slaHoras": "NULL",
+      "slaStatus": "dentro_prazo",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 14:52:27",
+      "clienteId": "30029",
+      "caseId": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tfila\ttitulo\tstatus\tslaHoras\tslaStatus\tdataVencimento\tcreatedAt\tclienteId\tcaseId\n60001\tCT-0007\tapuracao\tTESTE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-27 11:46:42\t510015\tNULL\n30006\tCT-0006\tapuracao\tTESTE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 22:12:22\t510045\tNULL\n30005\tCT-0005\tapuracao\tPERSE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 22:09:30\t510004\tNULL\n30004\tCT-0004\tapuracao\tApuração PERSE\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 20:54:54\t510027\tNULL\n3\tCT-0003\tapuracao\tReapuração\ta_fazer\tNULL\tdentro_prazo\tNULL\t2026-02-26 14:52:27\t30029\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

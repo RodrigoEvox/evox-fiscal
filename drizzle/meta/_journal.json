@@ -29,6 +29,13 @@
       "when": 1772145927534,
       "tag": "0003_aromatic_mephisto",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1772193667101,
+      "tag": "0004_chubby_riptide",
+      "breakpoints": true
     }
   ]
 }

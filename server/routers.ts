@@ -649,6 +649,7 @@ export const appRouter = router({
         aplicavelLucroReal: z.boolean().optional(),
         aplicavelLucroPresumido: z.boolean().optional(),
         aplicavelSimplesNacional: z.boolean().optional(),
+        slaApuracaoDias: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await db.createTese(input as any);

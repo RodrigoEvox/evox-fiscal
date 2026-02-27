@@ -1,0 +1,120 @@
+{
+  "query": "SELECT ct.id, ct.codigo, ct.clienteId, ct.caseId, c.razaoSocial, c.parceiroId as clienteParceiroId, cc.parceiroId as caseParceiroId, p1.nomeCompleto as parceiroViaCliente, p2.nomeCompleto as parceiroViaCase FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p1 ON c.parceiroId = p1.id LEFT JOIN parceiros p2 ON cc.parceiroId = p2.id LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.codigo, ct.clienteId, ct.caseId, c.razaoSocial, c.parceiroId as clienteParceiroId, cc.parceiroId as caseParceiroId, p1.nomeCompleto as parceiroViaCliente, p2.nomeCompleto as parceiroViaCase FROM credit_tasks ct LEFT JOIN clientes c ON ct.clienteId = c.id LEFT JOIN credit_cases cc ON ct.caseId = cc.id LEFT JOIN parceiros p1 ON c.parceiroId = p1.id LEFT JOIN parceiros p2 ON cc.parceiroId = p2.id LIMIT 10",
+  "rows": [
+    {
+      "id": "3",
+      "codigo": "CT-0003",
+      "clienteId": "30029",
+      "caseId": "NULL",
+      "razaoSocial": "EVOX FISCAL LTDA",
+      "clienteParceiroId": "2",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Ana Paula Contabilidade",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "2",
+      "codigo": "CT-0002",
+      "clienteId": "450010",
+      "caseId": "NULL",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "NULL",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "1",
+      "codigo": "CT-0001",
+      "clienteId": "450012",
+      "caseId": "NULL",
+      "razaoSocial": "Teste",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "NULL",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30003",
+      "codigo": "CT-3000",
+      "clienteId": "510001",
+      "caseId": "NULL",
+      "razaoSocial": "PETROBRAS DISTRIBUIDORA S.A.",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Dr. Carlos Mendes",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30007",
+      "codigo": "CT-3000",
+      "clienteId": "510004",
+      "caseId": "NULL",
+      "razaoSocial": "AMBEV S.A.",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Dr. Carlos Mendes",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30005",
+      "codigo": "CT-3000",
+      "clienteId": "510004",
+      "caseId": "NULL",
+      "razaoSocial": "AMBEV S.A.",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Dr. Carlos Mendes",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30002",
+      "codigo": "CT-3000",
+      "clienteId": "510004",
+      "caseId": "NULL",
+      "razaoSocial": "AMBEV S.A.",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Dr. Carlos Mendes",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30001",
+      "codigo": "CT-3000",
+      "clienteId": "510005",
+      "caseId": "NULL",
+      "razaoSocial": "LOCALIZA RENT A CAR S.A.",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Dr. Carlos Mendes",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30004",
+      "codigo": "CT-3000",
+      "clienteId": "510027",
+      "caseId": "NULL",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "clienteParceiroId": "NULL",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "NULL",
+      "parceiroViaCase": "NULL"
+    },
+    {
+      "id": "30006",
+      "codigo": "CT-3000",
+      "clienteId": "510045",
+      "caseId": "NULL",
+      "razaoSocial": "Teste",
+      "clienteParceiroId": "1",
+      "caseParceiroId": "NULL",
+      "parceiroViaCliente": "Dr. Carlos Mendes",
+      "parceiroViaCase": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\tclienteId\tcaseId\trazaoSocial\tclienteParceiroId\tcaseParceiroId\tparceiroViaCliente\tparceiroViaCase\n3\tCT-0003\t30029\tNULL\tEVOX FISCAL LTDA\t2\tNULL\tAna Paula Contabilidade\tNULL\n2\tCT-0002\t450010\tNULL\tEmpresa Procuração LTDA\tNULL\tNULL\tNULL\tNULL\n1\tCT-0001\t450012\tNULL\tTeste\tNULL\tNULL\tNULL\tNULL\n30003\tCT-3000\t510001\tNULL\tPETROBRAS DISTRIBUIDORA S.A.\t1\tNULL\tDr. Carlos Mendes\tNULL\n30007\tCT-3000\t510004\tNULL\tAMBEV S.A.\t1\tNULL\tDr. Carlos Mendes\tNULL\n30005\tCT-3000\t510004\tNULL\tAMBEV S.A.\t1\tNULL\tDr. Carlos Mendes\tNULL\n30002\tCT-3000\t510004\tNULL\tAMBEV S.A.\t1\tNULL\tDr. Carlos Mendes\tNULL\n30001\tCT-3000\t510005\tNULL\tLOCALIZA RENT A CAR S.A.\t1\tNULL\tDr. Carlos Mendes\tNULL\n30004\tCT-3000\t510027\tNULL\tEmpresa Procuração LTDA\tNULL\tNULL\tNULL\tNULL\n30006\tCT-3000\t510045\tNULL\tTeste\t1\tNULL\tDr. Carlos Mendes\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 111
+}

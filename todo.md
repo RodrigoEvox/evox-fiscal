@@ -2217,3 +2217,31 @@
 - [x] Notificação push via notifyOwner com detalhes das tarefas urgentes
 - [x] Notificações in-app para responsáveis e admins
 - [x] 12 testes vitest passando (sla-notifications.test.ts)
+
+## v83 — Aprimoramentos Fila de Apuração
+
+### Parceiro Vinculado
+- [x] Corrigir exibição do parceiro na fila (trazer do cadastro de parceiros automaticamente)
+- [x] Se empresa não possuir parceiro vinculado, exibir "Sem parceiro"
+
+### Layout e Espaçamentos
+- [x] Aumentar tamanho das fontes de data e criador na tabela
+- [x] Ajustar espaçamentos gerais da tabela para melhor legibilidade
+- [x] Melhorar visual geral da fila de apuração
+
+### SLA por Tese
+- [x] Vincular SLA tese a tese (usar prazo da tese mais complexa/longa)
+- [x] Exibir data de início e data de fim prevista na tarefa
+- [x] Indicador visual de SLA: dentro do prazo (verde), perto do vencimento (amarelo), vencida (vermelho)
+
+### Checklist por Tese
+- [x] Remover checklist da visão da fila de apuração
+- [x] Vincular checklist a cada tese (passo a passo de como executar a apuração)
+- [x] Checklist aparece na visão do operador/analista ao pegar a demanda
+
+### RTI — Correções
+- [x] Corrigir salvamento do RTI (não está salvando)
+- [x] Corrigir download do RTI (não está baixando)
+- [x] Incluir valores das teses apuradas no PDF do RTI
+- [x] Indicador visual claro de RTI disponível para download em 1 clique
+- [x] Renomear coluna "Ações" para "RTI" ou "Relatórios"
