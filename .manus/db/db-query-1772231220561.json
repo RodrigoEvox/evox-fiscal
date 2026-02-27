@@ -1,0 +1,45 @@
+{
+  "query": "SELECT ct.id, ct.titulo, ct.fila, ct.createdAt, ct.dataVencimento FROM credit_tasks ct WHERE ct.fila = 'apuracao' AND ct.status = 'a_fazer' LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.titulo, ct.fila, ct.createdAt, ct.dataVencimento FROM credit_tasks ct WHERE ct.fila = 'apuracao' AND ct.status = 'a_fazer' LIMIT 5",
+  "rows": [
+    {
+      "id": "3",
+      "titulo": "Reapuração",
+      "fila": "apuracao",
+      "createdAt": "2026-02-26 14:52:27",
+      "dataVencimento": "NULL"
+    },
+    {
+      "id": "30004",
+      "titulo": "Apuração PERSE",
+      "fila": "apuracao",
+      "createdAt": "2026-02-26 20:54:54",
+      "dataVencimento": "NULL"
+    },
+    {
+      "id": "30005",
+      "titulo": "PERSE",
+      "fila": "apuracao",
+      "createdAt": "2026-02-26 22:09:30",
+      "dataVencimento": "NULL"
+    },
+    {
+      "id": "30006",
+      "titulo": "TESTE",
+      "fila": "apuracao",
+      "createdAt": "2026-02-26 22:12:22",
+      "dataVencimento": "NULL"
+    },
+    {
+      "id": "60001",
+      "titulo": "TESTE",
+      "fila": "apuracao",
+      "createdAt": "2026-02-27 11:46:42",
+      "dataVencimento": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitulo\tfila\tcreatedAt\tdataVencimento\n3\tReapuração\tapuracao\t2026-02-26 14:52:27\tNULL\n30004\tApuração PERSE\tapuracao\t2026-02-26 20:54:54\tNULL\n30005\tPERSE\tapuracao\t2026-02-26 22:09:30\tNULL\n30006\tTESTE\tapuracao\t2026-02-26 22:12:22\tNULL\n60001\tTESTE\tapuracao\t2026-02-27 11:46:42\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

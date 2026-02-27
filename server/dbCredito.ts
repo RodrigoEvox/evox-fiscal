@@ -249,9 +249,11 @@ export async function listCreditTasks(filters?: { fila?: string; status?: string
     const maxSla = task.maxSlaDias ? Number(task.maxSlaDias) : null;
     const dataInicio = task.createdAt;
     let dataFimPrevista = task.dataVencimento;
-    if (!dataFimPrevista && maxSla && dataInicio) {
+    // Use max SLA from linked teses, or default 15 days if no teses linked yet
+    const slaDias = maxSla || 15;
+    if (!dataFimPrevista && dataInicio) {
       const dt = new Date(dataInicio);
-      dt.setDate(dt.getDate() + maxSla);
+      dt.setDate(dt.getDate() + slaDias);
       dataFimPrevista = dt.toISOString().slice(0, 19).replace('T', ' ');
     }
     // Compute SLA status dynamically
@@ -279,7 +281,7 @@ export async function listCreditTasks(filters?: { fila?: string; status?: string
         procuracaoStatus = 'habilitada';
       }
     }
-    return { ...task, dataInicio, dataFimPrevista, slaStatus: slaStatusCalc, slaDias: maxSla, procuracaoStatus };
+    return { ...task, dataInicio, dataFimPrevista, slaStatus: slaStatusCalc, slaDias: slaDias, procuracaoStatus };
   });
   return enriched;
 }
@@ -289,6 +291,13 @@ export async function getCreditTaskById(id: number) {
   if (!db_) return null;
   const [row] = await db_.select().from(creditTasks).where(eq(creditTasks.id, id));
   return row || null;
+}
+
+export async function getFirstAFazerTask(fila: string) {
+  const db_ = await getDb();
+  if (!db_) return null;
+  const [rows] = await db_.execute(sql.raw(`SELECT id, codigo FROM credit_tasks WHERE fila = '${fila}' AND status = 'a_fazer' ORDER BY createdAt ASC LIMIT 1`));
+  return (rows as unknown as any[])?.[0] || null;
 }
 
 export async function createCreditTask(data: Omit<InsertCreditTask, 'codigo'>) {
@@ -922,6 +931,19 @@ export async function listTaskTeses(taskId: number) {
 export async function createTaskTese(data: any) {
   const db_ = (await getDb())!;
   const [result] = await db_.execute(sql.raw(`INSERT INTO credit_task_teses (taskId, teseId, teseNome, aderente, justificativaNaoAderente, valorEstimado, status) VALUES (${data.taskId}, ${data.teseId}, ${data.teseNome ? `'${data.teseNome}'` : 'NULL'}, ${data.aderente ?? 1}, ${data.justificativaNaoAderente ? `'${data.justificativaNaoAderente}'` : 'NULL'}, ${data.valorEstimado || 0}, '${data.status || 'selecionada'}')`));
+  // Auto-recalculate dataVencimento on the parent task based on max SLA across all linked teses
+  try {
+    const [maxSlaRows] = await db_.execute(sql.raw(
+      `SELECT MAX(t.slaApuracaoDias) as maxSla, ct.createdAt FROM credit_task_teses ctt JOIN teses t ON ctt.teseId = t.id JOIN credit_tasks ct ON ct.id = ctt.taskId WHERE ctt.taskId = ${data.taskId} GROUP BY ct.createdAt`
+    ));
+    const row = (maxSlaRows as unknown as any[])?.[0];
+    if (row?.maxSla && row?.createdAt) {
+      const dt = new Date(row.createdAt);
+      dt.setDate(dt.getDate() + Number(row.maxSla));
+      const dataVencimento = dt.toISOString().slice(0, 19).replace('T', ' ');
+      await db_.execute(sql.raw(`UPDATE credit_tasks SET dataVencimento = '${dataVencimento}' WHERE id = ${data.taskId}`));
+    }
+  } catch (e) { console.error('[createTaskTese] Error auto-calculating dataVencimento', e); }
   return (result as any).insertId;
 }
 
@@ -2225,4 +2247,49 @@ export async function getExceptionsAndReopenings(filters?: { periodoInicio?: str
       porFila,
     },
   };
+}
+
+
+// ===== Queue Exception Requests =====
+export async function createQueueExceptionRequest(data: {
+  taskId: number; taskCodigo?: string; fila: string;
+  solicitanteId: string; solicitanteNome: string; justificativa: string;
+}) {
+  const db_ = (await getDb())!;
+  const [result] = await db_.execute(sql.raw(
+    `INSERT INTO queue_exception_requests (taskId, taskCodigo, fila, solicitanteId, solicitanteNome, justificativa, status) VALUES (${data.taskId}, ${data.taskCodigo ? `'${data.taskCodigo}'` : 'NULL'}, '${data.fila}', '${data.solicitanteId}', '${data.solicitanteNome}', '${data.justificativa.replace(/'/g, "''")}', 'pendente')`
+  ));
+  return { id: (result as any).insertId };
+}
+
+export async function listQueueExceptionRequests(filters?: { status?: string; fila?: string }) {
+  const db_ = (await getDb())!;
+  let where = 'WHERE 1=1';
+  if (filters?.status) where += ` AND qer.status = '${filters.status}'`;
+  if (filters?.fila) where += ` AND qer.fila = '${filters.fila}'`;
+  const [rows] = await db_.execute(sql.raw(
+    `SELECT qer.*, ct.clienteNome, ct.titulo FROM queue_exception_requests qer LEFT JOIN credit_tasks ct ON qer.taskId = ct.id ${where} ORDER BY qer.createdAt DESC LIMIT 100`
+  ));
+  return rows as unknown as any[];
+}
+
+export async function respondQueueExceptionRequest(id: number, data: {
+  status: 'aprovado' | 'negado'; gestorId: string; gestorNome: string; gestorResposta?: string;
+}) {
+  const db_ = (await getDb())!;
+  await db_.execute(sql.raw(
+    `UPDATE queue_exception_requests SET status = '${data.status}', gestorId = '${data.gestorId}', gestorNome = '${data.gestorNome}', gestorResposta = ${data.gestorResposta ? `'${data.gestorResposta.replace(/'/g, "''")}'` : 'NULL'}, respondidoEm = NOW() WHERE id = ${id}`
+  ));
+}
+
+export async function getQueueExceptionRequestById(id: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM queue_exception_requests WHERE id = ${id}`));
+  return (rows as unknown as any[])?.[0] || null;
+}
+
+export async function countPendingExceptionRequests() {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT COUNT(*) as count FROM queue_exception_requests WHERE status = 'pendente'`));
+  return (rows as unknown as any[])?.[0]?.count || 0;
 }

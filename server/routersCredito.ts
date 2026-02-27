@@ -715,6 +715,13 @@ const creditoRouter = router({
         const task = await credDb.getCreditTaskById(input.id);
         if (!task) throw new Error('Tarefa não encontrada');
         if (task.status !== 'a_fazer') throw new Error('Tarefa já está em andamento ou concluída');
+        // FIFO enforcement: non-admin users can only pick the first a_fazer task in the queue
+        if ((user as any).role !== 'admin') {
+          const firstTask = await credDb.getFirstAFazerTask(task.fila);
+          if (firstTask && firstTask.id !== input.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Esta tarefa não é a primeira da fila. Você só pode pegar a primeira tarefa disponível. Para pegar esta tarefa, solicite autorização ao gestor.' });
+          }
+        }
         await credDb.updateCreditTask(input.id, {
           status: 'fazendo',
           responsavelId: user.id,
@@ -1020,9 +1027,113 @@ const creditoRouter = router({
         }
         return { success: true };
       }),
-  }),
 
-  // --- Flow Overview (Visão Geral do Fluxo por Empresa) ---
+    // Analyst requests exception to pick a non-first task
+    requestException: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        justificativa: z.string().min(10, 'Justificativa deve ter pelo menos 10 caracteres'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = getUser(ctx);
+        const task = await credDb.getCreditTaskById(input.taskId);
+        if (!task) throw new TRPCError({ code: 'NOT_FOUND', message: 'Tarefa n\u00e3o encontrada' });
+        const result = await credDb.createQueueExceptionRequest({
+          taskId: input.taskId,
+          taskCodigo: task.codigo,
+          fila: task.fila,
+          solicitanteId: String(user.id),
+          solicitanteNome: user.name,
+          justificativa: input.justificativa,
+        });
+        // Notify all admins about the request
+        try {
+          const { listUsers } = await import('./db');
+          const allUsers = await listUsers();
+          const admins = (allUsers || []).filter((u: any) => u.role === 'admin');
+          for (const admin of admins) {
+            await createNotificacao({
+              tipo: 'tarefa_atribuida',
+              titulo: `Solicita\u00e7\u00e3o de exce\u00e7\u00e3o de fila`,
+              mensagem: `${user.name} solicita autoriza\u00e7\u00e3o para pegar a tarefa ${task.codigo} (${task.clienteNome || task.titulo}). Motivo: ${input.justificativa}`,
+              usuarioId: admin.id,
+              tarefaId: input.taskId,
+              lida: 0,
+            });
+          }
+        } catch (e) { console.error('[Notif] Erro ao notificar gestores sobre solicita\u00e7\u00e3o de exce\u00e7\u00e3o', e); }
+        return { success: true, requestId: result.id };
+      }),
+
+    // List exception requests (admin)
+    listExceptionRequests: protectedProcedure
+      .input(z.object({ status: z.string().optional(), fila: z.string().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const user = getUser(ctx);
+        if ((user as any).role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas gestores podem ver solicita\u00e7\u00f5es de exce\u00e7\u00e3o' });
+        return credDb.listQueueExceptionRequests(input || {});
+      }),
+
+    // Count pending exception requests (admin)
+    countPendingExceptions: protectedProcedure
+      .query(async ({ ctx }) => {
+        const user = getUser(ctx);
+        if ((user as any).role !== 'admin') return 0;
+        return credDb.countPendingExceptionRequests();
+      }),
+
+    // Respond to exception request (admin approves/denies)
+    respondException: protectedProcedure
+      .input(z.object({
+        requestId: z.number(),
+        status: z.enum(['aprovado', 'negado']),
+        resposta: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = getUser(ctx);
+        if ((user as any).role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas gestores podem responder solicita\u00e7\u00f5es' });
+        const request = await credDb.getQueueExceptionRequestById(input.requestId);
+        if (!request) throw new TRPCError({ code: 'NOT_FOUND', message: 'Solicita\u00e7\u00e3o n\u00e3o encontrada' });
+        if (request.status !== 'pendente') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Solicita\u00e7\u00e3o j\u00e1 foi respondida' });
+        await credDb.respondQueueExceptionRequest(input.requestId, {
+          status: input.status,
+          gestorId: String(user.id),
+          gestorNome: user.name,
+          gestorResposta: input.resposta,
+        });
+        // If approved, assign the task to the analyst
+        if (input.status === 'aprovado') {
+          await credDb.updateCreditTask(request.taskId, {
+            status: 'fazendo',
+            responsavelId: Number(request.solicitanteId),
+            responsavelNome: request.solicitanteNome,
+          } as any);
+          await credDb.logCreditAudit({
+            entidade: 'task', entidadeId: request.taskId, acao: 'queue_exception',
+            descricao: `Exce\u00e7\u00e3o de fila aprovada por ${user.name} para ${request.solicitanteNome}. Motivo: ${request.justificativa}`,
+            dadosAnteriores: {} as any, dadosNovos: { action: 'exception_approved' } as any,
+            usuarioId: user.id, usuarioNome: user.name,
+          });
+        }
+        // Notify the analyst about the decision
+        try {
+          const statusLabel = input.status === 'aprovado' ? 'APROVADA' : 'NEGADA';
+          const msg = input.status === 'aprovado'
+            ? `Sua solicita\u00e7\u00e3o para pegar a tarefa ${request.taskCodigo} foi ${statusLabel} por ${user.name}. A tarefa j\u00e1 foi atribu\u00edda a voc\u00ea.`
+            : `Sua solicita\u00e7\u00e3o para pegar a tarefa ${request.taskCodigo} foi ${statusLabel} por ${user.name}.${input.resposta ? ' Motivo: ' + input.resposta : ''}`;
+          await createNotificacao({
+            tipo: 'tarefa_atribuida',
+            titulo: `Solicita\u00e7\u00e3o de exce\u00e7\u00e3o ${statusLabel}`,
+            mensagem: msg,
+            usuarioId: Number(request.solicitanteId),
+            tarefaId: request.taskId,
+            lida: 0,
+          });
+        } catch (e) { console.error('[Notif] Erro ao notificar analista sobre resposta de exce\u00e7\u00e3o', e); }
+        return { success: true };
+      }),
+  }),
+  // --- Flow Overview (Vis\u00e3o Geral do Fluxo por Empresa) ----
   flowOverview: protectedProcedure.query(async () => {
     return credDb.getClienteFlowOverview();
   }),

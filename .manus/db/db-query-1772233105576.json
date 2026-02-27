@@ -1,0 +1,46 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM credit_task_teses; SELECT id, nome, slaApuracaoDias FROM teses LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT COUNT(*) as cnt FROM credit_task_teses; SELECT id, nome, slaApuracaoDias FROM teses LIMIT 10;",
+  "rows": [
+    {
+      "cnt": "0"
+    },
+    {
+      "cnt": "id\tnome\tslaApuracaoDias"
+    },
+    {
+      "cnt": "1\tExclusão do ICMS da Base de Cálculo do PIS/COFINS\t30"
+    },
+    {
+      "cnt": "2\tExclusão do ISS da Base de Cálculo do PIS/COFINS\t20"
+    },
+    {
+      "cnt": "3\tRecuperação de PIS/COFINS Monofásico\t20"
+    },
+    {
+      "cnt": "4\tExclusão do ICMS-ST da Base de Cálculo do PIS/COFINS\t20"
+    },
+    {
+      "cnt": "5\tIRPJ/CSLL sobre Benefícios Fiscais de ICMS\t30"
+    },
+    {
+      "cnt": "6\tContribuições Previdenciárias sobre Verbas Indenizatórias\t20"
+    },
+    {
+      "cnt": "7\tExclusão do PIS/COFINS da Própria Base de Cálculo\t30"
+    },
+    {
+      "cnt": "8\tCréditos de PIS/COFINS sobre Insumos (Conceito Amplo)\t20"
+    },
+    {
+      "cnt": "9\tLimite de 20 Salários para Contribuições ao Sistema S\t20"
+    },
+    {
+      "cnt": "10\tRecuperação de ICMS Pago a Maior na Substituição Tributária\t20"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n0\nid\tnome\tslaApuracaoDias\n1\tExclusão do ICMS da Base de Cálculo do PIS/COFINS\t30\n2\tExclusão do ISS da Base de Cálculo do PIS/COFINS\t20\n3\tRecuperação de PIS/COFINS Monofásico\t20\n4\tExclusão do ICMS-ST da Base de Cálculo do PIS/COFINS\t20\n5\tIRPJ/CSLL sobre Benefícios Fiscais de ICMS\t30\n6\tContribuições Previdenciárias sobre Verbas Indenizatórias\t20\n7\tExclusão do PIS/COFINS da Própria Base de Cálculo\t30\n8\tCréditos de PIS/COFINS sobre Insumos (Conceito Amplo)\t20\n9\tLimite de 20 Salários para Contribuições ao Sistema S\t20\n10\tRecuperação de ICMS Pago a Maior na Substituição Tributária\t20\n",
+  "stderr": "",
+  "execution_time_ms": 112
+}

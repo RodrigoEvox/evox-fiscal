@@ -2447,3 +2447,32 @@
 - [x] Melhorar tempo de navegação — staleTime global 30s, refetchOnWindowFocus desabilitado
 - [x] Reduzir polling intervals (chat: 5s→15s, notificações: 30s→60s)
 - [x] Adicionar manual chunks no Vite (vendor-react, vendor-recharts, vendor-ui, vendor-motion)
+
+## v94 — SLA Data Fim, Visual Clean, Bloqueio FIFO e Exceção de Fila
+
+### SLA Data Fim Automático
+- [x] Preencher automaticamente a data fim do SLA com base na tese de maior prazo entre as selecionadas
+- [x] Regra: data início = data criação da tarefa; data fim = data início + maior SLA das teses
+- [x] Atualizar data fim quando teses forem adicionadas/removidas da tarefa (createTaskTese auto-recalcula)
+- [x] Fallback de 15 dias quando nenhuma tese está vinculada
+
+### Visual Clean (Todas as Filas)
+- [x] Remover ícone da coluna Responsável — deixar somente o nome (5 filas)
+- [x] Remover ícone da coluna Parceiro — deixar somente o nome (apuração)
+- [x] Remover ícone da coluna Tempo — deixar somente dias e horas (5 filas)
+
+### Bloqueio FIFO da Fila
+- [x] Analista só pode pegar a primeira tarefa da fila (status A Fazer) — backend + frontend
+- [x] Demais tarefas devem ficar bloqueadas/desabilitadas para o analista
+- [x] Ao clicar em tarefa bloqueada: dialog informando que só pode pegar mediante autorização do gestor
+- [x] Opção de solicitar autorização ao gestor com justificativa obrigatória (mín. 10 caracteres)
+
+### Exceção de Fila (Gestor)
+- [x] Gestor pode alterar ordem da fila com justificativa obrigatória (via exceção existente)
+- [x] Gestor pode atribuir tarefa fora de ordem a um analista com justificativa
+- [x] Aba "Solicitações" na fila de apuração para gestor gerenciar pedidos de exceção
+- [x] Notificar analista quando autorização for aprovada ou negada pelo gestor
+- [x] Tabela queue_exception_requests criada para rastrear solicitações
+
+### Correção Bug tRPC Path
+- [x] Corrigido path errado de taskTeses.create (credito → admin) que impedia vinculação de teses

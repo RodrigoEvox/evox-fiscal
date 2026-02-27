@@ -2539,3 +2539,26 @@ export const contratoHistorico = mysqlTable("contrato_historico", {
 	index("idx_ch_contrato").on(table.contratoId),
 	index("idx_ch_acao").on(table.acao),
 ]);
+
+// ===== Queue Exception Requests =====
+export const queueExceptionRequests = mysqlTable('queue_exception_requests', {
+	id: int().primaryKey().autoincrement(),
+	taskId: int().notNull(),
+	taskCodigo: varchar({ length: 50 }),
+	fila: varchar({ length: 100 }).notNull(),
+	solicitanteId: varchar({ length: 255 }).notNull(),
+	solicitanteNome: varchar({ length: 255 }).notNull(),
+	justificativa: text().notNull(),
+	status: varchar({ length: 50 }).default('pendente').notNull(),
+	gestorId: varchar({ length: 255 }),
+	gestorNome: varchar({ length: 255 }),
+	gestorResposta: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	respondidoEm: timestamp({ mode: 'string' }),
+}, (table) => [
+	index("idx_qer_task").on(table.taskId),
+	index("idx_qer_solicitante").on(table.solicitanteId),
+	index("idx_qer_status").on(table.status),
+]);
+export type InsertQueueExceptionRequest = typeof queueExceptionRequests.$inferInsert;
+export type SelectQueueExceptionRequest = typeof queueExceptionRequests.$inferSelect;

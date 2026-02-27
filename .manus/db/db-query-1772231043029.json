@@ -1,0 +1,45 @@
+{
+  "query": "SELECT ct.id, ct.titulo, ct.dataVencimento, ct.createdAt, (SELECT MAX(t.slaApuracaoDias) FROM credit_task_teses ctt JOIN teses t ON ctt.teseId = t.id WHERE ctt.taskId = ct.id) as maxSla FROM credit_tasks ct WHERE ct.fila = 'apuracao' LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT ct.id, ct.titulo, ct.dataVencimento, ct.createdAt, (SELECT MAX(t.slaApuracaoDias) FROM credit_task_teses ctt JOIN teses t ON ctt.teseId = t.id WHERE ctt.taskId = ct.id) as maxSla FROM credit_tasks ct WHERE ct.fila = 'apuracao' LIMIT 5",
+  "rows": [
+    {
+      "id": "2",
+      "titulo": "Teste",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 14:44:28",
+      "maxSla": "NULL"
+    },
+    {
+      "id": "30005",
+      "titulo": "PERSE",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-26 22:09:30",
+      "maxSla": "NULL"
+    },
+    {
+      "id": "60001",
+      "titulo": "TESTE",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-27 11:46:42",
+      "maxSla": "NULL"
+    },
+    {
+      "id": "120001",
+      "titulo": "Nova Apuração",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-27 19:53:10",
+      "maxSla": "NULL"
+    },
+    {
+      "id": "120002",
+      "titulo": "NOVA APURAÇÃO",
+      "dataVencimento": "NULL",
+      "createdAt": "2026-02-27 21:09:00",
+      "maxSla": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitulo\tdataVencimento\tcreatedAt\tmaxSla\n2\tTeste\tNULL\t2026-02-26 14:44:28\tNULL\n30005\tPERSE\tNULL\t2026-02-26 22:09:30\tNULL\n60001\tTESTE\tNULL\t2026-02-27 11:46:42\tNULL\n120001\tNova Apuração\tNULL\t2026-02-27 19:53:10\tNULL\n120002\tNOVA APURAÇÃO\tNULL\t2026-02-27 21:09:00\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 67
+}

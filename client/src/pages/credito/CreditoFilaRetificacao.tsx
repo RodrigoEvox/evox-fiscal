@@ -344,16 +344,10 @@ export default function CreditoFilaRetificacao() {
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', prioridadeInfo.color)}>{prioridadeInfo.label}</Badge></td>
                           <td className="px-3 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span>
-                            </div>
+                            <span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span>
                           </td>
                           <td className="px-3 py-3">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                               <span className="text-xs text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
-                            </div>
                           </td>
                           <td className="px-3 py-3">
                             {isOverdue ? (

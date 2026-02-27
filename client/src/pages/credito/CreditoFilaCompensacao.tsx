@@ -288,8 +288,8 @@ export default function CreditoFilaCompensacao() {
                           <td className="px-3 py-3"><p className="font-medium text-sm truncate max-w-[250px]">{task.titulo}</p></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', si.color)}>{si.label}</Badge></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', pi.color)}>{pi.label}</Badge></td>
-                          <td className="px-3 py-3 text-center"><div className="flex items-center justify-center gap-1"><Clock className="w-3 h-3 text-muted-foreground" /><span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span></div></td>
-                          <td className="px-3 py-3"><div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground truncate">{task.responsavelNome || '—'}</span></div></td>
+                          <td className="px-3 py-3 text-center"><span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span></td>
+                          <td className="px-3 py-3"><span className="text-xs text-muted-foreground truncate">{task.responsavelNome || '—'}</span></td>
                           <td className="px-3 py-3">{ov ? <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="w-3 h-3" />Atraso</Badge> : <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1"><CheckCircle className="w-3 h-3" />OK</Badge>}</td>
                           <td className="px-3 py-3"><div className="text-xs"><span className="font-medium text-foreground">{task.criadoPorNome || '—'}</span><div className="text-[10px] text-muted-foreground">{task.createdAt ? new Date(task.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</div></div></td>
                           <td className="px-3 py-3 text-center">

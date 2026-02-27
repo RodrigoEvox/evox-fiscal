@@ -98,7 +98,7 @@ export default function CreditoNovaTarefa() {
     },
   });
 
-  const createTaskTese = trpc.creditRecovery.credito.taskTeses.create.useMutation();
+  const createTaskTese = trpc.creditRecovery.admin.taskTeses.create.useMutation();
 
   // Filter clients
   const filteredClientes = useMemo(() => {
@@ -218,7 +218,7 @@ export default function CreditoNovaTarefa() {
               teseNome: tese.teseNome,
               aderente: isAderente ? 1 : 0,
               justificativaNaoAderente: justificativas[teseId] || null,
-              valorEstimado: '0',
+              valorEstimado: 0,
             });
           }
         }

@@ -1,0 +1,16 @@
+{
+  "query": "SHOW TABLES LIKE 'credit_task%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW TABLES LIKE 'credit_task%'",
+  "rows": [
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (credit_task%)": "credit_task_teses"
+    },
+    {
+      "Tables_in_i9dRshPFnDefFw9MJLeLri (credit_task%)": "credit_tasks"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_i9dRshPFnDefFw9MJLeLri (credit_task%)\ncredit_task_teses\ncredit_tasks\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

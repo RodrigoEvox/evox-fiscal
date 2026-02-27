@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, nome, slaApuracaoDias FROM teses WHERE slaApuracaoDias IS NOT NULL LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, nome, slaApuracaoDias FROM teses WHERE slaApuracaoDias IS NOT NULL LIMIT 10",
+  "rows": [
+    {
+      "id": "1",
+      "nome": "Exclusão do ICMS da Base de Cálculo do PIS/COFINS",
+      "slaApuracaoDias": "30"
+    },
+    {
+      "id": "2",
+      "nome": "Exclusão do ISS da Base de Cálculo do PIS/COFINS",
+      "slaApuracaoDias": "20"
+    },
+    {
+      "id": "3",
+      "nome": "Recuperação de PIS/COFINS Monofásico",
+      "slaApuracaoDias": "20"
+    },
+    {
+      "id": "4",
+      "nome": "Exclusão do ICMS-ST da Base de Cálculo do PIS/COFINS",
+      "slaApuracaoDias": "20"
+    },
+    {
+      "id": "5",
+      "nome": "IRPJ/CSLL sobre Benefícios Fiscais de ICMS",
+      "slaApuracaoDias": "30"
+    },
+    {
+      "id": "6",
+      "nome": "Contribuições Previdenciárias sobre Verbas Indenizatórias",
+      "slaApuracaoDias": "20"
+    },
+    {
+      "id": "7",
+      "nome": "Exclusão do PIS/COFINS da Própria Base de Cálculo",
+      "slaApuracaoDias": "30"
+    },
+    {
+      "id": "8",
+      "nome": "Créditos de PIS/COFINS sobre Insumos (Conceito Amplo)",
+      "slaApuracaoDias": "20"
+    },
+    {
+      "id": "9",
+      "nome": "Limite de 20 Salários para Contribuições ao Sistema S",
+      "slaApuracaoDias": "20"
+    },
+    {
+      "id": "10",
+      "nome": "Recuperação de ICMS Pago a Maior na Substituição Tributária",
+      "slaApuracaoDias": "20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnome\tslaApuracaoDias\n1\tExclusão do ICMS da Base de Cálculo do PIS/COFINS\t30\n2\tExclusão do ISS da Base de Cálculo do PIS/COFINS\t20\n3\tRecuperação de PIS/COFINS Monofásico\t20\n4\tExclusão do ICMS-ST da Base de Cálculo do PIS/COFINS\t20\n5\tIRPJ/CSLL sobre Benefícios Fiscais de ICMS\t30\n6\tContribuições Previdenciárias sobre Verbas Indenizatórias\t20\n7\tExclusão do PIS/COFINS da Própria Base de Cálculo\t30\n8\tCréditos de PIS/COFINS sobre Insumos (Conceito Amplo)\t20\n9\tLimite de 20 Salários para Contribuições ao Sistema S\t20\n10\tRecuperação de ICMS Pago a Maior na Substituição Tributária\t20\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}
