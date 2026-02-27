@@ -2356,3 +2356,18 @@
 - [x] Notificação deve conter: nome do cliente, código, resultado da viabilidade e valor global
 - [x] Registrar log de auditoria da notificação enviada
 - [x] Notificação enviada ao owner (administrador) e registrada no sistema de notificações internas
+## v90 — Correção de Erros e Ajuste de Viabilidade
+
+### Bugs Críticos
+- [x] Corrigir erro ao criar tarefa (INSERT credit_tasks falha por coluna viabilidade_ct)
+- [x] Corrigir erro ao pegar tarefa (SELECT credit_tasks falha por coluna viabilidade_ct)
+- [x] Ajustar schema do banco para compatibilidade com enum viabilidade
+
+### Remover Estimativa de Valor por Tese
+- [x] Remover campo valorEstimado da seleção de teses por cliente (frontend + backend)
+- [x] Deixar apenas cruzamento aplicável/não aplicável (aderente/não aderente)
+- [x] Remover exibição de "Valor estimado total" no resumo de teses
+
+### Viabilidade Baseada no RTI
+- [x] Viabilidade deve ser calculada com base no valor real apurado no RTI (não no valor estimado)
+- [x] Critério: valor total do RTI ≥ R$20.000 = Viável, < R$20.000 = Inviável

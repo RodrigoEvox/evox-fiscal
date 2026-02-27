@@ -1,0 +1,26 @@
+{
+  "query": "SHOW COLUMNS FROM credit_tasks WHERE Field IN ('viabilidade', 'valorGlobalApurado', 'viabilidade_ct')",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW COLUMNS FROM credit_tasks WHERE Field IN ('viabilidade', 'valorGlobalApurado', 'viabilidade_ct')",
+  "rows": [
+    {
+      "Field": "viabilidade",
+      "Type": "enum('viavel','inviavel')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "valorGlobalApurado",
+      "Type": "decimal(14,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nviabilidade\tenum('viavel','inviavel')\tYES\t\tNULL\t\nvalorGlobalApurado\tdecimal(14,2)\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 97
+}

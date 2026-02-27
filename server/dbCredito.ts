@@ -195,6 +195,18 @@ export async function updateRtiReport(id: number, data: Partial<InsertRtiReport>
   await db_.update(rtiReports).set(data as any).where(eq(rtiReports.id, id));
 }
 
+export async function listRtisByTask(taskId: number) {
+  const db_ = await getDb();
+  if (!db_) return [];
+  const rtis = await db_.select().from(rtiReports).where(eq(rtiReports.taskId, taskId)).orderBy(desc(rtiReports.createdAt));
+  // Enrich with sum of oportunidades valorApurado
+  for (const rti of rtis) {
+    const [opRows] = await db_.execute(sql.raw(`SELECT COALESCE(SUM(valorApurado), 0) as totalApurado FROM rti_oportunidades WHERE rtiId = ${rti.id}`));
+    (rti as any).valorTotalApurado = Number((opRows as any)[0]?.totalApurado || 0);
+  }
+  return rtis;
+}
+
 // ===== CREDIT TASKS =====
 export async function listCreditTasks(filters?: { fila?: string; status?: string; caseId?: number; clienteId?: number; responsavelId?: number }) {
   const db_ = await getDb();
@@ -962,11 +974,7 @@ export async function evaluateTesesAderencia(clienteId: number) {
     if (cliente.regimeTributario === 'lucro_real' && !tese.aplicavelLucroReal) { aplicavel = false; motivos.push('Não aplicável a Lucro Real'); }
     if (cliente.regimeTributario === 'lucro_presumido' && !tese.aplicavelLucroPresumido) { aplicavel = false; motivos.push('Não aplicável a Lucro Presumido'); }
     if (cliente.regimeTributario === 'simples_nacional' && !tese.aplicavelSimplesNacional) { aplicavel = false; motivos.push('Não aplicável a Simples Nacional'); }
-    const base = Number(cliente.valorMedioGuias || 0);
-    const mult = tese.potencialFinanceiro === 'muito_alto' ? 0.15 : tese.potencialFinanceiro === 'alto' ? 0.10 : tese.potencialFinanceiro === 'medio' ? 0.05 : 0.02;
-    const valorEstimado = Math.round(base * mult * 100) / 100;
-
-    const item = { teseId: tese.id, teseNome: tese.nome, tributoEnvolvido: tese.tributoEnvolvido, tipo: tese.tipo, classificacao: tese.classificacao, potencialFinanceiro: tese.potencialFinanceiro, valorEstimado };
+    const item = { teseId: tese.id, teseNome: tese.nome, tributoEnvolvido: tese.tributoEnvolvido, tipo: tese.tipo, classificacao: tese.classificacao, potencialFinanceiro: tese.potencialFinanceiro };
     if (aplicavel) {
       aderentes.push(item);
     } else {

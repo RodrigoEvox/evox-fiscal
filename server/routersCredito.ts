@@ -753,19 +753,23 @@ const creditoRouter = router({
         const existingAnexos = (task.anexos && typeof task.anexos === 'string' ? JSON.parse(task.anexos) : task.anexos) || [];
         const allAnexos = [...existingAnexos, ...(input.anexos || [])];
 
-        // Calculate viabilidade automatically from task teses if not provided
+        // Calculate viabilidade based on RTI value (valor real apurado)
         let viabilidade = input.viabilidade;
         let valorGlobal = input.valorGlobalApurado;
-        if (!viabilidade) {
-          // Sum all teses valorEstimado for this task
-          const taskTeses = await credDb.listTaskTeses(input.id);
-          const totalEstimado = taskTeses.reduce((sum: number, t: any) => sum + Number(t.valorEstimado || 0), 0);
-          valorGlobal = valorGlobal ?? totalEstimado;
-          viabilidade = valorGlobal >= 20000 ? 'viavel' : 'inviavel';
+        
+        // If no value provided, try to get from RTI oportunidades (valor real apurado)
+        if (valorGlobal === undefined || valorGlobal === null) {
+          const rtis = await credDb.listRtisByTask(input.id);
+          if (rtis && rtis.length > 0) {
+            valorGlobal = rtis.reduce((sum: number, r: any) => sum + Number((r as any).valorTotalApurado || r.valorTotalEstimado || 0), 0);
+          } else {
+            valorGlobal = 0;
+          }
         }
-        if (valorGlobal === undefined) {
-          const taskTeses = await credDb.listTaskTeses(input.id);
-          valorGlobal = taskTeses.reduce((sum: number, t: any) => sum + Number(t.valorEstimado || 0), 0);
+        
+        // Auto-calculate viabilidade if not manually set: >= R$20.000 = viavel, < R$20.000 = inviavel
+        if (!viabilidade) {
+          viabilidade = valorGlobal >= 20000 ? 'viavel' : 'inviavel';
         }
 
         await credDb.updateCreditTask(input.id, {

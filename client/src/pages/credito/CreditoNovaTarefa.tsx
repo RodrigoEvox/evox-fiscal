@@ -38,7 +38,6 @@ interface TeseItem {
   tipo: string;
   classificacao: string;
   potencialFinanceiro: string;
-  valorEstimado: number;
   motivos?: string[];
 }
 
@@ -219,7 +218,7 @@ export default function CreditoNovaTarefa() {
               teseNome: tese.teseNome,
               aderente: isAderente ? 1 : 0,
               justificativaNaoAderente: justificativas[teseId] || null,
-              valorEstimado: tese.valorEstimado || 0,
+              valorEstimado: '0',
             });
           }
         }
@@ -593,10 +592,7 @@ export default function CreditoNovaTarefa() {
                               </Badge>
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-emerald-700">{formatCurrency(tese.valorEstimado)}</p>
-                            <p className="text-[10px] text-muted-foreground">estimado</p>
-                          </div>
+
                         </div>
                       ))}
                     </div>
@@ -654,10 +650,7 @@ export default function CreditoNovaTarefa() {
                               </div>
                             )}
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-muted-foreground">{formatCurrency(tese.valorEstimado)}</p>
-                            <p className="text-[10px] text-muted-foreground">estimado</p>
-                          </div>
+
                         </div>
                       ))}
                     </div>
@@ -673,13 +666,7 @@ export default function CreditoNovaTarefa() {
                       <p className="text-sm font-medium text-foreground">
                         {selectedTeses.size} tese(s) selecionada(s)
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Valor estimado total: {formatCurrency(
-                          [...aderentes, ...naoAderentes]
-                            .filter((t: TeseItem) => selectedTeses.has(t.teseId))
-                            .reduce((sum: number, t: TeseItem) => sum + (t.valorEstimado || 0), 0)
-                        )}
-                      </p>
+
                     </div>
                     <div className="flex items-center gap-3">
                       <Button variant="outline" onClick={() => setStep(2)}>

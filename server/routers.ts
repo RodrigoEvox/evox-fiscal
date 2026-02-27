@@ -550,11 +550,8 @@ export const appRouter = router({
             if (impLower.includes('simples') && cliente.regimeTributario === 'simples_nacional') { aplicavel = false; motivos.push(imp); }
             if (impLower.includes('isent') && !(cliente as any).contribuinteIcms) { aplicavel = false; motivos.push(imp); }
           }
-          const base = Number(cliente.valorMedioGuias || 0);
-          const mult = tese.potencialFinanceiro === 'muito_alto' ? 0.15 : tese.potencialFinanceiro === 'alto' ? 0.10 : tese.potencialFinanceiro === 'medio' ? 0.05 : 0.02;
-          const valorEstimado = Math.round(base * mult * 100) / 100;
           if (aplicavel) {
-            tesesAplicaveis.push({ teseId: tese.id, teseNome: tese.nome, valorEstimado, classificacao: tese.classificacao, tipo: tese.tipo, potencialFinanceiro: tese.potencialFinanceiro, fundamentacao: tese.fundamentacaoLegal?.substring(0, 200) });
+            tesesAplicaveis.push({ teseId: tese.id, teseNome: tese.nome, classificacao: tese.classificacao, tipo: tese.tipo, potencialFinanceiro: tese.potencialFinanceiro, fundamentacao: tese.fundamentacaoLegal?.substring(0, 200) });
           } else {
             tesesDescartadas.push({ teseId: tese.id, teseNome: tese.nome, motivo: motivos.join('; ') });
           }
@@ -566,8 +563,7 @@ export const appRouter = router({
         if (hasHighPotentialTeses && !hasNonPriorityFlags) prioridade = 'alta';
         else if (hasNonPriorityFlags && !hasHighPotentialTeses) prioridade = 'baixa';
 
-        const totalValor = tesesAplicaveis.reduce((s: number, t: any) => s + (t.valorEstimado || 0), 0);
-        const score = Math.min(100, Math.round((tesesAplicaveis.length / Math.max(activeTeses.length, 1)) * 50 + (totalValor > 50000 ? 50 : (totalValor / 50000) * 50)));
+        const score = Math.min(100, Math.round((tesesAplicaveis.length / Math.max(activeTeses.length, 1)) * 100));
 
         await db.updateCliente(input.id, { redFlags, alertasInformacao: alertas, prioridade, scoreOportunidade: score });
 
@@ -584,7 +580,7 @@ export const appRouter = router({
         } as any);
 
         await logAudit('criar', 'relatorio', reportId, `Análise ${cliente.razaoSocial}`, ctx);
-        return { reportId, prioridade, score, tesesAplicaveis: tesesAplicaveis.length, tesesDescartadas: tesesDescartadas.length, totalValor, redFlags: redFlags.length };
+        return { reportId, prioridade, score, tesesAplicaveis: tesesAplicaveis.length, tesesDescartadas: tesesDescartadas.length, redFlags: redFlags.length };
       }),
     importCsv: protectedProcedure
       .input(z.object({ clientes: z.array(z.record(z.string(), z.any())) }))

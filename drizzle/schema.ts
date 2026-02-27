@@ -1887,7 +1887,7 @@ export const creditTasks = mysqlTable("credit_tasks", {
 	slaStatus: mysqlEnum(['dentro_prazo','atencao','vencido']).default('dentro_prazo'),
 	anexos: json(),
 	observacoes: text(),
-	viabilidade: mysqlEnum('viabilidade_ct', ['viavel','inviavel']),
+	viabilidade: mysqlEnum(['viavel','inviavel']),
 	valorGlobalApurado: decimal({ precision: 14, scale: 2 }),
 	criadoPorId: int(),
 	criadoPorNome: varchar({ length: 255 }),

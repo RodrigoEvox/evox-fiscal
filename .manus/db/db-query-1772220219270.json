@@ -1,0 +1,46 @@
+{
+  "query": "SHOW CREATE TABLE credit_tasks",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SHOW CREATE TABLE credit_tasks",
+  "rows": [
+    {
+      "Table": "credit_tasks",
+      "Create Table": "CREATE TABLE `credit_tasks` ("
+    }
+  ],
+  "messages": [
+    "  `id` int NOT NULL AUTO_INCREMENT,",
+    "  `codigo` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `fila` enum('apuracao','retificacao','compensacao','ressarcimento','restituicao','revisao','onboarding','chamados') COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `caseId` int DEFAULT NULL,",
+    "  `clienteId` int DEFAULT NULL,",
+    "  `demandRequestId` int DEFAULT NULL,",
+    "  `titulo` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `descricao` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `status` enum('a_fazer','fazendo','feito','concluido') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'a_fazer',",
+    "  `prioridade` enum('urgente','alta','media','baixa') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'media',",
+    "  `ordem` int NOT NULL DEFAULT '0',",
+    "  `responsavelId` int DEFAULT NULL,",
+    "  `responsavelNome` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `dataVencimento` timestamp NULL DEFAULT NULL,",
+    "  `dataConclusao` timestamp NULL DEFAULT NULL,",
+    "  `slaHoras` int DEFAULT NULL,",
+    "  `slaStatus` enum('dentro_prazo','atencao','vencido') COLLATE utf8mb4_unicode_ci DEFAULT 'dentro_prazo',",
+    "  `anexos` json DEFAULT NULL,",
+    "  `observacoes` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `criadoPorId` int DEFAULT NULL,",
+    "  `criadoPorNome` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  `viabilidade` enum('viavel','inviavel') COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `valorGlobalApurado` decimal(14,2) DEFAULT NULL,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `idx_ct_fila` (`fila`),",
+    "  KEY `idx_ct_case` (`caseId`),",
+    "  KEY `idx_ct_cliente` (`clienteId`),",
+    "  KEY `idx_ct_status` (`status`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=120001"
+  ],
+  "stdout": "Table\tCreate Table\ncredit_tasks\tCREATE TABLE `credit_tasks` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `codigo` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `fila` enum('apuracao','retificacao','compensacao','ressarcimento','restituicao','revisao','onboarding','chamados') COLLATE utf8mb4_unicode_ci NOT NULL,\n  `caseId` int DEFAULT NULL,\n  `clienteId` int DEFAULT NULL,\n  `demandRequestId` int DEFAULT NULL,\n  `titulo` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `descricao` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `status` enum('a_fazer','fazendo','feito','concluido') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'a_fazer',\n  `prioridade` enum('urgente','alta','media','baixa') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'media',\n  `ordem` int NOT NULL DEFAULT '0',\n  `responsavelId` int DEFAULT NULL,\n  `responsavelNome` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `dataVencimento` timestamp NULL DEFAULT NULL,\n  `dataConclusao` timestamp NULL DEFAULT NULL,\n  `slaHoras` int DEFAULT NULL,\n  `slaStatus` enum('dentro_prazo','atencao','vencido') COLLATE utf8mb4_unicode_ci DEFAULT 'dentro_prazo',\n  `anexos` json DEFAULT NULL,\n  `observacoes` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `criadoPorId` int DEFAULT NULL,\n  `criadoPorNome` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `viabilidade` enum('viavel','inviavel') COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `valorGlobalApurado` decimal(14,2) DEFAULT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_ct_fila` (`fila`),\n  KEY `idx_ct_case` (`caseId`),\n  KEY `idx_ct_cliente` (`clienteId`),\n  KEY `idx_ct_status` (`status`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=120001\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

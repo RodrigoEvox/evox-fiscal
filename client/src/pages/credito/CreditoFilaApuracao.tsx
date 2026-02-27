@@ -1600,7 +1600,7 @@ export default function CreditoFilaApuracao() {
                 step="0.01"
                 min="0"
               />
-              <p className="text-xs text-muted-foreground">Somatório de todas as teses apuradas. Se não informado, será calculado automaticamente.</p>
+              <p className="text-xs text-muted-foreground">Valor real apurado no RTI (somatório de todas as oportunidades). Se não informado, será calculado automaticamente a partir dos RTIs gerados.</p>
             </div>
 
             <div className="space-y-2">
@@ -1625,7 +1625,7 @@ export default function CreditoFilaApuracao() {
                   Inviável (&lt; R$ 20 mil)
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Se não selecionado, será calculado automaticamente com base no valor global.</p>
+              <p className="text-xs text-muted-foreground">Critério: ≥ R$ 20 mil = Viável, &lt; R$ 20 mil = Inviável. Baseado no valor real apurado no RTI.</p>
             </div>
 
             <Separator />
