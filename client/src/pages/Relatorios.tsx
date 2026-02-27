@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { FileText, Download, Eye, Search, Loader2, Calendar, Building2, TrendingUp, AlertTriangle, CheckCircle, Scale } from 'lucide-react';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
+// Dynamic imports for heavy libraries (lazy loaded on demand)
+const loadXLSX = () => import('xlsx');
+const loadJsPDF = () => import('jspdf');
 
 const LOGO_URL = 'https://manus-storage.s3.us-east-1.amazonaws.com/e7e7e5e0-c7e5-4d0a-b845-e6c2f98e9f3a/Logoazul.png';
 
@@ -37,6 +38,7 @@ export default function Relatorios() {
   });
 
   const exportPDF = async (relatorio: any) => {
+    const { default: jsPDF } = await loadJsPDF();
     const cliente = getCliente(relatorio.clienteId);
     const doc = new jsPDF();
     try {
@@ -80,7 +82,8 @@ export default function Relatorios() {
     toast.success('PDF exportado com sucesso!');
   };
 
-  const exportExcel = (relatorio: any) => {
+  const exportExcel = async (relatorio: any) => {
+    const XLSX = await loadXLSX();
     const cliente = getCliente(relatorio.clienteId);
     const wb = XLSX.utils.book_new();
     const data = [
@@ -101,7 +104,8 @@ export default function Relatorios() {
     toast.success('Excel exportado!');
   };
 
-  const exportAllExcel = () => {
+  const exportAllExcel = async () => {
+    const XLSX = await loadXLSX();
     const wb = XLSX.utils.book_new();
     const rows = filtered.map((r: any) => { const c = getCliente(r.clienteId); return { 'Razão Social': c?.razaoSocial || '', 'CNPJ': c?.cnpj || '', 'Regime': c?.regimeTributario?.replace(/_/g, ' ') || '', 'Prioridade': r.prioridade === 'alta' ? 'ALTA' : r.prioridade === 'media' ? 'MÉDIA' : 'BAIXA', 'Score': r.scoreOportunidade || 0, 'Red Flags': (r.redFlags || []).length, 'Teses Aplicáveis': (r.tesesAplicaveis || []).length, 'Data': new Date(r.createdAt).toLocaleDateString('pt-BR') }; });
     const ws = XLSX.utils.json_to_sheet(rows); ws['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 15 }, { wch: 12 }];

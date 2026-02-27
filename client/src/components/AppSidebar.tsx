@@ -158,11 +158,11 @@ export default function AppSidebar() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  const notificacoes = trpc.notificacoes.list.useQuery(undefined, { refetchInterval: 30000 });
+  const notificacoes = trpc.notificacoes.list.useQuery(undefined, { refetchInterval: 60000, staleTime: 30000 });
   const unreadCount = notificacoes.data?.filter((n: any) => !n.lida).length || 0;
 
-  const setorConfigs = trpc.setorConfig.list.useQuery();
-  const setoresData = trpc.setores.list.useQuery();
+  const setorConfigs = trpc.setorConfig.list.useQuery(undefined, { staleTime: 120000 });
+  const setoresData = trpc.setores.list.useQuery(undefined, { staleTime: 120000 });
 
   // Build setor nav from config, sorted alphabetically by display name
   // Separate Universidade Evox from the rest
@@ -222,7 +222,7 @@ export default function AppSidebar() {
   const displayName = (user as any)?.apelido || user?.name || 'Usuário';
 
   // Chat unread badge
-  const chatUnread = trpc.chat.unreadCount.useQuery(undefined, { refetchInterval: 5000, enabled: !!user });
+  const chatUnread = trpc.chat.unreadCount.useQuery(undefined, { refetchInterval: 15000, staleTime: 10000, enabled: !!user });
   const chatBadgeCount = chatUnread.data?.total || 0;
 
   const ChatNavLink = () => (

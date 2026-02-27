@@ -2431,3 +2431,19 @@
 - [x] Notificar analista quando tarefa for reaberta
 - [x] Notificar analista quando tarefa for atribuída via exceção de fila
 - [x] Registrar notificação no sistema interno de notificações
+
+## v93 — Correção de Performance / Lentidão do Sistema
+
+### Diagnóstico
+- [x] Analisar tamanho do bundle JS (build) — era 2.3MB, agora 494KB
+- [x] Verificar logs de rede e servidor
+- [x] Identificar gargalos de renderização
+
+### Otimizações
+- [x] Implementar lazy loading (code splitting) em todas as rotas (~40 páginas)
+- [x] Reduzir tamanho do bundle principal — de 2.3MB para 494KB (-78%)
+- [x] Otimizar queries do backend (fila.list com JOIN, notificações com LIMIT 25)
+- [x] Converter xlsx (429KB), jspdf (389KB), recharts (469KB) para imports dinâmicos
+- [x] Melhorar tempo de navegação — staleTime global 30s, refetchOnWindowFocus desabilitado
+- [x] Reduzir polling intervals (chat: 5s→15s, notificações: 30s→60s)
+- [x] Adicionar manual chunks no Vite (vendor-react, vendor-recharts, vendor-ui, vendor-motion)

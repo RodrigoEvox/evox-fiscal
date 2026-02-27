@@ -12,8 +12,8 @@ import {
   Filter, TrendingUp, DollarSign, ClipboardList, AlertTriangle, FileText,
   Users, Clock, ShieldAlert, RotateCcw, Flag,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+const loadJsPDF = () => import('jspdf');
+const loadAutoTable = () => import('jspdf-autotable');
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
 import {
@@ -215,8 +215,9 @@ export default function CreditoRelatorios() {
 
   const hasActiveFilters = periodoInicio || periodoFim || teseId !== 'all' || parceiroId !== 'all' || classificacao !== 'all' || segmento !== 'all' || fila !== 'all';
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
     if (!tasks.length && !ledger.length) return;
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([loadJsPDF(), loadAutoTable()]);
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();

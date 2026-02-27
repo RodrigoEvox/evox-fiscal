@@ -23,7 +23,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area, LineChart, Line,
 } from 'recharts';
-import jsPDF from 'jspdf';
+const loadJsPDF = () => import('jspdf');
 import { toast } from 'sonner';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
@@ -367,8 +367,9 @@ export default function DashboardComissoes() {
   }, [data, appliedFilters]);
 
   // Export to PDF
-  const handleExportPdf = useCallback(() => {
+  const handleExportPdf = useCallback(async () => {
     if (!data) return;
+    const { default: jsPDF } = await loadJsPDF();
     const summary = (data as any).kpis;
     const ranking = (data as any).ranking || [];
     const monthlyEvolution = (data as any).evolucaoMensal || [];

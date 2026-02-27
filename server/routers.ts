@@ -701,21 +701,7 @@ export const appRouter = router({
   // ---- FILA DE APURAÇÃO ----
   fila: router({
     list: protectedProcedure.query(async () => {
-      const items = await db.listFilaApuracao();
-      const allClientes = await db.listClientes();
-      const clienteMap = new Map(allClientes.map(c => [c.id, c]));
-      return items.map(item => {
-        const cliente = clienteMap.get(item.clienteId);
-        return {
-          ...item,
-          clienteNome: cliente?.razaoSocial || 'N/A',
-          clienteCnpj: cliente?.cnpj || 'N/A',
-          clientePrioridade: cliente?.prioridade || 'media',
-          procuracaoHabilitada: cliente?.procuracaoHabilitada || false,
-          procuracaoValidade: cliente?.procuracaoValidade || null,
-          redFlags: cliente?.redFlags || [],
-        };
-      });
+      return db.listFilaApuracaoWithClientes();
     }),
     updateStatus: protectedProcedure
       .input(z.object({

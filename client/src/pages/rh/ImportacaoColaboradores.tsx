@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, Download, AlertTriangle, ArrowLeft, Info } from 'lucide-react';
-import * as XLSX from 'xlsx';
+const loadXLSX = () => import('xlsx');
 import { useLocation } from 'wouter';
 
 const TEMPLATE_COLUMNS = [
@@ -45,8 +45,9 @@ export default function ImportacaoColaboradores() {
     setResult(null);
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await loadXLSX();
         const data = evt.target?.result;
         const wb = XLSX.read(data, { type: 'binary' });
         const ws = wb.Sheets[wb.SheetNames[0]];
@@ -105,7 +106,8 @@ export default function ImportacaoColaboradores() {
     }
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await loadXLSX();
     const ws = XLSX.utils.aoa_to_sheet([
       TEMPLATE_COLUMNS,
       [

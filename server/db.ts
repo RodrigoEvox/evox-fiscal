@@ -369,6 +369,42 @@ export async function listFilaApuracao() {
   return db.select().from(filaApuracao).orderBy(asc(filaApuracao.ordem));
 }
 
+// Optimized version that joins with clientes to avoid N+1 query
+export async function listFilaApuracaoWithClientes() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: filaApuracao.id,
+      clienteId: filaApuracao.clienteId,
+      status: filaApuracao.status,
+      ordem: filaApuracao.ordem,
+      analistaId: filaApuracao.analistaId,
+      analistaNome: filaApuracao.analistaNome,
+      dataInicioApuracao: filaApuracao.dataInicioApuracao,
+      dataConclusaoApuracao: filaApuracao.dataConclusaoApuracao,
+      createdAt: filaApuracao.createdAt,
+      clienteNome: clientes.razaoSocial,
+      clienteCnpj: clientes.cnpj,
+      clientePrioridade: clientes.prioridade,
+      procuracaoHabilitada: clientes.procuracaoHabilitada,
+      procuracaoValidade: clientes.procuracaoValidade,
+      redFlags: clientes.redFlags,
+    })
+    .from(filaApuracao)
+    .leftJoin(clientes, eq(filaApuracao.clienteId, clientes.id))
+    .orderBy(asc(filaApuracao.ordem));
+  return rows.map(r => ({
+    ...r,
+    clienteNome: r.clienteNome || 'N/A',
+    clienteCnpj: r.clienteCnpj || 'N/A',
+    clientePrioridade: r.clientePrioridade || 'media',
+    procuracaoHabilitada: r.procuracaoHabilitada || false,
+    procuracaoValidade: r.procuracaoValidade || null,
+    redFlags: r.redFlags || [],
+  }));
+}
+
 export async function createFilaItem(data: InsertFilaApuracao) {
   const db = await getDb();
   if (!db) return null;
@@ -414,12 +450,23 @@ export async function createRelatorio(data: InsertRelatorio) {
 export async function listNotificacoes(usuarioId?: number) {
   const db = await getDb();
   if (!db) return [];
+  const cols = {
+    id: notificacoes.id,
+    tipo: notificacoes.tipo,
+    titulo: notificacoes.titulo,
+    mensagem: notificacoes.mensagem,
+    lida: notificacoes.lida,
+    usuarioId: notificacoes.usuarioId,
+    clienteId: notificacoes.clienteId,
+    createdAt: notificacoes.createdAt,
+    tarefaId: notificacoes.tarefaId,
+  };
   if (usuarioId) {
-    return db.select().from(notificacoes)
+    return db.select(cols).from(notificacoes)
       .where(or(eq(notificacoes.usuarioId, usuarioId), isNull(notificacoes.usuarioId)))
-      .orderBy(desc(notificacoes.createdAt)).limit(50);
+      .orderBy(desc(notificacoes.createdAt)).limit(25);
   }
-  return db.select().from(notificacoes).orderBy(desc(notificacoes.createdAt)).limit(50);
+  return db.select(cols).from(notificacoes).orderBy(desc(notificacoes.createdAt)).limit(25);
 }
 
 export async function createNotificacao(data: InsertNotificacao) {

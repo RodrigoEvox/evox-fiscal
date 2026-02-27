@@ -8,19 +8,23 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import AppSidebar from "./components/AppSidebar";
-import GlobalSearch from "./components/GlobalSearch";
-import Dashboard from "./pages/Dashboard";
-import Clientes from "./pages/Clientes";
-import ClienteDetalhe from "./pages/ClienteDetalhe";
-import Teses from "./pages/Teses";
-import Relatorios from "./pages/Relatorios";
-import Parceiros from "./pages/Parceiros";
-import FilaApuracao from "./pages/FilaApuracao";
-import Analitica from "./pages/Analitica";
-import Usuarios from "./pages/Usuarios";
-import Importacao from "./pages/Importacao";
 import { lazy, Suspense } from "react";
+
+// Lazy-loaded layout components
+const AppSidebar = lazy(() => import("./components/AppSidebar"));
+const GlobalSearch = lazy(() => import("./components/GlobalSearch"));
+
+// Lazy-loaded pages (previously static imports causing 2.3MB bundle)
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Clientes = lazy(() => import("./pages/Clientes"));
+const ClienteDetalhe = lazy(() => import("./pages/ClienteDetalhe"));
+const Teses = lazy(() => import("./pages/Teses"));
+const Relatorios = lazy(() => import("./pages/Relatorios"));
+const Parceiros = lazy(() => import("./pages/Parceiros"));
+const FilaApuracao = lazy(() => import("./pages/FilaApuracao"));
+const Analitica = lazy(() => import("./pages/Analitica"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const Importacao = lazy(() => import("./pages/Importacao"));
 
 const Tarefas = lazy(() => import("./pages/Tarefas"));
 const TarefaDetalhe = lazy(() => import("./pages/TarefaDetalhe"));
@@ -282,6 +286,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <AuthGate>
+            <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
             <div className="flex min-h-screen">
               <AppSidebar />
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -294,6 +299,7 @@ function App() {
                 </main>
               </div>
             </div>
+            </Suspense>
           </AuthGate>
         </TooltipProvider>
       </ThemeProvider>

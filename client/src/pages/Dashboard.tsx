@@ -12,9 +12,9 @@ import { Button } from '@/components/ui/button';
 export default function Dashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
-  const { data: clientes } = trpc.clientes.list.useQuery();
-  const { data: filaItems } = trpc.fila.list.useQuery();
+  const { data: stats, isLoading } = trpc.dashboard.stats.useQuery(undefined, { staleTime: 30000 });
+  const { data: clientes } = trpc.clientes.list.useQuery(undefined, { staleTime: 60000 });
+  const { data: filaItems } = trpc.fila.list.useQuery(undefined, { staleTime: 30000 });
   const seedTeses = trpc.seed.teses.useMutation({
     onSuccess: () => {
       trpc.useUtils().dashboard.stats.invalidate();

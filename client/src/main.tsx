@@ -57,8 +57,10 @@ const queryClient = new QueryClient({
         return failureCount < 3;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      // Stale time to reduce unnecessary refetches
-      staleTime: 5000,
+      // Stale time to reduce unnecessary refetches on navigation
+      staleTime: 30000,
+      // Don't refetch on window focus to reduce background requests
+      refetchOnWindowFocus: false,
     },
     mutations: {
       retry: false,
