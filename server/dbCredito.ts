@@ -370,6 +370,68 @@ export async function getCreditTaskStats(filters?: { responsavelId?: number; par
   return result;
 }
 
+// ===== FLOW OVERVIEW (Visão Geral do Fluxo por Empresa) =====
+export async function getClienteFlowOverview() {
+  const db_ = await getDb();
+  if (!db_) return [];
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT 
+      ct.clienteId,
+      c.razaoSocial AS clienteNome,
+      c.cnpj AS clienteCnpj,
+      c.codigo AS clienteCodigo,
+      c.classificacaoCliente,
+      cc2.numero AS caseNumero,
+      p.nomeCompleto AS parceiroNome,
+      p.apelido AS parceiroNomeCurto,
+      ct.fila,
+      ct.status,
+      ct.slaStatus,
+      ct.codigo AS taskCodigo,
+      ct.responsavelNome,
+      ct.dataVencimento,
+      ct.createdAt,
+      u.apelido AS responsavelApelido
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    LEFT JOIN credit_cases cc2 ON ct.caseId = cc2.id
+    LEFT JOIN parceiros p ON cc2.parceiroId = p.id
+    LEFT JOIN users u ON ct.responsavelId = u.id
+    WHERE ct.status != 'concluido'
+    ORDER BY c.razaoSocial, ct.fila, ct.createdAt
+  `));
+  
+  // Group by clienteId
+  const clienteMap = new Map<number, any>();
+  for (const row of (rows as unknown as any[])) {
+    const cId = Number(row.clienteId);
+    if (!cId) continue;
+    if (!clienteMap.has(cId)) {
+      clienteMap.set(cId, {
+        clienteId: cId,
+        clienteNome: row.clienteNome || 'Sem nome',
+        clienteCnpj: row.clienteCnpj || '',
+        clienteCodigo: row.clienteCodigo || '',
+        classificacao: row.classificacaoCliente || 'base',
+        parceiroNome: row.parceiroNome || row.parceiroNomeCurto || null,
+        filas: {} as Record<string, any[]>,
+      });
+    }
+    const cliente = clienteMap.get(cId)!;
+    const fila = row.fila as string;
+    if (!cliente.filas[fila]) cliente.filas[fila] = [];
+    cliente.filas[fila].push({
+      taskCodigo: row.taskCodigo,
+      status: row.status,
+      slaStatus: row.slaStatus,
+      responsavel: row.responsavelApelido || row.responsavelNome || null,
+      dataVencimento: row.dataVencimento,
+      createdAt: row.createdAt,
+    });
+  }
+  return Array.from(clienteMap.values());
+}
+
 // ===== CREDIT TICKETS =====
 export async function listCreditTickets(filters?: { status?: string; caseId?: number; clienteId?: number; parceiroId?: number; tipo?: string }) {
   const db_ = await getDb();

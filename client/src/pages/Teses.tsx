@@ -46,6 +46,7 @@ const emptyForm = {
   aplicavelComercio: false, aplicavelIndustria: false, aplicavelServico: false,
   aplicavelContribuinteICMS: false, aplicavelContribuinteIPI: false,
   aplicavelLucroReal: false, aplicavelLucroPresumido: false, aplicavelSimplesNacional: false,
+  slaApuracaoDias: '' as string | number,
 };
 
 export default function Teses() {
@@ -177,6 +178,7 @@ export default function Teses() {
                         </Badge>
                         {t.viaAdministrativa && <Badge className="bg-green-100 text-green-700">Via Administrativa</Badge>}
                         {t.necessidadeAcaoJudicial && <Badge className="bg-blue-100 text-blue-700">Ação Judicial</Badge>}
+                        {t.slaApuracaoDias ? <Badge className="bg-purple-100 text-purple-700 border-purple-200">SLA: {t.slaApuracaoDias} dias</Badge> : <Badge variant="outline" className="text-muted-foreground">SLA: N/C</Badge>}
                       </div>
                     </div>
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
@@ -214,6 +216,7 @@ export default function Teses() {
                     <div><Label className="text-xs text-muted-foreground">Potencial Financeiro</Label><Badge className={potencialColors[viewTese.potencialFinanceiro]}>{potencialLabels[viewTese.potencialFinanceiro]}</Badge></div>
                     <div><Label className="text-xs text-muted-foreground">Potencial Mercadológico</Label><Badge className={potencialColors[viewTese.potencialMercadologico]}>{potencialLabels[viewTese.potencialMercadologico]}</Badge></div>
                     <div><Label className="text-xs text-muted-foreground">Prazo Prescricional</Label><p>{viewTese.prazoPrescricional || 'N/A'}</p></div>
+                    <div><Label className="text-xs text-muted-foreground">SLA de Apuração</Label><p className="font-semibold">{viewTese.slaApuracaoDias ? `${viewTese.slaApuracaoDias} dias` : 'Não configurado'}</p></div>
                     <div><Label className="text-xs text-muted-foreground">Via</Label><p>{viewTese.necessidadeAcaoJudicial ? 'Judicial' : ''} {viewTese.viaAdministrativa ? 'Administrativa' : ''}</p></div>
                   </div>
                   {viewTese.fundamentacaoLegal && (
@@ -368,6 +371,7 @@ export default function Teses() {
                     </Select>
                   </div>
                   <div><Label className="text-xs">Prazo Prescricional</Label><Input value={form.prazoPrescricional} onChange={e => setForm(f => ({ ...f, prazoPrescricional: e.target.value }))} /></div>
+                  <div><Label className="text-xs">SLA de Apuração (dias)</Label><Input type="number" min="1" placeholder="Ex: 30" value={form.slaApuracaoDias} onChange={e => setForm(f => ({ ...f, slaApuracaoDias: e.target.value ? Number(e.target.value) : '' }))} /><p className="text-[10px] text-muted-foreground mt-1">Prazo em dias para apuração desta tese. Usado no cálculo automático de SLA das tarefas.</p></div>
                   <div className="flex items-end gap-4">
                     <div className="flex items-center gap-2"><Switch checked={form.necessidadeAcaoJudicial} onCheckedChange={v => setForm(f => ({ ...f, necessidadeAcaoJudicial: v }))} /><Label className="text-xs">Judicial</Label></div>
                     <div className="flex items-center gap-2"><Switch checked={form.viaAdministrativa} onCheckedChange={v => setForm(f => ({ ...f, viaAdministrativa: v }))} /><Label className="text-xs">Administrativa</Label></div>

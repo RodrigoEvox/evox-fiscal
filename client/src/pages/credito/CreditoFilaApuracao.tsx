@@ -49,6 +49,9 @@ export default function CreditoFilaApuracao() {
   const [teseFilter, setTeseFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [procuracaoFilter, setProcuracaoFilter] = useState('all');
+  const [tipoClienteFilter, setTipoClienteFilter] = useState('all');
+  const [slaStatusFilter, setSlaStatusFilter] = useState('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // RTI Dialog
@@ -226,6 +229,18 @@ export default function CreditoFilaApuracao() {
       const to = new Date(dateTo + 'T23:59:59');
       result = result.filter(t => new Date(t.createdAt) <= to);
     }
+    if (procuracaoFilter !== 'all') {
+      result = result.filter(t => (t.procuracaoStatus || 'sem') === procuracaoFilter);
+    }
+    if (tipoClienteFilter !== 'all') {
+      result = result.filter(t => (t.clienteClassificacao || 'base') === tipoClienteFilter);
+    }
+    if (slaStatusFilter !== 'all') {
+      result = result.filter(t => {
+        const sla = t.slaStatus || 'dentro_prazo';
+        return sla === slaStatusFilter;
+      });
+    }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       result = result.filter(t =>
@@ -239,7 +254,7 @@ export default function CreditoFilaApuracao() {
     }
     result.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return result;
-  }, [tasks, statusFilter, parceiroFilter, teseFilter, dateFrom, dateTo, searchTerm, allTeses]);
+  }, [tasks, statusFilter, parceiroFilter, teseFilter, dateFrom, dateTo, procuracaoFilter, tipoClienteFilter, slaStatusFilter, searchTerm, allTeses]);
 
   const stats = useMemo(() => {
     const all = (tasks as any[]) || [];
@@ -733,9 +748,9 @@ export default function CreditoFilaApuracao() {
               <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
                 <Filter className="w-4 h-4" />
                 Filtros
-                {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo) && (
+                {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo || procuracaoFilter !== 'all' || tipoClienteFilter !== 'all' || slaStatusFilter !== 'all') && (
                   <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
-                    {[parceiroFilter !== 'all', teseFilter !== 'all', dateFrom, dateTo].filter(Boolean).length}
+                    {[parceiroFilter !== 'all', teseFilter !== 'all', dateFrom, dateTo, procuracaoFilter !== 'all', tipoClienteFilter !== 'all', slaStatusFilter !== 'all'].filter(Boolean).length}
                   </Badge>
                 )}
               </Button>
@@ -773,6 +788,50 @@ export default function CreditoFilaApuracao() {
                       </Select>
                     </div>
                     <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Procuração</label>
+                      <Select value={procuracaoFilter} onValueChange={setProcuracaoFilter}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Todas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas</SelectItem>
+                          <SelectItem value="habilitada">Habilitada</SelectItem>
+                          <SelectItem value="prox_vencimento">Próx. Vencimento</SelectItem>
+                          <SelectItem value="vencida">Vencida</SelectItem>
+                          <SelectItem value="sem">Sem Procuração</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Tipo Cliente</label>
+                      <Select value={tipoClienteFilter} onValueChange={setTipoClienteFilter}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="novo">Novo</SelectItem>
+                          <SelectItem value="base">Base</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Status SLA</label>
+                      <Select value={slaStatusFilter} onValueChange={setSlaStatusFilter}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Todos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="dentro_prazo">No Prazo</SelectItem>
+                          <SelectItem value="atencao">Perto do Vencimento</SelectItem>
+                          <SelectItem value="vencido">Vencido</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">Data Início</label>
                       <Input type="date" className="h-9 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                     </div>
@@ -781,9 +840,9 @@ export default function CreditoFilaApuracao() {
                       <Input type="date" className="h-9 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                     </div>
                   </div>
-                  {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo) && (
+                  {(parceiroFilter !== 'all' || teseFilter !== 'all' || dateFrom || dateTo || procuracaoFilter !== 'all' || tipoClienteFilter !== 'all' || slaStatusFilter !== 'all') && (
                     <div className="flex justify-end mt-3">
-                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setParceiroFilter('all'); setTeseFilter('all'); setDateFrom(''); setDateTo(''); }}>
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setParceiroFilter('all'); setTeseFilter('all'); setDateFrom(''); setDateTo(''); setProcuracaoFilter('all'); setTipoClienteFilter('all'); setSlaStatusFilter('all'); }}>
                         Limpar Filtros
                       </Button>
                     </div>

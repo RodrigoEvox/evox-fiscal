@@ -877,6 +877,11 @@ const creditoRouter = router({
       }),
   }),
 
+  // --- Flow Overview (Visão Geral do Fluxo por Empresa) ---
+  flowOverview: protectedProcedure.query(async () => {
+    return credDb.getClienteFlowOverview();
+  }),
+
   // --- Tickets ---
   tickets: router({
     list: protectedProcedure

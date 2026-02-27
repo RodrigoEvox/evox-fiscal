@@ -12,7 +12,7 @@ import {
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu, Library,
   MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
   Bus, Dumbbell, DollarSign, Cake, Heart, Layers, Award, Inbox, AlertTriangle,
-  PenTool, FileSignature, RefreshCw, XCircle, Eye,
+  PenTool, FileSignature, RefreshCw, XCircle, Eye, GitBranch,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -125,6 +125,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'fila-compensacao': ArrowLeftRight,
   'fila-ressarcimento': Wallet,
   'fila-restituicao': Landmark,
+  'fluxo-geral': GitBranch,
   'gestao-creditos': DollarSign,
   'relatorios': FileBarChart,
   'relatorios-credito': FileBarChart,

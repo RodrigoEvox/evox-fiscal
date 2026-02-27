@@ -2285,3 +2285,23 @@
 - [x] Renomear "Workflow" para "Fluxo"
 - [x] Puxar apelido do usuário no campo Responsável
 - [x] RTI: mostrar apenas botão de baixar (quando gerado) ou "Não disponível"
+
+## v86 — SLA por Tese, Filtros Avançados e Painel de Fluxo
+
+### SLA por Tese no Cadastro
+- [x] Adicionar campo SLA (dias) no formulário de cadastro de teses tributárias
+- [x] Exibir SLA configurado na listagem de teses
+- [x] Cálculo automático de prazo na tarefa baseado no maior SLA entre as teses vinculadas
+
+### Filtros Avançados na Fila de Apuração
+- [x] Filtro por status de procuração (habilitada, sem, vencida, próx. vencimento)
+- [x] Filtro por tipo de cliente (novo/base)
+- [x] Filtro por status do SLA (no prazo, perto do vencimento, vencido)
+- [x] Barra de filtros com badges indicando filtros ativos
+
+### Painel de Visão Geral do Fluxo por Empresa
+- [x] Criar página/seção de visão geral do fluxo completo
+- [x] Mostrar em qual etapa cada empresa está (Apuração → Compensação → Restituição)
+- [x] Suportar empresa em múltiplas filas simultaneamente
+- [x] Indicadores visuais de progresso por empresa
+- [x] Filtros por empresa, fila e status

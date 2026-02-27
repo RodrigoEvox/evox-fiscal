@@ -93,6 +93,7 @@ const CreditoFilaRessarcimento = lazy(() => import("./pages/credito/CreditoFilaR
 const CreditoFilaRestituicao = lazy(() => import("./pages/credito/CreditoFilaRestituicao"));
 const CreditoGestaoCreditos = lazy(() => import("./pages/credito/CreditoGestaoCreditos"));
 const CreditoRelatorios = lazy(() => import("./pages/credito/CreditoRelatorios"));
+const CreditoFluxoGeral = lazy(() => import("./pages/credito/CreditoFluxoGeral"));
 
 // Contratos
 const ContratosDashboard = lazy(() => import("./pages/contratos/ContratosDashboard"));
@@ -205,6 +206,7 @@ function Router() {
         <Route path="/credito/fila-restituicao" component={CreditoFilaRestituicao} />
         <Route path="/credito/gestao-creditos" component={CreditoGestaoCreditos} />
         <Route path="/credito/relatorios" component={CreditoRelatorios} />
+        <Route path="/credito/fluxo-geral" component={CreditoFluxoGeral} />
         {/* Suporte Comercial */}
         <Route path="/suporte/inbox" component={InboxDemandas} />
         <Route path="/suporte/conflito-carteira" component={ConflitoCarteira} />

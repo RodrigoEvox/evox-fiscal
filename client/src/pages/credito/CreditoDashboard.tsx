@@ -12,7 +12,7 @@ import {
   DollarSign, ClipboardList, CheckCircle, AlertTriangle,
   TrendingUp, Loader2, ArrowRight, ChevronRight, Calculator,
   UserPlus, FileEdit, ArrowLeftRight, RefreshCw, Undo2,
-  PlusCircle, Clock, BarChart3, Filter, X, CalendarIcon,
+  PlusCircle, Clock, BarChart3, Filter, X, CalendarIcon, GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -399,6 +399,10 @@ export default function CreditoDashboard() {
             <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={() => navigate('/credito/relatorios')}>
               <BarChart3 className="w-4 h-4" />
               Relatórios Gerenciais
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={() => navigate('/credito/fluxo-geral')}>
+              <GitBranch className="w-4 h-4" />
+              Fluxo Geral por Empresa
             </Button>
           </CardContent>
         </Card>
