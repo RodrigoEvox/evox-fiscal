@@ -741,6 +741,8 @@ const creditoRouter = router({
           url: z.string(),
           tipo: z.string().optional(),
         })).optional(),
+        viabilidade: z.enum(['viavel', 'inviavel']).optional(),
+        valorGlobalApurado: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
@@ -750,23 +752,41 @@ const creditoRouter = router({
         const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
         const existingAnexos = (task.anexos && typeof task.anexos === 'string' ? JSON.parse(task.anexos) : task.anexos) || [];
         const allAnexos = [...existingAnexos, ...(input.anexos || [])];
+
+        // Calculate viabilidade automatically from task teses if not provided
+        let viabilidade = input.viabilidade;
+        let valorGlobal = input.valorGlobalApurado;
+        if (!viabilidade) {
+          // Sum all teses valorEstimado for this task
+          const taskTeses = await credDb.listTaskTeses(input.id);
+          const totalEstimado = taskTeses.reduce((sum: number, t: any) => sum + Number(t.valorEstimado || 0), 0);
+          valorGlobal = valorGlobal ?? totalEstimado;
+          viabilidade = valorGlobal >= 20000 ? 'viavel' : 'inviavel';
+        }
+        if (valorGlobal === undefined) {
+          const taskTeses = await credDb.listTaskTeses(input.id);
+          valorGlobal = taskTeses.reduce((sum: number, t: any) => sum + Number(t.valorEstimado || 0), 0);
+        }
+
         await credDb.updateCreditTask(input.id, {
           status: 'feito',
           dataConclusao: now,
           observacoes: input.observacoes || task.observacoes,
           anexos: JSON.stringify(allAnexos),
+          viabilidade,
+          valorGlobalApurado: String(valorGlobal),
         } as any);
         await credDb.logCreditAudit({
           entidade: 'task',
           entidadeId: input.id,
           acao: 'workflow_finish',
-          descricao: `${user.name} finalizou a análise da tarefa ${task.codigo}. ${(input.anexos || []).length} anexo(s) adicionado(s).`,
+          descricao: `${user.name} finalizou a análise da tarefa ${task.codigo}. Viabilidade: ${viabilidade === 'viavel' ? 'Viável' : 'Inviável'} (R$ ${valorGlobal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}). ${(input.anexos || []).length} anexo(s) adicionado(s).`,
           dadosAnteriores: { status: 'fazendo' } as any,
-          dadosNovos: { status: 'feito', dataConclusao: now } as any,
+          dadosNovos: { status: 'feito', dataConclusao: now, viabilidade, valorGlobalApurado: valorGlobal } as any,
           usuarioId: user.id,
           usuarioNome: user.name,
         });
-        return { success: true };
+        return { success: true, viabilidade, valorGlobalApurado: valorGlobal };
       }),
 
     // Workflow: Concluir tarefa (feito → concluido) + mover para próxima fila

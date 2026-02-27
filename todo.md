@@ -2318,3 +2318,21 @@
 ### Cadastro de Cliente
 - [x] Gerar código automático ao cadastrar novo cliente (independente de novo ou base)
 - [x] Exibir alerta de sucesso ao final do cadastro com nome do cliente e código global gerado
+
+## v88 — Teses Editáveis, SLA Data Fim, Viabilidade da Apuração
+
+### Teses Tributárias — Edição e Ativação/Inativação
+- [x] Admin pode editar teses já cadastradas (todos os campos)
+- [x] Admin pode ativar/inativar teses tributárias
+- [x] Teses inativas não aparecem para seleção em novas tarefas
+
+### SLA Data Fim Automática
+- [x] Calcular data fim do SLA = data criação da tarefa + maior SLA (dias) entre as teses selecionadas
+- [x] Exibir data fim na coluna SLA da fila de apuração
+
+### Viabilidade da Apuração (Viável/Inviável)
+- [x] Adicionar campo viabilidade na tabela credit_tasks (viavel, inviavel, null)
+- [x] Ao finalizar etapa "Fazendo" → "Feito", exigir informação de viabilidade
+- [x] Cálculo automático: somatório das teses apuradas ≥ R$20.000 = Viável, < R$20.000 = Inviável
+- [x] Permitir override manual pelo operador (sugestão automática mas editável)
+- [x] Exibir badge Viável/Inviável na fila nas etapas "Feito" e "Concluído"

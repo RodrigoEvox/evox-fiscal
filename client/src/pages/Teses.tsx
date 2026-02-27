@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { BookOpen, Plus, Search, Eye, Users, Scale, AlertTriangle, CheckCircle, FileText, Loader2, Gavel, AlertCircle } from 'lucide-react';
+import { BookOpen, Plus, Search, Eye, Users, Scale, AlertTriangle, CheckCircle, FileText, Loader2, Gavel, AlertCircle, Pencil, Power, PowerOff } from 'lucide-react';
 
 const potencialColors: Record<string, string> = {
   muito_alto: 'bg-red-100 text-red-700 border-red-200',
@@ -54,6 +54,7 @@ export default function Teses() {
   const [filterClassif, setFilterClassif] = useState('all');
   const [filterPotencial, setFilterPotencial] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [viewTese, setViewTese] = useState<any>(null);
   const [showCarteira, setShowCarteira] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -69,7 +70,15 @@ export default function Teses() {
     onError: (e) => toast.error(e.message),
   });
   const createMutation = trpc.teses.create.useMutation({
-    onSuccess: () => { utils.teses.list.invalidate(); setShowForm(false); setForm(emptyForm); toast.success('Tese criada com sucesso!'); },
+    onSuccess: () => { utils.teses.list.invalidate(); setShowForm(false); setForm(emptyForm); setEditingId(null); toast.success('Tese criada com sucesso!'); },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateMutation = trpc.teses.update.useMutation({
+    onSuccess: () => { utils.teses.list.invalidate(); setShowForm(false); setForm(emptyForm); setEditingId(null); toast.success('Tese atualizada com sucesso!'); },
+    onError: (e) => toast.error(e.message),
+  });
+  const toggleActiveMutation = trpc.teses.toggleActive.useMutation({
+    onSuccess: (_, vars) => { utils.teses.list.invalidate(); toast.success(vars.ativa ? 'Tese ativada!' : 'Tese inativada!'); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -80,15 +89,55 @@ export default function Teses() {
     return true;
   });
 
-  const handleCreate = () => {
+  const handleSave = () => {
     if (!form.nome || !form.tributoEnvolvido || !form.tipo || !form.classificacao || !form.potencialFinanceiro || !form.potencialMercadologico || !form.grauRisco) {
       toast.error('Preencha todos os campos obrigatórios'); return;
     }
-    createMutation.mutate(form as any);
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: form as any });
+    } else {
+      createMutation.mutate(form as any);
+    }
+  };
+
+  const startEdit = (tese: any) => {
+    setEditingId(tese.id);
+    setForm({
+      nome: tese.nome || '',
+      tributoEnvolvido: tese.tributoEnvolvido || '',
+      tipo: tese.tipo || '',
+      classificacao: tese.classificacao || '',
+      potencialFinanceiro: tese.potencialFinanceiro || '',
+      potencialMercadologico: tese.potencialMercadologico || '',
+      grauRisco: tese.grauRisco || '',
+      fundamentacaoLegal: tese.fundamentacaoLegal || '',
+      jurisprudenciaRelevante: tese.jurisprudenciaRelevante || '',
+      parecerTecnicoJuridico: tese.parecerTecnicoJuridico || '',
+      prazoPrescricional: tese.prazoPrescricional || '5 anos',
+      necessidadeAcaoJudicial: !!tese.necessidadeAcaoJudicial,
+      viaAdministrativa: !!tese.viaAdministrativa,
+      aplicavelComercio: !!tese.aplicavelComercio,
+      aplicavelIndustria: !!tese.aplicavelIndustria,
+      aplicavelServico: !!tese.aplicavelServico,
+      aplicavelContribuinteICMS: !!tese.aplicavelContribuinteICMS || !!tese.aplicavelContribuinteIcms,
+      aplicavelContribuinteIPI: !!tese.aplicavelContribuinteIPI || !!tese.aplicavelContribuinteIpi,
+      aplicavelLucroReal: !!tese.aplicavelLucroReal,
+      aplicavelLucroPresumido: !!tese.aplicavelLucroPresumido,
+      aplicavelSimplesNacional: !!tese.aplicavelSimplesNacional,
+      slaApuracaoDias: tese.slaApuracaoDias || '',
+    });
+    setShowForm(true);
+  };
+
+  const resetAndClose = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(emptyForm);
   };
 
   const stats = {
     total: teses.length,
+    ativas: teses.filter((t: any) => t.ativa).length,
     pacificadas: teses.filter((t: any) => t.classificacao === 'pacificada').length,
     judiciais: teses.filter((t: any) => t.classificacao === 'judicial').length,
     altosPotenciais: teses.filter((t: any) => t.potencialFinanceiro === 'muito_alto' || t.potencialFinanceiro === 'alto').length,
@@ -108,13 +157,14 @@ export default function Teses() {
               Carregar Teses Padrão
             </Button>
           )}
-          <Button onClick={() => setShowForm(true)} className="bg-[#0A2540] hover:bg-[#0A2540]/90"><Plus className="w-4 h-4 mr-2" /> Nova Tese</Button>
+          <Button onClick={() => { setEditingId(null); setForm(emptyForm); setShowForm(true); }} className="bg-[#0A2540] hover:bg-[#0A2540]/90"><Plus className="w-4 h-4 mr-2" /> Nova Tese</Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Total</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-emerald-600">{stats.ativas}</p><p className="text-xs text-muted-foreground">Ativas</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-green-600">{stats.pacificadas}</p><p className="text-xs text-muted-foreground">Pacificadas</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-blue-600">{stats.judiciais}</p><p className="text-xs text-muted-foreground">Judiciais</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-orange-600">{stats.altosPotenciais}</p><p className="text-xs text-muted-foreground">Alto Potencial</p></CardContent></Card>
@@ -159,14 +209,16 @@ export default function Teses() {
         <div className="grid gap-3">
           {filtered.map((t: any) => {
             const CIcon = classifIcons[t.classificacao] || Scale;
+            const isInativa = !t.ativa;
             return (
-              <Card key={t.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewTese(t)}>
+              <Card key={t.id} className={`hover:shadow-md transition-shadow cursor-pointer ${isInativa ? 'opacity-60 border-dashed' : ''}`} onClick={() => setViewTese(t)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <CIcon className={`w-4 h-4 ${t.classificacao === 'pacificada' ? 'text-green-500' : t.classificacao === 'judicial' ? 'text-blue-500' : t.classificacao === 'controversa' ? 'text-red-500' : 'text-amber-500'}`} />
                         <h3 className="font-semibold">{t.nome}</h3>
+                        {isInativa && <Badge variant="outline" className="text-red-500 border-red-300 text-[10px]">Inativa</Badge>}
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <Badge variant="outline">{t.tributoEnvolvido}</Badge>
@@ -182,10 +234,21 @@ export default function Teses() {
                       </div>
                     </div>
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" onClick={() => setViewTese(t)}><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => setViewTese(t)} title="Visualizar"><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(t)} title="Editar"><Pencil className="w-4 h-4" /></Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleActiveMutation.mutate({ id: t.id, ativa: !t.ativa })}
+                        title={t.ativa ? 'Inativar' : 'Ativar'}
+                        className={t.ativa ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}
+                      >
+                        {t.ativa ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => setShowCarteira(t.id)} title="Ver clientes aderentes"><Users className="w-4 h-4" /></Button>
                     </div>
                   </div>
+       
                 </CardContent>
               </Card>
             );
@@ -199,7 +262,10 @@ export default function Teses() {
           {viewTese && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2"><Scale className="w-5 h-5" /> {viewTese.nome}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Scale className="w-5 h-5" /> {viewTese.nome}
+                  {!viewTese.ativa && <Badge variant="outline" className="text-red-500 border-red-300 ml-2">Inativa</Badge>}
+                </DialogTitle>
               </DialogHeader>
               <Tabs defaultValue="geral">
                 <TabsList className="mb-4">
@@ -218,6 +284,7 @@ export default function Teses() {
                     <div><Label className="text-xs text-muted-foreground">Prazo Prescricional</Label><p>{viewTese.prazoPrescricional || 'N/A'}</p></div>
                     <div><Label className="text-xs text-muted-foreground">SLA de Apuração</Label><p className="font-semibold">{viewTese.slaApuracaoDias ? `${viewTese.slaApuracaoDias} dias` : 'Não configurado'}</p></div>
                     <div><Label className="text-xs text-muted-foreground">Via</Label><p>{viewTese.necessidadeAcaoJudicial ? 'Judicial' : ''} {viewTese.viaAdministrativa ? 'Administrativa' : ''}</p></div>
+                    <div><Label className="text-xs text-muted-foreground">Status</Label><Badge className={viewTese.ativa ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{viewTese.ativa ? 'Ativa' : 'Inativa'}</Badge></div>
                   </div>
                   {viewTese.fundamentacaoLegal && (
                     <div><Label className="text-xs text-muted-foreground">Fundamentação Legal</Label><p className="text-sm mt-1 bg-muted p-3 rounded">{viewTese.fundamentacaoLegal}</p></div>
@@ -277,6 +344,17 @@ export default function Teses() {
                   </Card>
                 </TabsContent>
               </Tabs>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setViewTese(null); startEdit(viewTese); }}>
+                  <Pencil className="w-4 h-4 mr-2" /> Editar
+                </Button>
+                <Button
+                  variant={viewTese.ativa ? 'destructive' : 'default'}
+                  onClick={() => { toggleActiveMutation.mutate({ id: viewTese.id, ativa: !viewTese.ativa }); setViewTese(null); }}
+                >
+                  {viewTese.ativa ? <><PowerOff className="w-4 h-4 mr-2" /> Inativar</> : <><Power className="w-4 h-4 mr-2" /> Ativar</>}
+                </Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>
@@ -311,10 +389,10 @@ export default function Teses() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Tese Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      {/* Create/Edit Tese Dialog */}
+      <Dialog open={showForm} onOpenChange={resetAndClose}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova Tese Tributária</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? 'Editar Tese Tributária' : 'Nova Tese Tributária'}</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[70vh]">
             <div className="space-y-5 pr-4">
               <div>
@@ -372,10 +450,10 @@ export default function Teses() {
                   </div>
                   <div><Label className="text-xs">Prazo Prescricional</Label><Input value={form.prazoPrescricional} onChange={e => setForm(f => ({ ...f, prazoPrescricional: e.target.value }))} /></div>
                   <div><Label className="text-xs">SLA de Apuração (dias)</Label><Input type="number" min="1" placeholder="Ex: 30" value={form.slaApuracaoDias} onChange={e => setForm(f => ({ ...f, slaApuracaoDias: e.target.value ? Number(e.target.value) : '' }))} /><p className="text-[10px] text-muted-foreground mt-1">Prazo em dias para apuração desta tese. Usado no cálculo automático de SLA das tarefas.</p></div>
-                  <div className="flex items-end gap-4">
-                    <div className="flex items-center gap-2"><Switch checked={form.necessidadeAcaoJudicial} onCheckedChange={v => setForm(f => ({ ...f, necessidadeAcaoJudicial: v }))} /><Label className="text-xs">Judicial</Label></div>
-                    <div className="flex items-center gap-2"><Switch checked={form.viaAdministrativa} onCheckedChange={v => setForm(f => ({ ...f, viaAdministrativa: v }))} /><Label className="text-xs">Administrativa</Label></div>
-                  </div>
+                </div>
+                <div className="flex gap-6 mt-3">
+                  <div className="flex items-center gap-2"><Switch checked={form.necessidadeAcaoJudicial} onCheckedChange={v => setForm(f => ({ ...f, necessidadeAcaoJudicial: v }))} /><Label className="text-xs">Judicial</Label></div>
+                  <div className="flex items-center gap-2"><Switch checked={form.viaAdministrativa} onCheckedChange={v => setForm(f => ({ ...f, viaAdministrativa: v }))} /><Label className="text-xs">Administrativa</Label></div>
                 </div>
               </div>
               <Separator />
@@ -411,10 +489,10 @@ export default function Teses() {
             </div>
           </ScrollArea>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending} className="bg-[#0A2540] hover:bg-[#0A2540]/90">
-              {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Criar Tese
+            <Button variant="outline" onClick={resetAndClose}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="bg-[#0A2540] hover:bg-[#0A2540]/90">
+              {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {editingId ? 'Salvar Alterações' : 'Criar Tese'}
             </Button>
           </DialogFooter>
         </DialogContent>

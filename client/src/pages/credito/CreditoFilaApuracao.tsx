@@ -127,6 +127,8 @@ export default function CreditoFilaApuracao() {
   const [finishObs, setFinishObs] = useState('');
   const [finishAnexos, setFinishAnexos] = useState<any[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [finishViabilidade, setFinishViabilidade] = useState<'viavel' | 'inviavel' | ''>('');
+  const [finishValorGlobal, setFinishValorGlobal] = useState<string>('');
 
   // Workflow handlers
   const handleAssumeTask = async (task: any) => {
@@ -143,6 +145,8 @@ export default function CreditoFilaApuracao() {
     setFinishingTask(task);
     setFinishObs(task.observacoes || '');
     setFinishAnexos([]);
+    setFinishViabilidade('');
+    setFinishValorGlobal('');
     setFinishDialogOpen(true);
   };
 
@@ -180,12 +184,22 @@ export default function CreditoFilaApuracao() {
   const handleFinishTask = async () => {
     if (!finishingTask) return;
     try {
-      await finishTask.mutateAsync({
+      const valorNum = finishValorGlobal ? parseFloat(finishValorGlobal.replace(/\./g, '').replace(',', '.')) : undefined;
+      // Auto-calculate viabilidade if valor is provided but viabilidade not selected
+      let viab = finishViabilidade || undefined;
+      if (!viab && valorNum !== undefined) {
+        viab = valorNum >= 20000 ? 'viavel' : 'inviavel';
+      }
+      const result = await finishTask.mutateAsync({
         id: finishingTask.id,
         observacoes: finishObs,
         anexos: finishAnexos,
+        viabilidade: viab as any,
+        valorGlobalApurado: valorNum,
       });
-      toast.success(`Tarefa ${finishingTask.codigo} finalizada! Status alterado para "Feito".`);
+      const viabLabel = (result.viabilidade || viab) === 'viavel' ? 'VIÁVEL' : 'INVIÁVEL';
+      const valorLabel = result.valorGlobalApurado !== undefined ? `R$ ${Number(result.valorGlobalApurado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
+      toast.success(`Tarefa ${finishingTask.codigo} finalizada! Apuração: ${viabLabel} ${valorLabel ? `(${valorLabel})` : ''}. Status alterado para "Feito".`);
       setFinishDialogOpen(false);
       refetchTasks();
     } catch (err: any) {
@@ -944,7 +958,16 @@ export default function CreditoFilaApuracao() {
                             </td>
                             {/* Status */}
                             <td className="px-3 py-3">
-                              <Badge className={cn('text-xs', statusInfo.color)}>{statusInfo.label}</Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge className={cn('text-xs', statusInfo.color)}>{statusInfo.label}</Badge>
+                                {(task.status === 'feito' || task.status === 'concluido') && task.viabilidade && (
+                                  <Badge className={cn('text-[10px] gap-1 w-fit', task.viabilidade === 'viavel' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800')}>
+                                    {task.viabilidade === 'viavel' ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                                    {task.viabilidade === 'viavel' ? 'Viável' : 'Inviável'}
+                                    {task.valorGlobalApurado ? ` (R$ ${Number(task.valorGlobalApurado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})` : ''}
+                                  </Badge>
+                                )}
+                              </div>
                             </td>
                             {/* SLA */}
                             <td className="px-3 py-3">
@@ -1541,6 +1564,54 @@ export default function CreditoFilaApuracao() {
                 rows={4}
               />
             </div>
+
+            {/* Viabilidade */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Valor Global Apurado (R$)</Label>
+              <Input
+                placeholder="Ex: 25000.00"
+                value={finishValorGlobal}
+                onChange={(e) => {
+                  setFinishValorGlobal(e.target.value);
+                  // Auto-set viabilidade based on value
+                  const val = parseFloat(e.target.value.replace(/\./g, '').replace(',', '.'));
+                  if (!isNaN(val)) {
+                    setFinishViabilidade(val >= 20000 ? 'viavel' : 'inviavel');
+                  }
+                }}
+                type="number"
+                step="0.01"
+                min="0"
+              />
+              <p className="text-xs text-muted-foreground">Somatório de todas as teses apuradas. Se não informado, será calculado automaticamente.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Viabilidade da Apuração</Label>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant={finishViabilidade === 'viavel' ? 'default' : 'outline'}
+                  className={cn('flex-1 gap-2', finishViabilidade === 'viavel' && 'bg-emerald-600 hover:bg-emerald-700')}
+                  onClick={() => setFinishViabilidade('viavel')}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Viável (≥ R$ 20 mil)
+                </Button>
+                <Button
+                  type="button"
+                  variant={finishViabilidade === 'inviavel' ? 'default' : 'outline'}
+                  className={cn('flex-1 gap-2', finishViabilidade === 'inviavel' && 'bg-red-600 hover:bg-red-700')}
+                  onClick={() => setFinishViabilidade('inviavel')}
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Inviável (&lt; R$ 20 mil)
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Se não selecionado, será calculado automaticamente com base no valor global.</p>
+            </div>
+
+            <Separator />
 
             {/* Anexos */}
             <div className="space-y-2">

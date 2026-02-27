@@ -193,7 +193,14 @@ export default function CreditoFilaPage({ fila, filaLabel, icon }: CreditoFilaPa
                       <p className="font-medium text-foreground truncate">{task.titulo}</p>
                     </div>
                     <div className="col-span-1">
-                      <Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge>
+                      <div className="flex flex-col gap-0.5">
+                        <Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge>
+                        {(task.status === 'feito' || task.status === 'concluido') && task.viabilidade && (
+                          <Badge className={cn('text-[9px] gap-0.5 w-fit', task.viabilidade === 'viavel' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800')}>
+                            {task.viabilidade === 'viavel' ? 'Viável' : 'Inviável'}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="col-span-1">
                       <Badge className={cn('text-[10px]', prioridadeInfo.color)}>{prioridadeInfo.label}</Badge>

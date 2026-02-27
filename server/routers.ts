@@ -677,6 +677,13 @@ export const appRouter = router({
         await logAudit('excluir', 'tese', input.id, null, ctx);
         return { success: true };
       }),
+    toggleActive: protectedProcedure
+      .input(z.object({ id: z.number(), ativa: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateTese(input.id, { ativa: input.ativa ? 1 : 0 } as any);
+        await logAudit(input.ativa ? 'ativar' : 'inativar', 'tese', input.id, null, ctx);
+        return { success: true };
+      }),
     checkCarteira: protectedProcedure
       .input(z.object({ teseId: z.number() }))
       .query(async ({ input }) => {
