@@ -438,12 +438,14 @@ export const appRouter = router({
         usuarioCadastroNome: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const id = await db.createCliente(input as any);
+        const result = await db.createCliente(input as any);
+        const id = result?.id;
+        const codigo = result?.codigo || '';
         if (id) {
           await db.createFilaItem({ clienteId: id, status: 'a_fazer' } as any);
         }
-        await logAudit('criar', 'cliente', id, input.razaoSocial, ctx);
-        return { id };
+        await logAudit('criar', 'cliente', id ?? null, input.razaoSocial, ctx);
+        return { id, codigo };
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.any()) }))
@@ -605,9 +607,9 @@ export const appRouter = router({
             };
             if (!data.cnpj || !data.razaoSocial) { results.errors++; continue; }
             if (!['simples_nacional', 'lucro_presumido', 'lucro_real'].includes(data.regimeTributario)) data.regimeTributario = 'lucro_presumido';
-            const id = await db.createCliente(data);
-            if (id) {
-              await db.createFilaItem({ clienteId: id, status: 'a_fazer' } as any);
+            const clienteResult = await db.createCliente(data);
+            if (clienteResult?.id) {
+              await db.createFilaItem({ clienteId: clienteResult.id, status: 'a_fazer' } as any);
               results.success++;
             } else { results.errors++; }
           } catch { results.errors++; }
@@ -2172,10 +2174,10 @@ export const appRouter = router({
       ];
       const clienteIds: number[] = [];
       for (const c of clienteData) {
-        const id = await db.createCliente(c as any);
-        if (id) {
-          clienteIds.push(id);
-          await db.createFilaItem({ clienteId: id, status: 'a_fazer' } as any);
+        const clienteResult = await db.createCliente(c as any);
+        if (clienteResult?.id) {
+          clienteIds.push(clienteResult.id);
+          await db.createFilaItem({ clienteId: clienteResult.id, status: 'a_fazer' } as any);
         }
       }
 

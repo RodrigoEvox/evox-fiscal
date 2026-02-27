@@ -1499,8 +1499,8 @@ export default function CreditoFilaApuracao() {
 
       {/* ===== RTI HISTORY DIALOG ===== */}
       <Dialog open={rtiHistoryDialogOpen} onOpenChange={setRtiHistoryDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
               Histórico de RTIs — {selectedTask?.clienteNome || 'Tarefa'}
@@ -1509,7 +1509,9 @@ export default function CreditoFilaApuracao() {
               {selectedTask?.titulo} ({selectedTask?.codigo})
             </p>
           </DialogHeader>
-          {rtiHistoryTaskId && <RtiHistoryContent taskId={rtiHistoryTaskId} comparingRtis={comparingRtis} setComparingRtis={setComparingRtis} formatDate={formatDate} formatCurrency={formatCurrency} generateRtiPdf={generateRtiPdf} selectedTask={selectedTask} />}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {rtiHistoryTaskId && <RtiHistoryContent taskId={rtiHistoryTaskId} comparingRtis={comparingRtis} setComparingRtis={setComparingRtis} formatDate={formatDate} formatCurrency={formatCurrency} generateRtiPdf={generateRtiPdf} selectedTask={selectedTask} />}
+          </div>
         </DialogContent>
       </Dialog>
 

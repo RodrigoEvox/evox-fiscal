@@ -124,7 +124,18 @@ export default function Clientes() {
   const { data: parceiros = [] } = trpc.parceiros.list.useQuery();
   const { data: executivos = [] } = trpc.executivos.list.useQuery();
   const createCliente = trpc.clientes.create.useMutation({
-    onSuccess: () => { utils.clientes.list.invalidate(); utils.dashboard.stats.invalidate(); toast.success('Cliente cadastrado com sucesso!'); setShowForm(false); resetForm(); },
+    onSuccess: (data) => {
+      utils.clientes.list.invalidate();
+      utils.dashboard.stats.invalidate();
+      const nomeCliente = form.razaoSocial || 'Cliente';
+      const codigoGerado = data?.codigo || '';
+      toast.success(
+        `${nomeCliente} foi cadastrado com sucesso! Código: ${codigoGerado}`,
+        { duration: 8000 }
+      );
+      setShowForm(false);
+      resetForm();
+    },
     onError: (err) => toast.error(err.message),
   });
   const updateCliente = trpc.clientes.update.useMutation({

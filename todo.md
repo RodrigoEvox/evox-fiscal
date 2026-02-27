@@ -2305,3 +2305,16 @@
 - [x] Suportar empresa em múltiplas filas simultaneamente
 - [x] Indicadores visuais de progresso por empresa
 - [x] Filtros por empresa, fila e status
+
+## v87 — Ajustes RTI, Código Cliente Numérico, Cadastro com Alerta
+
+### Histórico de RTIs
+- [x] Ajustar tamanho do diálogo de histórico de RTIs para caber tudo em tela sem scroll
+
+### Código do Cliente
+- [x] Remover prefixo "CLI-" do código do cliente, deixar apenas números
+- [x] Atualizar códigos existentes no banco para formato numérico (LPAD 6 dígitos)
+
+### Cadastro de Cliente
+- [x] Gerar código automático ao cadastrar novo cliente (independente de novo ou base)
+- [x] Exibir alerta de sucesso ao final do cadastro com nome do cliente e código global gerado

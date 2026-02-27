@@ -289,10 +289,10 @@ export async function createCliente(data: InsertCliente) {
   if (!db) return null;
   const result = await db.insert(clientes).values(data);
   const insertId = result[0].insertId;
-  // Auto-generate codigo based on the new ID
-  const codigo = `CLI-${String(insertId).padStart(4, '0')}`;
+  // Auto-generate codigo based on the new ID (apenas números, sem prefixo)
+  const codigo = String(insertId).padStart(6, '0');
   await db.update(clientes).set({ codigo } as any).where(eq(clientes.id, insertId));
-  return insertId;
+  return { id: insertId, codigo };
 }
 
 export async function updateCliente(id: number, data: Partial<InsertCliente>) {
