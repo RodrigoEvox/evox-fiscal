@@ -17,7 +17,8 @@ import { toast } from 'sonner';
 import {
   Calculator, ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
   User, FileText, ClipboardList, Send, Eye, Trash2, Download, Filter,
-  Plus, ArrowRight, Building2, BarChart3, Handshake,
+  Plus, ArrowRight, Building2, BarChart3, Handshake, Play, Square, CheckSquare2,
+  Upload, Paperclip, UserCheck, Flag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
@@ -112,6 +113,100 @@ export default function CreditoFilaApuracao() {
   const updatePartnerReturn = trpc.creditRecovery.admin.partnerReturns.update.useMutation();
   const createChecklistInstance = trpc.creditRecovery.admin.checklists.createInstance.useMutation();
   const updateChecklistInstance = trpc.creditRecovery.admin.checklists.updateInstance.useMutation();
+  const assumeTask = trpc.creditRecovery.credito.tasks.assumeTask.useMutation();
+  const finishTask = trpc.creditRecovery.credito.tasks.finishTask.useMutation();
+  const completeAndMove = trpc.creditRecovery.credito.tasks.completeAndMoveToNextFila.useMutation();
+  const uploadFile = trpc.arquivos.upload.useMutation();
+
+  // Workflow states
+  const [finishDialogOpen, setFinishDialogOpen] = useState(false);
+  const [finishingTask, setFinishingTask] = useState<any>(null);
+  const [finishObs, setFinishObs] = useState('');
+  const [finishAnexos, setFinishAnexos] = useState<any[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  // Workflow handlers
+  const handleAssumeTask = async (task: any) => {
+    try {
+      await assumeTask.mutateAsync({ id: task.id });
+      toast.success(`Tarefa ${task.codigo} assumida! Status alterado para "Fazendo".`);
+      refetchTasks();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao assumir tarefa');
+    }
+  };
+
+  const handleOpenFinishDialog = (task: any) => {
+    setFinishingTask(task);
+    setFinishObs(task.observacoes || '');
+    setFinishAnexos([]);
+    setFinishDialogOpen(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingFile(true);
+    try {
+      for (const file of Array.from(files)) {
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+        const result = await uploadFile.mutateAsync({
+          nome: file.name,
+          nomeOriginal: file.name,
+          mimeType: file.type,
+          tamanhoBytes: file.size,
+          base64Data: base64,
+          entidadeTipo: 'tarefa',
+          entidadeId: finishingTask?.id,
+          descricao: 'Memória de cálculo / Documento de análise',
+        });
+        setFinishAnexos(prev => [...prev, { nome: file.name, url: result.url, tipo: file.type }]);
+      }
+      toast.success('Arquivo(s) enviado(s) com sucesso!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar arquivo');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleFinishTask = async () => {
+    if (!finishingTask) return;
+    try {
+      await finishTask.mutateAsync({
+        id: finishingTask.id,
+        observacoes: finishObs,
+        anexos: finishAnexos,
+      });
+      toast.success(`Tarefa ${finishingTask.codigo} finalizada! Status alterado para "Feito".`);
+      setFinishDialogOpen(false);
+      refetchTasks();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao finalizar tarefa');
+    }
+  };
+
+  const handleCompleteAndMove = async (task: any) => {
+    try {
+      const result = await completeAndMove.mutateAsync({ id: task.id });
+      const nextFilaLabel: Record<string, string> = {
+        apuracao: 'Apuração', compensacao: 'Compensação', retificacao: 'Retificação',
+        ressarcimento: 'Ressarcimento', restituicao: 'Restituição', onboarding: 'Onboarding',
+      };
+      if (result.nextFila) {
+        toast.success(`Tarefa concluída e movida para a fila "${nextFilaLabel[result.nextFila] || result.nextFila}". Notificação enviada.`);
+      } else {
+        toast.success(`Tarefa concluída! Não há próxima fila no fluxo.`);
+      }
+      refetchTasks();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao concluir tarefa');
+    }
+  };
 
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
@@ -230,7 +325,7 @@ export default function CreditoFilaApuracao() {
   // Generate RTI PDF client-side
   const generateRtiPdf = async (rtiData: { clienteNome: string; clienteCnpj: string; periodoAnalise: string; resumoExecutivo: string; metodologia: string; conclusao: string; observacoes: string; oportunidades: any[]; cenario: any[]; alertas: any[]; totalOportunidades: number; totalPacificado: number; totalNaoPacificado: number; numero?: string; data?: string }) => {
     const { default: jsPDF } = await import('jspdf');
-    await import('jspdf-autotable');
+    const { default: autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
@@ -290,7 +385,7 @@ export default function CreditoFilaApuracao() {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.text('Oportunidades Identificadas', margin, y); y += 6;
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: y,
         head: [['Descrição', 'Classificação', 'Valor Apurado (R$)']],
         body: [
@@ -317,7 +412,7 @@ export default function CreditoFilaApuracao() {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.text('Cenário de Compensação', margin, y); y += 6;
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: y,
         head: [['Tributo', 'Média Mensal (R$)']],
         body: rtiData.cenario.map((c: any) => [c.tributo, formatCurrency(c.mediaMensal)]),
@@ -719,6 +814,7 @@ export default function CreditoFilaApuracao() {
                         <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[110px]">Resp.</th>
                         <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[170px]">Criado</th>
                         <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">RTI</th>
+                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[160px]">Workflow</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -794,6 +890,34 @@ export default function CreditoFilaApuracao() {
                                     <FileText className="w-4 h-4" />
                                     Gerar RTI
                                   </Button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex flex-col gap-1.5 items-center">
+                                {task.status === 'a_fazer' && (
+                                  <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full" onClick={() => handleAssumeTask(task)} disabled={assumeTask.isPending}>
+                                    {assumeTask.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                                    Pegar Tarefa
+                                  </Button>
+                                )}
+                                {task.status === 'fazendo' && (
+                                  <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold w-full" onClick={() => handleOpenFinishDialog(task)} disabled={finishTask.isPending}>
+                                    <Flag className="w-3.5 h-3.5" />
+                                    Finalizar
+                                  </Button>
+                                )}
+                                {task.status === 'feito' && (
+                                  <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold w-full" onClick={() => handleCompleteAndMove(task)} disabled={completeAndMove.isPending}>
+                                    {completeAndMove.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                    Concluir
+                                  </Button>
+                                )}
+                                {task.status === 'concluido' && (
+                                  <Badge className="text-xs bg-emerald-100 text-emerald-800 gap-1">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    Concluído
+                                  </Badge>
                                 )}
                               </div>
                             </td>
@@ -1298,6 +1422,81 @@ export default function CreditoFilaApuracao() {
       </Dialog>
 
       {/* Checklist foi movido para a visão do operador/analista por tese */}
+
+      {/* ===== FINISH TASK DIALOG ===== */}
+      <Dialog open={finishDialogOpen} onOpenChange={setFinishDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Flag className="w-5 h-5 text-purple-600" />
+              Finalizar Análise
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {finishingTask?.codigo} — {finishingTask?.clienteNome || finishingTask?.titulo}
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Observações */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Observações da Análise</Label>
+              <Textarea
+                placeholder="Descreva as conclusões da análise, pontos de atenção, etc."
+                value={finishObs}
+                onChange={(e) => setFinishObs(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            {/* Anexos */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Anexar Documentos (Memória de Cálculo, etc.)</Label>
+              <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="finish-file-upload"
+                  accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.png,.jpg,.jpeg"
+                />
+                <label htmlFor="finish-file-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Clique para selecionar arquivos</p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, Excel, Word, Imagens</p>
+                </label>
+                {uploadingFile && (
+                  <div className="flex items-center justify-center gap-2 mt-3">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-xs text-muted-foreground">Enviando...</span>
+                  </div>
+                )}
+              </div>
+              {finishAnexos.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {finishAnexos.map((anexo, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                      <Paperclip className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm flex-1 truncate">{anexo.nome}</span>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500" onClick={() => setFinishAnexos(prev => prev.filter((_, i) => i !== idx))}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinishDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleFinishTask} disabled={finishTask.isPending} className="gap-2 bg-purple-600 hover:bg-purple-700">
+              {finishTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />}
+              Finalizar Análise
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

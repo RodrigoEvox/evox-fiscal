@@ -2245,3 +2245,18 @@
 - [x] Incluir valores das teses apuradas no PDF do RTI
 - [x] Indicador visual claro de RTI disponível para download em 1 clique
 - [x] Renomear coluna "Ações" para "RTI" ou "Relatórios"
+
+## v84 — Dashboard FEITO, RTI PDF Fix, Workflow Automático
+
+### Dashboard
+- [x] Adicionar card "FEITO" no resumo do dashboard de crédito
+
+### RTI PDF
+- [x] Corrigir erro ao baixar RTI em PDF
+
+### Workflow Automático de Etapas
+- [x] Ao pegar tarefa da fila: associar analista automaticamente e mudar status para "fazendo"
+- [x] Ao finalizar análise: permitir anexar documentos (memória de cálculo), gerar/salvar RTI, mudar status para "feito"
+- [x] Ao enviar RTI ao parceiro comercial: marcar tarefa como "concluída" automaticamente
+- [x] Mover tarefa automaticamente para a próxima fila do fluxo (ex: Apuração → Compensação)
+- [x] Notificar novo responsável ao mover tarefa para próxima fila

@@ -88,7 +88,8 @@ export default function CreditoDashboard() {
   const totalTarefas = ts.total || 0;
   const totalAFazer = ts.a_fazer || 0;
   const totalFazendo = ts.fazendo || 0;
-  const totalConcluidas = (ts.feito || 0) + (ts.concluido || 0);
+  const totalFeito = ts.feito || 0;
+  const totalConcluidas = ts.concluido || 0;
   const totalEmAtraso = ts.em_atraso || 0;
 
   return (
@@ -228,7 +229,7 @@ export default function CreditoDashboard() {
       )}
 
       {/* Main KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <Card className="border-l-4" style={{ borderLeftColor: '#3B82F6' }}>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -266,6 +267,20 @@ export default function CreditoDashboard() {
               </div>
               <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center">
                 <Loader2 className="w-5 h-5 text-indigo-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4" style={{ borderLeftColor: '#8B5CF6' }}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Feito</p>
+                <p className="text-3xl font-bold mt-2 text-foreground">{totalFeito}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-purple-600" />
               </div>
             </div>
           </CardContent>

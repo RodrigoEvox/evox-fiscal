@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, numero, versao, taskId, clienteId, status, valorTotalEstimado, tesesAnalisadas IS NOT NULL as hasTeses FROM rti_reports ORDER BY id DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, numero, versao, taskId, clienteId, status, valorTotalEstimado, tesesAnalisadas IS NOT NULL as hasTeses FROM rti_reports ORDER BY id DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "60001",
+      "numero": "RTI-0001",
+      "versao": "1",
+      "taskId": "1",
+      "clienteId": "450012",
+      "status": "rascunho",
+      "valorTotalEstimado": "2231377.36",
+      "hasTeses": "0"
+    },
+    {
+      "id": "30002",
+      "numero": "RTI-0001",
+      "versao": "1",
+      "taskId": "NULL",
+      "clienteId": "510027",
+      "status": "rascunho",
+      "valorTotalEstimado": "25000.00",
+      "hasTeses": "0"
+    },
+    {
+      "id": "30001",
+      "numero": "RTI-0001",
+      "versao": "1",
+      "taskId": "NULL",
+      "clienteId": "450012",
+      "status": "rascunho",
+      "valorTotalEstimado": "0.00",
+      "hasTeses": "0"
+    },
+    {
+      "id": "1",
+      "numero": "RTI-0001",
+      "versao": "1",
+      "taskId": "NULL",
+      "clienteId": "450012",
+      "status": "rascunho",
+      "valorTotalEstimado": "0.00",
+      "hasTeses": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnumero\tversao\ttaskId\tclienteId\tstatus\tvalorTotalEstimado\thasTeses\n60001\tRTI-0001\t1\t1\t450012\trascunho\t2231377.36\t0\n30002\tRTI-0001\t1\tNULL\t510027\trascunho\t25000.00\t0\n30001\tRTI-0001\t1\tNULL\t450012\trascunho\t0.00\t0\n1\tRTI-0001\t1\tNULL\t450012\trascunho\t0.00\t0\n",
+  "stderr": "",
+  "execution_time_ms": 149
+}

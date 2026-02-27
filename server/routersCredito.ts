@@ -513,6 +513,80 @@ const creditoRouter = router({
           usuarioNome: user.name,
         });
 
+        // Workflow: Ao emitir RTI ao parceiro, marcar tarefa como concluída e mover para próxima fila
+        if (rti.taskId) {
+          const task = await credDb.getCreditTaskById(rti.taskId);
+          if (task && (task.status === 'feito' || task.status === 'fazendo')) {
+            // Mark as concluido
+            await credDb.updateCreditTask(rti.taskId, { status: 'concluido' } as any);
+
+            // Define fila flow
+            const FILA_FLOW: Record<string, string | null> = {
+              onboarding: 'apuracao', apuracao: 'compensacao',
+              compensacao: null, retificacao: null, ressarcimento: null,
+              restituicao: null, revisao: null, chamados: null,
+            };
+            const nextFila = FILA_FLOW[task.fila];
+
+            if (nextFila) {
+              const nextTask = await credDb.createCreditTask({
+                fila: nextFila,
+                caseId: task.caseId,
+                clienteId: task.clienteId,
+                demandRequestId: task.demandRequestId,
+                titulo: task.titulo,
+                descricao: `Continuação da tarefa ${task.codigo} (${task.fila}). RTI emitido.`,
+                prioridade: task.prioridade,
+                criadoPorId: user.id,
+                criadoPorNome: user.name,
+              } as any);
+
+              if (nextTask) {
+                // Copy teses to the new task
+                const taskTeses = await credDb.listTaskTeses(rti.taskId);
+                for (const tese of taskTeses) {
+                  await credDb.createTaskTese({
+                    taskId: nextTask.id,
+                    teseId: tese.teseId,
+                    teseNome: tese.teseNome,
+                    aderente: tese.aderente,
+                    valorEstimado: tese.valorEstimado,
+                    status: 'selecionada',
+                  });
+                }
+
+                const filaLabels: Record<string, string> = {
+                  apuracao: 'Apuração', compensacao: 'Compensação', retificacao: 'Retificação',
+                  ressarcimento: 'Ressarcimento', restituicao: 'Restituição', onboarding: 'Onboarding',
+                  revisao: 'Revisão', chamados: 'Chamados',
+                };
+                await notifyOwner({
+                  title: `Tarefa movida para ${filaLabels[nextFila] || nextFila}`,
+                  content: `RTI ${rti.numero} emitido. Tarefa ${task.codigo} concluída na fila ${filaLabels[task.fila] || task.fila}. Nova tarefa ${nextTask.codigo} criada na fila ${filaLabels[nextFila] || nextFila}.`,
+                });
+
+                await credDb.logCreditAudit({
+                  entidade: 'task',
+                  entidadeId: nextTask.id,
+                  acao: 'workflow_auto_move',
+                  descricao: `Tarefa ${nextTask.codigo} criada automaticamente após emissão do RTI ${rti.numero}`,
+                  usuarioId: user.id,
+                  usuarioNome: user.name,
+                });
+              }
+            }
+
+            await credDb.logCreditAudit({
+              entidade: 'task',
+              entidadeId: rti.taskId,
+              acao: 'workflow_auto_complete',
+              descricao: `Tarefa ${task.codigo} concluída automaticamente após emissão do RTI ${rti.numero}`,
+              usuarioId: user.id,
+              usuarioNome: user.name,
+            });
+          }
+        }
+
         return { success: true };
       }),
 
@@ -602,7 +676,7 @@ const creditoRouter = router({
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
-        status: z.enum(['a_fazer', 'fazendo', 'feito']).optional(),
+        status: z.enum(['a_fazer', 'fazendo', 'feito', 'concluido']).optional(),
         prioridade: z.enum(['urgente', 'alta', 'media', 'baixa']).optional(),
         responsavelId: z.number().nullable().optional(),
         responsavelNome: z.string().optional(),
@@ -629,6 +703,166 @@ const creditoRouter = router({
           usuarioNome: user.name,
         });
         return { success: true };
+      }),
+
+    // Workflow: Analista pega tarefa (a_fazer → fazendo, associa responsável)
+    assumeTask: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const task = await credDb.getCreditTaskById(input.id);
+        if (!task) throw new Error('Tarefa não encontrada');
+        if (task.status !== 'a_fazer') throw new Error('Tarefa já está em andamento ou concluída');
+        await credDb.updateCreditTask(input.id, {
+          status: 'fazendo',
+          responsavelId: user.id,
+          responsavelNome: user.name,
+        } as any);
+        await credDb.logCreditAudit({
+          entidade: 'task',
+          entidadeId: input.id,
+          acao: 'workflow_assume',
+          descricao: `${user.name} assumiu a tarefa ${task.codigo} na fila ${task.fila}`,
+          dadosAnteriores: { status: 'a_fazer', responsavelId: task.responsavelId } as any,
+          dadosNovos: { status: 'fazendo', responsavelId: user.id } as any,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+        return { success: true };
+      }),
+
+    // Workflow: Analista finaliza análise (fazendo → feito)
+    finishTask: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        observacoes: z.string().optional(),
+        anexos: z.array(z.object({
+          nome: z.string(),
+          url: z.string(),
+          tipo: z.string().optional(),
+        })).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const task = await credDb.getCreditTaskById(input.id);
+        if (!task) throw new Error('Tarefa não encontrada');
+        if (task.status !== 'fazendo') throw new Error('Tarefa precisa estar com status "Fazendo" para ser finalizada');
+        const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const existingAnexos = (task.anexos && typeof task.anexos === 'string' ? JSON.parse(task.anexos) : task.anexos) || [];
+        const allAnexos = [...existingAnexos, ...(input.anexos || [])];
+        await credDb.updateCreditTask(input.id, {
+          status: 'feito',
+          dataConclusao: now,
+          observacoes: input.observacoes || task.observacoes,
+          anexos: JSON.stringify(allAnexos),
+        } as any);
+        await credDb.logCreditAudit({
+          entidade: 'task',
+          entidadeId: input.id,
+          acao: 'workflow_finish',
+          descricao: `${user.name} finalizou a análise da tarefa ${task.codigo}. ${(input.anexos || []).length} anexo(s) adicionado(s).`,
+          dadosAnteriores: { status: 'fazendo' } as any,
+          dadosNovos: { status: 'feito', dataConclusao: now } as any,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+        return { success: true };
+      }),
+
+    // Workflow: Concluir tarefa (feito → concluido) + mover para próxima fila
+    completeAndMoveToNextFila: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        rtiId: z.number().optional(),
+        parceiroId: z.number().optional(),
+        parceiroNome: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = getUser(ctx);
+        const task = await credDb.getCreditTaskById(input.id);
+        if (!task) throw new Error('Tarefa não encontrada');
+        if (task.status !== 'feito') throw new Error('Tarefa precisa estar com status "Feito" para ser concluída');
+
+        // Mark current task as concluido
+        await credDb.updateCreditTask(input.id, { status: 'concluido' } as any);
+
+        // Define fila flow: apuracao → compensacao → restituicao/ressarcimento
+        const FILA_FLOW: Record<string, string | null> = {
+          onboarding: 'apuracao',
+          apuracao: 'compensacao',
+          compensacao: null, // end of flow (or could go to restituicao/ressarcimento)
+          retificacao: null,
+          ressarcimento: null,
+          restituicao: null,
+          revisao: null,
+          chamados: null,
+        };
+        const nextFila = FILA_FLOW[task.fila];
+        let nextTaskId: number | null = null;
+
+        if (nextFila) {
+          // Create task in next fila
+          const nextTask = await credDb.createCreditTask({
+            fila: nextFila,
+            caseId: task.caseId,
+            clienteId: task.clienteId,
+            demandRequestId: task.demandRequestId,
+            titulo: task.titulo,
+            descricao: `Continuação da tarefa ${task.codigo} (${task.fila}). ${task.descricao || ''}`,
+            prioridade: task.prioridade,
+            criadoPorId: user.id,
+            criadoPorNome: user.name,
+          } as any);
+
+          if (nextTask) {
+            nextTaskId = nextTask.id;
+            // Copy teses to the new task
+            const taskTeses = await credDb.listTaskTeses(input.id);
+            for (const tese of taskTeses) {
+              await credDb.createTaskTese({
+                taskId: nextTask.id,
+                teseId: tese.teseId,
+                teseNome: tese.teseNome,
+                aderente: tese.aderente,
+                valorEstimado: tese.valorEstimado,
+                status: 'selecionada',
+              });
+            }
+
+            await credDb.logCreditAudit({
+              entidade: 'task',
+              entidadeId: nextTask.id,
+              acao: 'workflow_move',
+              descricao: `Tarefa ${nextTask.codigo} criada automaticamente na fila ${nextFila} a partir de ${task.codigo}`,
+              usuarioId: user.id,
+              usuarioNome: user.name,
+            });
+
+            // Notify owner about the new task in the next fila
+            const filaLabels: Record<string, string> = {
+              apuracao: 'Apuração', compensacao: 'Compensação', retificacao: 'Retificação',
+              ressarcimento: 'Ressarcimento', restituicao: 'Restituição', onboarding: 'Onboarding',
+              revisao: 'Revisão', chamados: 'Chamados',
+            };
+            await notifyOwner({
+              title: `Nova tarefa na fila ${filaLabels[nextFila] || nextFila}`,
+              content: `A tarefa ${task.codigo} (${task.titulo}) foi concluída na fila ${filaLabels[task.fila] || task.fila} e uma nova tarefa ${nextTask.codigo} foi criada automaticamente na fila ${filaLabels[nextFila] || nextFila}.`,
+            });
+          }
+        }
+
+        await credDb.logCreditAudit({
+          entidade: 'task',
+          entidadeId: input.id,
+          acao: 'workflow_complete',
+          descricao: `Tarefa ${task.codigo} concluída na fila ${task.fila}${nextFila ? `. Movida para ${nextFila}` : ''}`,
+          dadosAnteriores: { status: 'feito' } as any,
+          dadosNovos: { status: 'concluido', nextFila, nextTaskId } as any,
+          usuarioId: user.id,
+          usuarioNome: user.name,
+        });
+
+        return { success: true, nextFila, nextTaskId };
       }),
 
     stats: protectedProcedure

@@ -1,0 +1,31 @@
+{
+  "query": "SELECT id, rtiId, descricao, classificacao, valorApurado FROM rti_oportunidades ORDER BY rtiId DESC LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, rtiId, descricao, classificacao, valorApurado FROM rti_oportunidades ORDER BY rtiId DESC LIMIT 10",
+  "rows": [
+    {
+      "id": "30002",
+      "rtiId": "60001",
+      "descricao": "Exclusão do ISS da Base de Cálculo do PIS/COFINS",
+      "classificacao": "nao_pacificado",
+      "valorApurado": "1253025.36"
+    },
+    {
+      "id": "30001",
+      "rtiId": "60001",
+      "descricao": "Exclusão do ICMS da Base de Cálculo do PIS/COFINS",
+      "classificacao": "pacificado",
+      "valorApurado": "978352.00"
+    },
+    {
+      "id": "1",
+      "rtiId": "30002",
+      "descricao": "",
+      "classificacao": "pacificado",
+      "valorApurado": "25000.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\trtiId\tdescricao\tclassificacao\tvalorApurado\n30002\t60001\tExclusão do ISS da Base de Cálculo do PIS/COFINS\tnao_pacificado\t1253025.36\n30001\t60001\tExclusão do ICMS da Base de Cálculo do PIS/COFINS\tpacificado\t978352.00\n1\t30002\t\tpacificado\t25000.00\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}
