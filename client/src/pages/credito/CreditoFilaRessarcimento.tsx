@@ -71,9 +71,9 @@ export default function CreditoFilaRessarcimento() {
   const [, setTick] = useState(0);
   useEffect(() => { const i = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(i); }, []);
   const getTimeInStage = (task: any) => {
-    const start = task.status === 'fazendo' ? (task.dataInicio || task.updatedAt || task.createdAt) : task.createdAt;
-    if (!start) return '—';
-    const diff = Date.now() - new Date(start).getTime();
+    // Tempo total que a empresa está na fila (desde a criação)
+    if (!task.createdAt) return '—';
+    const diff = Math.max(0, Date.now() - new Date(task.createdAt).getTime());
     const d = Math.floor(diff / 86400000), h = Math.floor((diff % 86400000) / 3600000), m = Math.floor((diff % 3600000) / 60000);
     if (d > 0) return `${d}d ${h}h`; if (h > 0) return `${h}h ${m}m`; return `${m}m`;
   };
@@ -257,7 +257,7 @@ export default function CreditoFilaRessarcimento() {
                     <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase w-[100px] text-center">Tempo</th>
                     <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase w-[120px]">Responsável</th>
                     <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase w-[80px]">SLA</th>
-                    <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase w-[100px]">Criado em</th>
+                    <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase w-[150px]">Criado Por</th>
                     <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase text-center w-[120px]">Ações</th>
                   </tr></thead>
                   <tbody className="divide-y">
@@ -279,7 +279,7 @@ export default function CreditoFilaRessarcimento() {
                           <td className="px-3 py-3 text-center"><div className="flex items-center justify-center gap-1"><Clock className="w-3 h-3 text-muted-foreground" /><span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span></div></td>
                           <td className="px-3 py-3"><div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground truncate">{task.responsavelNome || '—'}</span></div></td>
                           <td className="px-3 py-3">{ov ? <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="w-3 h-3" />Atraso</Badge> : <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1"><CheckCircle className="w-3 h-3" />OK</Badge>}</td>
-                          <td className="px-3 py-3"><span className="text-xs text-muted-foreground">{formatDateTime(task.createdAt)}</span></td>
+                          <td className="px-3 py-3"><div className="text-xs"><span className="font-medium text-foreground">{task.criadoPorNome || '—'}</span><div className="text-[10px] text-muted-foreground">{task.createdAt ? new Date(task.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</div></div></td>
                           <td className="px-3 py-3 text-center">
                             {locked && !isAdmin && <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1"><Lock className="w-3 h-3" />Bloqueado</Badge>}
                             {locked && isAdmin && <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 border-amber-300 text-amber-700" onClick={() => { setExceptionTask(task); setExceptionJustificativa(''); setQueueExceptionDialog(true); }}><Flag className="w-3 h-3" />Exceção</Button>}

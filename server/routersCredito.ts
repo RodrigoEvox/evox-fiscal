@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "./_core/trpc";
 import * as credDb from "./dbCredito";
 import * as db from "./db";
+import { createNotificacao } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import crypto from "crypto";
@@ -965,7 +966,20 @@ const creditoRouter = router({
         const prevLog = task.reaberturaMotivoLog ? (typeof task.reaberturaMotivoLog === 'string' ? JSON.parse(task.reaberturaMotivoLog) : task.reaberturaMotivoLog) : [];
         const newLog = [...(Array.isArray(prevLog) ? prevLog : []), { data: new Date().toISOString(), usuario: user.name, usuarioId: user.id, motivo: input.justificativa, statusAnterior: task.status }];
         await credDb.updateCreditTask(input.taskId, { status: input.targetStatus as any, reaberta: true, reaberturaMotivoLog: JSON.stringify(newLog) } as any);
-        await credDb.logCreditAudit({ entidade: 'task', entidadeId: input.taskId, acao: 'reopen', descricao: `Tarefa ${task.codigo} reaberta por ${user.name}. Motivo: ${input.justificativa}`, dadosAnteriores: { status: task.status } as any, dadosNovos: { status: input.targetStatus, reaberta: true } as any, usuarioId: user.id, usuarioNome: user.name });
+        await credDb.logCreditAudit({ entidade: 'task', entidadeId: input.taskId, acao: 'reabertura', descricao: `Tarefa ${task.codigo} reaberta por ${user.name}. Motivo: ${input.justificativa}`, dadosAnteriores: { status: task.status } as any, dadosNovos: { status: input.targetStatus, reaberta: true } as any, usuarioId: user.id, usuarioNome: user.name });
+        // Notificar analista responsável sobre reabertura
+        if (task.responsavelId) {
+          try {
+            await createNotificacao({
+              tipo: 'tarefa_atribuida',
+              titulo: `Tarefa ${task.codigo} reaberta`,
+              mensagem: `A tarefa "${task.titulo}" foi reaberta pelo gestor ${user.name}. Motivo: ${input.justificativa}`,
+              usuarioId: task.responsavelId,
+              tarefaId: input.taskId,
+              lida: 0,
+            });
+          } catch (e) { console.error('[Notif] Erro ao notificar analista sobre reabertura', e); }
+        }
         return { success: true };
       }),
 
@@ -989,6 +1003,21 @@ const creditoRouter = router({
           await credDb.updateCreditTask(input.taskId, { responsavelId: input.analystId, responsavelNome: input.analystName || '', status: 'fazendo' } as any);
         }
         await credDb.logCreditAudit({ entidade: 'task', entidadeId: input.taskId, acao: 'queue_exception', descricao: `Exceção de fila aplicada por ${user.name}. Ação: ${input.action}. Motivo: ${input.justificativa}`, dadosAnteriores: { ordem: task.ordem, status: task.status } as any, dadosNovos: { action: input.action } as any, usuarioId: user.id, usuarioNome: user.name });
+        // Notificar analista sobre exceção de fila
+        const notifUserId = input.action === 'assign_to_analyst' && input.analystId ? input.analystId : task.responsavelId;
+        if (notifUserId) {
+          try {
+            const acaoLabel = input.action === 'assign_to_analyst' ? 'atribuída diretamente a você' : 'movida para o topo da fila';
+            await createNotificacao({
+              tipo: 'tarefa_atribuida',
+              titulo: `Exceção de fila — ${task.codigo}`,
+              mensagem: `A tarefa "${task.titulo}" foi ${acaoLabel} pelo gestor ${user.name}. Motivo: ${input.justificativa}`,
+              usuarioId: notifUserId,
+              tarefaId: input.taskId,
+              lida: 0,
+            });
+          } catch (e) { console.error('[Notif] Erro ao notificar analista sobre exceção de fila', e); }
+        }
         return { success: true };
       }),
   }),
@@ -1440,6 +1469,25 @@ const creditoRouter = router({
     segmentos: protectedProcedure.query(async () => {
       return credDb.getDistinctSegmentos();
     }),
+    produtividade: protectedProcedure
+      .input(z.object({
+        periodoInicio: z.string().optional(),
+        periodoFim: z.string().optional(),
+        responsavelId: z.number().optional(),
+        fila: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return credDb.getProductivityReport(input || {});
+      }),
+    excecoes: protectedProcedure
+      .input(z.object({
+        periodoInicio: z.string().optional(),
+        periodoFim: z.string().optional(),
+        fila: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return credDb.getExceptionsAndReopenings(input || {});
+      }),
   }),
 });
 

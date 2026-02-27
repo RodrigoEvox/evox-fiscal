@@ -320,14 +320,11 @@ export default function CreditoFilaApuracao() {
   const resetPage = () => setCurrentPage(1);
 
   // Time counter helper
-  const getTimeInStage = (task: any) => {
-    const stageStart = task.status === 'fazendo' ? (task.dataInicioFazendo || task.updatedAt) :
-                        task.status === 'feito' ? (task.dataInicioFeito || task.updatedAt) :
-                        task.status === 'concluido' ? (task.dataConclusao || task.updatedAt) :
-                        task.createdAt;
-    const start = new Date(stageStart).getTime();
+  const getTimeInQueue = (task: any) => {
+    // Tempo total que a empresa está na fila (desde a criação)
+    const start = new Date(task.createdAt).getTime();
     const now = Date.now();
-    const diff = now - start;
+    const diff = Math.max(0, now - start);
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -969,6 +966,7 @@ export default function CreditoFilaApuracao() {
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px] text-center">Tempo</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[180px]">SLA</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Responsável</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[150px]">Criado Por</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[120px]">RTI</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">Fluxo</th>
                       </tr>
@@ -1065,7 +1063,7 @@ export default function CreditoFilaApuracao() {
                             <td className="px-3 py-3 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Clock className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span>
+                                <span className="text-xs font-mono text-muted-foreground">{getTimeInQueue(task)}</span>
                               </div>
                             </td>
                             {/* SLA */}
@@ -1094,6 +1092,15 @@ export default function CreditoFilaApuracao() {
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Não atribuído</span>
                               )}
+                            </td>
+                            {/* Criado Por */}
+                            <td className="px-3 py-3">
+                              <div className="text-xs">
+                                <span className="font-medium text-foreground">{task.criadoPorNome || '—'}</span>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {task.createdAt ? new Date(task.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </div>
+                              </div>
                             </td>
                             {/* RTI */}
                             <td className="px-3 py-3 text-center">

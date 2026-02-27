@@ -2074,3 +2074,155 @@ export async function getApproachingSLATasks(): Promise<{
     })),
   };
 }
+
+
+// ===== RELATÓRIO DE PRODUTIVIDADE =====
+export async function getProductivityReport(filters?: { periodoInicio?: string; periodoFim?: string; responsavelId?: number; fila?: string }) {
+  const db_ = (await getDb())!;
+  const conditions: string[] = [];
+  if (filters?.periodoInicio) conditions.push(`ct.createdAt >= '${filters.periodoInicio}'`);
+  if (filters?.periodoFim) conditions.push(`ct.createdAt <= '${filters.periodoFim} 23:59:59'`);
+  if (filters?.responsavelId) conditions.push(`ct.responsavelId = ${filters.responsavelId}`);
+  if (filters?.fila) conditions.push(`ct.fila = '${filters.fila}'`);
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // 1. Tempo médio por analista (da criação até conclusão)
+  const [analystRows] = await db_.execute(sql.raw(`
+    SELECT 
+      ct.responsavelNome,
+      ct.responsavelId,
+      ct.fila,
+      COUNT(*) as totalTarefas,
+      SUM(CASE WHEN ct.status = 'concluido' THEN 1 ELSE 0 END) as concluidas,
+      SUM(CASE WHEN ct.status = 'fazendo' THEN 1 ELSE 0 END) as emAndamento,
+      SUM(CASE WHEN ct.status = 'a_fazer' THEN 1 ELSE 0 END) as pendentes,
+      AVG(CASE WHEN ct.dataConclusao IS NOT NULL 
+        THEN TIMESTAMPDIFF(HOUR, ct.createdAt, ct.dataConclusao) 
+        ELSE NULL END) as tempoMedioConclusaoHoras,
+      AVG(CASE WHEN ct.status IN ('fazendo','feito','concluido') 
+        THEN TIMESTAMPDIFF(HOUR, ct.createdAt, COALESCE(ct.updatedAt, NOW())) 
+        ELSE NULL END) as tempoMedioProcessamentoHoras,
+      SUM(CASE WHEN ct.slaStatus = 'vencido' THEN 1 ELSE 0 END) as atrasadas,
+      SUM(CASE WHEN ct.viabilidade = 'viavel' THEN 1 ELSE 0 END) as viaveis,
+      SUM(CASE WHEN ct.viabilidade = 'inviavel' THEN 1 ELSE 0 END) as inviaveis
+    FROM credit_tasks ct
+    ${whereClause}
+    ${whereClause ? 'AND' : 'WHERE'} ct.responsavelId IS NOT NULL
+    GROUP BY ct.responsavelId, ct.responsavelNome, ct.fila
+    ORDER BY concluidas DESC
+  `));
+
+  // 2. Tempo médio por fila (geral)
+  const [filaRows] = await db_.execute(sql.raw(`
+    SELECT 
+      ct.fila,
+      COUNT(*) as totalTarefas,
+      SUM(CASE WHEN ct.status = 'concluido' THEN 1 ELSE 0 END) as concluidas,
+      AVG(CASE WHEN ct.dataConclusao IS NOT NULL 
+        THEN TIMESTAMPDIFF(HOUR, ct.createdAt, ct.dataConclusao) 
+        ELSE NULL END) as tempoMedioConclusaoHoras,
+      MIN(CASE WHEN ct.dataConclusao IS NOT NULL 
+        THEN TIMESTAMPDIFF(HOUR, ct.createdAt, ct.dataConclusao) 
+        ELSE NULL END) as tempoMinConclusaoHoras,
+      MAX(CASE WHEN ct.dataConclusao IS NOT NULL 
+        THEN TIMESTAMPDIFF(HOUR, ct.createdAt, ct.dataConclusao) 
+        ELSE NULL END) as tempoMaxConclusaoHoras,
+      SUM(CASE WHEN ct.slaStatus = 'vencido' THEN 1 ELSE 0 END) as atrasadas,
+      AVG(CASE WHEN ct.status != 'concluido' AND ct.status != 'feito'
+        THEN TIMESTAMPDIFF(HOUR, ct.createdAt, NOW()) 
+        ELSE NULL END) as tempoMedioEmFilaHoras
+    FROM credit_tasks ct
+    ${whereClause}
+    GROUP BY ct.fila
+    ORDER BY ct.fila
+  `));
+
+  // 3. Evolução mensal (tarefas criadas vs concluídas)
+  const [monthlyRows] = await db_.execute(sql.raw(`
+    SELECT 
+      DATE_FORMAT(ct.createdAt, '%Y-%m') as mes,
+      COUNT(*) as criadas,
+      SUM(CASE WHEN ct.status = 'concluido' THEN 1 ELSE 0 END) as concluidas,
+      SUM(CASE WHEN ct.slaStatus = 'vencido' THEN 1 ELSE 0 END) as atrasadas
+    FROM credit_tasks ct
+    ${whereClause}
+    GROUP BY DATE_FORMAT(ct.createdAt, '%Y-%m')
+    ORDER BY mes DESC
+    LIMIT 12
+  `));
+
+  // 4. Resumo geral
+  const [summaryRows] = await db_.execute(sql.raw(`
+    SELECT 
+      COUNT(*) as totalTarefas,
+      SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) as concluidas,
+      SUM(CASE WHEN status = 'fazendo' THEN 1 ELSE 0 END) as emAndamento,
+      SUM(CASE WHEN status = 'a_fazer' THEN 1 ELSE 0 END) as pendentes,
+      SUM(CASE WHEN status = 'feito' THEN 1 ELSE 0 END) as feitas,
+      SUM(CASE WHEN slaStatus = 'vencido' THEN 1 ELSE 0 END) as atrasadas,
+      AVG(CASE WHEN dataConclusao IS NOT NULL 
+        THEN TIMESTAMPDIFF(HOUR, createdAt, dataConclusao) 
+        ELSE NULL END) as tempoMedioConclusaoHoras,
+      COUNT(DISTINCT responsavelId) as totalAnalistas
+    FROM credit_tasks ct
+    ${whereClause}
+  `));
+
+  return {
+    porAnalista: analystRows as unknown as any[],
+    porFila: filaRows as unknown as any[],
+    evolucaoMensal: (monthlyRows as unknown as any[]).reverse(),
+    resumo: (summaryRows as unknown as any[])[0] || {},
+  };
+}
+
+// ===== PAINEL DE EXCEÇÕES E REABERTURAS =====
+export async function getExceptionsAndReopenings(filters?: { periodoInicio?: string; periodoFim?: string; fila?: string }) {
+  const db_ = (await getDb())!;
+  const conditions: string[] = [`cal.acao IN ('queue_exception', 'reabertura')`];
+  if (filters?.periodoInicio) conditions.push(`cal.createdAt >= '${filters.periodoInicio}'`);
+  if (filters?.periodoFim) conditions.push(`cal.createdAt <= '${filters.periodoFim} 23:59:59'`);
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT 
+      cal.id, cal.entidade, cal.entidadeId, cal.acao, cal.descricao,
+      cal.dadosAnteriores, cal.dadosNovos, cal.usuarioId, cal.usuarioNome,
+      cal.createdAt,
+      ct.codigo as taskCodigo, ct.titulo as taskTitulo, ct.fila as taskFila,
+      ct.status as taskStatus, ct.responsavelNome as taskResponsavel,
+      c.razaoSocial as clienteNome, c.cnpj as clienteCnpj
+    FROM credit_audit_log cal
+    LEFT JOIN credit_tasks ct ON cal.entidadeId = ct.id AND cal.entidade = 'task'
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    ${whereClause}
+    ${filters?.fila ? `AND ct.fila = '${filters.fila}'` : ''}
+    ORDER BY cal.createdAt DESC
+    LIMIT 200
+  `));
+
+  // Summary stats
+  const all = rows as unknown as any[];
+  const exceptions = all.filter(r => r.acao === 'queue_exception');
+  const reopenings = all.filter(r => r.acao === 'reabertura');
+
+  const porGestor: Record<string, number> = {};
+  const porFila: Record<string, number> = {};
+  for (const r of all) {
+    const gestor = r.usuarioNome || 'Desconhecido';
+    porGestor[gestor] = (porGestor[gestor] || 0) + 1;
+    const fila = r.taskFila || 'outros';
+    porFila[fila] = (porFila[fila] || 0) + 1;
+  }
+
+  return {
+    registros: all,
+    resumo: {
+      totalExcecoes: exceptions.length,
+      totalReaberturas: reopenings.length,
+      total: all.length,
+      porGestor,
+      porFila,
+    },
+  };
+}

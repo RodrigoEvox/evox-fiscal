@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, criadoPorId, criadoPorNome, createdAt FROM credit_tasks LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, criadoPorId, criadoPorNome, createdAt FROM credit_tasks LIMIT 5",
+  "rows": [
+    {
+      "id": "1",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAt": "2026-02-26 14:35:52"
+    },
+    {
+      "id": "2",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAt": "2026-02-26 14:44:28"
+    },
+    {
+      "id": "3",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAt": "2026-02-26 14:52:27"
+    },
+    {
+      "id": "30001",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAt": "2026-02-26 17:58:55"
+    },
+    {
+      "id": "30002",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAt": "2026-02-26 18:28:16"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcriadoPorId\tcriadoPorNome\tcreatedAt\n1\t1\trodrigo\t2026-02-26 14:35:52\n2\t1\trodrigo\t2026-02-26 14:44:28\n3\t1\trodrigo\t2026-02-26 14:52:27\n30001\t1\trodrigo\t2026-02-26 17:58:55\n30002\t1\trodrigo\t2026-02-26 18:28:16\n",
+  "stderr": "",
+  "execution_time_ms": 144
+}

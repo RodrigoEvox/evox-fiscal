@@ -81,9 +81,9 @@ export default function CreditoFilaRetificacao() {
   }, []);
 
   const getTimeInStage = (task: any) => {
-    const start = task.status === 'fazendo' ? (task.dataInicio || task.updatedAt || task.createdAt) : task.createdAt;
-    if (!start) return '—';
-    const diff = Date.now() - new Date(start).getTime();
+    // Tempo total que a empresa está na fila (desde a criação)
+    if (!task.createdAt) return '—';
+    const diff = Math.max(0, Date.now() - new Date(task.createdAt).getTime());
     const days = Math.floor(diff / 86400000);
     const hours = Math.floor((diff % 86400000) / 3600000);
     const mins = Math.floor((diff % 3600000) / 60000);
@@ -323,7 +323,7 @@ export default function CreditoFilaRetificacao() {
                       <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px] text-center">Tempo</th>
                       <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Responsável</th>
                       <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px]">SLA</th>
-                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Criado em</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[150px]">Criado Por</th>
                       <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">Ações</th>
                     </tr>
                   </thead>
@@ -362,7 +362,14 @@ export default function CreditoFilaRetificacao() {
                               <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1"><CheckCircle className="w-3 h-3" />OK</Badge>
                             )}
                           </td>
-                          <td className="px-3 py-3"><span className="text-xs text-muted-foreground">{formatDateTime(task.createdAt)}</span></td>
+                          <td className="px-3 py-3">
+                            <div className="text-xs">
+                              <span className="font-medium text-foreground">{task.criadoPorNome || '—'}</span>
+                              <div className="text-[10px] text-muted-foreground">
+                                {task.createdAt ? new Date(task.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                              </div>
+                            </div>
+                          </td>
                           <td className="px-3 py-3">
                             <div className="flex justify-center gap-1">
                               {task.status === 'a_fazer' && !isQueueLocked && (

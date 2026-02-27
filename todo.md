@@ -2404,3 +2404,30 @@
 
 ### SLA Data Fim
 - [x] Ajustar SLA Data Fim para usar o maior prazo dentre as teses selecionadas (já implementado no backend)
+
+## v92 — Relatório Produtividade, Painel Exceções, Notificações, Correções
+
+### Correção do Contador de Tempo
+- [x] Tempo deve ser o tempo total que a empresa está na fila (desde createdAt)
+- [x] Corrigir valores negativos no contador de tempo (usar Math.max(0, diff))
+
+### Visão de Criação da Tarefa
+- [x] Exibir quem criou a tarefa (criadoPorNome) em todas as filas
+- [x] Exibir data e horário de criação no padrão Brasília (UTC-3)
+
+### Relatório de Produtividade
+- [x] Criar aba/seção de relatório de produtividade nas filas
+- [x] Métricas de tempo médio por analista
+- [x] Métricas de tempo médio por etapa
+- [x] Métricas de tempo médio por cliente
+- [x] Tabela detalhada com ranking de produtividade
+
+### Painel de Exceções de Fila
+- [x] Criar visão consolidada de todas as exceções de fila
+- [x] Listar todas as reaberturas com justificativa e data
+- [x] Filtros por período, fila e tipo de exceção
+
+### Notificação ao Analista
+- [x] Notificar analista quando tarefa for reaberta
+- [x] Notificar analista quando tarefa for atribuída via exceção de fila
+- [x] Registrar notificação no sistema interno de notificações

@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, criadoPorId, criadoPorNome, DATE_FORMAT(CONVERT_TZ(createdAt, '+00:00', '-03:00'), '%d/%m/%Y %H:%i') as createdAtBrasilia FROM credit_tasks ORDER BY id DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, criadoPorId, criadoPorNome, DATE_FORMAT(CONVERT_TZ(createdAt, '+00:00', '-03:00'), '%d/%m/%Y %H:%i') as createdAtBrasilia FROM credit_tasks ORDER BY id DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "120002",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAtBrasilia": "27/02/2026 18:09"
+    },
+    {
+      "id": "120001",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAtBrasilia": "27/02/2026 16:53"
+    },
+    {
+      "id": "90001",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAtBrasilia": "27/02/2026 11:37"
+    },
+    {
+      "id": "60001",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAtBrasilia": "27/02/2026 08:46"
+    },
+    {
+      "id": "30007",
+      "criadoPorId": "1",
+      "criadoPorNome": "rodrigo",
+      "createdAtBrasilia": "26/02/2026 19:18"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcriadoPorId\tcriadoPorNome\tcreatedAtBrasilia\n120002\t1\trodrigo\t27/02/2026 18:09\n120001\t1\trodrigo\t27/02/2026 16:53\n90001\t1\trodrigo\t27/02/2026 11:37\n60001\t1\trodrigo\t27/02/2026 08:46\n30007\t1\trodrigo\t26/02/2026 19:18\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ChevronRight, Loader2, Download, FileSpreadsheet, BarChart3,
   Filter, TrendingUp, DollarSign, ClipboardList, AlertTriangle, FileText,
+  Users, Clock, ShieldAlert, RotateCcw, Flag,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -587,6 +588,8 @@ export default function CreditoRelatorios() {
               <TabsTrigger value="graficos">Gráficos</TabsTrigger>
               <TabsTrigger value="tarefas">Tarefas ({tasks.length})</TabsTrigger>
               <TabsTrigger value="creditos">Créditos ({ledger.length})</TabsTrigger>
+              <TabsTrigger value="produtividade">Produtividade</TabsTrigger>
+              <TabsTrigger value="excecoes">Exceções</TabsTrigger>
             </TabsList>
 
             {/* ===== RESUMO TAB ===== */}
@@ -998,9 +1001,380 @@ export default function CreditoRelatorios() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* ===== PRODUTIVIDADE TAB ===== */}
+            <TabsContent value="produtividade" className="space-y-4">
+              <ProductivityTab />
+            </TabsContent>
+
+            {/* ===== EXCEÇÕES TAB ===== */}
+            <TabsContent value="excecoes" className="space-y-4">
+              <ExceptionsTab />
+            </TabsContent>
           </Tabs>
         </>
       )}
+    </div>
+  );
+}
+
+// ===== PRODUTIVIDADE TAB COMPONENT =====
+function ProductivityTab() {
+  const [periodoInicio, setPeriodoInicio] = useState('');
+  const [periodoFim, setPeriodoFim] = useState('');
+  const [filaFilter, setFilaFilter] = useState('all');
+
+  const filters = useMemo(() => ({
+    periodoInicio: periodoInicio || undefined,
+    periodoFim: periodoFim || undefined,
+    fila: filaFilter !== 'all' ? filaFilter : undefined,
+  }), [periodoInicio, periodoFim, filaFilter]);
+
+  const { data: prodData, isLoading } = trpc.creditRecovery.credito.reports.produtividade.useQuery(filters);
+  const prod = prodData as any;
+  const resumo = prod?.resumo || {};
+  const porAnalista = (prod?.porAnalista || []) as any[];
+  const porFila = (prod?.porFila || []) as any[];
+  const evolucao = (prod?.evolucaoMensal || []) as any[];
+
+  const formatHours = (h: number | null) => {
+    if (h === null || h === undefined || isNaN(h)) return '—';
+    const hrs = Math.round(h);
+    if (hrs >= 24) return `${Math.floor(hrs / 24)}d ${hrs % 24}h`;
+    return `${hrs}h`;
+  };
+
+  // Aggregate analysts by name (across filas)
+  const analyistAgg = useMemo(() => {
+    const map: Record<string, { nome: string; total: number; concluidas: number; emAndamento: number; pendentes: number; atrasadas: number; tempoMedio: number; count: number; viaveis: number; inviaveis: number }> = {};
+    for (const a of porAnalista) {
+      const nome = a.responsavelNome || 'Sem nome';
+      if (!map[nome]) map[nome] = { nome, total: 0, concluidas: 0, emAndamento: 0, pendentes: 0, atrasadas: 0, tempoMedio: 0, count: 0, viaveis: 0, inviaveis: 0 };
+      map[nome].total += Number(a.totalTarefas || 0);
+      map[nome].concluidas += Number(a.concluidas || 0);
+      map[nome].emAndamento += Number(a.emAndamento || 0);
+      map[nome].pendentes += Number(a.pendentes || 0);
+      map[nome].atrasadas += Number(a.atrasadas || 0);
+      map[nome].viaveis += Number(a.viaveis || 0);
+      map[nome].inviaveis += Number(a.inviaveis || 0);
+      if (a.tempoMedioConclusaoHoras) { map[nome].tempoMedio += Number(a.tempoMedioConclusaoHoras); map[nome].count++; }
+    }
+    return Object.values(map).map(a => ({ ...a, tempoMedio: a.count > 0 ? a.tempoMedio / a.count : null })).sort((a, b) => b.concluidas - a.concluidas);
+  }, [porAnalista]);
+
+  const filaChartData = useMemo(() => porFila.map((f: any) => ({
+    name: FILA_LABELS[f.fila] || f.fila,
+    concluidas: Number(f.concluidas || 0),
+    emFila: Number(f.totalTarefas || 0) - Number(f.concluidas || 0),
+    tempoMedio: Math.round(Number(f.tempoMedioConclusaoHoras || 0)),
+  })), [porFila]);
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Período Início</Label>
+              <Input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} className="h-8 text-xs w-[140px]" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Período Fim</Label>
+              <Input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} className="h-8 text-xs w-[140px]" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Fila</Label>
+              <Select value={filaFilter} onValueChange={setFilaFilter}>
+                <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FILAS_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cards Resumo */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-primary">{Number(resumo.totalTarefas || 0)}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Total Tarefas</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-emerald-600">{Number(resumo.concluidas || 0)}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Concluídas</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-amber-600">{formatHours(Number(resumo.tempoMedioConclusaoHoras || 0))}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Tempo Médio Conclusão</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{Number(resumo.totalAnalistas || 0)}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Analistas Ativos</p>
+        </CardContent></Card>
+      </div>
+
+      {/* Gráfico Evolução Mensal */}
+      {evolucao.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4" />Evolução Mensal</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={evolucao}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar dataKey="criadas" name="Criadas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="concluidas" name="Concluídas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="atrasadas" name="Atrasadas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabela por Analista */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" />Produtividade por Analista</CardTitle></CardHeader>
+        <CardContent>
+          {analyistAgg.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum analista com tarefas atribuídas</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead><tr className="bg-muted/50 border-b">
+                  <th className="px-3 py-2 font-semibold">Analista</th>
+                  <th className="px-3 py-2 text-center font-semibold">Total</th>
+                  <th className="px-3 py-2 text-center font-semibold">Concluídas</th>
+                  <th className="px-3 py-2 text-center font-semibold">Em Andamento</th>
+                  <th className="px-3 py-2 text-center font-semibold">Pendentes</th>
+                  <th className="px-3 py-2 text-center font-semibold">Atrasadas</th>
+                  <th className="px-3 py-2 text-center font-semibold">Tempo Médio</th>
+                  <th className="px-3 py-2 text-center font-semibold">Taxa Conclusão</th>
+                  <th className="px-3 py-2 text-center font-semibold">Viáveis</th>
+                </tr></thead>
+                <tbody className="divide-y">
+                  {analyistAgg.map((a, i) => (
+                    <tr key={i} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 font-medium">{a.nome}</td>
+                      <td className="px-3 py-2 text-center">{a.total}</td>
+                      <td className="px-3 py-2 text-center text-emerald-600 font-semibold">{a.concluidas}</td>
+                      <td className="px-3 py-2 text-center text-blue-600">{a.emAndamento}</td>
+                      <td className="px-3 py-2 text-center text-amber-600">{a.pendentes}</td>
+                      <td className="px-3 py-2 text-center text-red-600">{a.atrasadas}</td>
+                      <td className="px-3 py-2 text-center"><Badge variant="outline" className="text-[10px] gap-1"><Clock className="w-3 h-3" />{formatHours(a.tempoMedio)}</Badge></td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge className={cn('text-[10px]', a.total > 0 && (a.concluidas / a.total) >= 0.7 ? 'bg-emerald-100 text-emerald-800' : a.total > 0 && (a.concluidas / a.total) >= 0.4 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800')}>
+                          {a.total > 0 ? `${Math.round((a.concluidas / a.total) * 100)}%` : '0%'}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className="text-emerald-600">{a.viaveis}</span> / <span className="text-red-600">{a.inviaveis}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabela por Fila */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" />Métricas por Fila</CardTitle></CardHeader>
+        <CardContent>
+          {porFila.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead><tr className="bg-muted/50 border-b">
+                  <th className="px-3 py-2 font-semibold">Fila</th>
+                  <th className="px-3 py-2 text-center font-semibold">Total</th>
+                  <th className="px-3 py-2 text-center font-semibold">Concluídas</th>
+                  <th className="px-3 py-2 text-center font-semibold">Atrasadas</th>
+                  <th className="px-3 py-2 text-center font-semibold">Tempo Médio Conclusão</th>
+                  <th className="px-3 py-2 text-center font-semibold">Tempo Mínimo</th>
+                  <th className="px-3 py-2 text-center font-semibold">Tempo Máximo</th>
+                  <th className="px-3 py-2 text-center font-semibold">Tempo Médio em Fila</th>
+                </tr></thead>
+                <tbody className="divide-y">
+                  {porFila.map((f: any, i: number) => (
+                    <tr key={i} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 font-medium">{FILA_LABELS[f.fila] || f.fila}</td>
+                      <td className="px-3 py-2 text-center">{Number(f.totalTarefas || 0)}</td>
+                      <td className="px-3 py-2 text-center text-emerald-600 font-semibold">{Number(f.concluidas || 0)}</td>
+                      <td className="px-3 py-2 text-center text-red-600">{Number(f.atrasadas || 0)}</td>
+                      <td className="px-3 py-2 text-center">{formatHours(Number(f.tempoMedioConclusaoHoras))}</td>
+                      <td className="px-3 py-2 text-center">{formatHours(Number(f.tempoMinConclusaoHoras))}</td>
+                      <td className="px-3 py-2 text-center">{formatHours(Number(f.tempoMaxConclusaoHoras))}</td>
+                      <td className="px-3 py-2 text-center"><Badge variant="outline" className="text-[10px] gap-1"><Clock className="w-3 h-3" />{formatHours(Number(f.tempoMedioEmFilaHoras))}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Gráfico por Fila */}
+      {filaChartData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Tarefas por Fila</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={filaChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar dataKey="concluidas" name="Concluídas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="emFila" name="Em Fila" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ===== EXCEÇÕES TAB COMPONENT =====
+function ExceptionsTab() {
+  const [periodoInicio, setPeriodoInicio] = useState('');
+  const [periodoFim, setPeriodoFim] = useState('');
+  const [filaFilter, setFilaFilter] = useState('all');
+
+  const filters = useMemo(() => ({
+    periodoInicio: periodoInicio || undefined,
+    periodoFim: periodoFim || undefined,
+    fila: filaFilter !== 'all' ? filaFilter : undefined,
+  }), [periodoInicio, periodoFim, filaFilter]);
+
+  const { data: excData, isLoading } = trpc.creditRecovery.credito.reports.excecoes.useQuery(filters);
+  const exc = excData as any;
+  const registros = (exc?.registros || []) as any[];
+  const resumo = exc?.resumo || {};
+
+  const formatDateTime = (d: string) => d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+
+  if (isLoading) return <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Período Início</Label>
+              <Input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} className="h-8 text-xs w-[140px]" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Período Fim</Label>
+              <Input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} className="h-8 text-xs w-[140px]" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground uppercase">Fila</Label>
+              <Select value={filaFilter} onValueChange={setFilaFilter}>
+                <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FILAS_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cards Resumo */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-primary">{resumo.total || 0}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Total Registros</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-amber-600">{resumo.totalExcecoes || 0}</p>
+          <p className="text-[10px] text-muted-foreground uppercase flex items-center justify-center gap-1"><Flag className="w-3 h-3" />Exceções de Fila</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{resumo.totalReaberturas || 0}</p>
+          <p className="text-[10px] text-muted-foreground uppercase flex items-center justify-center gap-1"><RotateCcw className="w-3 h-3" />Reaberturas</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 text-center">
+          <p className="text-2xl font-bold text-muted-foreground">{Object.keys(resumo.porGestor || {}).length}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">Gestores Envolvidos</p>
+        </CardContent></Card>
+      </div>
+
+      {/* Por Gestor */}
+      {Object.keys(resumo.porGestor || {}).length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ShieldAlert className="w-4 h-4" />Registros por Gestor</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(resumo.porGestor || {}).sort((a: any, b: any) => b[1] - a[1]).map(([gestor, count]: any) => (
+                <div key={gestor} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                  <span className="text-xs font-medium truncate">{gestor}</span>
+                  <Badge variant="outline" className="text-[10px]">{count}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabela de Registros */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4" />Histórico de Exceções e Reaberturas</CardTitle></CardHeader>
+        <CardContent>
+          {registros.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum registro encontrado</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead><tr className="bg-muted/50 border-b">
+                  <th className="px-3 py-2 font-semibold">Data/Hora</th>
+                  <th className="px-3 py-2 font-semibold">Tipo</th>
+                  <th className="px-3 py-2 font-semibold">Tarefa</th>
+                  <th className="px-3 py-2 font-semibold">Fila</th>
+                  <th className="px-3 py-2 font-semibold">Cliente</th>
+                  <th className="px-3 py-2 font-semibold">Gestor</th>
+                  <th className="px-3 py-2 font-semibold min-w-[200px]">Descrição</th>
+                </tr></thead>
+                <tbody className="divide-y">
+                  {registros.map((r: any) => (
+                    <tr key={r.id} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDateTime(r.createdAt)}</td>
+                      <td className="px-3 py-2">
+                        {r.acao === 'queue_exception' ? (
+                          <Badge className="text-[10px] bg-amber-100 text-amber-800 gap-1"><Flag className="w-3 h-3" />Exceção</Badge>
+                        ) : (
+                          <Badge className="text-[10px] bg-blue-100 text-blue-800 gap-1"><RotateCcw className="w-3 h-3" />Reabertura</Badge>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-mono">{r.taskCodigo || '—'}</td>
+                      <td className="px-3 py-2">{FILA_LABELS[r.taskFila] || r.taskFila || '—'}</td>
+                      <td className="px-3 py-2 truncate max-w-[150px]">{r.clienteNome || '—'}</td>
+                      <td className="px-3 py-2 font-medium">{r.usuarioNome || '—'}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{r.descricao || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
