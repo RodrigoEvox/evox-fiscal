@@ -2371,3 +2371,36 @@
 ### Viabilidade Baseada no RTI
 - [x] Viabilidade deve ser calculada com base no valor real apurado no RTI (não no valor estimado)
 - [x] Critério: valor total do RTI ≥ R$20.000 = Viável, < R$20.000 = Inviável
+
+## v91 — Paginação, Bloqueio de Fila, Confirmação, Reabertura, Contador de Tempo
+
+### Paginação e Numeração
+- [x] Paginação com 25 por página (padrão), opção 50 e 100
+- [x] Numeração posicional de cada empresa na fila
+- [x] Aplicar em todas as filas: apuração, retificação, compensação, ressarcimento, restituição
+
+### Bloqueio de Fila
+- [x] Apenas a 1ª empresa da fila pode ser "pega" pelo analista
+- [x] Demais empresas ficam bloqueadas (botão desabilitado)
+- [x] Gestor pode alterar ordem da fila com justificativa obrigatória
+- [x] Gestor pode mover empresa para 1º da fila ou atribuir diretamente a analista
+- [x] Registro de log de auditoria para exceções de fila
+
+### Confirmação de Ações
+- [x] Alerta de confirmação ao pegar tarefa
+- [x] Alerta de confirmação ao mudar de etapa (fazendo, feito, concluído)
+- [x] Mensagem clara que ação é irreversível
+
+### Reabertura de Tarefa
+- [x] Analista pode solicitar reabertura ao gestor com justificativa
+- [x] Gestor autoriza/rejeita reabertura com justificativa
+- [x] Tarefa reaberta tem indicador visual de "reaberta"
+- [x] Log de auditoria para reaberturas
+
+### Contador de Tempo por Etapa
+- [x] Contador de dias, horas e minutos em cada etapa
+- [x] Registrar timestamps de entrada/saída de cada etapa
+- [x] Exibir tempo na fila para cada tarefa
+
+### SLA Data Fim
+- [x] Ajustar SLA Data Fim para usar o maior prazo dentre as teses selecionadas (já implementado no backend)

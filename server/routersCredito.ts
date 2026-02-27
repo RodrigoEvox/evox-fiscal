@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "./_core/trpc";
 import * as credDb from "./dbCredito";
 import * as db from "./db";
@@ -947,6 +948,48 @@ const creditoRouter = router({
       }).optional())
       .query(async ({ input }) => {
         return credDb.getCreditTaskStats(input || undefined);
+      }),
+
+    // Reopen task (admin only) - allows editing a completed task
+    reopenTask: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        justificativa: z.string().min(10, 'Justificativa deve ter pelo menos 10 caracteres'),
+        targetStatus: z.enum(['a_fazer', 'fazendo']).default('fazendo'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { user } = ctx;
+        if (user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas gestores podem reabrir tarefas' });
+        const task = await credDb.getCreditTaskById(input.taskId);
+        if (!task) throw new TRPCError({ code: 'NOT_FOUND', message: 'Tarefa não encontrada' });
+        const prevLog = task.reaberturaMotivoLog ? (typeof task.reaberturaMotivoLog === 'string' ? JSON.parse(task.reaberturaMotivoLog) : task.reaberturaMotivoLog) : [];
+        const newLog = [...(Array.isArray(prevLog) ? prevLog : []), { data: new Date().toISOString(), usuario: user.name, usuarioId: user.id, motivo: input.justificativa, statusAnterior: task.status }];
+        await credDb.updateCreditTask(input.taskId, { status: input.targetStatus as any, reaberta: true, reaberturaMotivoLog: JSON.stringify(newLog) } as any);
+        await credDb.logCreditAudit({ entidade: 'task', entidadeId: input.taskId, acao: 'reopen', descricao: `Tarefa ${task.codigo} reaberta por ${user.name}. Motivo: ${input.justificativa}`, dadosAnteriores: { status: task.status } as any, dadosNovos: { status: input.targetStatus, reaberta: true } as any, usuarioId: user.id, usuarioNome: user.name });
+        return { success: true };
+      }),
+
+    // Queue exception (admin only) - move task to first in queue or assign directly
+    queueException: protectedProcedure
+      .input(z.object({
+        taskId: z.number(),
+        justificativa: z.string().min(10, 'Justificativa deve ter pelo menos 10 caracteres'),
+        action: z.enum(['move_to_first', 'assign_to_analyst']),
+        analystId: z.number().optional(),
+        analystName: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { user } = ctx;
+        if (user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas gestores podem aplicar exceções de fila' });
+        const task = await credDb.getCreditTaskById(input.taskId);
+        if (!task) throw new TRPCError({ code: 'NOT_FOUND', message: 'Tarefa não encontrada' });
+        if (input.action === 'move_to_first') {
+          await credDb.updateCreditTask(input.taskId, { ordem: -1 } as any);
+        } else if (input.action === 'assign_to_analyst' && input.analystId) {
+          await credDb.updateCreditTask(input.taskId, { responsavelId: input.analystId, responsavelNome: input.analystName || '', status: 'fazendo' } as any);
+        }
+        await credDb.logCreditAudit({ entidade: 'task', entidadeId: input.taskId, acao: 'queue_exception', descricao: `Exceção de fila aplicada por ${user.name}. Ação: ${input.action}. Motivo: ${input.justificativa}`, dadosAnteriores: { ordem: task.ordem, status: task.status } as any, dadosNovos: { action: input.action } as any, usuarioId: user.id, usuarioNome: user.name });
+        return { success: true };
       }),
   }),
 

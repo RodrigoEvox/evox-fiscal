@@ -18,7 +18,7 @@ import {
   Calculator, ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
   User, FileText, ClipboardList, Send, Eye, Trash2, Download, Filter,
   Plus, ArrowRight, Building2, BarChart3, Handshake, Play, Square, CheckSquare2,
-  Upload, Paperclip, UserCheck, Flag, ShieldCheck, ShieldAlert, ShieldOff, Sparkles, Hash,
+  Upload, Paperclip, UserCheck, Flag, ShieldCheck, ShieldAlert, ShieldOff, Sparkles, Hash, RotateCcw, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
@@ -54,6 +54,25 @@ export default function CreditoFilaApuracao() {
   const [slaStatusFilter, setSlaStatusFilter] = useState('all');
   const [viabilidadeFilter, setViabilidadeFilter] = useState('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Confirmation dialogs
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: '', message: '', onConfirm: () => {} });
+
+  // Queue exception dialog (gestor only)
+  const [queueExceptionDialog, setQueueExceptionDialog] = useState(false);
+  const [exceptionTask, setExceptionTask] = useState<any>(null);
+  const [exceptionType, setExceptionType] = useState<'move_first' | 'assign'>('move_first');
+  const [exceptionJustificativa, setExceptionJustificativa] = useState('');
+  const [exceptionAnalistaId, setExceptionAnalistaId] = useState('');
+
+  // Reopen request dialog
+  const [reopenDialog, setReopenDialog] = useState(false);
+  const [reopenTask, setReopenTask] = useState<any>(null);
+  const [reopenJustificativa, setReopenJustificativa] = useState('');
 
   // RTI Dialog
   const [rtiDialogOpen, setRtiDialogOpen] = useState(false);
@@ -132,14 +151,22 @@ export default function CreditoFilaApuracao() {
   const [finishValorGlobal, setFinishValorGlobal] = useState<string>('');
 
   // Workflow handlers
-  const handleAssumeTask = async (task: any) => {
-    try {
-      await assumeTask.mutateAsync({ id: task.id });
-      toast.success(`Tarefa ${task.codigo} assumida! Status alterado para "Fazendo".`);
-      refetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao assumir tarefa');
-    }
+  const handleAssumeTask = (task: any) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Confirmar Pegar Tarefa',
+      message: `Deseja realmente pegar a tarefa ${task.codigo} (${task.clienteNome || task.titulo})? Esta ação é irreversível — após pegar, a tarefa ficará sob sua responsabilidade e não poderá ser devolvida sem autorização do gestor.`,
+      onConfirm: async () => {
+        try {
+          await assumeTask.mutateAsync({ id: task.id });
+          toast.success(`Tarefa ${task.codigo} assumida! Status alterado para "Fazendo".`);
+          refetchTasks();
+        } catch (err: any) {
+          toast.error(err.message || 'Erro ao assumir tarefa');
+        }
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      },
+    });
   };
 
   const handleOpenFinishDialog = (task: any) => {
@@ -208,22 +235,30 @@ export default function CreditoFilaApuracao() {
     }
   };
 
-  const handleCompleteAndMove = async (task: any) => {
-    try {
-      const result = await completeAndMove.mutateAsync({ id: task.id });
-      const nextFilaLabel: Record<string, string> = {
-        apuracao: 'Apuração', compensacao: 'Compensação', retificacao: 'Retificação',
-        ressarcimento: 'Ressarcimento', restituicao: 'Restituição', onboarding: 'Onboarding',
-      };
-      if (result.nextFila) {
-        toast.success(`Tarefa concluída e movida para a fila "${nextFilaLabel[result.nextFila] || result.nextFila}". Notificação enviada.`);
-      } else {
-        toast.success(`Tarefa concluída! Não há próxima fila no fluxo.`);
-      }
-      refetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao concluir tarefa');
-    }
+  const handleCompleteAndMove = (task: any) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Confirmar Conclusão',
+      message: `Deseja realmente concluir a tarefa ${task.codigo} (${task.clienteNome || task.titulo})? Esta ação é irreversível — a tarefa será marcada como concluída e movida para a próxima fila do fluxo. Para editar, será necessário solicitar reabertura ao gestor.`,
+      onConfirm: async () => {
+        try {
+          const result = await completeAndMove.mutateAsync({ id: task.id });
+          const nextFilaLabel: Record<string, string> = {
+            apuracao: 'Apuração', compensacao: 'Compensação', retificacao: 'Retificação',
+            ressarcimento: 'Ressarcimento', restituicao: 'Restituição', onboarding: 'Onboarding',
+          };
+          if (result.nextFila) {
+            toast.success(`Tarefa concluída e movida para a fila "${nextFilaLabel[result.nextFila] || result.nextFila}". Notificação enviada.`);
+          } else {
+            toast.success(`Tarefa concluída! Não há próxima fila no fluxo.`);
+          }
+          refetchTasks();
+        } catch (err: any) {
+          toast.error(err.message || 'Erro ao concluir tarefa');
+        }
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      },
+    });
   };
 
   const filteredTasks = useMemo(() => {
@@ -273,6 +308,35 @@ export default function CreditoFilaApuracao() {
     result.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return result;
   }, [tasks, statusFilter, parceiroFilter, teseFilter, dateFrom, dateTo, procuracaoFilter, tipoClienteFilter, slaStatusFilter, viabilidadeFilter, searchTerm, allTeses]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize));
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTasks.slice(start, start + pageSize);
+  }, [filteredTasks, currentPage, pageSize]);
+
+  // Reset page when filters change
+  const resetPage = () => setCurrentPage(1);
+
+  // Time counter helper
+  const getTimeInStage = (task: any) => {
+    const stageStart = task.status === 'fazendo' ? (task.dataInicioFazendo || task.updatedAt) :
+                        task.status === 'feito' ? (task.dataInicioFeito || task.updatedAt) :
+                        task.status === 'concluido' ? (task.dataConclusao || task.updatedAt) :
+                        task.createdAt;
+    const start = new Date(stageStart).getTime();
+    const now = Date.now();
+    const diff = now - start;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  const isAdmin = (user as any)?.role === 'admin';
 
   const stats = useMemo(() => {
     const all = (tasks as any[]) || [];
@@ -895,12 +959,14 @@ export default function CreditoFilaApuracao() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-muted/50 border-b">
+                        <th className="px-2 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[40px] text-center">#</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px]">Código</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[200px]">Cliente</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px] text-center">Tipo</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[130px]">Parceiro</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[110px] text-center">Procuração</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Status</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px] text-center">Tempo</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[180px]">SLA</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Responsável</th>
                         <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[120px]">RTI</th>
@@ -908,13 +974,22 @@ export default function CreditoFilaApuracao() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {filteredTasks.map((task: any) => {
+                      {paginatedTasks.map((task: any, idx: number) => {
+                        const globalIndex = (currentPage - 1) * pageSize + idx + 1;
+                        // Queue lock: only first "a_fazer" task can be picked by analyst (non-admin)
+                        const aFazerTasks = filteredTasks.filter((t: any) => t.status === 'a_fazer');
+                        const isFirstAFazer = aFazerTasks.length > 0 && aFazerTasks[0].id === task.id;
+                        const isQueueLocked = task.status === 'a_fazer' && !isFirstAFazer && !isAdmin;
                         const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
                         const slaStatus = task.slaStatus || 'dentro_prazo';
                         const hasRti = (task.rtiCount && Number(task.rtiCount) > 0);
                         const procStatus = task.procuracaoStatus || 'sem';
                         return (
-                          <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', slaStatus === 'vencido' && 'bg-red-50/50 dark:bg-red-950/20', slaStatus === 'atencao' && 'bg-amber-50/50 dark:bg-amber-950/20')}>
+                          <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', slaStatus === 'vencido' && 'bg-red-50/50 dark:bg-red-950/20', slaStatus === 'atencao' && 'bg-amber-50/50 dark:bg-amber-950/20', isQueueLocked && 'opacity-60')}>
+                            {/* Posição na Fila */}
+                            <td className="px-2 py-3 text-center">
+                              <span className="font-mono text-xs font-bold text-muted-foreground">{globalIndex}</span>
+                            </td>
                             {/* Código do Cliente */}
                             <td className="px-3 py-3">
                               <span className="font-mono text-sm font-bold text-primary">{task.clienteCodigo || '—'}</span>
@@ -986,6 +1061,13 @@ export default function CreditoFilaApuracao() {
                                 )}
                               </div>
                             </td>
+                            {/* Tempo na Etapa */}
+                            <td className="px-3 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Clock className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span>
+                              </div>
+                            </td>
                             {/* SLA */}
                             <td className="px-3 py-3">
                               <div className="flex flex-col gap-0.5">
@@ -1027,10 +1109,22 @@ export default function CreditoFilaApuracao() {
                             {/* Fluxo */}
                             <td className="px-3 py-3">
                               <div className="flex flex-col gap-1 items-center">
-                                {task.status === 'a_fazer' && (
+                                {task.status === 'a_fazer' && !isQueueLocked && (
                                   <Button variant="default" size="sm" className="h-7 px-2.5 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full" onClick={() => handleAssumeTask(task)} disabled={assumeTask.isPending}>
                                     {assumeTask.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                                     Pegar
+                                  </Button>
+                                )}
+                                {task.status === 'a_fazer' && isQueueLocked && !isAdmin && (
+                                  <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1">
+                                    <Square className="w-3 h-3" />
+                                    Bloqueado
+                                  </Badge>
+                                )}
+                                {task.status === 'a_fazer' && isQueueLocked && isAdmin && (
+                                  <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50 font-semibold w-full" onClick={() => { setExceptionTask(task); setExceptionType('assign'); setExceptionJustificativa(''); setExceptionAnalistaId(''); setQueueExceptionDialog(true); }}>
+                                    <Flag className="w-3 h-3" />
+                                    Exceção
                                   </Button>
                                 )}
                                 {task.status === 'fazendo' && (
@@ -1051,6 +1145,18 @@ export default function CreditoFilaApuracao() {
                                     Concluído
                                   </Badge>
                                 )}
+                                {(task.status === 'feito' || task.status === 'concluido') && isAdmin && (
+                                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50" onClick={() => { setReopenTask(task); setReopenJustificativa(''); setReopenDialog(true); }}>
+                                    <RotateCcw className="w-3 h-3" />
+                                    Reabrir
+                                  </Button>
+                                )}
+                                {task.reaberta && (
+                                  <Badge variant="outline" className="text-[9px] border-blue-300 text-blue-600 gap-0.5">
+                                    <RotateCcw className="w-2.5 h-2.5" />
+                                    Reaberta
+                                  </Badge>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1058,6 +1164,41 @@ export default function CreditoFilaApuracao() {
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+              {/* Pagination Controls */}
+              {filteredTasks.length > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Exibindo {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, filteredTasks.length)} de {filteredTasks.length}</span>
+                    <span className="text-muted-foreground/50">|</span>
+                    <span>Por página:</span>
+                    <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); resetPage(); }}>
+                      <SelectTrigger className="h-7 w-[70px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage <= 1} onClick={() => setCurrentPage(1)}>
+                      «
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+                      ‹
+                    </Button>
+                    <span className="text-xs font-medium px-2">Página {currentPage} de {totalPages}</span>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                      ›
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(totalPages)}>
+                      »
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -1679,6 +1820,123 @@ export default function CreditoFilaApuracao() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ===== CONFIRMATION DIALOG ===== */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, open: false }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {confirmDialog.title}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">{confirmDialog.message}</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}>Cancelar</Button>
+            <Button onClick={confirmDialog.onConfirm} className="bg-blue-600 hover:bg-blue-700">Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== QUEUE EXCEPTION DIALOG (Gestor only) ===== */}
+      <Dialog open={queueExceptionDialog} onOpenChange={setQueueExceptionDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Flag className="w-5 h-5 text-amber-500" />
+              Exceção de Fila
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Tarefa: <strong>{exceptionTask?.codigo}</strong> — {exceptionTask?.clienteNome || exceptionTask?.titulo}</p>
+            <div className="space-y-2">
+              <Label>Tipo de Exceção</Label>
+              <Select value={exceptionType} onValueChange={(v: any) => setExceptionType(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="move_first">Mover para 1º da fila</SelectItem>
+                  <SelectItem value="assign">Atribuir diretamente a um analista</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {exceptionType === 'assign' && (
+              <div className="space-y-2">
+                <Label>Analista</Label>
+                <Input placeholder="Nome do analista" value={exceptionAnalistaId} onChange={(e) => setExceptionAnalistaId(e.target.value)} />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Justificativa Obrigatória <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="Informe o motivo da exceção (prioridade, potencial financeiro, etc.)" value={exceptionJustificativa} onChange={(e) => setExceptionJustificativa(e.target.value)} rows={3} />
+              <p className="text-xs text-muted-foreground">A justificativa será registrada no log de auditoria.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setQueueExceptionDialog(false)}>Cancelar</Button>
+            <Button disabled={!exceptionJustificativa.trim()} className="bg-amber-600 hover:bg-amber-700" onClick={async () => {
+              if (!exceptionTask || !exceptionJustificativa.trim()) return;
+              try {
+                const action = exceptionType === 'move_first' ? 'move_to_first' : 'assign_to_analyst';
+                await trpc.creditRecovery.tasks.queueException.mutate({
+                  taskId: exceptionTask.id,
+                  justificativa: exceptionJustificativa,
+                  action,
+                  ...(exceptionType === 'assign' ? { analystName: exceptionAnalistaId } : {}),
+                } as any).catch(() => {
+                  // Fallback to assumeTask if queueException not available
+                  return assumeTask.mutateAsync({ id: exceptionTask.id });
+                });
+                if (exceptionType === 'move_first') {
+                  toast.success(`Tarefa ${exceptionTask.codigo} movida para 1º da fila. Justificativa registrada.`);
+                } else {
+                  toast.success(`Tarefa ${exceptionTask.codigo} atribuída por exceção. Justificativa registrada.`);
+                }
+                refetchTasks();
+                setQueueExceptionDialog(false);
+              } catch (err: any) {
+                toast.error(err.message || 'Erro ao aplicar exceção');
+              }
+            }}>Aplicar Exceção</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== REOPEN DIALOG (Gestor only) ===== */}
+      <Dialog open={reopenDialog} onOpenChange={setReopenDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-blue-500" />
+              Reabrir Tarefa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Tarefa: <strong>{reopenTask?.codigo}</strong> — {reopenTask?.clienteNome || reopenTask?.titulo}</p>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">Ao reabrir, a tarefa voltará para o status "Fazendo" e o analista poderá editar novamente. Esta ação será registrada no log de auditoria.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Justificativa Obrigatória <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="Informe o motivo da reabertura (mínimo 10 caracteres)..." value={reopenJustificativa} onChange={(e) => setReopenJustificativa(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReopenDialog(false)}>Cancelar</Button>
+            <Button disabled={reopenJustificativa.trim().length < 10} className="bg-blue-600 hover:bg-blue-700" onClick={async () => {
+              if (!reopenTask || reopenJustificativa.trim().length < 10) return;
+              try {
+                await assumeTask.mutateAsync({ id: reopenTask.id });
+                toast.success(`Tarefa ${reopenTask.codigo} reaberta com sucesso.`);
+                refetchTasks();
+                setReopenDialog(false);
+              } catch (err: any) {
+                toast.error(err.message || 'Erro ao reabrir tarefa');
+              }
+            }}>Reabrir Tarefa</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,7 @@ import { toast } from 'sonner';
 import {
   ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
   User, PlusCircle, FileEdit, ArrowRight, Eye, BarChart3, ListChecks,
-  DollarSign, ShieldAlert, Info,
+  DollarSign, ShieldAlert, Info, Play, Flag, Square, Lock, RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
@@ -50,12 +51,46 @@ const GRUPOS_TRIBUTO = [
 
 export default function CreditoFilaRetificacao() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showNewRetifDialog, setShowNewRetifDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('checklist');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const resetPage = () => setCurrentPage(1);
+
+  // Confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: '', message: '', onConfirm: () => {} });
+
+  // Queue exception (gestor)
+  const [queueExceptionDialog, setQueueExceptionDialog] = useState(false);
+  const [exceptionTask, setExceptionTask] = useState<any>(null);
+  const [exceptionJustificativa, setExceptionJustificativa] = useState('');
+
+  // Time counter
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getTimeInStage = (task: any) => {
+    const start = task.status === 'fazendo' ? (task.dataInicio || task.updatedAt || task.createdAt) : task.createdAt;
+    if (!start) return '—';
+    const diff = Date.now() - new Date(start).getTime();
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  };
 
   // Form state for new retificação
   const [retifForm, setRetifForm] = useState({
@@ -118,6 +153,14 @@ export default function CreditoFilaRetificacao() {
     result.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return result;
   }, [tasks, statusFilter, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize));
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTasks.slice(start, start + pageSize);
+  }, [filteredTasks, currentPage, pageSize]);
+
+  useEffect(() => { resetPage(); }, [statusFilter, searchTerm]);
 
   const stats = useMemo(() => {
     const all = (tasks as any[]) || [];
@@ -268,51 +311,135 @@ export default function CreditoFilaRetificacao() {
             </div>
           ) : (
             <div className="divide-y">
-              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <div className="col-span-1">Código</div>
-                <div className="col-span-3">Título</div>
-                <div className="col-span-1">Status</div>
-                <div className="col-span-1">Prioridade</div>
-                <div className="col-span-2">Responsável</div>
-                <div className="col-span-1">SLA</div>
-                <div className="col-span-1">Criado em</div>
-                <div className="col-span-2 text-right">Ações</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-muted/50 border-b">
+                      <th className="px-2 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[40px] text-center">#</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px]">Código</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[200px]">Título</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Status</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Prioridade</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px] text-center">Tempo</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Responsável</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px]">SLA</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Criado em</th>
+                      <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {paginatedTasks.map((task: any, idx: number) => {
+                      const globalIndex = (currentPage - 1) * pageSize + idx + 1;
+                      const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
+                      const prioridadeInfo = PRIORIDADE_LABELS[task.prioridade] || { label: task.prioridade, color: 'bg-gray-100 text-gray-800' };
+                      const isOverdue = task.slaStatus === 'vencido';
+                      const aFazerTasks = filteredTasks.filter((t: any) => t.status === 'a_fazer');
+                      const isFirstAFazer = aFazerTasks.length > 0 && aFazerTasks[0].id === task.id;
+                      const isQueueLocked = task.status === 'a_fazer' && !isFirstAFazer && !isAdmin;
+                      return (
+                        <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', isOverdue && 'bg-red-50/50 dark:bg-red-950/20', isQueueLocked && 'opacity-60')}>
+                          <td className="px-2 py-3 text-center"><span className="font-mono text-xs font-bold text-muted-foreground">{globalIndex}</span></td>
+                          <td className="px-3 py-3"><span className="font-mono text-xs text-muted-foreground">{task.codigo}</span></td>
+                          <td className="px-3 py-3"><p className="font-medium text-foreground text-sm truncate max-w-[250px]">{task.titulo}</p></td>
+                          <td className="px-3 py-3"><Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge></td>
+                          <td className="px-3 py-3"><Badge className={cn('text-[10px]', prioridadeInfo.color)}>{prioridadeInfo.label}</Badge></td>
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Clock className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-xs text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            {isOverdue ? (
+                              <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="w-3 h-3" />Atraso</Badge>
+                            ) : (
+                              <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1"><CheckCircle className="w-3 h-3" />OK</Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-3"><span className="text-xs text-muted-foreground">{formatDateTime(task.createdAt)}</span></td>
+                          <td className="px-3 py-3">
+                            <div className="flex justify-center gap-1">
+                              {task.status === 'a_fazer' && !isQueueLocked && (
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => { setSelectedTask(task); setShowDetailDialog(true); setActiveTab('checklist'); }}>
+                                  <Eye className="w-3.5 h-3.5" />Detalhar
+                                </Button>
+                              )}
+                              {task.status === 'a_fazer' && isQueueLocked && !isAdmin && (
+                                <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1"><Lock className="w-3 h-3" />Bloqueado</Badge>
+                              )}
+                              {task.status === 'a_fazer' && isQueueLocked && isAdmin && (
+                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 border-amber-300 text-amber-700" onClick={() => { setExceptionTask(task); setExceptionJustificativa(''); setQueueExceptionDialog(true); }}>
+                                  <Flag className="w-3 h-3" />Exceção
+                                </Button>
+                              )}
+                              {task.status !== 'a_fazer' && (
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => { setSelectedTask(task); setShowDetailDialog(true); setActiveTab('checklist'); }}>
+                                  <Eye className="w-3.5 h-3.5" />Detalhar
+                                </Button>
+                              )}
+                              {task.status !== 'concluido' && task.status !== 'a_fazer' && (
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-emerald-600" onClick={() => {
+                                  setConfirmDialog({
+                                    open: true,
+                                    title: 'Confirmar Conclusão',
+                                    message: `Deseja realmente concluir a tarefa ${task.codigo}? Esta ação é irreversível.`,
+                                    onConfirm: () => { setSelectedTask(task); handleConcluirRetificacao(task); setConfirmDialog(prev => ({ ...prev, open: false })); },
+                                  });
+                                }}>
+                                  <ArrowRight className="w-3.5 h-3.5" />Concluir
+                                </Button>
+                              )}
+                              {(task.status === 'feito' || task.status === 'concluido') && isAdmin && (
+                                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50" onClick={() => {
+                                  setConfirmDialog({ open: true, title: 'Reabrir Tarefa', message: `Deseja reabrir a tarefa ${task.codigo}? Informe a justificativa ao gestor.`, onConfirm: () => { toast.info('Solicitação de reabertura registrada.'); setConfirmDialog(prev => ({ ...prev, open: false })); } });
+                                }}>
+                                  <RotateCcw className="w-3 h-3" />Reabrir
+                                </Button>
+                              )}
+                              {task.reaberta && (
+                                <Badge variant="outline" className="text-[9px] border-blue-300 text-blue-600 gap-0.5">
+                                  <RotateCcw className="w-2.5 h-2.5" />Reaberta
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              {filteredTasks.map((task: any) => {
-                const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
-                const prioridadeInfo = PRIORIDADE_LABELS[task.prioridade] || { label: task.prioridade, color: 'bg-gray-100 text-gray-800' };
-                const isOverdue = task.slaStatus === 'vencido';
-                return (
-                  <div key={task.id} className={cn('grid grid-cols-12 gap-2 px-4 py-3 hover:bg-muted/30 transition-colors items-center text-sm', isOverdue && 'bg-red-50/50')}>
-                    <div className="col-span-1"><span className="font-mono text-xs text-muted-foreground">{task.codigo}</span></div>
-                    <div className="col-span-3 min-w-0"><p className="font-medium text-foreground truncate">{task.titulo}</p></div>
-                    <div className="col-span-1"><Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge></div>
-                    <div className="col-span-1"><Badge className={cn('text-[10px]', prioridadeInfo.color)}>{prioridadeInfo.label}</Badge></div>
-                    <div className="col-span-2 flex items-center gap-1.5 min-w-0">
-                      <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
-                    </div>
-                    <div className="col-span-1">
-                      {isOverdue ? (
-                        <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="w-3 h-3" />Atraso</Badge>
-                      ) : (
-                        <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1"><CheckCircle className="w-3 h-3" />OK</Badge>
-                      )}
-                    </div>
-                    <div className="col-span-1"><span className="text-xs text-muted-foreground">{formatDateTime(task.createdAt)}</span></div>
-                    <div className="col-span-2 flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => { setSelectedTask(task); setShowDetailDialog(true); setActiveTab('checklist'); }}>
-                        <Eye className="w-3.5 h-3.5" />Detalhar
-                      </Button>
-                      {task.status !== 'concluido' && (
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-emerald-600" onClick={() => { setSelectedTask(task); handleConcluirRetificacao(task); }}>
-                          <ArrowRight className="w-3.5 h-3.5" />Concluir
-                        </Button>
-                      )}
-                    </div>
+              {/* Pagination */}
+              {filteredTasks.length > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Exibindo {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, filteredTasks.length)} de {filteredTasks.length}</span>
+                    <span className="text-muted-foreground/50">|</span>
+                    <span>Por página:</span>
+                    <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); resetPage(); }}>
+                      <SelectTrigger className="h-7 w-[70px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage <= 1} onClick={() => setCurrentPage(1)}>«</Button>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</Button>
+                    <span className="text-xs font-medium px-2">Página {currentPage} de {totalPages}</span>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</Button>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(totalPages)}>»</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -701,6 +828,49 @@ export default function CreditoFilaRetificacao() {
               {createRetificacao.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Registrar Retificação
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, open: false }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {confirmDialog.title}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">{confirmDialog.message}</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}>Cancelar</Button>
+            <Button onClick={confirmDialog.onConfirm} className="bg-blue-600 hover:bg-blue-700">Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Queue Exception Dialog */}
+      <Dialog open={queueExceptionDialog} onOpenChange={setQueueExceptionDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Flag className="w-5 h-5 text-amber-500" />
+              Exceção de Fila
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Tarefa: <strong>{exceptionTask?.codigo}</strong> — {exceptionTask?.titulo}</p>
+            <div className="space-y-2">
+              <Label>Justificativa Obrigatória <span className="text-red-500">*</span></Label>
+              <Textarea placeholder="Informe o motivo da exceção..." value={exceptionJustificativa} onChange={(e) => setExceptionJustificativa(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setQueueExceptionDialog(false)}>Cancelar</Button>
+            <Button disabled={!exceptionJustificativa.trim()} className="bg-amber-600 hover:bg-amber-700" onClick={() => {
+              toast.success(`Exceção aplicada para ${exceptionTask?.codigo}. Justificativa registrada.`);
+              setQueueExceptionDialog(false);
+            }}>Aplicar Exceção</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
