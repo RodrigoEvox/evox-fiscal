@@ -210,18 +210,25 @@ export async function listCreditTasks(filters?: { fila?: string; status?: string
     SELECT ct.*,
       c.razaoSocial as clienteNome,
       c.cnpj as clienteCnpj,
+      c.codigo as clienteCodigo,
+      c.classificacaoCliente as clienteClassificacao,
+      c.procuracaoHabilitada as clienteProcuracaoHabilitada,
+      c.procuracaoValidade as clienteProcuracaoValidade,
+      c.procuracaoCertificado as clienteProcuracaoCertificado,
       COALESCE(p_case.nomeCompleto, p_cli.nomeCompleto) as parceiroNome,
       CASE
         WHEN COALESCE(cc.parceiroId, c.parceiroId) IS NULL THEN 1
         ELSE 0
       END as semParceiro,
       (SELECT COUNT(*) FROM rti_reports r WHERE r.taskId = ct.id) as rtiCount,
-      (SELECT MAX(t.slaApuracaoDias) FROM credit_task_teses ctt2 LEFT JOIN teses t ON ctt2.teseId = t.id WHERE ctt2.taskId = ct.id) as maxSlaDias
+      (SELECT MAX(t.slaApuracaoDias) FROM credit_task_teses ctt2 LEFT JOIN teses t ON ctt2.teseId = t.id WHERE ctt2.taskId = ct.id) as maxSlaDias,
+      u.apelido as responsavelApelido
     FROM credit_tasks ct
     LEFT JOIN clientes c ON ct.clienteId = c.id
     LEFT JOIN credit_cases cc ON ct.caseId = cc.id
     LEFT JOIN parceiros p_case ON cc.parceiroId = p_case.id
     LEFT JOIN parceiros p_cli ON c.parceiroId = p_cli.id
+    LEFT JOIN users u ON ct.responsavelId = u.id
     ${whereClause}
     ORDER BY ct.ordem ASC, ct.createdAt DESC
   `));
@@ -246,7 +253,21 @@ export async function listCreditTasks(filters?: { fila?: string; status?: string
       else if (diffDias <= 3) slaStatusCalc = 'atencao';
       else slaStatusCalc = 'dentro_prazo';
     }
-    return { ...task, dataInicio, dataFimPrevista, slaStatus: slaStatusCalc, slaDias: maxSla };
+    // Compute procuracao status
+    let procuracaoStatus = 'sem';
+    if (task.clienteProcuracaoHabilitada) {
+      if (task.clienteProcuracaoValidade) {
+        const validade = new Date(task.clienteProcuracaoValidade);
+        const now = new Date();
+        const diffDias = (validade.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDias < 0) procuracaoStatus = 'vencida';
+        else if (diffDias <= 30) procuracaoStatus = 'prox_vencimento';
+        else procuracaoStatus = 'habilitada';
+      } else {
+        procuracaoStatus = 'habilitada';
+      }
+    }
+    return { ...task, dataInicio, dataFimPrevista, slaStatus: slaStatusCalc, slaDias: maxSla, procuracaoStatus };
   });
   return enriched;
 }

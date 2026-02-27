@@ -2260,3 +2260,28 @@
 - [x] Ao enviar RTI ao parceiro comercial: marcar tarefa como "concluída" automaticamente
 - [x] Mover tarefa automaticamente para a próxima fila do fluxo (ex: Apuração → Compensação)
 - [x] Notificar novo responsável ao mover tarefa para próxima fila
+
+## v85 — Reestruturação da Fila de Apuração
+
+### Código Automático do Cliente
+- [x] Gerar código automático crescente no cadastro do cliente (ex: CLI-0001)
+- [x] Código acompanha o cliente em todos os campos do sistema
+- [x] Permitir busca de cliente pelo código em todo o sistema
+
+### Campo Novo/Base no Cliente
+- [x] Adicionar campo "tipo" ao cliente (novo ou base)
+- [x] Exibir informação novo/base automaticamente na fila de apuração
+
+### Procuração Automática
+- [x] Exibir status da procuração automaticamente na fila (habilitada, sem, vencida, próx. vencimento)
+- [x] Buscar informação de procuração do cadastro do cliente
+
+### Reestruturação das Colunas da Fila
+- [x] Reordenar colunas: Código Cliente, Cliente (razão social + CNPJ), Novo/Base, Parceiro, Procuração, Status, SLA, Responsável, RTI, Fluxo
+- [x] Remover coluna "Código" da tarefa e usar código do cliente
+- [x] Remover coluna "Título" da tarefa
+
+### Ajustes Gerais
+- [x] Renomear "Workflow" para "Fluxo"
+- [x] Puxar apelido do usuário no campo Responsável
+- [x] RTI: mostrar apenas botão de baixar (quando gerado) ou "Não disponível"

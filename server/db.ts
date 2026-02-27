@@ -277,11 +277,22 @@ export async function getClienteById(id: number) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getClienteByCodigo(codigo: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(clientes).where(eq(clientes.codigo, codigo)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function createCliente(data: InsertCliente) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.insert(clientes).values(data);
-  return result[0].insertId;
+  const insertId = result[0].insertId;
+  // Auto-generate codigo based on the new ID
+  const codigo = `CLI-${String(insertId).padStart(4, '0')}`;
+  await db.update(clientes).set({ codigo } as any).where(eq(clientes.id, insertId));
+  return insertId;
 }
 
 export async function updateCliente(id: number, data: Partial<InsertCliente>) {

@@ -323,6 +323,7 @@ export const clienteServicos = mysqlTable("cliente_servicos", {
 
 export const clientes = mysqlTable("clientes", {
 	id: int().autoincrement().notNull(),
+	codigo: varchar({ length: 20 }),
 	cnpj: varchar({ length: 20 }).notNull(),
 	razaoSocial: varchar({ length: 500 }).notNull(),
 	nomeFantasia: varchar({ length: 500 }),

@@ -18,7 +18,7 @@ import {
   Calculator, ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
   User, FileText, ClipboardList, Send, Eye, Trash2, Download, Filter,
   Plus, ArrowRight, Building2, BarChart3, Handshake, Play, Square, CheckSquare2,
-  Upload, Paperclip, UserCheck, Flag,
+  Upload, Paperclip, UserCheck, Flag, ShieldCheck, ShieldAlert, ShieldOff, Sparkles, Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
@@ -805,117 +805,150 @@ export default function CreditoFilaApuracao() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-muted/50 border-b">
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Código</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parceiro</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Título</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Status</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[200px]">SLA</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[110px]">Resp.</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[170px]">Criado</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">RTI</th>
-                        <th className="px-4 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[160px]">Workflow</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px]">Código</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[200px]">Cliente</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[80px] text-center">Tipo</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[130px]">Parceiro</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[110px] text-center">Procuração</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Status</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[180px]">SLA</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Responsável</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[120px]">RTI</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center w-[140px]">Fluxo</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
                       {filteredTasks.map((task: any) => {
                         const statusInfo = STATUS_LABELS[task.status] || { label: task.status, color: 'bg-gray-100 text-gray-800' };
                         const slaStatus = task.slaStatus || 'dentro_prazo';
-                        const hasRti = (task.rtiCount && Number(task.rtiCount) > 0) || task.status === 'feito' || task.status === 'concluido';
+                        const hasRti = (task.rtiCount && Number(task.rtiCount) > 0);
+                        const procStatus = task.procuracaoStatus || 'sem';
                         return (
                           <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', slaStatus === 'vencido' && 'bg-red-50/50 dark:bg-red-950/20', slaStatus === 'atencao' && 'bg-amber-50/50 dark:bg-amber-950/20')}>
-                            <td className="px-4 py-3.5">
-                              <span className="font-mono text-sm font-semibold text-muted-foreground">{task.codigo}</span>
+                            {/* Código do Cliente */}
+                            <td className="px-3 py-3">
+                              <span className="font-mono text-sm font-bold text-primary">{task.clienteCodigo || '—'}</span>
                             </td>
-                            <td className="px-4 py-3.5">
-                              <p className="text-sm font-semibold text-foreground truncate">{task.clienteNome || '—'}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{task.clienteCnpj || ''}</p>
+                            {/* Cliente (Razão Social + CNPJ) */}
+                            <td className="px-3 py-3">
+                              <p className="text-sm font-semibold text-foreground truncate max-w-[250px]">{task.clienteNome || '—'}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{task.clienteCnpj || ''}</p>
                             </td>
-                            <td className="px-4 py-3.5">
-                              {task.parceiroNome ? (
-                                <div className="flex items-center gap-1.5">
-                                  <Handshake className="w-4 h-4 text-primary shrink-0" />
-                                  <span className="text-sm font-medium text-foreground truncate">{task.parceiroNome}</span>
-                                </div>
+                            {/* Tipo: Novo ou Base */}
+                            <td className="px-3 py-3 text-center">
+                              {task.clienteClassificacao === 'novo' ? (
+                                <Badge className="text-[10px] bg-blue-100 text-blue-800 gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  Novo
+                                </Badge>
                               ) : (
-                                <span className="text-xs text-muted-foreground italic">Sem parceiro vinculado</span>
+                                <Badge className="text-[10px] bg-slate-100 text-slate-700 gap-1">
+                                  <Building2 className="w-3 h-3" />
+                                  Base
+                                </Badge>
                               )}
                             </td>
-                            <td className="px-4 py-3.5">
-                              <p className="text-sm font-medium text-foreground truncate">{task.titulo}</p>
+                            {/* Parceiro */}
+                            <td className="px-3 py-3">
+                              {task.parceiroNome ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Handshake className="w-3.5 h-3.5 text-primary shrink-0" />
+                                  <span className="text-sm font-medium text-foreground truncate max-w-[120px]">{task.parceiroNome}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Sem parceiro</span>
+                              )}
                             </td>
-                            <td className="px-4 py-3.5">
+                            {/* Procuração */}
+                            <td className="px-3 py-3 text-center">
+                              {procStatus === 'habilitada' ? (
+                                <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  Habilitada
+                                </Badge>
+                              ) : procStatus === 'prox_vencimento' ? (
+                                <Badge className="text-[10px] bg-amber-100 text-amber-800 gap-1">
+                                  <ShieldAlert className="w-3 h-3" />
+                                  Vencendo
+                                </Badge>
+                              ) : procStatus === 'vencida' ? (
+                                <Badge variant="destructive" className="text-[10px] gap-1">
+                                  <ShieldOff className="w-3 h-3" />
+                                  Vencida
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1">
+                                  <ShieldOff className="w-3 h-3" />
+                                  Sem
+                                </Badge>
+                              )}
+                            </td>
+                            {/* Status */}
+                            <td className="px-3 py-3">
                               <Badge className={cn('text-xs', statusInfo.color)}>{statusInfo.label}</Badge>
                             </td>
-                            <td className="px-4 py-3.5">
-                              <div className="flex flex-col gap-1">
+                            {/* SLA */}
+                            <td className="px-3 py-3">
+                              <div className="flex flex-col gap-0.5">
                                 {slaStatus === 'vencido' ? (
-                                  <Badge variant="destructive" className="text-xs gap-1 w-fit"><AlertTriangle className="w-3.5 h-3.5" />Vencido</Badge>
+                                  <Badge variant="destructive" className="text-[10px] gap-1 w-fit"><AlertTriangle className="w-3 h-3" />Vencido</Badge>
                                 ) : slaStatus === 'atencao' ? (
-                                  <Badge className="text-xs bg-amber-100 text-amber-800 gap-1 w-fit"><Clock className="w-3.5 h-3.5" />Atenção</Badge>
+                                  <Badge className="text-[10px] bg-amber-100 text-amber-800 gap-1 w-fit"><Clock className="w-3 h-3" />Atenção</Badge>
                                 ) : (
-                                  <Badge className="text-xs bg-emerald-100 text-emerald-800 gap-1 w-fit"><CheckCircle className="w-3.5 h-3.5" />No Prazo</Badge>
+                                  <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1 w-fit"><CheckCircle className="w-3 h-3" />No Prazo</Badge>
                                 )}
-                                <div className="text-xs text-muted-foreground space-y-0.5">
+                                <div className="text-[11px] text-muted-foreground space-y-0">
                                   <p>Início: <span className="font-medium text-foreground">{formatDate(task.dataInicio || task.createdAt)}</span></p>
                                   <p>Fim: <span className={cn('font-medium', slaStatus === 'vencido' ? 'text-red-600' : slaStatus === 'atencao' ? 'text-amber-600' : 'text-foreground')}>{task.dataFimPrevista ? formatDate(task.dataFimPrevista) : '—'}</span></p>
-                                  {task.slaDias && <p className="text-[10px]">({task.slaDias} dias)</p>}
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3.5">
-                              <div className="flex items-center gap-1.5">
-                                <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                                <span className="text-sm font-medium text-muted-foreground truncate">{task.responsavelNome || '—'}</span>
-                              </div>
+                            {/* Responsável (Apelido) */}
+                            <td className="px-3 py-3">
+                              {(task.responsavelApelido || task.responsavelNome) ? (
+                                <div className="flex items-center gap-1.5">
+                                  <UserCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                                  <span className="text-sm font-medium text-foreground truncate">{task.responsavelApelido || task.responsavelNome}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Não atribuído</span>
+                              )}
                             </td>
-                            <td className="px-4 py-3.5">
-                              <p className="text-sm font-medium text-foreground">{formatDateTime(task.createdAt)}</p>
-                              <p className="text-sm text-muted-foreground mt-1">por <span className="font-medium">{task.criadoPorNome || '—'}</span></p>
+                            {/* RTI */}
+                            <td className="px-3 py-3 text-center">
+                              {hasRti ? (
+                                <Button variant="default" size="sm" className="h-7 px-2.5 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" onClick={() => handleViewRti(task)} title="Baixar RTI">
+                                  <Download className="w-3.5 h-3.5" />
+                                  Baixar
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Não disponível</span>
+                              )}
                             </td>
-                            <td className="px-4 py-3.5">
-                              <div className="flex items-center gap-1.5 justify-center">
-                                {hasRti ? (
-                                  <>
-                                    <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" onClick={() => handleViewRti(task)} title="RTI Disponível — Clique para visualizar">
-                                      <Download className="w-4 h-4" />
-                                      RTI ({Number(task.rtiCount) || 1})
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-primary" onClick={() => handleOpenRtiDialog(task)} title="Gerar novo RTI">
-                                      <Plus className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5 text-primary font-medium" onClick={() => handleOpenRtiDialog(task)} title="Gerar RTI">
-                                    <FileText className="w-4 h-4" />
-                                    Gerar RTI
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <div className="flex flex-col gap-1.5 items-center">
+                            {/* Fluxo */}
+                            <td className="px-3 py-3">
+                              <div className="flex flex-col gap-1 items-center">
                                 {task.status === 'a_fazer' && (
-                                  <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full" onClick={() => handleAssumeTask(task)} disabled={assumeTask.isPending}>
-                                    {assumeTask.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                                    Pegar Tarefa
+                                  <Button variant="default" size="sm" className="h-7 px-2.5 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold w-full" onClick={() => handleAssumeTask(task)} disabled={assumeTask.isPending}>
+                                    {assumeTask.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                                    Pegar
                                   </Button>
                                 )}
                                 {task.status === 'fazendo' && (
-                                  <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold w-full" onClick={() => handleOpenFinishDialog(task)} disabled={finishTask.isPending}>
-                                    <Flag className="w-3.5 h-3.5" />
+                                  <Button variant="default" size="sm" className="h-7 px-2.5 text-xs gap-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold w-full" onClick={() => handleOpenFinishDialog(task)} disabled={finishTask.isPending}>
+                                    <Flag className="w-3 h-3" />
                                     Finalizar
                                   </Button>
                                 )}
                                 {task.status === 'feito' && (
-                                  <Button variant="default" size="sm" className="h-8 px-3 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold w-full" onClick={() => handleCompleteAndMove(task)} disabled={completeAndMove.isPending}>
-                                    {completeAndMove.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                  <Button variant="default" size="sm" className="h-7 px-2.5 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold w-full" onClick={() => handleCompleteAndMove(task)} disabled={completeAndMove.isPending}>
+                                    {completeAndMove.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRight className="w-3 h-3" />}
                                     Concluir
                                   </Button>
                                 )}
                                 {task.status === 'concluido' && (
-                                  <Badge className="text-xs bg-emerald-100 text-emerald-800 gap-1">
-                                    <CheckCircle className="w-3.5 h-3.5" />
+                                  <Badge className="text-[10px] bg-emerald-100 text-emerald-800 gap-1">
+                                    <CheckCircle className="w-3 h-3" />
                                     Concluído
                                   </Badge>
                                 )}

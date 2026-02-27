@@ -92,6 +92,7 @@ export default function ClienteDetalhe() {
           <div className={`w-2 h-14 rounded-full ${prioridadeColor}`} />
           <div>
             <div className="flex items-center gap-3">
+              {cliente.codigo && <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded">#{cliente.codigo}</span>}
               <h1 className="text-2xl font-bold">{cliente.razaoSocial}</h1>
               <Badge className={prioridadeBg}>{prioridadeText}</Badge>
             </div>

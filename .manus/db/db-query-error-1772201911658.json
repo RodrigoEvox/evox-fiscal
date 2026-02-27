@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE clientes ADD COLUMN codigo VARCHAR(20) UNIQUE AFTER id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute ALTER TABLE clientes ADD COLUMN codigo VARCHAR(20) UNIQUE AFTER id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 8200 (HY000) at line 1: unsupported add column 'codigo' constraint UNIQUE KEY when altering 'i9dRshPFnDefFw9MJLeLri.clientes'"
+  ]
+}

@@ -542,7 +542,8 @@ export default function Clientes() {
         c.razaoSocial?.toLowerCase().includes(s) ||
         c.cnpj?.includes(s) ||
         c.nomeFantasia?.toLowerCase().includes(s) ||
-        c.cpf?.includes(s)
+        c.cpf?.includes(s) ||
+        c.codigo?.toString().includes(s)
       );
     }
     return list;
@@ -592,7 +593,7 @@ export default function Clientes() {
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar por razão social, CNPJ, CPF ou nome fantasia..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+            <Input placeholder="Buscar por código, razão social, CNPJ, CPF ou nome fantasia..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
           <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={() => setShowFilters(!showFilters)} className="gap-2 shrink-0">
             <Filter className="w-4 h-4" />
@@ -812,7 +813,10 @@ export default function Clientes() {
                         <Building2 className="w-8 h-8 text-muted-foreground/40 shrink-0" />
                       )}
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{cliente.razaoSocial}</p>
+                        <div className="flex items-center gap-2">
+                          {cliente.codigo && <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">#{cliente.codigo}</span>}
+                          <p className="font-semibold text-sm truncate">{cliente.razaoSocial}</p>
+                        </div>
                         <p className="text-xs text-muted-foreground font-mono">
                           {cliente.tipoPessoa === 'fisica' ? cliente.cpf || cliente.cnpj : cliente.cnpj}
                         </p>

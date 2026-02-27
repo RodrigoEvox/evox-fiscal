@@ -387,6 +387,11 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getClienteById(input.id);
       }),
+    getByCodigo: protectedProcedure
+      .input(z.object({ codigo: z.string() }))
+      .query(async ({ input }) => {
+        return db.getClienteByCodigo(input.codigo);
+      }),
     create: protectedProcedure
       .input(z.object({
         cnpj: z.string().min(1),
