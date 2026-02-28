@@ -2521,3 +2521,10 @@
 - [x] Integrar painel de resumo na Fila de Ressarcimento
 - [x] Integrar painel de resumo na Fila de Restituição
 - [x] Nome do cliente clicável em qualquer posição/status em todas as filas
+
+## v98 — Melhorias no Painel de Resumo do Cliente
+- [x] Ações rápidas: botão para atribuir/reatribuir analista no painel de resumo
+- [x] Ações rápidas: botão para alterar prioridade no painel de resumo
+- [x] Ações rápidas: botão para adicionar observação no painel de resumo
+- [x] Exportar resumo em PDF — botão para gerar relatório PDF do resumo do cliente
+- [x] Indicador visual no nome do cliente (ícone/tooltip) em todas as 5 filas

@@ -292,7 +292,15 @@ export default function CreditoFilaRestituicao() {
                         <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', ov && 'bg-red-50/50', locked && 'opacity-60')}>
                           <td className="px-2 py-3 text-center"><span className="font-mono text-xs font-bold text-muted-foreground">{gi}</span></td>
                           <td className="px-3 py-3"><span className="font-mono text-xs text-muted-foreground">{task.codigo}</span></td>
-                          <td className="px-3 py-3"><p className="font-medium text-sm truncate max-w-[250px] cursor-pointer hover:text-primary hover:underline transition-colors" onClick={() => setSummaryTaskId(task.id)}>{task.titulo}</p></td>
+                          <td className="px-3 py-3">
+                            <button className="text-left group cursor-pointer flex items-center gap-1.5" title="Clique para ver resumo completo" onClick={() => setSummaryTaskId(task.id)}>
+                              <div>
+                                <p className="font-medium text-sm truncate max-w-[220px] group-hover:text-primary group-hover:underline transition-colors">{task.clienteNome || task.titulo}</p>
+                                {task.clienteCnpj && <p className="text-xs text-muted-foreground mt-0.5">{task.clienteCnpj}</p>}
+                              </div>
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-primary transition-colors flex-shrink-0" />
+                            </button>
+                          </td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', si.color)}>{si.label}</Badge></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', pi.color)}>{pi.label}</Badge></td>
                           <td className="px-3 py-3 text-center"><span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span></td>

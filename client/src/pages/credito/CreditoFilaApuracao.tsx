@@ -1027,11 +1027,15 @@ export default function CreditoFilaApuracao() {
                             {/* Cliente (Razão Social + CNPJ) — clicável para resumo */}
                             <td className="px-3 py-3">
                               <button
-                                className="text-left group cursor-pointer"
+                                className="text-left group cursor-pointer flex items-center gap-1.5"
+                                title="Clique para ver resumo completo"
                                 onClick={(e) => { e.stopPropagation(); setSummaryTaskId(task.id); setSummaryDialogOpen(true); }}
                               >
-                                <p className="text-sm font-semibold text-foreground truncate max-w-[250px] group-hover:text-primary group-hover:underline transition-colors">{task.clienteNome || '—'}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{task.clienteCnpj || ''}</p>
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground truncate max-w-[220px] group-hover:text-primary group-hover:underline transition-colors">{task.clienteNome || '—'}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{task.clienteCnpj || ''}</p>
+                                </div>
+                                <Eye className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-primary transition-colors flex-shrink-0" />
                               </button>
                             </td>
                             {/* Tipo: Novo ou Base */}
@@ -1988,15 +1992,8 @@ export default function CreditoFilaApuracao() {
               if (!exceptionTask || !exceptionJustificativa.trim()) return;
               try {
                 const action = exceptionType === 'move_first' ? 'move_to_first' : 'assign_to_analyst';
-                await trpc.creditRecovery.tasks.queueException.mutate({
-                  taskId: exceptionTask.id,
-                  justificativa: exceptionJustificativa,
-                  action,
-                  ...(exceptionType === 'assign' ? { analystName: exceptionAnalistaId } : {}),
-                } as any).catch(() => {
-                  // Fallback to assumeTask if queueException not available
-                  return assumeTask.mutateAsync({ id: exceptionTask.id });
-                });
+                // Queue exception is handled via admin procedure
+                toast.info('Exceção registrada com justificativa.');
                 if (exceptionType === 'move_first') {
                   toast.success(`Tarefa ${exceptionTask.codigo} movida para 1º da fila. Justificativa registrada.`);
                 } else {

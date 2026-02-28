@@ -1061,7 +1061,7 @@ const creditoRouter = router({
             await createNotificacao({
               tipo: 'tarefa_atribuida',
               titulo: `Solicita\u00e7\u00e3o de exce\u00e7\u00e3o de fila`,
-              mensagem: `${user.name} solicita autoriza\u00e7\u00e3o para pegar a tarefa ${task.codigo} (${task.clienteNome || task.titulo}). Motivo: ${input.justificativa}`,
+              mensagem: `${user.name} solicita autoriza\u00e7\u00e3o para pegar a tarefa ${task.codigo} (${(task as any).clienteNome || task.titulo}). Motivo: ${input.justificativa}`,
               usuarioId: admin.id,
               tarefaId: input.taskId,
               lida: 0,
