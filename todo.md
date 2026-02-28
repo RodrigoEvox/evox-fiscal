@@ -2513,3 +2513,11 @@
 - [x] Fix: Tabelas checklist_instances → credit_checklist_instances
 - [x] Fix: Coluna url → storageUrl na tabela arquivos
 - [x] Fix: Coluna t.descricao removida (não existe na tabela teses)
+
+## v97 — Replicar Painel de Resumo do Cliente nas 4 Filas Restantes
+- [x] Extrair ClientSummaryPanel como componente compartilhado
+- [x] Integrar painel de resumo na Fila de Retificação
+- [x] Integrar painel de resumo na Fila de Compensação
+- [x] Integrar painel de resumo na Fila de Ressarcimento
+- [x] Integrar painel de resumo na Fila de Restituição
+- [x] Nome do cliente clicável em qualquer posição/status em todas as filas

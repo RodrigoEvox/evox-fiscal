@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import GuiaUploadOcr from '@/components/GuiaUploadOcr';
 import BackToDashboard from '@/components/BackToDashboard';
+import ClientSummaryPanel from '@/components/ClientSummaryPanel';
 import TarefasAtrasadasBanner from '@/components/TarefasAtrasadasBanner';
 import { useConfirmClose } from '@/components/ConfirmCloseDialog';
 
@@ -73,6 +74,7 @@ export default function CreditoFilaRestituicao() {
   const [exceptionRequestDialog, setExceptionRequestDialog] = useState(false);
   const [exceptionRequestTask, setExceptionRequestTask] = useState<any>(null);
   const [exceptionRequestJustificativa, setExceptionRequestJustificativa] = useState('');
+  const [summaryTaskId, setSummaryTaskId] = useState<number | null>(null);
   const [, setTick] = useState(0);
   useEffect(() => { const i = setInterval(() => setTick(t => t + 1), 60000); return () => clearInterval(i); }, []);
   const getTimeInStage = (task: any) => {
@@ -290,7 +292,7 @@ export default function CreditoFilaRestituicao() {
                         <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', ov && 'bg-red-50/50', locked && 'opacity-60')}>
                           <td className="px-2 py-3 text-center"><span className="font-mono text-xs font-bold text-muted-foreground">{gi}</span></td>
                           <td className="px-3 py-3"><span className="font-mono text-xs text-muted-foreground">{task.codigo}</span></td>
-                          <td className="px-3 py-3"><p className="font-medium text-sm truncate max-w-[250px]">{task.titulo}</p></td>
+                          <td className="px-3 py-3"><p className="font-medium text-sm truncate max-w-[250px] cursor-pointer hover:text-primary hover:underline transition-colors" onClick={() => setSummaryTaskId(task.id)}>{task.titulo}</p></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', si.color)}>{si.label}</Badge></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', pi.color)}>{pi.label}</Badge></td>
                           <td className="px-3 py-3 text-center"><span className="text-xs font-mono text-muted-foreground">{getTimeInStage(task)}</span></td>
@@ -645,6 +647,15 @@ export default function CreditoFilaRestituicao() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {summaryTaskId && (
+        <ClientSummaryPanel
+          taskId={summaryTaskId}
+          open={!!summaryTaskId}
+          onClose={() => setSummaryTaskId(null)}
+          filaLabel="Restituição"
+        />
+      )}
     </div>
   );
 }

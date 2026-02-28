@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
+import ClientSummaryPanel from '@/components/ClientSummaryPanel';
 import TarefasAtrasadasBanner from '@/components/TarefasAtrasadasBanner';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -77,6 +78,7 @@ export default function CreditoFilaRetificacao() {
   const [exceptionRequestDialog, setExceptionRequestDialog] = useState(false);
   const [exceptionRequestTask, setExceptionRequestTask] = useState<any>(null);
   const [exceptionRequestJustificativa, setExceptionRequestJustificativa] = useState('');
+  const [summaryTaskId, setSummaryTaskId] = useState<number | null>(null);
   const requestExceptionMut = trpc.creditRecovery.credito.tasks.requestException.useMutation();
   const { data: exceptionRequests, refetch: refetchExceptions } = trpc.creditRecovery.credito.tasks.listExceptionRequests.useQuery(
     { status: 'pendente' },
@@ -355,7 +357,7 @@ export default function CreditoFilaRetificacao() {
                         <tr key={task.id} className={cn('hover:bg-muted/30 transition-colors', isOverdue && 'bg-red-50/50 dark:bg-red-950/20', isQueueLocked && 'opacity-60')}>
                           <td className="px-2 py-3 text-center"><span className="font-mono text-xs font-bold text-muted-foreground">{globalIndex}</span></td>
                           <td className="px-3 py-3"><span className="font-mono text-xs text-muted-foreground">{task.codigo}</span></td>
-                          <td className="px-3 py-3"><p className="font-medium text-foreground text-sm truncate max-w-[250px]">{task.titulo}</p></td>
+                          <td className="px-3 py-3"><p className="font-medium text-foreground text-sm truncate max-w-[250px] cursor-pointer hover:text-primary hover:underline transition-colors" onClick={() => setSummaryTaskId(task.id)}>{task.titulo}</p></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', statusInfo.color)}>{statusInfo.label}</Badge></td>
                           <td className="px-3 py-3"><Badge className={cn('text-[10px]', prioridadeInfo.color)}>{prioridadeInfo.label}</Badge></td>
                           <td className="px-3 py-3 text-center">
@@ -1023,6 +1025,15 @@ export default function CreditoFilaRetificacao() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {summaryTaskId && (
+        <ClientSummaryPanel
+          taskId={summaryTaskId}
+          open={!!summaryTaskId}
+          onClose={() => setSummaryTaskId(null)}
+          filaLabel="Retificação"
+        />
+      )}
     </div>
   );
 }
