@@ -1651,6 +1651,9 @@ const adminRouter = router({
         return { success: true };
       }),
   }),
+  slaDashboard: protectedProcedure.query(async () => {
+    return credDb.getSlaDashboardData();
+  }),
   policies: router({
     list: protectedProcedure.query(async () => {
       return credDb.listDueSchedulePolicies();

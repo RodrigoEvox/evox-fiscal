@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import {
   ChevronRight, Loader2, Search, Clock, AlertTriangle, CheckCircle,
   User, PlusCircle, FileEdit, ArrowRight, Eye, BarChart3, ListChecks,
-  DollarSign, ShieldAlert, Info, Play, Flag, Square, Lock, RotateCcw,
+  DollarSign, ShieldAlert, ShieldCheck, Info, Play, Flag, Square, Lock, RotateCcw, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
@@ -73,6 +73,21 @@ export default function CreditoFilaRetificacao() {
   const [exceptionTask, setExceptionTask] = useState<any>(null);
   const [exceptionJustificativa, setExceptionJustificativa] = useState('');
 
+  // Exception request (analyst)
+  const [exceptionRequestDialog, setExceptionRequestDialog] = useState(false);
+  const [exceptionRequestTask, setExceptionRequestTask] = useState<any>(null);
+  const [exceptionRequestJustificativa, setExceptionRequestJustificativa] = useState('');
+  const requestExceptionMut = trpc.creditRecovery.credito.tasks.requestException.useMutation();
+  const { data: exceptionRequests, refetch: refetchExceptions } = trpc.creditRecovery.credito.tasks.listExceptionRequests.useQuery(
+    { status: 'pendente' },
+    { enabled: isAdmin, staleTime: 30_000 }
+  );
+  const { data: pendingExceptionsCount = 0 } = trpc.creditRecovery.credito.tasks.countPendingExceptions.useQuery(
+    undefined,
+    { enabled: isAdmin, staleTime: 30_000 }
+  );
+  const respondExceptionMut = trpc.creditRecovery.credito.tasks.respondException.useMutation();
+
   // Time counter
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -112,7 +127,7 @@ export default function CreditoFilaRetificacao() {
     { taskId: selectedTask?.id || 0 },
     { enabled: !!selectedTask }
   );
-  const checklistInstances = trpc.creditRecovery.credito.checklist.instances.useQuery(
+  const checklistInstances = trpc.creditRecovery.admin.checklists.getInstance.useQuery(
     { taskId: selectedTask?.id || 0 },
     { enabled: !!selectedTask }
   );
@@ -134,7 +149,7 @@ export default function CreditoFilaRetificacao() {
     onError: (e) => toast.error(e.message),
   });
 
-  const toggleCheckItem = trpc.creditRecovery.credito.checklist.toggleItem.useMutation({
+  const toggleCheckItem = trpc.creditRecovery.admin.checklists.updateInstance.useMutation({
     onSuccess: () => checklistInstances.refetch(),
   });
 
@@ -372,7 +387,9 @@ export default function CreditoFilaRetificacao() {
                                 </Button>
                               )}
                               {task.status === 'a_fazer' && isQueueLocked && !isAdmin && (
-                                <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1"><Lock className="w-3 h-3" />Bloqueado</Badge>
+                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => { setExceptionRequestTask(task); setExceptionRequestJustificativa(''); setExceptionRequestDialog(true); }}>
+                                  <Lock className="w-3 h-3" />Pegar
+                                </Button>
                               )}
                               {task.status === 'a_fazer' && isQueueLocked && isAdmin && (
                                 <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 border-amber-300 text-amber-700" onClick={() => { setExceptionTask(task); setExceptionJustificativa(''); setQueueExceptionDialog(true); }}>
@@ -480,7 +497,13 @@ export default function CreditoFilaRetificacao() {
                         <div key={item.id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/30">
                           <Checkbox
                             checked={!!item.concluido}
-                            onCheckedChange={() => toggleCheckItem.mutate({ id: item.id, concluido: !item.concluido })}
+                            onCheckedChange={() => {
+                              const newConcluido = !item.concluido;
+                              const allItems = (checklistInstances.data as any[]);
+                              const updatedItems = allItems.map((i: any) => i.id === item.id ? { ...i, concluido: newConcluido } : i);
+                              const progresso = Math.round(updatedItems.filter((i: any) => i.concluido).length / updatedItems.length * 100);
+                              toggleCheckItem.mutate({ id: item.id, itens: updatedItems, progresso });
+                            }}
                           />
                           <div className="flex-1 min-w-0">
                             <p className={cn('text-sm', item.concluido && 'line-through text-muted-foreground')}>{item.descricao || item.titulo}</p>
@@ -849,6 +872,131 @@ export default function CreditoFilaRetificacao() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Exception Request Dialog (Analyst) */}
+      <Dialog open={exceptionRequestDialog} onOpenChange={setExceptionRequestDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <Lock className="w-5 h-5" />
+              Tarefa Bloqueada
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Esta empresa <strong>não é a primeira da fila</strong>. Pela regra FIFO, você só pode pegar a primeira tarefa disponível.
+              </p>
+              <p className="text-sm text-amber-800 dark:text-amber-200 mt-2">
+                Deseja solicitar autorização ao gestor para pegar esta demanda?
+              </p>
+            </div>
+            {exceptionRequestTask && (
+              <div className="text-sm space-y-1">
+                <p><strong>Tarefa:</strong> {exceptionRequestTask.codigo}</p>
+                <p><strong>Cliente:</strong> {exceptionRequestTask.clienteNome || exceptionRequestTask.titulo}</p>
+              </div>
+            )}
+            <div>
+              <Label className="text-xs font-medium">Justificativa <span className="text-red-500">*</span></Label>
+              <Textarea
+                value={exceptionRequestJustificativa}
+                onChange={(e) => setExceptionRequestJustificativa(e.target.value)}
+                placeholder="Informe o motivo da solicitação (ex: prioridade, potencial financeiro, urgência do cliente...)"
+                className="mt-1 min-h-[80px]"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Mínimo 10 caracteres. Justifique com critérios objetivos.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setExceptionRequestDialog(false)}>Cancelar</Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={exceptionRequestJustificativa.length < 10 || requestExceptionMut.isPending}
+              onClick={async () => {
+                try {
+                  await requestExceptionMut.mutateAsync({
+                    taskId: exceptionRequestTask.id,
+                    justificativa: exceptionRequestJustificativa,
+                  });
+                  toast.success('Solicitação enviada ao gestor. Você será notificado quando for respondida.');
+                  setExceptionRequestDialog(false);
+                } catch (err: any) {
+                  toast.error(err.message || 'Erro ao enviar solicitação');
+                }
+              }}
+            >
+              {requestExceptionMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Solicitar Autorização
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== SOLICITAÇÕES SECTION (Admin) ===== */}
+      {isAdmin && (exceptionRequests as any[])?.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-amber-600" />
+              Solicitações de Exceção de Fila
+              <Badge className="bg-red-500 text-white text-[10px]">{(exceptionRequests as any[]).length} pendente(s)</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {(exceptionRequests as any[]).map((req: any) => (
+                <div key={req.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{req.solicitanteNome} solicita pegar a tarefa <strong>{req.taskCodigo}</strong></p>
+                      <p className="text-xs text-muted-foreground">{req.clienteNome || ''} • Fila: {req.fila} • {formatDateTime(req.createdAt)}</p>
+                    </div>
+                    <Badge variant="outline" className="text-amber-700 border-amber-300">Pendente</Badge>
+                  </div>
+                  <div className="bg-muted/50 rounded p-2">
+                    <p className="text-xs text-muted-foreground">Justificativa:</p>
+                    <p className="text-sm">{req.justificativa}</p>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs border-red-300 text-red-700 hover:bg-red-50"
+                      disabled={respondExceptionMut.isPending}
+                      onClick={async () => {
+                        try {
+                          await respondExceptionMut.mutateAsync({ requestId: req.id, status: 'negado', resposta: 'Solicitação negada pelo gestor.' });
+                          toast.success('Solicitação negada. Analista será notificado.');
+                          refetchExceptions();
+                        } catch (err: any) { toast.error(err.message || 'Erro'); }
+                      }}
+                    >
+                      <XCircle className="w-3 h-3" /> Negar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      disabled={respondExceptionMut.isPending}
+                      onClick={async () => {
+                        try {
+                          await respondExceptionMut.mutateAsync({ requestId: req.id, status: 'aprovado' });
+                          toast.success('Solicitação aprovada! Tarefa atribuída ao analista.');
+                          refetchExceptions();
+                          refetch();
+                        } catch (err: any) { toast.error(err.message || 'Erro'); }
+                      }}
+                    >
+                      {respondExceptionMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                      Aprovar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Queue Exception Dialog */}
       <Dialog open={queueExceptionDialog} onOpenChange={setQueueExceptionDialog}>

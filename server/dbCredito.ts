@@ -2293,3 +2293,87 @@ export async function countPendingExceptionRequests() {
   const [rows] = await db_.execute(sql.raw(`SELECT COUNT(*) as count FROM queue_exception_requests WHERE status = 'pendente'`));
   return (rows as unknown as any[])?.[0]?.count || 0;
 }
+
+// ===== SLA DASHBOARD =====
+export async function getSlaDashboardData() {
+  const db_ = await getDb();
+  if (!db_) return { tasks: [], summary: {}, byFila: [], byAnalista: [] };
+
+  const [rows] = await db_.execute(sql.raw(`
+    SELECT ct.id, ct.codigo, ct.fila, ct.status, ct.prioridade,
+      ct.titulo, ct.responsavelId, ct.responsavelNome,
+      ct.dataVencimento, ct.createdAt, ct.slaHoras, ct.slaStatus,
+      c.razaoSocial as clienteNome, c.cnpj as clienteCnpj,
+      u.apelido as responsavelApelido,
+      (SELECT MAX(t.slaApuracaoDias) FROM credit_task_teses ctt2 LEFT JOIN teses t ON ctt2.teseId = t.id WHERE ctt2.taskId = ct.id) as maxSlaDias
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    LEFT JOIN users u ON ct.responsavelId = u.id
+    WHERE ct.status IN ('a_fazer', 'fazendo')
+    ORDER BY ct.createdAt ASC
+  `));
+
+  const tasks = (rows as unknown as any[]).map((task: any) => {
+    const maxSla = task.maxSlaDias ? Number(task.maxSlaDias) : null;
+    const slaDias = maxSla || 15;
+    let dataFimPrevista = task.dataVencimento;
+    if (!dataFimPrevista && task.createdAt) {
+      const dt = new Date(task.createdAt);
+      dt.setDate(dt.getDate() + slaDias);
+      dataFimPrevista = dt.toISOString().slice(0, 19).replace('T', ' ');
+    }
+    const now = new Date();
+    const venc = new Date(dataFimPrevista);
+    const diffMs = venc.getTime() - now.getTime();
+    const diffDias = diffMs / (1000 * 60 * 60 * 24);
+    let slaStatusCalc = 'dentro_prazo';
+    if (diffDias < 0) slaStatusCalc = 'vencido';
+    else if (diffDias <= 3) slaStatusCalc = 'atencao';
+    return {
+      ...task,
+      slaDias,
+      dataFimPrevista,
+      slaStatus: slaStatusCalc,
+      diasRestantes: Math.round(diffDias * 10) / 10,
+      horasRestantes: Math.round(diffMs / 3600000),
+    };
+  });
+
+  const total = tasks.length;
+  const vencido = tasks.filter(t => t.slaStatus === 'vencido').length;
+  const atencao = tasks.filter(t => t.slaStatus === 'atencao').length;
+  const dentroPrazo = tasks.filter(t => t.slaStatus === 'dentro_prazo').length;
+
+  const filas = ['apuracao', 'retificacao', 'compensacao', 'ressarcimento', 'restituicao'];
+  const byFila = filas.map(fila => {
+    const filaTasks = tasks.filter(t => t.fila === fila);
+    return {
+      fila,
+      total: filaTasks.length,
+      vencido: filaTasks.filter(t => t.slaStatus === 'vencido').length,
+      atencao: filaTasks.filter(t => t.slaStatus === 'atencao').length,
+      dentroPrazo: filaTasks.filter(t => t.slaStatus === 'dentro_prazo').length,
+    };
+  });
+
+  const analistaMap = new Map<string, { nome: string; id: number | null; total: number; vencido: number; atencao: number; dentroPrazo: number }>();
+  tasks.forEach(t => {
+    const key = t.responsavelNome || 'Sem responsável';
+    if (!analistaMap.has(key)) {
+      analistaMap.set(key, { nome: key, id: t.responsavelId, total: 0, vencido: 0, atencao: 0, dentroPrazo: 0 });
+    }
+    const entry = analistaMap.get(key)!;
+    entry.total++;
+    if (t.slaStatus === 'vencido') entry.vencido++;
+    else if (t.slaStatus === 'atencao') entry.atencao++;
+    else entry.dentroPrazo++;
+  });
+  const byAnalista = Array.from(analistaMap.values()).sort((a, b) => b.vencido - a.vencido || b.atencao - a.atencao);
+
+  return {
+    tasks,
+    summary: { total, vencido, atencao, dentroPrazo },
+    byFila,
+    byAnalista,
+  };
+}

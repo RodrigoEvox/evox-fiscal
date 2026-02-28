@@ -2476,3 +2476,23 @@
 
 ### Correção Bug tRPC Path
 - [x] Corrigido path errado de taskTeses.create (credito → admin) que impedia vinculação de teses
+
+## v95 — FIFO nas 4 Filas, Filtro Solicitações, Dashboard SLA
+
+### Bloqueio FIFO nas 4 Filas Restantes
+- [x] Aplicar bloqueio FIFO na fila de Retificação
+- [x] Aplicar bloqueio FIFO na fila de Compensação
+- [x] Aplicar bloqueio FIFO na fila de Ressarcimento
+- [x] Aplicar bloqueio FIFO na fila de Restituição
+- [x] Analista só pode pegar a primeira tarefa "A Fazer" em cada fila
+- [x] Dialog de solicitação de exceção ao gestor com justificativa obrigatória
+
+### Filtro por Analista nas Solicitações
+- [x] Adicionar filtro por analista na aba Solicitações do gestor
+- [x] Facilitar gestão de exceções com busca/filtro
+
+### Dashboard de SLA
+- [x] Criar dashboard/painel de SLA com visão consolidada
+- [x] Alertas visuais para tarefas próximas do vencimento (24h e 48h)
+- [x] Cards resumo: no prazo, atenção, vencidas
+- [x] Tabela detalhada com tarefas ordenadas por urgência

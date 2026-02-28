@@ -12,7 +12,7 @@ import {
   ClipboardList, FileBarChart, Gem, Search, UsersRound, Briefcase, ShieldCheck, Cpu, Library,
   MessageCircle, Target, FolderOpen, FileCheck, Mail, UserPlus, ClipboardCheck, Clock,
   Bus, Dumbbell, DollarSign, Cake, Heart, Layers, Award, Inbox, AlertTriangle,
-  PenTool, FileSignature, RefreshCw, XCircle, Eye, GitBranch,
+  PenTool, FileSignature, RefreshCw, XCircle, Eye, GitBranch, Activity,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -126,6 +126,7 @@ const SUBMENU_ICONS: Record<string, any> = {
   'fila-ressarcimento': Wallet,
   'fila-restituicao': Landmark,
   'fluxo-geral': GitBranch,
+  'sla-dashboard': Activity,
   'gestao-creditos': DollarSign,
   'relatorios': FileBarChart,
   'relatorios-credito': FileBarChart,
@@ -584,6 +585,7 @@ export default function AppSidebar() {
             <NavLink path="/aprovacoes-comissao" icon={ShieldCheck} label="Aprovações de Comissão" />
             <NavLink path="/relatorio-comissoes" icon={FileBarChart} label="Relatório de Comissões" />
             <NavLink path="/dashboard-comissoes" icon={BarChart3} label="Dashboard Comissões" />
+            <NavLink path="/credito/sla-dashboard" icon={Activity} label="Dashboard SLA" />
             <NavLink path="/sla-config" icon={ClipboardList} label="Configuração SLA" />
             <NavLink path="/usuarios" icon={UserCog} label="Gestão de Usuários" />
             <NavLink path="/audit-log" icon={History} label="Audit Log" />
