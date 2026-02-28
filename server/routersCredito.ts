@@ -642,6 +642,12 @@ const creditoRouter = router({
         return credDb.getCreditTaskById(input.id);
       }),
 
+    apuracaoSummary: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ input }) => {
+        return credDb.getTaskApuracaoSummary(input.taskId);
+      }),
+
     create: protectedProcedure
       .input(z.object({
         fila: z.enum(['apuracao', 'retificacao', 'compensacao', 'ressarcimento', 'restituicao', 'revisao', 'onboarding', 'chamados']),

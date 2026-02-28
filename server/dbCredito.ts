@@ -2377,3 +2377,156 @@ export async function getSlaDashboardData() {
     byAnalista,
   };
 }
+
+
+// ===== TASK APURAÇÃO SUMMARY (for client click in queue) =====
+export async function getTaskApuracaoSummary(taskId: number) {
+  const db_ = (await getDb())!;
+
+  // 1. Task details with client + parceiro + responsavel
+  const [taskRows] = await db_.execute(sql.raw(`
+    SELECT ct.*,
+      c.razaoSocial as clienteNome,
+      c.cnpj as clienteCnpj,
+      c.codigo as clienteCodigo,
+      c.nomeFantasia as clienteNomeFantasia,
+      c.regimeTributario as clienteRegime,
+      c.situacaoCadastral as clienteSituacao,
+      c.classificacaoCliente as clienteClassificacao,
+      c.cnaePrincipal as clienteCnae,
+      c.cnaePrincipalDescricao as clienteCnaeDescricao,
+      c.segmentoEconomico as clienteSegmento,
+      c.estado as clienteEstado,
+      c.endereco as clienteEndereco,
+      c.faturamentoMedioMensal as clienteFaturamento,
+      c.folhaPagamentoMedia as clienteFolha,
+      c.valorMedioGuias as clienteGuias,
+      c.industrializa as clienteIndustrializa,
+      c.comercializa as clienteComercializa,
+      c.prestaServicos as clientePrestaServicos,
+      c.contribuinteIcms as clienteContribuinteIcms,
+      c.contribuinteIpi as clienteContribuinteIpi,
+      c.regimeMonofasico as clienteRegimeMonofasico,
+      c.processosJudiciaisAtivos as clienteProcessos,
+      c.parcelamentosAtivos as clienteParcelamentos,
+      c.prioridade as clientePrioridade,
+      c.scoreOportunidade as clienteScore,
+      c.redFlags as clienteRedFlags,
+      c.alertasInformacao as clienteAlertas,
+      c.excecoesEspecificidades as clienteExcecoes,
+      c.procuracaoHabilitada as clienteProcuracaoHabilitada,
+      c.procuracaoValidade as clienteProcuracaoValidade,
+      c.procuracaoCertificado as clienteProcuracaoCertificado,
+      c.dataAbertura as clienteDataAbertura,
+      COALESCE(p_case.nomeCompleto, p_cli.nomeCompleto) as parceiroNome,
+      COALESCE(p_case.cnpj, p_cli.cnpj) as parceiroCnpj,
+      COALESCE(p_case.telefone, p_cli.telefone) as parceiroTelefone,
+      COALESCE(p_case.email, p_cli.email) as parceiroEmail,
+      u.nome as responsavelNomeCompleto,
+      u.apelido as responsavelApelido,
+      u.email as responsavelEmail,
+      uc.nome as criadoPorNomeCompleto
+    FROM credit_tasks ct
+    LEFT JOIN clientes c ON ct.clienteId = c.id
+    LEFT JOIN credit_cases cc ON ct.caseId = cc.id
+    LEFT JOIN parceiros p_case ON cc.parceiroId = p_case.id
+    LEFT JOIN parceiros p_cli ON c.parceiroId = p_cli.id
+    LEFT JOIN users u ON ct.responsavelId = u.id
+    LEFT JOIN users uc ON ct.criadoPorId = uc.id
+    WHERE ct.id = ${taskId}
+  `));
+  const task = (taskRows as unknown as any[])[0];
+  if (!task) return null;
+
+  // 2. Teses vinculadas
+  const [teses] = await db_.execute(sql.raw(`
+    SELECT ctt.*, t.nome as teseNome, t.tributoEnvolvido, t.tipo as teseTipo,
+      t.classificacao as teseClassificacao, t.potencialFinanceiro, t.slaApuracaoDias,
+      t.descricao as teseDescricao, t.fundamentacaoLegal as teseFundamentacao
+    FROM credit_task_teses ctt
+    LEFT JOIN teses t ON ctt.teseId = t.id
+    WHERE ctt.taskId = ${taskId}
+    ORDER BY ctt.createdAt
+  `));
+
+  // 3. RTIs
+  const [rtis] = await db_.execute(sql.raw(`
+    SELECT r.id, r.numero, r.versao, r.valorTotalEstimado, r.status, r.emitidoPorNome,
+      r.emitidoEm, r.devolutivaStatus, r.slaDevolutivaVenceEm, r.createdAt,
+      (SELECT COALESCE(SUM(valorApurado), 0) FROM rti_oportunidades WHERE rtiId = r.id) as totalApurado
+    FROM rti_reports r
+    WHERE r.taskId = ${taskId}
+    ORDER BY r.createdAt DESC
+  `));
+
+  // 4. Checklist instances
+  const [checklists] = await db_.execute(sql.raw(`
+    SELECT ci.*, ct2.nome as templateNome
+    FROM checklist_instances ci
+    LEFT JOIN checklist_templates ct2 ON ci.templateId = ct2.id
+    WHERE ci.taskId = ${taskId}
+    ORDER BY ci.createdAt DESC
+  `));
+
+  // 5. Arquivos vinculados
+  const [arquivos] = await db_.execute(sql.raw(`
+    SELECT id, nome, nomeOriginal, mimeType, tamanhoBytes, url, descricao, createdAt
+    FROM arquivos
+    WHERE entidadeTipo = 'tarefa' AND entidadeId = ${taskId}
+    ORDER BY createdAt DESC
+  `));
+
+  // 6. Audit log
+  const [auditLog] = await db_.execute(sql.raw(`
+    SELECT * FROM credit_audit_log
+    WHERE entidade = 'task' AND entidadeId = ${taskId}
+    ORDER BY createdAt DESC
+    LIMIT 20
+  `));
+
+  // Compute SLA
+  const tesesArr = teses as unknown as any[];
+  const maxSla = tesesArr.length > 0
+    ? Math.max(...tesesArr.map((t: any) => Number(t.slaApuracaoDias) || 0))
+    : 15;
+  const dataInicio = task.createdAt;
+  let dataFimPrevista = task.dataVencimento;
+  if (!dataFimPrevista && dataInicio) {
+    const dt = new Date(dataInicio);
+    dt.setDate(dt.getDate() + maxSla);
+    dataFimPrevista = dt.toISOString().slice(0, 19).replace('T', ' ');
+  }
+  let slaStatus = 'dentro_prazo';
+  if (dataFimPrevista && task.status !== 'concluido' && task.status !== 'feito') {
+    const now = new Date();
+    const venc = new Date(dataFimPrevista);
+    const diffMs = venc.getTime() - now.getTime();
+    const diffDias = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDias < 0) slaStatus = 'vencido';
+    else if (diffDias <= 3) slaStatus = 'atencao';
+  }
+
+  // Procuração status
+  let procuracaoStatus = 'sem';
+  if (task.clienteProcuracaoHabilitada) {
+    if (task.clienteProcuracaoValidade) {
+      const validade = new Date(task.clienteProcuracaoValidade);
+      const now = new Date();
+      const diffDias = (validade.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDias < 0) procuracaoStatus = 'vencida';
+      else if (diffDias <= 30) procuracaoStatus = 'prox_vencimento';
+      else procuracaoStatus = 'habilitada';
+    } else {
+      procuracaoStatus = 'habilitada';
+    }
+  }
+
+  return {
+    task: { ...task, dataInicio, dataFimPrevista, slaStatus, slaDias: maxSla, procuracaoStatus },
+    teses: tesesArr,
+    rtis: rtis as unknown as any[],
+    checklists: checklists as unknown as any[],
+    arquivos: arquivos as unknown as any[],
+    auditLog: auditLog as unknown as any[],
+  };
+}

@@ -2496,3 +2496,13 @@
 - [x] Alertas visuais para tarefas próximas do vencimento (24h e 48h)
 - [x] Cards resumo: no prazo, atenção, vencidas
 - [x] Tabela detalhada com tarefas ordenadas por urgência
+
+## v96 — Resumo do Cliente na Fila de Apuração
+
+### Painel de Resumo do Cliente
+- [x] Clicar no nome do cliente em qualquer posição/status abre painel de resumo
+- [x] Layout single-screen com todas as informações do cliente na fila
+- [x] Exibir teses sendo apuradas com detalhes
+- [x] Exibir analista responsável, parceiro, RTI, SLA, procuração
+- [x] Exibir informações cadastrais do cliente (CNPJ, regime, etc.)
+- [x] Exibir histórico e status da tarefa na fila
