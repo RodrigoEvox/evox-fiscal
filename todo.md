@@ -2506,3 +2506,10 @@
 - [x] Exibir analista responsável, parceiro, RTI, SLA, procuração
 - [x] Exibir informações cadastrais do cliente (CNPJ, regime, etc.)
 - [x] Exibir histórico e status da tarefa na fila
+
+## Bugs v96
+- [x] Fix: Painel de resumo do cliente mostrando "Dados não encontrados" ao clicar no nome do cliente
+- [x] Fix: Coluna u.nome → u.name na tabela users
+- [x] Fix: Tabelas checklist_instances → credit_checklist_instances
+- [x] Fix: Coluna url → storageUrl na tabela arquivos
+- [x] Fix: Coluna t.descricao removida (não existe na tabela teses)

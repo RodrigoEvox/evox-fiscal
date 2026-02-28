@@ -2413,7 +2413,7 @@ function ClientSummaryPanel({ taskId, open, onClose }: { taskId: number; open: b
                             <tr key={tese.id} className="border-b hover:bg-muted/20 transition-colors">
                               <td className="px-3 py-2">
                                 <p className="font-medium">{tese.teseNome || tese.teseNome || '—'}</p>
-                                {tese.teseDescricao && <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{tese.teseDescricao}</p>}
+                                {tese.teseFundamentacao && <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{tese.teseFundamentacao}</p>}
                               </td>
                               <td className="px-3 py-2 text-muted-foreground">{tese.tributoEnvolvido || '—'}</td>
                               <td className="px-3 py-2 text-center">

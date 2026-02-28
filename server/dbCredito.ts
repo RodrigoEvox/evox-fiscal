@@ -2422,10 +2422,10 @@ export async function getTaskApuracaoSummary(taskId: number) {
       COALESCE(p_case.cnpj, p_cli.cnpj) as parceiroCnpj,
       COALESCE(p_case.telefone, p_cli.telefone) as parceiroTelefone,
       COALESCE(p_case.email, p_cli.email) as parceiroEmail,
-      u.nome as responsavelNomeCompleto,
+      u.name as responsavelNomeCompleto,
       u.apelido as responsavelApelido,
       u.email as responsavelEmail,
-      uc.nome as criadoPorNomeCompleto
+      uc.name as criadoPorNomeCompleto
     FROM credit_tasks ct
     LEFT JOIN clientes c ON ct.clienteId = c.id
     LEFT JOIN credit_cases cc ON ct.caseId = cc.id
@@ -2442,7 +2442,8 @@ export async function getTaskApuracaoSummary(taskId: number) {
   const [teses] = await db_.execute(sql.raw(`
     SELECT ctt.*, t.nome as teseNome, t.tributoEnvolvido, t.tipo as teseTipo,
       t.classificacao as teseClassificacao, t.potencialFinanceiro, t.slaApuracaoDias,
-      t.descricao as teseDescricao, t.fundamentacaoLegal as teseFundamentacao
+      t.fundamentacaoLegal as teseFundamentacao, t.grauRisco as teseGrauRisco,
+      t.prazoPrescricional as tesePrazoPrescricional
     FROM credit_task_teses ctt
     LEFT JOIN teses t ON ctt.teseId = t.id
     WHERE ctt.taskId = ${taskId}
@@ -2462,15 +2463,15 @@ export async function getTaskApuracaoSummary(taskId: number) {
   // 4. Checklist instances
   const [checklists] = await db_.execute(sql.raw(`
     SELECT ci.*, ct2.nome as templateNome
-    FROM checklist_instances ci
-    LEFT JOIN checklist_templates ct2 ON ci.templateId = ct2.id
+    FROM credit_checklist_instances ci
+    LEFT JOIN credit_checklist_templates ct2 ON ci.templateId = ct2.id
     WHERE ci.taskId = ${taskId}
     ORDER BY ci.createdAt DESC
   `));
 
   // 5. Arquivos vinculados
   const [arquivos] = await db_.execute(sql.raw(`
-    SELECT id, nome, nomeOriginal, mimeType, tamanhoBytes, url, descricao, createdAt
+    SELECT id, nome, nomeOriginal, mimeType, tamanhoBytes, storageUrl as url, descricao, createdAt
     FROM arquivos
     WHERE entidadeTipo = 'tarefa' AND entidadeId = ${taskId}
     ORDER BY createdAt DESC
