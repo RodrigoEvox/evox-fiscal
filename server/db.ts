@@ -1165,7 +1165,7 @@ export async function listParceirosPrincipais() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(parceiros)
-    .where(eq(parceiros.ehSubparceiro, false))
+    .where(eq(parceiros.ehSubparceiro, 0))
     .orderBy(asc(parceiros.nomeCompleto));
 }
 
@@ -2837,7 +2837,7 @@ export async function getPartnerCommissionsDashboard(parceiroId: number) {
     nomeCompleto: parceiros.nomeCompleto,
     apelido: parceiros.apelido,
     ativo: parceiros.ativo,
-  }).from(parceiros).where(and(eq(parceiros.parceiroPaiId, parceiroId), eq(parceiros.ehSubparceiro, true)));
+  }).from(parceiros).where(and(eq(parceiros.parceiroPaiId, parceiroId), eq(parceiros.ehSubparceiro, 1)));
 
   // Get rateio info if subpartner
   const rateios = parceiro.ehSubparceiro && parceiro.parceiroPaiId

@@ -520,6 +520,13 @@ export async function createCreditLedgerEntry(data: InsertCreditLedger) {
   return { id: (result as any).insertId };
 }
 
+export async function getCreditLedgerEntryById(id: number) {
+  const db_ = await getDb();
+  if (!db_) return null;
+  const rows = await db_.select().from(creditLedger).where(eq(creditLedger.id, id)).limit(1);
+  return rows[0] || null;
+}
+
 export async function updateCreditLedgerEntry(id: number, data: Partial<InsertCreditLedger>) {
   const db_ = await getDb();
   if (!db_) return;
@@ -565,6 +572,13 @@ export async function createDueSchedulePolicy(data: any) {
   if (!db_) return null;
   const [result] = await db_.insert(dueSchedulePolicies).values(data);
   return { id: (result as any).insertId };
+}
+
+export async function getDueSchedulePolicyById(id: number) {
+  const db_ = await getDb();
+  if (!db_) return null;
+  const rows = await db_.select().from(dueSchedulePolicies).where(eq(dueSchedulePolicies.id, id)).limit(1);
+  return rows[0] || null;
 }
 
 export async function updateDueSchedulePolicy(id: number, data: any) {
@@ -642,6 +656,13 @@ export async function listCreditSlaConfigs() {
   const db_ = await getDb();
   if (!db_) return [];
   return db_.select().from(creditSlaConfigs).orderBy(asc(creditSlaConfigs.nome));
+}
+
+export async function getCreditSlaConfigById(id: number) {
+  const db_ = await getDb();
+  if (!db_) return null;
+  const rows = await db_.select().from(creditSlaConfigs).where(eq(creditSlaConfigs.id, id)).limit(1);
+  return rows[0] || null;
 }
 
 export async function updateCreditSlaConfig(id: number, data: any) {
@@ -1200,6 +1221,12 @@ export async function createPartnerReturn(data: any) {
   return (result as unknown as any).insertId;
 }
 
+export async function getPartnerReturnById(id: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_partner_returns WHERE id = ${id} LIMIT 1`));
+  return (rows as unknown as any[])?.[0] || null;
+}
+
 export async function updatePartnerReturn(id: number, data: any) {
   const db_ = (await getDb())!;
   const sets: string[] = [];
@@ -1247,6 +1274,12 @@ export async function createOnboardingRecord(data: any) {
   const db_ = (await getDb())!;
   const [result] = await db_.execute(sql.raw(`INSERT INTO credit_onboarding_records (taskId, caseId, clienteId, checklistRevisao, checklistRefinamento, checklistRegistro, status) VALUES (${data.taskId}, ${data.caseId || 'NULL'}, ${data.clienteId}, '${JSON.stringify(data.checklistRevisao || [])}', '${JSON.stringify(data.checklistRefinamento || [])}', '${JSON.stringify(data.checklistRegistro || [])}', 'em_andamento')`));
   return (result as unknown as any).insertId;
+}
+
+export async function getOnboardingRecordById(id: number) {
+  const db_ = (await getDb())!;
+  const [rows] = await db_.execute(sql.raw(`SELECT * FROM credit_onboarding_records WHERE id = ${id}`));
+  return (rows as unknown as any[])[0] || null;
 }
 
 export async function updateOnboardingRecord(id: number, data: any) {

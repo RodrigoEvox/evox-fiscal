@@ -7,6 +7,7 @@ import { createNotificacao } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import crypto from "crypto";
+import { buildAuditDescription, buildDadosAnteriores } from "./auditDescriptionBuilder";
 
 function getUser(ctx: any): { id: number; name: string } {
   return { id: ctx.user.id, name: ctx.user.name };
@@ -365,12 +366,13 @@ const creditoRouter = router({
         }
 
         await credDb.updateCreditCase(id, updates);
+        const caseDescricao = buildAuditDescription('case', old as any, updates, user.name, old?.numero);
         await credDb.logCreditAudit({
           entidade: 'case',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Case atualizado`,
-          dadosAnteriores: { fase: old?.fase, status: old?.status } as any,
+          descricao: caseDescricao,
+          dadosAnteriores: buildDadosAnteriores(old as any, updates) as any,
           dadosNovos: updates as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -700,12 +702,13 @@ const creditoRouter = router({
           updates.dataConclusao = new Date().toISOString().slice(0, 19).replace('T', ' ');
         }
         await credDb.updateCreditTask(id, updates);
+        const descricaoDetalhada = buildAuditDescription('task', old as any, updates, user.name, old?.codigo);
         await credDb.logCreditAudit({
           entidade: 'task',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Tarefa atualizada`,
-          dadosAnteriores: { status: old?.status } as any,
+          descricao: descricaoDetalhada,
+          dadosAnteriores: buildDadosAnteriores(old as any, updates) as any,
           dadosNovos: updates as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -1210,16 +1213,19 @@ const creditoRouter = router({
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
         const { id, ...data } = input;
+        const oldTicket = await credDb.getCreditTicketById(id);
         const updates: any = { ...data };
         if (data.status === 'resolvido') {
           updates.dataResolucao = new Date().toISOString().slice(0, 19).replace('T', ' ');
         }
         await credDb.updateCreditTicket(id, updates);
+        const ticketDescricao = buildAuditDescription('ticket', oldTicket as any, updates, user.name, oldTicket?.numero);
         await credDb.logCreditAudit({
           entidade: 'ticket',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Ticket atualizado`,
+          descricao: ticketDescricao,
+          dadosAnteriores: buildDadosAnteriores(oldTicket as any, updates) as any,
           dadosNovos: updates as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -1314,12 +1320,15 @@ const creditoRouter = router({
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
         const { id, ...data } = input;
+        const oldLedger = await credDb.getCreditLedgerEntryById(id);
         await credDb.updateCreditLedgerEntry(id, { ...data, atualizadoPorId: user.id } as any);
+        const ledgerDescricao = buildAuditDescription('ledger', oldLedger as any, data, user.name);
         await credDb.logCreditAudit({
           entidade: 'ledger',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Ledger atualizado`,
+          descricao: ledgerDescricao,
+          dadosAnteriores: buildDadosAnteriores(oldLedger as any, data) as any,
           dadosNovos: data as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -1447,12 +1456,15 @@ const creditoRouter = router({
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
         const { id, ...data } = input;
+        const oldPolicy = await credDb.getDueSchedulePolicyById(id);
         await credDb.updateDueSchedulePolicy(id, data);
+        const policyDescricao = buildAuditDescription('policy', oldPolicy as any, data, user.name, oldPolicy?.nome);
         await credDb.logCreditAudit({
           entidade: 'policy',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Política de vencimento atualizada`,
+          descricao: policyDescricao,
+          dadosAnteriores: buildDadosAnteriores(oldPolicy as any, data) as any,
           dadosNovos: data as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -1504,12 +1516,15 @@ const creditoRouter = router({
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
         const { id, ...data } = input;
+        const oldSla = await credDb.getCreditSlaConfigById(id);
         await credDb.updateCreditSlaConfig(id, data);
+        const slaDescricao = buildAuditDescription('sla', oldSla as any, data, user.name, oldSla?.nome);
         await credDb.logCreditAudit({
           entidade: 'sla',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `SLA config atualizado`,
+          descricao: slaDescricao,
+          dadosAnteriores: buildDadosAnteriores(oldSla as any, data) as any,
           dadosNovos: data as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -1644,12 +1659,15 @@ const adminRouter = router({
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
         const { id, ...data } = input;
+        const oldSla2 = await credDb.getCreditSlaConfigById(id);
         await credDb.updateCreditSlaConfig(id, data);
+        const slaDescricao2 = buildAuditDescription('sla', oldSla2 as any, data, user.name, oldSla2?.nome);
         await credDb.logCreditAudit({
           entidade: 'sla',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `SLA config atualizado`,
+          descricao: slaDescricao2,
+          dadosAnteriores: buildDadosAnteriores(oldSla2 as any, data) as any,
           dadosNovos: data as any,
           usuarioId: user.id,
           usuarioNome: user.name,
@@ -1992,15 +2010,19 @@ const adminRouter = router({
       .mutation(async ({ input, ctx }) => {
         const user = getUser(ctx);
         const { id, ...data } = input;
+        const oldReturn = await credDb.getPartnerReturnById(id);
         if (data.retornoStatus && data.retornoStatus !== 'aguardando') {
           (data as any).retornoRecebidoEm = new Date().toISOString().slice(0, 19).replace('T', ' ');
         }
         await credDb.updatePartnerReturn(id, data);
+        const retornoDescricao = buildAuditDescription('retorno', oldReturn as any, data, user.name);
         await credDb.logCreditAudit({
           entidade: 'partner_return',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Retorno atualizado: ${data.retornoStatus || 'edição'}`,
+          descricao: retornoDescricao,
+          dadosAnteriores: buildDadosAnteriores(oldReturn as any, data) as any,
+          dadosNovos: data as any,
           usuarioId: user.id,
           usuarioNome: user.name,
         });
@@ -2080,12 +2102,16 @@ const adminRouter = router({
           (data as any).concluidoPorId = user.id;
           (data as any).concluidoPorNome = user.name;
         }
+        const oldOnboarding = await credDb.getOnboardingRecordById(id);
         await credDb.updateOnboardingRecord(id, data);
+        const onbDescricao = buildAuditDescription('onboarding', oldOnboarding as any, data, user.name);
         await credDb.logCreditAudit({
           entidade: 'onboarding',
           entidadeId: id,
           acao: 'atualizacao',
-          descricao: `Onboarding atualizado${data.status === 'concluido' ? ' - CONCLUÍDO' : ''}`,
+          descricao: onbDescricao,
+          dadosAnteriores: buildDadosAnteriores(oldOnboarding as any, data) as any,
+          dadosNovos: data as any,
           usuarioId: user.id,
           usuarioNome: user.name,
         });

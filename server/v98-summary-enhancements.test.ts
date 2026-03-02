@@ -37,7 +37,7 @@ describe('v98 — ClientSummaryPanel Enhancements', () => {
       const fs = await import('fs');
       const content = fs.readFileSync('client/src/components/ClientSummaryPanel.tsx', 'utf-8');
       // PDF generation uses window.print or a canvas-based approach
-      expect(content).toMatch(/window\.print|jspdf|html2canvas|printRef/i);
+      expect(content).toMatch(/window\.print|jspdf|html2canvas|printRef|pw\.print/i);
     });
   });
 

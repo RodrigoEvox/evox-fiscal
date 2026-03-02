@@ -2562,3 +2562,6 @@ export const queueExceptionRequests = mysqlTable('queue_exception_requests', {
 ]);
 export type InsertQueueExceptionRequest = typeof queueExceptionRequests.$inferInsert;
 export type SelectQueueExceptionRequest = typeof queueExceptionRequests.$inferSelect;
+
+export type InsertMetaComissao = typeof metasComissoes.$inferInsert;
+export type SelectMetaComissao = typeof metasComissoes.$inferSelect;

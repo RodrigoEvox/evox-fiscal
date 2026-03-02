@@ -2539,3 +2539,15 @@
 - [x] Fix: Campos se sobrepondo no painel de resumo do cliente — dialog não está grande o suficiente
 - [x] Mudar para fullscreen overlay para garantir espaço adequado
 - [x] Garantir que nenhum campo se sobreponha a outro
+
+## v100 — Histórico de Ações Detalhado
+- [x] Registrar descrição exata de cada alteração no audit log (não apenas "Tarefa atualizada")
+- [x] Detalhar troca de responsável: quem era e quem é o novo
+- [x] Detalhar troca de prioridade: qual era e qual ficou
+- [x] Detalhar troca de status: qual era e qual ficou
+- [x] Detalhar outras alterações: procuração, parceiro, observação, etc.
+- [x] Aplicar para todas as mutations de update de tarefas em todas as filas
+- [x] Aplicar audit detalhado para Case, Ticket, Ledger, Policy, SLA Config, Retorno, Onboarding
+- [x] Melhorar exibição do histórico no ClientSummaryPanel (layout com destaque para campos alterados)
+- [x] 18 testes vitest passando para auditDescriptionBuilder
+- [x] Corrigir erros TypeScript pré-existentes (InsertMetaComissao, ehSubparceiro)

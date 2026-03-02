@@ -508,14 +508,39 @@ export default function ClientSummaryPanel({ taskId, open, onClose, filaLabel }:
                     {auditLog.length === 0 ? (
                       <p className="text-sm text-muted-foreground italic">Nenhuma ação registrada.</p>
                     ) : (
-                      <div className="space-y-0 max-h-[220px] overflow-y-auto">
-                        {auditLog.map((log: any) => (
-                          <div key={log.id} className="flex items-start gap-3 text-xs py-2.5 border-b last:border-0">
-                            <span className="text-muted-foreground shrink-0 w-[110px] tabular-nums">{fmt.dateTime(log.createdAt)}</span>
-                            <span className="font-semibold shrink-0">{log.usuarioNome || '—'}</span>
-                            <span className="text-muted-foreground flex-1">{log.descricao}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-0 max-h-[320px] overflow-y-auto">
+                        {auditLog.map((log: any) => {
+                          // Parse detailed descriptions that contain ': ' separator
+                          const hasDetails = log.descricao && log.descricao.includes(': ') && (log.descricao.includes('alterado de') || log.descricao.includes('definido como') || log.descricao.includes('Observação adicionada'));
+                          const parts = hasDetails ? log.descricao.split('. ').filter(Boolean) : null;
+                          return (
+                            <div key={log.id} className="flex flex-col gap-1 text-xs py-2.5 border-b last:border-0">
+                              <div className="flex items-center gap-3">
+                                <span className="text-muted-foreground shrink-0 w-[110px] tabular-nums">{fmt.dateTime(log.createdAt)}</span>
+                                <span className="font-semibold shrink-0">{log.usuarioNome || '—'}</span>
+                                {!hasDetails && <span className="text-muted-foreground flex-1">{log.descricao}</span>}
+                              </div>
+                              {hasDetails && parts && (
+                                <div className="ml-[110px] pl-3 border-l-2 border-primary/20 space-y-0.5">
+                                  {parts.map((part: string, idx: number) => {
+                                    // Highlight the changed field name in bold
+                                    const match = part.match(/^(.+?)\s+(alterado de|definido como)\s+(.+)$/);
+                                    if (match) {
+                                      return (
+                                        <div key={idx} className="text-muted-foreground">
+                                          <span className="font-medium text-foreground">{match[1]}</span>{' '}
+                                          <span>{match[2]}</span>{' '}
+                                          <span className="text-foreground">{match[3].replace(/\.$/, '')}</span>
+                                        </div>
+                                      );
+                                    }
+                                    return <div key={idx} className="text-muted-foreground">{part.replace(/\.$/, '')}</div>;
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
