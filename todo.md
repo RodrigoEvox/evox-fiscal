@@ -2528,3 +2528,9 @@
 - [x] Ações rápidas: botão para adicionar observação no painel de resumo
 - [x] Exportar resumo em PDF — botão para gerar relatório PDF do resumo do cliente
 - [x] Indicador visual no nome do cliente (ícone/tooltip) em todas as 5 filas
+
+## v99 — Redesign do Painel de Resumo do Cliente
+- [x] Aumentar tamanho do dialog para formato horizontal/retangular (max-w-[95vw] w-[1400px])
+- [x] Melhorar distribuição dos campos para evitar sobreposição (grid 3 colunas no topo)
+- [x] Layout mais amplo com melhor aproveitamento do espaço horizontal
+- [x] Garantir legibilidade de todos os campos sem truncamento
