@@ -767,6 +767,15 @@ const creditoRouter = router({
         const task = await credDb.getCreditTaskById(input.id);
         if (!task) throw new Error('Tarefa não encontrada');
         if (task.status !== 'fazendo') throw new Error('Tarefa precisa estar com status "Fazendo" para ser finalizada');
+
+        // RTI é pré-requisito para finalizar a tarefa na fila de apuração
+        if (task.fila === 'apuracao') {
+          const rtis = await credDb.listRtisByTask(input.id);
+          if (!rtis || (rtis as any[]).length === 0) {
+            throw new Error('É necessário gerar o RTI (Relatório Técnico Inicial) antes de finalizar a análise. Preencha as teses e gere o RTI na tela de finalização.');
+          }
+        }
+
         const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
         const existingAnexos = (task.anexos && typeof task.anexos === 'string' ? JSON.parse(task.anexos) : task.anexos) || [];
         const allAnexos = [...existingAnexos, ...(input.anexos || [])];

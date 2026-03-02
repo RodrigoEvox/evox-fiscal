@@ -2551,3 +2551,17 @@
 - [x] Melhorar exibição do histórico no ClientSummaryPanel (layout com destaque para campos alterados)
 - [x] 18 testes vitest passando para auditDescriptionBuilder
 - [x] Corrigir erros TypeScript pré-existentes (InsertMetaComissao, ehSubparceiro)
+
+## v101 — Redesign Finalizar Análise + RTI Integrado
+- [x] Componente CurrencyInput: campo de valor em reais com auto-formatação (R$ 1.234,56) durante digitação
+- [x] Unificar Finalizar Análise e Gerar RTI em uma única tela/dialog
+- [x] Listar todas as teses atribuídas à tarefa na tela de finalização
+- [x] Campo de valor apurado por tese (com CurrencyInput)
+- [x] Campo de motivo obrigatório quando tese não tem valor (valor = 0)
+- [x] Botão para adicionar nova tese identificada pelo analista durante a análise
+- [x] Somatório automático de valores: total geral, total pacificado, total judicial
+- [x] Detecção de conflitos entre teses (PERSE vs exclusões PIS/COFINS) com alertas visuais
+- [x] Somatória alternativa considerando cenários de teses conflitantes (aplicar uma ou outra)
+- [x] Classificação automática de viabilidade (viável ≥ R$ 20 mil / inviável < R$ 20 mil)
+- [x] RTI como pré-requisito para finalizar tarefa (não pode finalizar sem gerar RTI)
+- [x] Aplicar CurrencyInput em todos os campos monetários do sistema

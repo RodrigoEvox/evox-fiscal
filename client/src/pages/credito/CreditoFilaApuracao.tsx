@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BackToDashboard from '@/components/BackToDashboard';
+import FinalizarAnaliseDialog from '@/components/credito/FinalizarAnaliseDialog';
+import CurrencyInput from '@/components/CurrencyInput';
 import ClientSummaryPanel from '@/components/ClientSummaryPanel';
 import TarefasAtrasadasBanner from '@/components/TarefasAtrasadasBanner';
 
@@ -1586,7 +1588,7 @@ export default function CreditoFilaApuracao() {
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Valor Apurado (R$)</Label>
-                          <Input type="number" step="0.01" value={op.valorApurado} onChange={(e) => updateOportunidade(idx, 'valorApurado', e.target.value)} />
+                          <CurrencyInput value={op.valorApurado} onChange={(val) => updateOportunidade(idx, 'valorApurado', val)} />
                         </div>
                       </div>
                       <Button variant="ghost" size="sm" className="text-red-500 mt-5" onClick={() => removeOportunidade(idx)}>
@@ -1631,9 +1633,9 @@ export default function CreditoFilaApuracao() {
                       setCenarioCompensacao(updated);
                     }} />
                     <div className="w-48">
-                      <Input type="number" step="0.01" placeholder="Média Mensal (R$)" value={item.mediaMensal} onChange={(e) => {
+                      <CurrencyInput value={item.mediaMensal} onChange={(val) => {
                         const updated = [...cenarioCompensacao];
-                        updated[idx] = { ...updated[idx], mediaMensal: e.target.value };
+                        updated[idx] = { ...updated[idx], mediaMensal: val };
                         setCenarioCompensacao(updated);
                       }} />
                     </div>
@@ -1814,127 +1816,12 @@ export default function CreditoFilaApuracao() {
       {/* Checklist foi movido para a visão do operador/analista por tese */}
 
       {/* ===== FINISH TASK DIALOG ===== */}
-      <Dialog open={finishDialogOpen} onOpenChange={setFinishDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Flag className="w-5 h-5 text-purple-600" />
-              Finalizar Análise
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              {finishingTask?.codigo} — {finishingTask?.clienteNome || finishingTask?.titulo}
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Observações */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Observações da Análise</Label>
-              <Textarea
-                placeholder="Descreva as conclusões da análise, pontos de atenção, etc."
-                value={finishObs}
-                onChange={(e) => setFinishObs(e.target.value)}
-                rows={4}
-              />
-            </div>
-
-            {/* Viabilidade */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Valor Global Apurado (R$)</Label>
-              <Input
-                placeholder="Ex: 25000.00"
-                value={finishValorGlobal}
-                onChange={(e) => {
-                  setFinishValorGlobal(e.target.value);
-                  // Auto-set viabilidade based on value
-                  const val = parseFloat(e.target.value.replace(/\./g, '').replace(',', '.'));
-                  if (!isNaN(val)) {
-                    setFinishViabilidade(val >= 20000 ? 'viavel' : 'inviavel');
-                  }
-                }}
-                type="number"
-                step="0.01"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">Valor real apurado no RTI (somatório de todas as oportunidades). Se não informado, será calculado automaticamente a partir dos RTIs gerados.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Viabilidade da Apuração</Label>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant={finishViabilidade === 'viavel' ? 'default' : 'outline'}
-                  className={cn('flex-1 gap-2', finishViabilidade === 'viavel' && 'bg-emerald-600 hover:bg-emerald-700')}
-                  onClick={() => setFinishViabilidade('viavel')}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Viável (≥ R$ 20 mil)
-                </Button>
-                <Button
-                  type="button"
-                  variant={finishViabilidade === 'inviavel' ? 'default' : 'outline'}
-                  className={cn('flex-1 gap-2', finishViabilidade === 'inviavel' && 'bg-red-600 hover:bg-red-700')}
-                  onClick={() => setFinishViabilidade('inviavel')}
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  Inviável (&lt; R$ 20 mil)
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">Critério: ≥ R$ 20 mil = Viável, &lt; R$ 20 mil = Inviável. Baseado no valor real apurado no RTI.</p>
-            </div>
-
-            <Separator />
-
-            {/* Anexos */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Anexar Documentos (Memória de Cálculo, etc.)</Label>
-              <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="finish-file-upload"
-                  accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.png,.jpg,.jpeg"
-                />
-                <label htmlFor="finish-file-upload" className="cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Clique para selecionar arquivos</p>
-                  <p className="text-xs text-muted-foreground mt-1">PDF, Excel, Word, Imagens</p>
-                </label>
-                {uploadingFile && (
-                  <div className="flex items-center justify-center gap-2 mt-3">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-xs text-muted-foreground">Enviando...</span>
-                  </div>
-                )}
-              </div>
-              {finishAnexos.length > 0 && (
-                <div className="space-y-2 mt-2">
-                  {finishAnexos.map((anexo, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-                      <Paperclip className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm flex-1 truncate">{anexo.nome}</span>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500" onClick={() => setFinishAnexos(prev => prev.filter((_, i) => i !== idx))}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFinishDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleFinishTask} disabled={finishTask.isPending} className="gap-2 bg-purple-600 hover:bg-purple-700">
-              {finishTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />}
-              Finalizar Análise
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FinalizarAnaliseDialog
+        open={finishDialogOpen}
+        onOpenChange={setFinishDialogOpen}
+        task={finishingTask}
+        onSuccess={refetchTasks}
+      />
 
       {/* ===== CONFIRMATION DIALOG ===== */}
       <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, open: false }))}>

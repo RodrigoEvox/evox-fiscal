@@ -382,7 +382,7 @@ export async function listFilaApuracaoWithClientes() {
       analistaId: filaApuracao.analistaId,
       analistaNome: filaApuracao.analistaNome,
       dataInicioApuracao: filaApuracao.dataInicioApuracao,
-      dataConclusaoApuracao: filaApuracao.dataConclusaoApuracao,
+      dataConclusao: filaApuracao.dataConclusao,
       createdAt: filaApuracao.createdAt,
       clienteNome: clientes.razaoSocial,
       clienteCnpj: clientes.cnpj,
