@@ -2534,3 +2534,8 @@
 - [x] Melhorar distribuição dos campos para evitar sobreposição (grid 3 colunas no topo)
 - [x] Layout mais amplo com melhor aproveitamento do espaço horizontal
 - [x] Garantir legibilidade de todos os campos sem truncamento
+
+## Bugs v99
+- [x] Fix: Campos se sobrepondo no painel de resumo do cliente — dialog não está grande o suficiente
+- [x] Mudar para fullscreen overlay para garantir espaço adequado
+- [x] Garantir que nenhum campo se sobreponha a outro
