@@ -939,7 +939,7 @@ export default function Clientes() {
 
       {/* ==================== FORMULÁRIO ÚNICO COM ROLAGEM ==================== */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) tryCloseForm(); }}>
-        <DialogContent className="max-w-6xl max-h-[95vh] w-[95vw] overflow-hidden flex flex-col" onPointerDownOutside={(e) => { e.preventDefault(); tryCloseForm(); }} onEscapeKeyDown={(e) => { e.preventDefault(); tryCloseForm(); }}>
+        <DialogContent className="!max-w-none !w-[95vw] !h-[95vh] overflow-hidden flex flex-col" onPointerDownOutside={(e) => { e.preventDefault(); tryCloseForm(); }} onEscapeKeyDown={(e) => { e.preventDefault(); tryCloseForm(); }}>
           <DialogHeader className="shrink-0 pb-2 border-b">
             <DialogTitle className="text-lg">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
             <p className="text-xs text-muted-foreground">Preencha todos os dados abaixo. Campos com * são obrigatórios.</p>
