@@ -21,7 +21,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { SEGMENTOS_ECONOMICOS } from '@/data/segmentosEconomicos';
 import { PorteDisplay } from '@/components/PorteDisplay';
 import { RegimeHistoryManager, type RegimeHistory } from '@/components/RegimeHistoryManager';
-import { CadastralStatusAlert } from '@/components/CadastralStatusAlert';
+
 import {
   Plus, Search, Flag, AlertTriangle, Eye, Pencil, Trash2, Loader2,
   Building2, ArrowLeft, MoreVertical, Power, PowerOff, Filter,
@@ -1062,9 +1062,7 @@ export default function Clientes() {
                       )}
                     </div>
                   </div>
-                  <div className="col-span-2">
-                    <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
-                  </div>
+
                   {cnpjFonte && (
                     <div className="col-span-2">
                       <div className={`p-2.5 rounded-md text-xs flex items-start gap-2 ${
@@ -1126,9 +1124,7 @@ export default function Clientes() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2">
-                    <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
-                  </div>
+
                 </div>
               )}
             </div>
