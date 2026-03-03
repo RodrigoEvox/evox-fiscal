@@ -19,6 +19,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { SEGMENTOS_ECONOMICOS } from '@/data/segmentosEconomicos';
+import { PorteDisplay } from '@/components/PorteDisplay';
+import { RegimeHistoryManager, type RegimeHistory } from '@/components/RegimeHistoryManager';
+import { CadastralStatusAlert } from '@/components/CadastralStatusAlert';
 import {
   Plus, Search, Flag, AlertTriangle, Eye, Pencil, Trash2, Loader2,
   Building2, ArrowLeft, MoreVertical, Power, PowerOff, Filter,
@@ -72,6 +75,7 @@ const EMPTY_FORM = {
   parceiroId: undefined as number | undefined,
   procuracaoHabilitada: false, procuracaoCertificado: '', procuracaoValidade: '',
   excecoesEspecificidades: '',
+  regimeHistory: [] as RegimeHistory[],
 };
 
 // Check if form has been modified from defaults
@@ -310,6 +314,7 @@ export default function Clientes() {
       quadroSocietario: bestResult.quadroSocietario.length > 0 ? bestResult.quadroSocietario : p.quadroSocietario,
       situacaoCadastral: bestResult.situacaoCadastral || p.situacaoCadastral,
     }));
+    // Note: PORTE is automatically calculated from faturamentoMedioMensal in the PorteDisplay component
 
     // Calcular se dados podem estar desatualizados
     const dataAtualizacao = bestDate ? new Date(bestDate) : null;
@@ -1032,6 +1037,13 @@ export default function Clientes() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label className="text-xs">PORTE da Empresa</Label>
+                    <PorteDisplay faturamentoMedioMensal={form.faturamentoMedioMensal} showLabel={true} />
+                  </div>
+                  <div className="col-span-2">
+                    <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
+                  </div>
                   {cnpjFonte && (
                     <div className="col-span-2">
                       <div className={`p-2.5 rounded-md text-xs flex items-start gap-2 ${
@@ -1093,9 +1105,26 @@ export default function Clientes() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="col-span-2">
+                    <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
+                  </div>
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            {/* ===== SEÇÃO 2B: HISTÓRICO DE REGIMES TRIBUTÁRIOS ===== */}
+            {form.tipoPessoa === 'juridica' && (
+              <div className="space-y-3">
+                <RegimeHistoryManager
+                  currentRegime={form.regimeTributario}
+                  history={form.regimeHistory}
+                  onHistoryChange={(history) => setForm({ ...form, regimeHistory: history })}
+                  maxMonths={60}
+                />
+              </div>
+            )}
 
             <Separator />
 

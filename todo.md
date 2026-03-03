@@ -2565,3 +2565,13 @@
 - [x] Classificação automática de viabilidade (viável ≥ R$ 20 mil / inviável < R$ 20 mil)
 - [x] RTI como pré-requisito para finalizar tarefa (não pode finalizar sem gerar RTI)
 - [x] Aplicar CurrencyInput em todos os campos monetários do sistema
+
+## v102 — Enhancements ao Novo Cliente: PORTE, Histórico de Regimes, Alertas de Situação Cadastral
+- [ ] Campo PORTE automático: extrair do cartão CNPJ (EPP, PME, Demais Portes, etc.)
+- [ ] Campo Regime Tributário Atual: dropdown com opções (Simples, Lucro Real, Lucro Presumido, etc.)
+- [ ] Histórico de Regimes nos últimos 60 meses: tabela com regime + período (data início/fim)
+- [ ] Botão (+) para adicionar novo regime ao histórico
+- [ ] Alerta visual quando Situação Cadastral ≠ Ativa (Baixada, Suspensa, Nula, Inapta)
+- [ ] Destaque na visão do cliente para situações cadastrais críticas
+- [ ] Integração com API de CNPJ para extrair PORTE automaticamente
+- [ ] Testes vitest para validação de PORTE, histórico de regimes e alertas de situação cadastral

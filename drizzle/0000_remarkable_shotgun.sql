@@ -14,7 +14,7 @@ CREATE TABLE `academia_beneficio` (
 	`observacao` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -32,7 +32,7 @@ CREATE TABLE `acoes_beneficios` (
 	`observacao` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`horario` varchar(20),
 	`local` varchar(500),
@@ -50,7 +50,7 @@ CREATE TABLE `api_keys` (
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
 	`expiresAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `apontamentos_folha` (
@@ -68,7 +68,7 @@ CREATE TABLE `apontamentos_folha` (
 	`observacao` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -80,12 +80,12 @@ CREATE TABLE `aprovacao_comissao` (
 	`percentualPadrao` decimal(5,2) NOT NULL,
 	`modeloParceriaId` int NOT NULL,
 	`solicitadoPorId` int NOT NULL,
-	`solicitadoEm` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`solicitadoEm` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`status` enum('pendente','aprovado','rejeitado') NOT NULL DEFAULT 'pendente',
 	`aprovadoPorId` int,
 	`aprovadoEm` timestamp,
 	`observacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -105,7 +105,7 @@ CREATE TABLE `arquivos` (
 	`tags` json,
 	`uploadPorId` int,
 	`uploadPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `atestados_licencas` (
@@ -123,7 +123,7 @@ CREATE TABLE `atestados_licencas` (
 	`status` enum('ativo','encerrado','cancelado') NOT NULL DEFAULT 'ativo',
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -137,7 +137,7 @@ CREATE TABLE `audit_log` (
 	`usuarioId` int,
 	`usuarioNome` varchar(255),
 	`ip` varchar(45),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `avaliacoes` (
@@ -155,7 +155,7 @@ CREATE TABLE `avaliacoes` (
 	`pontosDesenvolvimento` text,
 	`status` enum('pendente','em_andamento','concluida') NOT NULL DEFAULT 'pendente',
 	`planoCarreiraId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -172,7 +172,7 @@ CREATE TABLE `banco_horas` (
 	`aprovadoPorNome` varchar(255),
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -186,7 +186,7 @@ CREATE TABLE `beneficios_custom` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -200,7 +200,7 @@ CREATE TABLE `bib_auditoria` (
 	`motivo` text,
 	`usuarioId` int,
 	`usuarioNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `bib_bloqueios` (
@@ -214,7 +214,7 @@ CREATE TABLE `bib_bloqueios` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `bib_emprestimos` (
@@ -241,7 +241,7 @@ CREATE TABLE `bib_emprestimos` (
 	`termoEnviadoEmail` tinyint NOT NULL DEFAULT 0,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -264,7 +264,7 @@ CREATE TABLE `bib_exemplares` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -277,7 +277,7 @@ CREATE TABLE `bib_fornecedores_doadores` (
 	`telefone` varchar(20),
 	`observacoes` text,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -303,7 +303,7 @@ CREATE TABLE `bib_livros` (
 	`status` enum('ativo','inativo','descontinuado') NOT NULL DEFAULT 'ativo',
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -321,7 +321,7 @@ CREATE TABLE `bib_ocorrencias` (
 	`diasBloqueio` int,
 	`responsavelId` int,
 	`responsavelNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -332,7 +332,7 @@ CREATE TABLE `bib_politicas` (
 	`descricao` text,
 	`updatedPorId` int,
 	`updatedPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -349,7 +349,7 @@ CREATE TABLE `bib_reservas` (
 	`dataDisponibilidade` varchar(10),
 	`dataAtendimento` varchar(10),
 	`observacoes` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -358,7 +358,7 @@ CREATE TABLE `birthday_advance_notifications` (
 	`colaboradorId` int NOT NULL,
 	`ano` int NOT NULL,
 	`diasAntes` int NOT NULL,
-	`enviadoEm` timestamp DEFAULT 'CURRENT_TIMESTAMP'
+	`enviadoEm` timestamp DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `chat_channels` (
@@ -372,7 +372,7 @@ CREATE TABLE `chat_channels` (
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`status` enum('active','inactive','deleted') NOT NULL DEFAULT 'active',
 	`dmUser1Id` int,
@@ -387,7 +387,7 @@ CREATE TABLE `chat_messages` (
 	`userAvatar` varchar(500),
 	`content` text NOT NULL,
 	`mentions` json,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`deletedAt` timestamp,
 	`deletedBy` int,
 	`pinned` tinyint NOT NULL DEFAULT 0,
@@ -412,7 +412,7 @@ CREATE TABLE `chat_notifications` (
 	`remetenteNome` varchar(255) NOT NULL,
 	`preview` varchar(500),
 	`lida` tinyint NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `chat_reactions` (
@@ -421,7 +421,7 @@ CREATE TABLE `chat_reactions` (
 	`userId` int NOT NULL,
 	`userName` varchar(255) NOT NULL,
 	`emoji` varchar(20) NOT NULL,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `chat_typing_indicators` (
@@ -430,7 +430,7 @@ CREATE TABLE `chat_typing_indicators` (
 	`userId` int NOT NULL,
 	`userName` varchar(255) NOT NULL,
 	`userAvatar` varchar(500),
-	`startedAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`startedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `ciclos_avaliacao` (
@@ -443,7 +443,7 @@ CREATE TABLE `ciclos_avaliacao` (
 	`criterios` json,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -453,7 +453,7 @@ CREATE TABLE `client_due_policy_subs` (
 	`caseId` int,
 	`policyId` int NOT NULL,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `cliente_servicos` (
@@ -465,7 +465,7 @@ CREATE TABLE `cliente_servicos` (
 	`dataInicio` timestamp,
 	`dataConclusao` timestamp,
 	`observacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -511,7 +511,7 @@ CREATE TABLE `clientes` (
 	`alertasInformacao` json,
 	`usuarioCadastroId` int,
 	`usuarioCadastroNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`tipoPessoa` enum('juridica','fisica') NOT NULL DEFAULT 'juridica',
 	`cpf` varchar(14),
@@ -530,7 +530,7 @@ CREATE TABLE `colaborador_documentos` (
 	`tamanho` int,
 	`enviadoPorId` int,
 	`enviadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -588,7 +588,7 @@ CREATE TABLE `colaboradores` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`dataDesligamento` varchar(10),
 	`motivoDesligamento` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`chavePix` varchar(255),
 	`jornadaDias` json,
@@ -631,7 +631,7 @@ CREATE TABLE `comissao_rh` (
 	`observacao` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -641,7 +641,7 @@ CREATE TABLE `comissoes_servico` (
 	`modeloParceriaId` int NOT NULL,
 	`percentualComissao` decimal(5,2) NOT NULL,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -666,7 +666,7 @@ CREATE TABLE `convencao_coletiva` (
 	`observacoes` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `convencao_coletiva_id` PRIMARY KEY(`id`)
 );
@@ -682,7 +682,7 @@ CREATE TABLE `credit_audit_log` (
 	`usuarioId` int,
 	`usuarioNome` varchar(255),
 	`ip` varchar(45),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_case_strategy` (
@@ -696,7 +696,7 @@ CREATE TABLE `credit_case_strategy` (
 	`observacoes` text,
 	`definidoPorId` int,
 	`definidoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -720,7 +720,7 @@ CREATE TABLE `credit_cases` (
 	`exitoRegistradoEm` timestamp,
 	`observacoes` text,
 	`demandRequestId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -732,7 +732,7 @@ CREATE TABLE `credit_checklist_instances` (
 	`nome` varchar(255) NOT NULL,
 	`itens` json NOT NULL,
 	`progresso` int NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -746,7 +746,7 @@ CREATE TABLE `credit_checklist_templates` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -756,7 +756,7 @@ CREATE TABLE `credit_compensation_groups` (
 	`sigla` varchar(20) NOT NULL,
 	`descricao` text,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_doc_files` (
@@ -769,7 +769,7 @@ CREATE TABLE `credit_doc_files` (
 	`tamanhoBytes` int,
 	`uploadPorId` int,
 	`uploadPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_doc_folders` (
@@ -782,7 +782,7 @@ CREATE TABLE `credit_doc_folders` (
 	`descricao` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_ledger` (
@@ -804,7 +804,7 @@ CREATE TABLE `credit_ledger` (
 	`status` enum('estimado','validado','protocolado','efetivado','parcial','cancelado') NOT NULL DEFAULT 'estimado',
 	`observacoes` text,
 	`atualizadoPorId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -842,7 +842,7 @@ CREATE TABLE `credit_onboarding_records` (
 	`concluidoEm` timestamp,
 	`concluidoPorId` int,
 	`concluidoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -864,7 +864,7 @@ CREATE TABLE `credit_partner_returns` (
 	`valorContratado` decimal(15,2),
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -892,7 +892,7 @@ CREATE TABLE `credit_perdcomps` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -912,7 +912,7 @@ CREATE TABLE `credit_sla_configs` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_task_teses` (
@@ -926,7 +926,7 @@ CREATE TABLE `credit_task_teses` (
 	`valorApurado` decimal(15,2),
 	`valorValidado` decimal(15,2),
 	`status` enum('selecionada','em_apuracao','apurada','validada','descartada') NOT NULL DEFAULT 'selecionada',
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_tasks` (
@@ -951,7 +951,7 @@ CREATE TABLE `credit_tasks` (
 	`observacoes` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -963,7 +963,7 @@ CREATE TABLE `credit_ticket_messages` (
 	`autorId` int,
 	`autorNome` varchar(255),
 	`interno` tinyint NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `credit_tickets` (
@@ -985,7 +985,7 @@ CREATE TABLE `credit_tickets` (
 	`anexos` json,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1009,7 +1009,7 @@ CREATE TABLE `day_off` (
 	`aprovadorDiretoriaStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente',
 	`aprovadorDiretoriaEm` timestamp,
 	`observacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1039,7 +1039,7 @@ CREATE TABLE `demand_requests` (
 	`slaTriagemVenceEm` timestamp,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1062,7 +1062,7 @@ CREATE TABLE `doacao_sangue` (
 	`aprovadorDiretoriaStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente',
 	`aprovadorDiretoriaEm` timestamp,
 	`observacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1078,7 +1078,7 @@ CREATE TABLE `due_schedule_policies` (
 	`antecedenciaCriacaoTarefaDias` int DEFAULT 10,
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1088,7 +1088,7 @@ CREATE TABLE `email_aniversariante_config` (
 	`mensagem` text NOT NULL,
 	`assinatura` varchar(500) NOT NULL DEFAULT 'Equipe Evox',
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1096,7 +1096,7 @@ CREATE TABLE `email_aniversariante_log` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`colaboradorId` int NOT NULL,
 	`ano` int NOT NULL,
-	`enviadoEm` timestamp DEFAULT 'CURRENT_TIMESTAMP'
+	`enviadoEm` timestamp DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `emails_corporativos` (
@@ -1113,7 +1113,7 @@ CREATE TABLE `emails_corporativos` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1133,7 +1133,7 @@ CREATE TABLE `equipamentos_colaborador` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1145,7 +1145,7 @@ CREATE TABLE `executivos_comerciais` (
 	`cargo` varchar(255),
 	`userId` int,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1173,7 +1173,7 @@ CREATE TABLE `ferias` (
 	`observacao` text,
 	`aprovadoPorId` int,
 	`aprovadoEm` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`abonoConvertido` tinyint DEFAULT 0,
 	`aprovadorGestorId` int,
@@ -1202,7 +1202,7 @@ CREATE TABLE `fila_apuracao` (
 	`dataInicioApuracao` timestamp,
 	`dataConclusao` timestamp,
 	`historico` json,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1216,7 +1216,7 @@ CREATE TABLE `historico_status_colaborador` (
 	`origemRegistroId` int,
 	`alteradoPorId` int,
 	`alteradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `metas_comissoes` (
@@ -1229,7 +1229,7 @@ CREATE TABLE `metas_comissoes` (
 	`valorMeta` decimal(12,2) NOT NULL,
 	`observacao` text,
 	`criadoPor` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1251,7 +1251,7 @@ CREATE TABLE `metas_individuais` (
 	`observacao` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1261,7 +1261,7 @@ CREATE TABLE `modelos_parceria` (
 	`descricao` text,
 	`ordem` int NOT NULL DEFAULT 0,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1283,7 +1283,7 @@ CREATE TABLE `niveis_cargo` (
 	`competencias` text,
 	`tempoMinimoMeses` int,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1295,7 +1295,7 @@ CREATE TABLE `notificacoes` (
 	`lida` tinyint NOT NULL DEFAULT 0,
 	`usuarioId` int,
 	`clienteId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`tarefaId` int
 );
 --> statement-breakpoint
@@ -1366,7 +1366,7 @@ CREATE TABLE `onboarding_colaborador` (
 	`observacao` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1384,7 +1384,7 @@ CREATE TABLE `onboarding_etapas` (
 	`concluidoPorId` int,
 	`concluidoPorNome` varchar(255),
 	`observacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1397,7 +1397,7 @@ CREATE TABLE `onboarding_etapas_template` (
 	`ordem` int NOT NULL DEFAULT 0,
 	`obrigatoria` tinyint NOT NULL DEFAULT 1,
 	`prazoEmDias` int DEFAULT 7,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `onboarding_templates` (
@@ -1407,7 +1407,7 @@ CREATE TABLE `onboarding_templates` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1421,7 +1421,7 @@ CREATE TABLE `parceiro_servicos` (
 	`statusAprovacao` enum('aprovado','pendente','rejeitado') DEFAULT 'aprovado',
 	`observacao` text,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1461,7 +1461,7 @@ CREATE TABLE `parceiros` (
 	`chavePix` varchar(255),
 	`tipoChavePix` enum('cpf','cnpj','email','telefone','aleatoria'),
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`modeloParceriaId` int,
 	`parceiroPaiId` int,
@@ -1480,7 +1480,7 @@ CREATE TABLE `perguntas_clima` (
 	`ordem` int NOT NULL DEFAULT 0,
 	`obrigatoria` tinyint NOT NULL DEFAULT 1,
 	`categoria` varchar(100),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `pesquisas_clima` (
@@ -1494,7 +1494,7 @@ CREATE TABLE `pesquisas_clima` (
 	`totalRespostas` int DEFAULT 0,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1564,7 +1564,7 @@ CREATE TABLE `planos_carreira` (
 	`observacao` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1581,7 +1581,7 @@ CREATE TABLE `portfolio_migration_requests` (
 	`aprovadoEm` timestamp,
 	`observacaoAprovador` text,
 	`criadoPorId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1595,7 +1595,7 @@ CREATE TABLE `programas_carreira` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1607,7 +1607,7 @@ CREATE TABLE `rateio_comissao` (
 	`percentualParceiro` decimal(5,2) NOT NULL,
 	`percentualSubparceiro` decimal(5,2) NOT NULL,
 	`percentualMaximo` decimal(5,2) NOT NULL,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1626,7 +1626,7 @@ CREATE TABLE `reajustes_salariais` (
 	`observacao` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1641,7 +1641,7 @@ CREATE TABLE `relatorios` (
 	`recomendacaoGeral` text,
 	`redFlags` json,
 	`prioridade` enum('alta','media','baixa') NOT NULL DEFAULT 'media',
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `rescisao_auditoria` (
@@ -1656,7 +1656,7 @@ CREATE TABLE `rescisao_auditoria` (
 	`acao` enum('simulado','descartado','salvo') NOT NULL,
 	`simuladoPorId` int,
 	`simuladoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `rescisoes` (
@@ -1690,7 +1690,7 @@ CREATE TABLE `rescisoes` (
 	`observacao` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1702,7 +1702,7 @@ CREATE TABLE `respostas_clima` (
 	`valorEscala` int,
 	`valorTexto` text,
 	`valorOpcao` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `rti_alertas` (
@@ -1730,7 +1730,7 @@ CREATE TABLE `rti_oportunidades` (
 	`valorApurado` decimal(15,2) DEFAULT '0',
 	`detalhamento` json,
 	`ordem` int NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `rti_reports` (
@@ -1757,7 +1757,7 @@ CREATE TABLE `rti_reports` (
 	`devolutivaRecebidaEm` timestamp,
 	`devolutivaStatus` enum('pendente','recebida','expirada') DEFAULT 'pendente',
 	`devolutivaObservacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1772,7 +1772,7 @@ CREATE TABLE `rti_templates` (
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1785,7 +1785,7 @@ CREATE TABLE `senha_historico` (
 	`detalhes` text,
 	`realizadoPorId` int,
 	`realizadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `senhas_autorizacoes` (
@@ -1809,7 +1809,7 @@ CREATE TABLE `senhas_autorizacoes` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1823,7 +1823,7 @@ CREATE TABLE `servico_etapas` (
 	`slaHoras` int,
 	`obrigatoria` tinyint NOT NULL DEFAULT 1,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1836,7 +1836,7 @@ CREATE TABLE `servicos` (
 	`formaCobrancaHonorarios` enum('percentual_credito','valor_fixo','mensalidade','exito','hibrido','entrada_exito','valor_fixo_parcelado') NOT NULL DEFAULT 'percentual_credito',
 	`valorFixo` decimal(15,2),
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`setoresIds` json,
 	`responsaveisIds` json,
@@ -1856,7 +1856,7 @@ CREATE TABLE `setor_config` (
 	`sigla` varchar(10) NOT NULL,
 	`submenus` json,
 	`workflowStatuses` json,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1868,7 +1868,7 @@ CREATE TABLE `setores` (
 	`icone` varchar(50) DEFAULT 'Building2',
 	`setorPaiId` int,
 	`ativo` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1881,7 +1881,7 @@ CREATE TABLE `sla_configuracoes` (
 	`prioridade` enum('urgente','alta','media','baixa') DEFAULT 'media',
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`criadoPorId` int,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1901,7 +1901,7 @@ CREATE TABLE `solicitacoes_folga` (
 	`aprovadorChefeStatus` enum('pendente','aprovado','recusado') DEFAULT 'pendente',
 	`aprovadorChefeEm` timestamp,
 	`justificativaRecusa` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1920,7 +1920,7 @@ CREATE TABLE `success_events` (
 	`comissaoId` int,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `tarefa_comentarios` (
@@ -1930,7 +1930,7 @@ CREATE TABLE `tarefa_comentarios` (
 	`autorNome` varchar(255) NOT NULL,
 	`conteudo` text NOT NULL,
 	`mencoes` json,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1958,7 +1958,7 @@ CREATE TABLE `tarefas` (
 	`horasGastas` decimal(6,1) DEFAULT '0',
 	`progresso` int DEFAULT 0,
 	`ordem` int DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -1977,7 +1977,7 @@ CREATE TABLE `tarefas_setor` (
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
 	`observacao` text,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -2003,7 +2003,7 @@ CREATE TABLE `termos_responsabilidade` (
 	`motivoOutro` varchar(500),
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -2036,7 +2036,7 @@ CREATE TABLE `teses` (
 	`aplicavelSimplesNacional` tinyint NOT NULL DEFAULT 0,
 	`versao` int NOT NULL DEFAULT 1,
 	`ativa` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -2049,7 +2049,7 @@ CREATE TABLE `user_history` (
 	`valorNovo` text,
 	`realizadoPorId` int,
 	`realizadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `user_presence` (
@@ -2057,7 +2057,7 @@ CREATE TABLE `user_presence` (
 	`userId` int NOT NULL,
 	`userName` varchar(255) NOT NULL,
 	`userAvatar` varchar(500),
-	`lastSeen` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`lastSeen` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`status` enum('online','away','offline') NOT NULL DEFAULT 'online'
 );
 --> statement-breakpoint
@@ -2070,9 +2070,9 @@ CREATE TABLE `users` (
 	`cpf` varchar(14),
 	`loginMethod` varchar(64),
 	`role` enum('user','admin') NOT NULL DEFAULT 'user',
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-	`lastSignedIn` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`lastSignedIn` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`nivelAcesso` enum('diretor','gerente','coordenador','supervisor','analista_fiscal') NOT NULL DEFAULT 'analista_fiscal',
 	`ativo` tinyint NOT NULL DEFAULT 1,
 	`cargo` varchar(255),
@@ -2087,7 +2087,7 @@ CREATE TABLE `usuario_setores` (
 	`userId` int NOT NULL,
 	`setorId` int NOT NULL,
 	`papelNoSetor` enum('responsavel','membro','observador') NOT NULL DEFAULT 'membro',
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `vale_transporte` (
@@ -2105,7 +2105,7 @@ CREATE TABLE `vale_transporte` (
 	`observacao` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -2122,7 +2122,7 @@ CREATE TABLE `workflow_renovacao_contrato` (
 	`decisao` enum('renovar','desligar','converter_clt'),
 	`observacao` text,
 	`resolvidoEm` timestamp,
-	`createdAt` timestamp DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint

@@ -21,7 +21,7 @@ CREATE TABLE `credit_guias` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
@@ -47,7 +47,7 @@ CREATE TABLE `credit_retificacao_records` (
 	`observacoes` text,
 	`registradoPorId` int,
 	`registradoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint

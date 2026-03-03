@@ -10,7 +10,7 @@ CREATE TABLE `contrato_documentos` (
 	`observacoes` text,
 	`uploadPorId` int,
 	`uploadPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `contrato_historico` (
@@ -22,7 +22,7 @@ CREATE TABLE `contrato_historico` (
 	`dadosNovos` json,
 	`usuarioId` int,
 	`usuarioNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP'
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
 CREATE TABLE `contratos` (
@@ -62,7 +62,7 @@ CREATE TABLE `contratos` (
 	`observacoes` text,
 	`criadoPorId` int,
 	`criadoPorNome` varchar(255),
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP
 );
 --> statement-breakpoint
