@@ -196,19 +196,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-  cacheDir: path.resolve(import.meta.dirname, "node_modules/.vite"),
-  optimizeDeps: {
-    include: [
-      "react",
-      "react-dom",
-      "@trpc/client",
-      "@trpc/react-query",
-      "@tanstack/react-query",
-      "superjson",
-      "recharts",
-      "framer-motion",
-      "date-fns",
-    ],
-    exclude: ["@manus"],
-  },
 });

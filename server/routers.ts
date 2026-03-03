@@ -1,5 +1,4 @@
 import { COOKIE_NAME } from "@shared/const";
-import { InsertBancoHoras } from "../drizzle/schema";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -3481,7 +3480,7 @@ export const appRouter = router({
         (data as any).aprovadoPorId = ctx.user.id;
         (data as any).aprovadoPorNome = ctx.user.name || "Sistema";
       }
-      await db.updateBancoHoras(id, data as Partial<InsertBancoHoras>);
+      await db.updateBancoHoras(id, data);
       return { success: true };
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
