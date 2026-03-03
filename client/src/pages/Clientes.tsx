@@ -206,64 +206,80 @@ export default function Clientes() {
       {
         name: 'BrasilAPI',
         url: `https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`,
-        parse: (data: any) => ({
-          razaoSocial: data.razao_social || '',
-          nomeFantasia: data.nome_fantasia || '',
-          dataAbertura: data.data_inicio_atividade || '',
-          cnaePrincipal: data.cnae_fiscal?.toString() || '',
-          cnaePrincipalDescricao: data.cnae_fiscal_descricao || '',
-          naturezaJuridica: data.natureza_juridica || '',
-          logradouro: data.logradouro || '',
-          numero: data.numero || 'S/N',
-          bairro: data.bairro || '',
-          complemento: data.complemento || '',
-          cidade: data.municipio || '',
-          estado: data.uf || '',
-          situacaoCadastral: data.situacao_cadastral === 2 ? 'ativa' :
-            data.situacao_cadastral === 3 ? 'suspensa' :
-            data.situacao_cadastral === 4 ? 'inapta' :
-            data.situacao_cadastral === 8 ? 'baixada' : '',
-          motivoSituacao: data.motivo_situacao_cadastral || '',
-          dataSituacao: data.data_situacao_cadastral || '',
-          cnaesSecundarios: (data.cnaes_secundarios || []).map((c: any) => ({
-            codigo: c.codigo?.toString() || '', descricao: c.descricao || '',
-          })),
-          quadroSocietario: (data.qsa || []).map((s: any) => ({
-            nome: s.nome_socio || '', qualificacao: s.qualificacao_socio || '', faixaEtaria: s.faixa_etaria || '',
-          })),
-          atualizacao: data.data_situacao_cadastral || '',
-        }),
+        parse: (data: any) => {
+          // Extract PORTE from the API response
+          let porte = '';
+          if (data.codigo_porte === 1) porte = 'epp';
+          else if (data.codigo_porte === 3) porte = 'epp';
+          else if (data.codigo_porte === 2) porte = 'pme';
+          else if (data.codigo_porte === 5) porte = 'demais_portes';
+          
+          return {
+            razaoSocial: data.razao_social || '',
+            nomeFantasia: data.nome_fantasia || '',
+            dataAbertura: data.data_inicio_atividade || '',
+            cnaePrincipal: data.cnae_fiscal?.toString() || '',
+            cnaePrincipalDescricao: data.cnae_fiscal_descricao || '',
+            naturezaJuridica: data.natureza_juridica || '',
+            logradouro: data.logradouro || '',
+            numero: data.numero || 'S/N',
+            bairro: data.bairro || '',
+            complemento: data.complemento || '',
+            cidade: data.municipio || '',
+            estado: data.uf || '',
+            porte: porte,
+            capitalSocial: data.capital_social || 0,
+            situacaoCadastral: data.situacao_cadastral === 2 ? 'ativa' :
+              data.situacao_cadastral === 3 ? 'suspensa' :
+              data.situacao_cadastral === 4 ? 'inapta' :
+              data.situacao_cadastral === 8 ? 'baixada' : '',
+            motivoSituacao: data.motivo_situacao_cadastral || '',
+            dataSituacao: data.data_situacao_cadastral || '',
+            cnaesSecundarios: (data.cnaes_secundarios || []).map((c: any) => ({
+              codigo: c.codigo?.toString() || '', descricao: c.descricao || '',
+            })),
+            quadroSocietario: (data.qsa || []).map((s: any) => ({
+              nome: s.nome_socio || '', qualificacao: s.qualificacao_socio || '', faixaEtaria: s.faixa_etaria || '',
+            })),
+            atualizacao: data.data_situacao_cadastral || '',
+          };
+        },
       },
       {
         name: 'CNPJ.ws',
         url: `https://publica.cnpj.ws/cnpj/${cnpjLimpo}`,
-        parse: (data: any) => ({
-          razaoSocial: data.razao_social || '',
-          nomeFantasia: data.estabelecimento?.nome_fantasia || '',
-          dataAbertura: data.estabelecimento?.data_inicio_atividade || '',
-          cnaePrincipal: data.estabelecimento?.atividade_principal?.id?.toString() || '',
-          cnaePrincipalDescricao: data.estabelecimento?.atividade_principal?.descricao || '',
-          naturezaJuridica: data.natureza_juridica?.descricao || '',
-          logradouro: data.estabelecimento?.logradouro || '',
-          numero: data.estabelecimento?.numero || 'S/N',
-          bairro: data.estabelecimento?.bairro || '',
-          complemento: data.estabelecimento?.complemento || '',
-          cidade: data.estabelecimento?.cidade?.nome || '',
-          estado: data.estabelecimento?.estado?.sigla || '',
-          situacaoCadastral: data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'ativa' ? 'ativa' :
-            data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'baixada' ? 'baixada' :
-            data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'inapta' ? 'inapta' :
-            data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'suspensa' ? 'suspensa' : '',
-          motivoSituacao: '',
-          dataSituacao: data.estabelecimento?.data_situacao_cadastral || '',
-          cnaesSecundarios: (data.estabelecimento?.atividades_secundarias || []).map((c: any) => ({
-            codigo: c.id?.toString() || '', descricao: c.descricao || '',
-          })),
-          quadroSocietario: (data.socios || []).map((s: any) => ({
-            nome: s.nome || '', qualificacao: s.qualificacao?.descricao || '', faixaEtaria: s.faixa_etaria || '',
-          })),
-          atualizacao: data.atualizado_em || data.estabelecimento?.data_situacao_cadastral || '',
-        }),
+        parse: (data: any) => {
+          // Note: CNPJ.ws doesn't provide PORTE directly, so we leave it empty
+          return {
+            razaoSocial: data.razao_social || '',
+            nomeFantasia: data.estabelecimento?.nome_fantasia || '',
+            dataAbertura: data.estabelecimento?.data_inicio_atividade || '',
+            cnaePrincipal: data.estabelecimento?.atividade_principal?.id?.toString() || '',
+            cnaePrincipalDescricao: data.estabelecimento?.atividade_principal?.descricao || '',
+            naturezaJuridica: data.natureza_juridica?.descricao || '',
+            logradouro: data.estabelecimento?.logradouro || '',
+            numero: data.estabelecimento?.numero || 'S/N',
+            bairro: data.estabelecimento?.bairro || '',
+            complemento: data.estabelecimento?.complemento || '',
+            cidade: data.estabelecimento?.cidade?.nome || '',
+            estado: data.estabelecimento?.estado?.sigla || '',
+            porte: '',
+            capitalSocial: 0,
+            situacaoCadastral: data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'ativa' ? 'ativa' :
+              data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'baixada' ? 'baixada' :
+              data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'inapta' ? 'inapta' :
+              data.estabelecimento?.situacao_cadastral?.toLowerCase() === 'suspensa' ? 'suspensa' : '',
+            motivoSituacao: '',
+            dataSituacao: data.estabelecimento?.data_situacao_cadastral || '',
+            cnaesSecundarios: (data.estabelecimento?.atividades_secundarias || []).map((c: any) => ({
+              codigo: c.id?.toString() || '', descricao: c.descricao || '',
+            })),
+            quadroSocietario: (data.socios || []).map((s: any) => ({
+              nome: s.nome || '', qualificacao: s.qualificacao?.descricao || '', faixaEtaria: s.faixa_etaria || '',
+            })),
+            atualizacao: data.atualizado_em || data.estabelecimento?.data_situacao_cadastral || '',
+          };
+        }
       },
     ];
 
@@ -309,12 +325,14 @@ export default function Clientes() {
       complemento: bestResult.complemento || p.complemento,
       cidade: bestResult.cidade || p.cidade,
       estado: bestResult.estado || p.estado,
+      faturamentoMedioMensal: bestResult.capitalSocial > 0 ? bestResult.capitalSocial / 12 : p.faturamentoMedioMensal,
       // segmentoEconomico: mantém manual
       cnaesSecundarios: bestResult.cnaesSecundarios.length > 0 ? bestResult.cnaesSecundarios : p.cnaesSecundarios,
       quadroSocietario: bestResult.quadroSocietario.length > 0 ? bestResult.quadroSocietario : p.quadroSocietario,
       situacaoCadastral: bestResult.situacaoCadastral || p.situacaoCadastral,
     }));
-    // Note: PORTE is automatically calculated from faturamentoMedioMensal in the PorteDisplay component
+    // PORTE is auto-filled from the API response (bestResult.porte)
+    // The PorteDisplay component will show the value from faturamentoMedioMensal
 
     // Calcular se dados podem estar desatualizados
     const dataAtualizacao = bestDate ? new Date(bestDate) : null;
@@ -1026,20 +1044,23 @@ export default function Clientes() {
                   </div>
                   <div>
                     <Label className="text-xs">Situação Cadastral</Label>
-                    <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ativa">Ativa</SelectItem>
-                        <SelectItem value="baixada">Baixada</SelectItem>
-                        <SelectItem value="inapta">Inapta</SelectItem>
-                        <SelectItem value="suspensa">Suspensa</SelectItem>
-                        <SelectItem value="nula">Nula</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="h-9 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center text-foreground">
+                      {form.situacaoCadastral ? (
+                        <span className="capitalize">{form.situacaoCadastral}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Preenchido automaticamente ao consultar CNPJ</span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs">PORTE da Empresa</Label>
-                    <PorteDisplay faturamentoMedioMensal={form.faturamentoMedioMensal} showLabel={true} />
+                    <div className="h-9 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center text-foreground">
+                      {form.faturamentoMedioMensal ? (
+                        <PorteDisplay faturamentoMedioMensal={form.faturamentoMedioMensal} showLabel={false} />
+                      ) : (
+                        <span className="text-muted-foreground">Preenchido automaticamente ao consultar CNPJ</span>
+                      )}
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
