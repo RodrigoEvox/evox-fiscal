@@ -63,7 +63,7 @@ type QuadroSocio = { nome: string; qualificacao: string; faixaEtaria?: string };
 const EMPTY_FORM = {
   tipoPessoa: 'juridica' as 'juridica' | 'fisica',
   cnpj: '', cpf: '', razaoSocial: '', nomeFantasia: '', dataAbertura: '',
-  regimeTributario: '' as string, situacaoCadastral: 'ativa' as string,
+  regimeTributario: '' as string, situacaoCadastral: '' as string, porte: '' as string,
   classificacaoCliente: '' as '' | 'novo' | 'base',
   cnaePrincipal: '', cnaePrincipalDescricao: '', segmentoEconomico: '',
   naturezaJuridica: '', endereco: '', complemento: '', cidade: '', estado: 'SP',
@@ -81,7 +81,7 @@ const EMPTY_FORM = {
 // Check if form has been modified from defaults
 function isFormDirty(form: typeof EMPTY_FORM): boolean {
   if (form.cnpj || form.cpf || form.razaoSocial || form.nomeFantasia) return true;
-  if (form.regimeTributario || form.endereco || form.complemento || form.cidade) return true;
+  if (form.regimeTributario || form.porte || form.situacaoCadastral || form.endereco || form.complemento || form.cidade) return true;
   if (form.cnaePrincipal || form.segmentoEconomico || form.naturezaJuridica) return true;
   if (form.faturamentoMedioMensal !== '0' || form.valorMedioGuias !== '0' || form.folhaPagamentoMedia !== '0') return true;
   if (form.excecoesEspecificidades || form.procuracaoValidade || form.procuracaoCertificado) return true;
@@ -325,6 +325,7 @@ export default function Clientes() {
       complemento: bestResult.complemento || p.complemento,
       cidade: bestResult.cidade || p.cidade,
       estado: bestResult.estado || p.estado,
+      porte: bestResult.porte || p.porte,
       faturamentoMedioMensal: bestResult.capitalSocial > 0 ? bestResult.capitalSocial / 12 : p.faturamentoMedioMensal,
       // segmentoEconomico: mantém manual
       cnaesSecundarios: bestResult.cnaesSecundarios.length > 0 ? bestResult.cnaesSecundarios : p.cnaesSecundarios,
@@ -939,7 +940,7 @@ export default function Clientes() {
 
       {/* ==================== FORMULÁRIO ÚNICO COM ROLAGEM ==================== */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) tryCloseForm(); }}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex flex-col" onPointerDownOutside={(e) => { e.preventDefault(); tryCloseForm(); }} onEscapeKeyDown={(e) => { e.preventDefault(); tryCloseForm(); }}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col" onPointerDownOutside={(e) => { e.preventDefault(); tryCloseForm(); }} onEscapeKeyDown={(e) => { e.preventDefault(); tryCloseForm(); }}>
           <DialogHeader className="shrink-0 pb-2 border-b">
             <DialogTitle className="text-lg">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
             <p className="text-xs text-muted-foreground">Preencha todos os dados abaixo. Campos com * são obrigatórios.</p>
@@ -1032,6 +1033,30 @@ export default function Clientes() {
                     <Input value={form.naturezaJuridica} onChange={e => setForm({ ...form, naturezaJuridica: e.target.value })} className="h-9 text-sm" />
                   </div>
                   <div>
+                    <Label className="text-xs">Situação Cadastral</Label>
+                    <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Preenchido automaticamente ao consultar CNPJ" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativa">Ativa</SelectItem>
+                        <SelectItem value="baixada">Baixada</SelectItem>
+                        <SelectItem value="suspensa">Suspensa</SelectItem>
+                        <SelectItem value="inapta">Inapta</SelectItem>
+                        <SelectItem value="nula">Nula</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">PORTE da Empresa</Label>
+                    <Select value={form.porte} onValueChange={v => setForm({ ...form, porte: v })}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Preenchido automaticamente ao consultar CNPJ" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="epp">EPP (Empresa de Pequeno Porte)</SelectItem>
+                        <SelectItem value="pme">PME (Pequena e Média Empresa)</SelectItem>
+                        <SelectItem value="demais_portes">Demais Portes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
                     <Label className="text-xs">Regime Tributário *</Label>
                     <Select value={form.regimeTributario} onValueChange={v => setForm({ ...form, regimeTributario: v })}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -1041,26 +1066,6 @@ export default function Clientes() {
                         <SelectItem value="lucro_real">Lucro Real</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Situação Cadastral</Label>
-                    <div className="h-9 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center text-foreground">
-                      {form.situacaoCadastral ? (
-                        <span className="capitalize">{form.situacaoCadastral}</span>
-                      ) : (
-                        <span className="text-muted-foreground">Preenchido automaticamente ao consultar CNPJ</span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs">PORTE da Empresa</Label>
-                    <div className="h-9 px-3 py-2 rounded-md border border-input bg-background text-sm flex items-center text-foreground">
-                      {form.faturamentoMedioMensal ? (
-                        <PorteDisplay faturamentoMedioMensal={form.faturamentoMedioMensal} showLabel={false} />
-                      ) : (
-                        <span className="text-muted-foreground">Preenchido automaticamente ao consultar CNPJ</span>
-                      )}
-                    </div>
                   </div>
                   <div className="col-span-2">
                     <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
@@ -1101,33 +1106,6 @@ export default function Clientes() {
                   <div>
                     <Label className="text-xs">Nome Completo *</Label>
                     <Input value={form.razaoSocial} onChange={e => setForm({ ...form, razaoSocial: e.target.value })} className="h-9 text-sm" placeholder="Nome completo" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Regime Tributário *</Label>
-                    <Select value={form.regimeTributario} onValueChange={v => setForm({ ...form, regimeTributario: v })}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
-                        <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
-                        <SelectItem value="lucro_real">Lucro Real</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Situação Cadastral</Label>
-                    <Select value={form.situacaoCadastral} onValueChange={v => setForm({ ...form, situacaoCadastral: v })}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ativa">Ativa</SelectItem>
-                        <SelectItem value="baixada">Baixada</SelectItem>
-                        <SelectItem value="inapta">Inapta</SelectItem>
-                        <SelectItem value="suspensa">Suspensa</SelectItem>
-                        <SelectItem value="nula">Nula</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <CadastralStatusAlert situacao={form.situacaoCadastral as any} showAlert={true} />
                   </div>
                 </div>
               )}
