@@ -14,6 +14,7 @@ export function useAuth(options?: UseAuthOptions) {
   const utils = trpc.useUtils();
   const [isPublicMode, setIsPublicMode] = useState(false);
   const [publicModeChecked, setPublicModeChecked] = useState(false);
+  const [publicAccessInitialized, setPublicAccessInitialized] = useState(false);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
@@ -25,6 +26,26 @@ export function useAuth(options?: UseAuthOptions) {
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  // Initialize public access when in public mode
+  useEffect(() => {
+    if (!isPublicMode || publicAccessInitialized) return;
+
+    const initPublicAccess = async () => {
+      try {
+        const response = await fetch("/api/public-access");
+        if (response.ok) {
+          setPublicAccessInitialized(true);
+          // Refetch auth to get the anonymous user
+          meQuery.refetch();
+        }
+      } catch (error) {
+        console.error("[Public Access] Failed to initialize:", error);
+      }
+    };
+
+    initPublicAccess();
+  }, [isPublicMode, publicAccessInitialized, meQuery]);
 
   useEffect(() => {
     if (publicModeQuery.data) {
@@ -63,7 +84,7 @@ export function useAuth(options?: UseAuthOptions) {
     );
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending || !publicModeChecked,
+      loading: meQuery.isLoading || logoutMutation.isPending || !publicModeChecked || (isPublicMode && !publicAccessInitialized),
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };
@@ -74,6 +95,8 @@ export function useAuth(options?: UseAuthOptions) {
     logoutMutation.error,
     logoutMutation.isPending,
     publicModeChecked,
+    isPublicMode,
+    publicAccessInitialized,
   ]);
 
   useEffect(() => {
@@ -81,6 +104,7 @@ export function useAuth(options?: UseAuthOptions) {
     if (meQuery.isLoading || logoutMutation.isPending) return;
     if (!publicModeChecked) return; // Wait for public mode check
     if (state.user) return;
+    if (isPublicMode && !publicAccessInitialized) return; // Wait for public access init
     if (isPublicMode) return; // Don't redirect in public mode
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
@@ -94,6 +118,7 @@ export function useAuth(options?: UseAuthOptions) {
     state.user,
     isPublicMode,
     publicModeChecked,
+    publicAccessInitialized,
   ]);
 
   return {

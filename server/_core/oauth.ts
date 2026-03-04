@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -10,6 +11,29 @@ function getQueryParam(req: Request, key: string): string | undefined {
 }
 
 export function registerOAuthRoutes(app: Express) {
+  // Public mode bypass: create anonymous session without OAuth
+  app.get("/api/public-access", async (req: Request, res: Response) => {
+    if (!ENV.publicMode) {
+      res.status(403).json({ error: "Public mode is not enabled" });
+      return;
+    }
+
+    try {
+      // Create a session token for anonymous user
+      const sessionToken = await sdk.createSessionToken("anonymous-public", {
+        name: "Visitante",
+        expiresInMs: ONE_YEAR_MS,
+      });
+
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Public Access] Failed to create session", error);
+      res.status(500).json({ error: "Failed to create public session" });
+    }
+  });
+
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
