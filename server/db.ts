@@ -267,7 +267,22 @@ export async function deleteParceiro(id: number) {
 export async function listClientes() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(clientes).orderBy(desc(clientes.createdAt));
+  return db.select({
+    id: clientes.id,
+    codigo: clientes.codigo,
+    cnpj: clientes.cnpj,
+    razaoSocial: clientes.razaoSocial,
+    nomeFantasia: clientes.nomeFantasia,
+    dataAbertura: clientes.dataAbertura,
+    regimeTributario: clientes.regimeTributario,
+    situacaoCadastral: clientes.situacaoCadastral,
+    classificacaoCliente: clientes.classificacaoCliente,
+    segmentoEconomico: clientes.segmentoEconomico,
+    prioridade: clientes.prioridade,
+    ativo: clientes.ativo,
+    createdAt: clientes.createdAt,
+    updatedAt: clientes.updatedAt,
+  }).from(clientes).orderBy(desc(clientes.createdAt));
 }
 
 export async function getClienteById(id: number) {
