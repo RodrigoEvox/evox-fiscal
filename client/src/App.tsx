@@ -13,18 +13,16 @@ import { lazy, Suspense } from "react";
 const AppSidebar = lazy(() => import("./components/AppSidebar"));
 const GlobalSearch = lazy(() => import("./components/GlobalSearch"));
 
-// Lazy-loaded pages (previously static imports causing 2.3MB bundle)
+// Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const ClienteDetalhe = lazy(() => import("./pages/ClienteDetalhe"));
 const Teses = lazy(() => import("./pages/Teses"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Parceiros = lazy(() => import("./pages/Parceiros"));
-const FilaApuracao = lazy(() => import("./pages/FilaApuracao"));
 const Analitica = lazy(() => import("./pages/Analitica"));
 const Usuarios = lazy(() => import("./pages/Usuarios"));
 const Importacao = lazy(() => import("./pages/Importacao"));
-
 const Tarefas = lazy(() => import("./pages/Tarefas"));
 const TarefaDetalhe = lazy(() => import("./pages/TarefaDetalhe"));
 const Setores = lazy(() => import("./pages/Setores"));
@@ -42,6 +40,9 @@ const ExecutivosComerciais = lazy(() => import("./pages/ExecutivosComerciais"));
 const AprovacoesComissao = lazy(() => import("./pages/AprovacoesComissao"));
 const RelatorioComissoes = lazy(() => import("./pages/RelatorioComissoes"));
 const ChatInterno = lazy(() => import("./pages/ChatInterno"));
+const DashboardComissoes = lazy(() => import("./pages/DashboardComissoes"));
+
+// RH pages
 const NovaTarefaGEG = lazy(() => import("./pages/rh/NovaTarefaGEG"));
 const ColaboradoresGEG = lazy(() => import("./pages/rh/ColaboradoresGEG"));
 const FeriasGEG = lazy(() => import("./pages/rh/FeriasGEG"));
@@ -68,7 +69,6 @@ const DoacaoSangueGEG = lazy(() => import("./pages/rh/DoacaoSangueGEG"));
 const ReajustesGEG = lazy(() => import("./pages/rh/ReajustesGEG"));
 const ApontamentosFolhaGEG = lazy(() => import("./pages/rh/ApontamentosFolhaGEG"));
 const NiveisCargoGEG = lazy(() => import("./pages/rh/NiveisCargoGEG"));
-const DashboardComissoes = lazy(() => import("./pages/DashboardComissoes"));
 const GestaoRhHub = lazy(() => import("./pages/rh/GestaoRhHub"));
 const AcoesEvoxHub = lazy(() => import("./pages/rh/AcoesEvoxHub"));
 const BeneficiosHub = lazy(() => import("./pages/rh/BeneficiosHub"));
@@ -77,8 +77,50 @@ const AdministracaoHub = lazy(() => import("./pages/rh/AdministracaoHub"));
 const BibliotecaEvox = lazy(() => import("./pages/rh/BibliotecaEvox"));
 const RescisaoPage = lazy(() => import("./pages/rh/RescisaoPage"));
 const ProjecaoFinanceiraGEG = lazy(() => import("./pages/rh/ProjecaoFinanceiraGEG"));
+
+// Crédito pages
+const CreditoDashboard = lazy(() => import("./pages/credito/CreditoDashboard"));
+const CreditoFilaApuracao = lazy(() => import("./pages/credito/CreditoFilaApuracao"));
+const CreditoFilaCompensacao = lazy(() => import("./pages/credito/CreditoFilaCompensacao"));
+const CreditoFilaOnboarding = lazy(() => import("./pages/credito/CreditoFilaOnboarding"));
+const CreditoFilaRessarcimento = lazy(() => import("./pages/credito/CreditoFilaRessarcimento"));
+const CreditoFilaRestituicao = lazy(() => import("./pages/credito/CreditoFilaRestituicao"));
+const CreditoFilaRetificacao = lazy(() => import("./pages/credito/CreditoFilaRetificacao"));
+const CreditoFluxoGeral = lazy(() => import("./pages/credito/CreditoFluxoGeral"));
+const CreditoGestaoCreditos = lazy(() => import("./pages/credito/CreditoGestaoCreditos"));
+const CreditoNovaTarefa = lazy(() => import("./pages/credito/CreditoNovaTarefa"));
+const CreditoRelatorios = lazy(() => import("./pages/credito/CreditoRelatorios"));
+const CreditoSlaDashboard = lazy(() => import("./pages/credito/CreditoSlaDashboard"));
+
+// Contratos pages
+const ContratosDashboard = lazy(() => import("./pages/contratos/ContratosDashboard"));
+const ContratoDetalhe = lazy(() => import("./pages/contratos/ContratoDetalhe"));
+const ContratosFilaAssinatura = lazy(() => import("./pages/contratos/ContratosFilaAssinatura"));
+const ContratosFilaElaboracao = lazy(() => import("./pages/contratos/ContratosFilaElaboracao"));
+const ContratosFilaEncerrado = lazy(() => import("./pages/contratos/ContratosFilaEncerrado"));
+const ContratosFilaRenovacao = lazy(() => import("./pages/contratos/ContratosFilaRenovacao"));
+const ContratosFilaRevisao = lazy(() => import("./pages/contratos/ContratosFilaRevisao"));
+const ContratosFilaVigencia = lazy(() => import("./pages/contratos/ContratosFilaVigencia"));
+const NovoContrato = lazy(() => import("./pages/contratos/NovoContrato"));
+
+// Suporte pages
 const ConflitoCarteira = lazy(() => import("./pages/suporte/ConflitoCarteira"));
 const InboxDemandas = lazy(() => import("./pages/suporte/InboxDemandas"));
+
+// Parceiro pages
+const AppParceiro = lazy(() => import("./pages/parceiro/AppParceiro"));
+
+// Biblioteca pages
+const BibliotecaAcervo = lazy(() => import("./pages/rh/biblioteca/BibliotecaAcervo"));
+const BibliotecaAuditoria = lazy(() => import("./pages/rh/biblioteca/BibliotecaAuditoria"));
+const BibliotecaDashboard = lazy(() => import("./pages/rh/biblioteca/BibliotecaDashboard"));
+const BibliotecaDevolucoes = lazy(() => import("./pages/rh/biblioteca/BibliotecaDevolucoes"));
+const BibliotecaEmprestimos = lazy(() => import("./pages/rh/biblioteca/BibliotecaEmprestimos"));
+const BibliotecaExemplares = lazy(() => import("./pages/rh/biblioteca/BibliotecaExemplares"));
+const BibliotecaFornecedores = lazy(() => import("./pages/rh/biblioteca/BibliotecaFornecedores"));
+const BibliotecaPoliticas = lazy(() => import("./pages/rh/biblioteca/BibliotecaPoliticas"));
+const BibliotecaRelatorios = lazy(() => import("./pages/rh/biblioteca/BibliotecaRelatorios"));
+const BibliotecaReservas = lazy(() => import("./pages/rh/biblioteca/BibliotecaReservas"));
 
 export default function App() {
   return (
@@ -112,13 +154,13 @@ function AppLayout() {
           <GlobalSearch />
           <main className="flex-1 overflow-auto">
             <Switch>
+              {/* Main routes */}
               <Route path="/" component={Dashboard} />
               <Route path="/clientes" component={Clientes} />
               <Route path="/clientes/:id" component={ClienteDetalhe} />
               <Route path="/teses" component={Teses} />
               <Route path="/relatorios" component={Relatorios} />
               <Route path="/parceiros" component={Parceiros} />
-              <Route path="/fila-apuracao" component={FilaApuracao} />
               <Route path="/analitica" component={Analitica} />
               <Route path="/usuarios" component={Usuarios} />
               <Route path="/importacao" component={Importacao} />
@@ -139,6 +181,9 @@ function AppLayout() {
               <Route path="/aprovacoes-comissao" component={AprovacoesComissao} />
               <Route path="/relatorio-comissoes" component={RelatorioComissoes} />
               <Route path="/chat-interno" component={ChatInterno} />
+              <Route path="/dashboard-comissoes" component={DashboardComissoes} />
+
+              {/* RH routes */}
               <Route path="/rh/nova-tarefa" component={NovaTarefaGEG} />
               <Route path="/rh/colaboradores" component={ColaboradoresGEG} />
               <Route path="/rh/ferias" component={FeriasGEG} />
@@ -165,7 +210,6 @@ function AppLayout() {
               <Route path="/rh/reajustes" component={ReajustesGEG} />
               <Route path="/rh/apontamentos-folha" component={ApontamentosFolhaGEG} />
               <Route path="/rh/niveis-cargo" component={NiveisCargoGEG} />
-              <Route path="/dashboard-comissoes" component={DashboardComissoes} />
               <Route path="/rh/gestao-hub" component={GestaoRhHub} />
               <Route path="/rh/acoes-hub" component={AcoesEvoxHub} />
               <Route path="/rh/beneficios-hub" component={BeneficiosHub} />
@@ -174,8 +218,52 @@ function AppLayout() {
               <Route path="/rh/biblioteca" component={BibliotecaEvox} />
               <Route path="/rh/rescisao" component={RescisaoPage} />
               <Route path="/rh/projecao-financeira" component={ProjecaoFinanceiraGEG} />
+
+              {/* Biblioteca routes */}
+              <Route path="/rh/biblioteca/acervo" component={BibliotecaAcervo} />
+              <Route path="/rh/biblioteca/auditoria" component={BibliotecaAuditoria} />
+              <Route path="/rh/biblioteca/dashboard" component={BibliotecaDashboard} />
+              <Route path="/rh/biblioteca/devolucoes" component={BibliotecaDevolucoes} />
+              <Route path="/rh/biblioteca/emprestimos" component={BibliotecaEmprestimos} />
+              <Route path="/rh/biblioteca/exemplares" component={BibliotecaExemplares} />
+              <Route path="/rh/biblioteca/fornecedores" component={BibliotecaFornecedores} />
+              <Route path="/rh/biblioteca/politicas" component={BibliotecaPoliticas} />
+              <Route path="/rh/biblioteca/relatorios" component={BibliotecaRelatorios} />
+              <Route path="/rh/biblioteca/reservas" component={BibliotecaReservas} />
+
+              {/* Crédito routes */}
+              <Route path="/credito/dashboard" component={CreditoDashboard} />
+              <Route path="/credito/fila-apuracao" component={CreditoFilaApuracao} />
+              <Route path="/credito/fila-compensacao" component={CreditoFilaCompensacao} />
+              <Route path="/credito/fila-onboarding" component={CreditoFilaOnboarding} />
+              <Route path="/credito/fila-ressarcimento" component={CreditoFilaRessarcimento} />
+              <Route path="/credito/fila-restituicao" component={CreditoFilaRestituicao} />
+              <Route path="/credito/fila-retificacao" component={CreditoFilaRetificacao} />
+              <Route path="/credito/fluxo-geral" component={CreditoFluxoGeral} />
+              <Route path="/credito/gestao-creditos" component={CreditoGestaoCreditos} />
+              <Route path="/credito/nova-tarefa" component={CreditoNovaTarefa} />
+              <Route path="/credito/relatorios" component={CreditoRelatorios} />
+              <Route path="/credito/sla-dashboard" component={CreditoSlaDashboard} />
+
+              {/* Contratos routes */}
+              <Route path="/contratos/dashboard" component={ContratosDashboard} />
+              <Route path="/contratos/:id" component={ContratoDetalhe} />
+              <Route path="/contratos/fila-assinatura" component={ContratosFilaAssinatura} />
+              <Route path="/contratos/fila-elaboracao" component={ContratosFilaElaboracao} />
+              <Route path="/contratos/fila-encerrado" component={ContratosFilaEncerrado} />
+              <Route path="/contratos/fila-renovacao" component={ContratosFilaRenovacao} />
+              <Route path="/contratos/fila-revisao" component={ContratosFilaRevisao} />
+              <Route path="/contratos/fila-vigencia" component={ContratosFilaVigencia} />
+              <Route path="/contratos/novo" component={NovoContrato} />
+
+              {/* Suporte routes */}
               <Route path="/suporte/conflito-carteira" component={ConflitoCarteira} />
               <Route path="/suporte/inbox" component={InboxDemandas} />
+
+              {/* Parceiro routes */}
+              <Route path="/parceiro/app" component={AppParceiro} />
+
+              {/* 404 */}
               <Route component={NotFound} />
             </Switch>
           </main>
