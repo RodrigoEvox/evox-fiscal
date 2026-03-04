@@ -4,7 +4,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl, isPublicMode } from "@/const";
+import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense } from "react";
@@ -186,8 +186,7 @@ function AppLayout() {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { loading, user } = useAuth();
-  const publicMode = isPublicMode();
+  const { loading, user, isPublicMode } = useAuth();
 
   if (loading) {
     return (
@@ -201,7 +200,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   // In public mode, allow access without authentication
-  if (publicMode) {
+  if (isPublicMode) {
     return <>{children}</>;
   }
 

@@ -1,8 +1,12 @@
-import { z } from "zod";
+import z from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 
 export const systemRouter = router({
+  getPublicModeStatus: publicProcedure.query(({ ctx }) => ({
+    isPublicMode: ctx.isPublicMode,
+  })),
+
   health: publicProcedure
     .input(
       z.object({
