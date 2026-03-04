@@ -43,3 +43,19 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+// Read-only procedure: blocks mutations in public mode
+const readOnlyCheck = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (ctx.isPublicMode) {
+    throw new TRPCError({ 
+      code: "FORBIDDEN", 
+      message: "Esta operacao nao e permitida em modo publico (leitura apenas)" 
+    });
+  }
+
+  return next({ ctx });
+});
+
+export const readOnlyProcedure = t.procedure.use(readOnlyCheck);
