@@ -110,6 +110,14 @@ const InboxDemandas = lazy(() => import("./pages/suporte/InboxDemandas"));
 // Parceiro pages
 const AppParceiro = lazy(() => import("./pages/parceiro/AppParceiro"));
 
+// Financeiro pages
+const FinanceiroDashboard = lazy(() => import("./pages/FinanceiroDashboard"));
+const FornecedoresFinanceiro = lazy(() => import("./pages/FornecedoresFinanceiro"));
+const CentrosCustoFinanceiro = lazy(() => import("./pages/CentrosCustoFinanceiro"));
+const CategoriasFinanceiro = lazy(() => import("./pages/CategoriasFinanceiro"));
+const ContasPagarFinanceiro = lazy(() => import("./pages/ContasPagarFinanceiro"));
+const ContasReceberFinanceiro = lazy(() => import("./pages/ContasReceberFinanceiro"));
+
 // Biblioteca pages
 const BibliotecaAcervo = lazy(() => import("./pages/rh/biblioteca/BibliotecaAcervo"));
 const BibliotecaAuditoria = lazy(() => import("./pages/rh/biblioteca/BibliotecaAuditoria"));
@@ -262,6 +270,14 @@ function AppLayout() {
 
               {/* Parceiro routes */}
               <Route path="/parceiro/app" component={AppParceiro} />
+
+              {/* Financeiro routes */}
+              <Route path="/financeiro/dashboard" component={FinanceiroDashboard} />
+              <Route path="/financeiro/fornecedores" component={FornecedoresFinanceiro} />
+              <Route path="/financeiro/centros-custo" component={CentrosCustoFinanceiro} />
+              <Route path="/financeiro/categorias" component={CategoriasFinanceiro} />
+              <Route path="/financeiro/contas-pagar" component={ContasPagarFinanceiro} />
+              <Route path="/financeiro/contas-receber" component={ContasReceberFinanceiro} />
 
               {/* 404 */}
               <Route component={NotFound} />

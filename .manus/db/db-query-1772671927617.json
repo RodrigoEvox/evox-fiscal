@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE setor_config SET submenus = JSON_OBJECT(\n  'Dashboard', JSON_OBJECT('nome', 'Dashboard', 'rota', '/financeiro/dashboard', 'icone', 'BarChart3'),\n  'Fornecedores', JSON_OBJECT('nome', 'Fornecedores', 'rota', '/financeiro/fornecedores', 'icone', 'Building2'),\n  'Centros de Custo', JSON_OBJECT('nome', 'Centros de Custo', 'rota', '/financeiro/centros-custo', 'icone', 'Layers'),\n  'Categorias', JSON_OBJECT('nome', 'Categorias Financeiras', 'rota', '/financeiro/categorias', 'icone', 'Tag'),\n  'Contas a Pagar', JSON_OBJECT('nome', 'Contas a Pagar', 'rota', '/financeiro/contas-pagar', 'icone', 'ArrowDown'),\n  'Contas a Receber', JSON_OBJECT('nome', 'Contas a Receber', 'rota', '/financeiro/contas-receber', 'icone', 'ArrowUp')\n) WHERE sigla = 'FINANCEIRO'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute UPDATE setor_config SET submenus = JSON_OBJECT(\n  'Dashboard', JSON_OBJECT('nome', 'Dashboard', 'rota', '/financeiro/dashboard', 'icone', 'BarChart3'),\n  'Fornecedores', JSON_OBJECT('nome', 'Fornecedores', 'rota', '/financeiro/fornecedores', 'icone', 'Building2'),\n  'Centros de Custo', JSON_OBJECT('nome', 'Centros de Custo', 'rota', '/financeiro/centros-custo', 'icone', 'Layers'),\n  'Categorias', JSON_OBJECT('nome', 'Categorias Financeiras', 'rota', '/financeiro/categorias', 'icone', 'Tag'),\n  'Contas a Pagar', JSON_OBJECT('nome', 'Contas a Pagar', 'rota', '/financeiro/contas-pagar', 'icone', 'ArrowDown'),\n  'Contas a Receber', JSON_OBJECT('nome', 'Contas a Receber', 'rota', '/financeiro/contas-receber', 'icone', 'ArrowUp')\n) WHERE sigla = 'FINANCEIRO'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 82
+}

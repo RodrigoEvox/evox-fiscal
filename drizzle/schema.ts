@@ -2564,3 +2564,256 @@ export type SelectQueueExceptionRequest = typeof queueExceptionRequests.$inferSe
 
 export type InsertMetaComissao = typeof metasComissoes.$inferInsert;
 export type SelectMetaComissao = typeof metasComissoes.$inferSelect;
+
+
+// =============================================
+// ---- MÓDULO FINANCEIRO ----
+// =============================================
+
+// Fornecedores
+export const fornecedores = mysqlTable("fornecedores", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	cnpjCpf: varchar({ length: 20 }).notNull().unique(),
+	email: varchar({ length: 255 }),
+	telefone: varchar({ length: 20 }),
+	endereco: text(),
+	banco: varchar({ length: 100 }),
+	agencia: varchar({ length: 20 }),
+	conta: varchar({ length: 30 }),
+	ativo: tinyint().default(1).notNull(),
+	validado: tinyint().default(0).notNull(),
+	validadoPorId: int(),
+	dataValidacao: timestamp({ mode: 'string' }),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_forn_cnpj").on(table.cnpjCpf),
+	index("idx_forn_ativo").on(table.ativo),
+	index("idx_forn_validado").on(table.validado),
+]);
+export type InsertFornecedor = typeof fornecedores.$inferInsert;
+export type SelectFornecedor = typeof fornecedores.$inferSelect;
+
+// Centros de Custo
+export const centrosCusto = mysqlTable("centros_custo", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	descricao: text(),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_cc_ativo").on(table.ativo),
+]);
+export type InsertCentroCusto = typeof centrosCusto.$inferInsert;
+export type SelectCentroCusto = typeof centrosCusto.$inferSelect;
+
+// Categorias Financeiras
+export const categoriasFinanceiras = mysqlTable("categorias_financeiras", {
+	id: int().autoincrement().notNull(),
+	nome: varchar({ length: 255 }).notNull(),
+	tipo: mysqlEnum(['receita', 'despesa']).notNull(),
+	descricao: text(),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_catfin_tipo").on(table.tipo),
+	index("idx_catfin_ativo").on(table.ativo),
+]);
+export type InsertCategoriaFinanceira = typeof categoriasFinanceiras.$inferInsert;
+export type SelectCategoriaFinanceira = typeof categoriasFinanceiras.$inferSelect;
+
+// Contas Bancárias
+export const contasBancarias = mysqlTable("contas_bancarias", {
+	id: int().autoincrement().notNull(),
+	banco: varchar({ length: 100 }).notNull(),
+	agencia: varchar({ length: 20 }).notNull(),
+	conta: varchar({ length: 30 }).notNull(),
+	saldo: decimal({ precision: 15, scale: 2 }).default('0').notNull(),
+	saldoAnterior: decimal({ precision: 15, scale: 2 }).default('0').notNull(),
+	ativo: tinyint().default(1).notNull(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_cb_ativo").on(table.ativo),
+]);
+export type InsertContaBancaria = typeof contasBancarias.$inferInsert;
+export type SelectContaBancaria = typeof contasBancarias.$inferSelect;
+
+// Contas a Pagar
+export const contasAPagar = mysqlTable("contas_pagar", {
+	id: int().autoincrement().notNull(),
+	fornecedorId: int().notNull(),
+	descricao: varchar({ length: 500 }).notNull(),
+	valor: decimal({ precision: 15, scale: 2 }).notNull(),
+	dataVencimento: timestamp({ mode: 'string' }).notNull(),
+	dataPagamento: timestamp({ mode: 'string' }),
+	status: mysqlEnum(['pendente', 'aprovado', 'pago', 'cancelado', 'atrasado']).default('pendente').notNull(),
+	competencia: varchar({ length: 7 }).notNull(), // YYYY-MM
+	categoriaId: int(),
+	centroCustoId: int(),
+	observacoes: text(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_cap_fornecedor").on(table.fornecedorId),
+	index("idx_cap_status").on(table.status),
+	index("idx_cap_vencimento").on(table.dataVencimento),
+	index("idx_cap_competencia").on(table.competencia),
+]);
+export type InsertContaPagar = typeof contasAPagar.$inferInsert;
+export type SelectContaPagar = typeof contasAPagar.$inferSelect;
+
+// Contas a Receber
+export const contasAReceber = mysqlTable("contas_receber", {
+	id: int().autoincrement().notNull(),
+	clienteId: int().notNull(),
+	descricao: varchar({ length: 500 }).notNull(),
+	valor: decimal({ precision: 15, scale: 2 }).notNull(),
+	dataVencimento: timestamp({ mode: 'string' }).notNull(),
+	dataRecebimento: timestamp({ mode: 'string' }),
+	status: mysqlEnum(['emitido', 'vencido', 'recebido', 'cancelado', 'atrasado']).default('emitido').notNull(),
+	competencia: varchar({ length: 7 }).notNull(), // YYYY-MM
+	categoriaId: int(),
+	centroCustoId: int(),
+	observacoes: text(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_car_cliente").on(table.clienteId),
+	index("idx_car_status").on(table.status),
+	index("idx_car_vencimento").on(table.dataVencimento),
+	index("idx_car_competencia").on(table.competencia),
+]);
+export type InsertContaReceber = typeof contasAReceber.$inferInsert;
+export type SelectContaReceber = typeof contasAReceber.$inferSelect;
+
+// Limites de Usuário
+export const limitesUsuario = mysqlTable("limites_usuario", {
+	id: int().autoincrement().notNull(),
+	usuarioId: int().notNull(),
+	limiteAprovacao: decimal({ precision: 15, scale: 2 }).notNull(),
+	limiteTransferencia: decimal({ precision: 15, scale: 2 }).notNull(),
+	limiteCartao: decimal({ precision: 15, scale: 2 }).notNull(),
+	requerAutenticacaoDupla: tinyint().default(1).notNull(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_lu_usuario").on(table.usuarioId),
+]);
+export type InsertLimiteUsuario = typeof limitesUsuario.$inferInsert;
+export type SelectLimiteUsuario = typeof limitesUsuario.$inferSelect;
+
+// Aprovações em Cascata
+export const aprovacoesFinanceiras = mysqlTable("aprovacoes_financeiras", {
+	id: int().autoincrement().notNull(),
+	pagamentoId: int().notNull(),
+	usuarioAprovadorId: int().notNull(),
+	nivel: int().notNull(), // 1 = gerente, 2 = diretor, etc
+	status: mysqlEnum(['pendente', 'aprovado', 'rejeitado']).default('pendente').notNull(),
+	dataAprovacao: timestamp({ mode: 'string' }),
+	motivo: text(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_af_pagamento").on(table.pagamentoId),
+	index("idx_af_aprovador").on(table.usuarioAprovadorId),
+	index("idx_af_status").on(table.status),
+]);
+export type InsertAprovacaoFinanceira = typeof aprovacoesFinanceiras.$inferInsert;
+export type SelectAprovacaoFinanceira = typeof aprovacoesFinanceiras.$inferSelect;
+
+// Autenticação Dupla
+export const autenticacaoDupla = mysqlTable("autenticacao_dupla", {
+	id: int().autoincrement().notNull(),
+	usuarioId: int().notNull(),
+	pagamentoId: int().notNull(),
+	tipo: mysqlEnum(['sms', 'email', 'autenticador']).notNull(),
+	codigo: varchar({ length: 10 }).notNull(),
+	tentativas: int().default(0).notNull(),
+	dataExpiracao: timestamp({ mode: 'string' }).notNull(),
+	confirmado: tinyint().default(0).notNull(),
+	dataConfirmacao: timestamp({ mode: 'string' }),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_ad_usuario").on(table.usuarioId),
+	index("idx_ad_pagamento").on(table.pagamentoId),
+	index("idx_ad_confirmado").on(table.confirmado),
+]);
+export type InsertAutenticacaoDupla = typeof autenticacaoDupla.$inferInsert;
+export type SelectAutenticacaoDupla = typeof autenticacaoDupla.$inferSelect;
+
+// Histórico Imutável Financeiro
+export const historicoFinanceiro = mysqlTable("historico_financeiro", {
+	id: int().autoincrement().notNull(),
+	tabela: varchar({ length: 100 }).notNull(),
+	registroId: int().notNull(),
+	operacao: mysqlEnum(['insert', 'update', 'delete']).notNull(),
+	dadosAntigos: json(),
+	dadosNovos: json(),
+	usuarioId: int().notNull(),
+	ip: varchar({ length: 45 }),
+	dispositivo: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+}, (table) => [
+	index("idx_hf_tabela").on(table.tabela),
+	index("idx_hf_registro").on(table.registroId),
+	index("idx_hf_usuario").on(table.usuarioId),
+	index("idx_hf_operacao").on(table.operacao),
+]);
+export type InsertHistoricoFinanceiro = typeof historicoFinanceiro.$inferInsert;
+export type SelectHistoricoFinanceiro = typeof historicoFinanceiro.$inferSelect;
+
+// Reconciliação Bancária
+export const reconciliacaoBancaria = mysqlTable("reconciliacao_bancaria", {
+	id: int().autoincrement().notNull(),
+	contaBancariaId: int().notNull(),
+	dataExtrato: timestamp({ mode: 'string' }).notNull(),
+	saldoExtrato: decimal({ precision: 15, scale: 2 }).notNull(),
+	saldoSistema: decimal({ precision: 15, scale: 2 }).notNull(),
+	discrepancia: decimal({ precision: 15, scale: 2 }).notNull(),
+	resolvido: tinyint().default(0).notNull(),
+	dataResolucao: timestamp({ mode: 'string' }),
+	observacoes: text(),
+	criadoPorId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_rb_conta").on(table.contaBancariaId),
+	index("idx_rb_resolvido").on(table.resolvido),
+	index("idx_rb_data").on(table.dataExtrato),
+]);
+export type InsertReconciliacaoBancaria = typeof reconciliacaoBancaria.$inferInsert;
+export type SelectReconciliacaoBancaria = typeof reconciliacaoBancaria.$inferSelect;
+
+// Auditoria Financeira
+export const auditoriaFinanceira = mysqlTable("auditoria_financeira", {
+	id: int().autoincrement().notNull(),
+	usuarioId: int().notNull(),
+	operacao: varchar({ length: 255 }).notNull(),
+	tabela: varchar({ length: 100 }).notNull(),
+	registroId: int().notNull(),
+	ip: varchar({ length: 45 }),
+	dispositivo: varchar({ length: 255 }),
+	navegador: varchar({ length: 255 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+}, (table) => [
+	index("idx_af_usuario").on(table.usuarioId),
+	index("idx_af_operacao").on(table.operacao),
+	index("idx_af_tabela").on(table.tabela),
+	index("idx_af_data").on(table.createdAt),
+]);
+export type InsertAuditoriaFinanceira = typeof auditoriaFinanceira.$inferInsert;
+export type SelectAuditoriaFinanceira = typeof auditoriaFinanceira.$inferSelect;

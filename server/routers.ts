@@ -10,6 +10,7 @@ import crypto from "crypto";
 import { bibliotecaRouter } from "./routersBiblioteca";
 import { creditRecoveryRouter } from "./routersCredito";
 import { contratosRouter } from "./routersContratos";
+import { financeiroRouter } from "./routers/financeiro";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== 'admin') {
@@ -39,6 +40,7 @@ export const appRouter = router({
   biblioteca: bibliotecaRouter,
   creditRecovery: creditRecoveryRouter,
   contratos: contratosRouter,
+  financeiro: financeiroRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

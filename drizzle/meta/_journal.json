@@ -57,6 +57,13 @@
       "when": 1772561076208,
       "tag": "0007_outgoing_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1772671145279,
+      "tag": "0008_rare_vargas",
+      "breakpoints": true
     }
   ]
 }

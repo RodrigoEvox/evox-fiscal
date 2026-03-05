@@ -74,6 +74,12 @@ import {
   ocorrenciaTimeline,
   ocorrenciaAssinaturas,
   bibLivros,
+  contasAPagar, InsertContaPagar,
+  contasAReceber, InsertContaReceber,
+  fornecedores, InsertFornecedor,
+  centrosCusto, InsertCentroCusto,
+  categoriasFinanceiras, InsertCategoriaFinanceira,
+  auditoriaFinanceira, InsertAuditoriaFinanceira,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -5055,5 +5061,365 @@ export async function getSetorTaskStats(setorId: number, filters?: {
       prioridade: p.prioridade,
       count: Number(p.count),
     })),
+  };
+}
+
+
+// =============================================
+// ---- MÓDULO FINANCEIRO ----
+// =============================================
+
+// FORNECEDORES
+export async function listFornecedores() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(fornecedores).where(eq(fornecedores.ativo, 1)).orderBy(asc(fornecedores.nome));
+}
+
+export async function getFornecedorById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(fornecedores).where(eq(fornecedores.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createFornecedor(data: InsertFornecedor) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(fornecedores).values(data);
+  return result[0].insertId;
+}
+
+export async function updateFornecedor(id: number, data: Partial<InsertFornecedor>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(fornecedores).set(data).where(eq(fornecedores.id, id));
+}
+
+export async function deleteFornecedor(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(fornecedores).set({ ativo: 0 }).where(eq(fornecedores.id, id));
+}
+
+// CENTROS DE CUSTO
+export async function listCentrosCusto() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(centrosCusto).where(eq(centrosCusto.ativo, 1)).orderBy(asc(centrosCusto.nome));
+}
+
+export async function getCentroCustoById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(centrosCusto).where(eq(centrosCusto.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createCentroCusto(data: InsertCentroCusto) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(centrosCusto).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCentroCusto(id: number, data: Partial<InsertCentroCusto>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(centrosCusto).set(data).where(eq(centrosCusto.id, id));
+}
+
+export async function deleteCentroCusto(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(centrosCusto).set({ ativo: 0 }).where(eq(centrosCusto.id, id));
+}
+
+// CATEGORIAS FINANCEIRAS
+export async function listCategoriasFinanceiras(tipo?: 'receita' | 'despesa') {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(categoriasFinanceiras).where(eq(categoriasFinanceiras.ativo, 1));
+  if (tipo) {
+    query = db.select().from(categoriasFinanceiras).where(and(eq(categoriasFinanceiras.ativo, 1), eq(categoriasFinanceiras.tipo, tipo)));
+  }
+  return query.orderBy(asc(categoriasFinanceiras.nome));
+}
+
+export async function getCategoriaFinanceiraById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(categoriasFinanceiras).where(eq(categoriasFinanceiras.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createCategoriaFinanceira(data: InsertCategoriaFinanceira) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(categoriasFinanceiras).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCategoriaFinanceira(id: number, data: Partial<InsertCategoriaFinanceira>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(categoriasFinanceiras).set(data).where(eq(categoriasFinanceiras.id, id));
+}
+
+export async function deleteCategoriaFinanceira(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(categoriasFinanceiras).set({ ativo: 0 }).where(eq(categoriasFinanceiras.id, id));
+}
+
+// CONTAS BANCÁRIAS
+export async function listContasBancarias() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(contasBancarias).where(eq(contasBancarias.ativo, 1)).orderBy(asc(contasBancarias.banco));
+}
+
+export async function getContaBancariaById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(contasBancarias).where(eq(contasBancarias.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createContaBancaria(data: InsertContaBancaria) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(contasBancarias).values(data);
+  return result[0].insertId;
+}
+
+export async function updateContaBancaria(id: number, data: Partial<InsertContaBancaria>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(contasBancarias).set(data).where(eq(contasBancarias.id, id));
+}
+
+// CONTAS A PAGAR
+export async function listContasAPagar(filtros?: { status?: string; fornecedorId?: number; competencia?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(contasAPagar);
+  
+  if (filtros?.status) {
+    query = db.select().from(contasAPagar).where(eq(contasAPagar.status, filtros.status as any));
+  }
+  if (filtros?.fornecedorId) {
+    query = db.select().from(contasAPagar).where(eq(contasAPagar.fornecedorId, filtros.fornecedorId));
+  }
+  if (filtros?.competencia) {
+    query = db.select().from(contasAPagar).where(eq(contasAPagar.competencia, filtros.competencia));
+  }
+  
+  return query.orderBy(desc(contasAPagar.dataVencimento));
+}
+
+export async function getContaPagarById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(contasAPagar).where(eq(contasAPagar.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createContaPagar(data: InsertContaPagar) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(contasAPagar).values(data);
+  return result[0].insertId;
+}
+
+export async function updateContaPagar(id: number, data: Partial<InsertContaPagar>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(contasAPagar).set(data).where(eq(contasAPagar.id, id));
+}
+
+// CONTAS A RECEBER
+export async function listContasAReceber(filtros?: { status?: string; clienteId?: number; competencia?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(contasAReceber);
+  
+  if (filtros?.status) {
+    query = db.select().from(contasAReceber).where(eq(contasAReceber.status, filtros.status as any));
+  }
+  if (filtros?.clienteId) {
+    query = db.select().from(contasAReceber).where(eq(contasAReceber.clienteId, filtros.clienteId));
+  }
+  if (filtros?.competencia) {
+    query = db.select().from(contasAReceber).where(eq(contasAReceber.competencia, filtros.competencia));
+  }
+  
+  return query.orderBy(desc(contasAReceber.dataVencimento));
+}
+
+export async function getContaReceberById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(contasAReceber).where(eq(contasAReceber.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createContaReceber(data: InsertContaReceber) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(contasAReceber).values(data);
+  return result[0].insertId;
+}
+
+export async function updateContaReceber(id: number, data: Partial<InsertContaReceber>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(contasAReceber).set(data).where(eq(contasAReceber.id, id));
+}
+
+// LIMITES DE USUÁRIO
+export async function getLimiteUsuario(usuarioId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(limitesUsuario).where(eq(limitesUsuario.usuarioId, usuarioId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createLimiteUsuario(data: InsertLimiteUsuario) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(limitesUsuario).values(data);
+  return result[0].insertId;
+}
+
+export async function updateLimiteUsuario(usuarioId: number, data: Partial<InsertLimiteUsuario>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(limitesUsuario).set(data).where(eq(limitesUsuario.usuarioId, usuarioId));
+}
+
+// APROVAÇÕES FINANCEIRAS
+export async function createAprovacaoFinanceira(data: InsertAprovacaoFinanceira) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(aprovacoesFinanceiras).values(data);
+  return result[0].insertId;
+}
+
+export async function getAprovacoesPagamento(pagamentoId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(aprovacoesFinanceiras).where(eq(aprovacoesFinanceiras.pagamentoId, pagamentoId)).orderBy(asc(aprovacoesFinanceiras.nivel));
+}
+
+export async function updateAprovacaoFinanceira(id: number, data: Partial<InsertAprovacaoFinanceira>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(aprovacoesFinanceiras).set(data).where(eq(aprovacoesFinanceiras.id, id));
+}
+
+// AUTENTICAÇÃO DUPLA
+export async function createAutenticacaoDupla(data: InsertAutenticacaoDupla) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(autenticacaoDupla).values(data);
+  return result[0].insertId;
+}
+
+export async function getAutenticacaoDupla(usuarioId: number, pagamentoId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(autenticacaoDupla).where(and(eq(autenticacaoDupla.usuarioId, usuarioId), eq(autenticacaoDupla.pagamentoId, pagamentoId))).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateAutenticacaoDupla(id: number, data: Partial<InsertAutenticacaoDupla>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(autenticacaoDupla).set(data).where(eq(autenticacaoDupla.id, id));
+}
+
+// HISTÓRICO FINANCEIRO
+export async function createHistoricoFinanceiro(data: InsertHistoricoFinanceiro) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(historicoFinanceiro).values(data);
+  return result[0].insertId;
+}
+
+export async function getHistoricoFinanceiro(tabela: string, registroId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(historicoFinanceiro).where(and(eq(historicoFinanceiro.tabela, tabela), eq(historicoFinanceiro.registroId, registroId))).orderBy(desc(historicoFinanceiro.createdAt));
+}
+
+// RECONCILIAÇÃO BANCÁRIA
+export async function createReconciliacaoBancaria(data: InsertReconciliacaoBancaria) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(reconciliacaoBancaria).values(data);
+  return result[0].insertId;
+}
+
+export async function listReconciliacoesBancarias(contaBancariaId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(reconciliacaoBancaria);
+  if (contaBancariaId) {
+    query = db.select().from(reconciliacaoBancaria).where(eq(reconciliacaoBancaria.contaBancariaId, contaBancariaId));
+  }
+  return query.orderBy(desc(reconciliacaoBancaria.dataExtrato));
+}
+
+export async function updateReconciliacaoBancaria(id: number, data: Partial<InsertReconciliacaoBancaria>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(reconciliacaoBancaria).set(data).where(eq(reconciliacaoBancaria.id, id));
+}
+
+// AUDITORIA FINANCEIRA
+export async function createAuditoriaFinanceira(data: InsertAuditoriaFinanceira) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(auditoriaFinanceira).values(data);
+  return result[0].insertId;
+}
+
+export async function listAuditoriaFinanceira(filtros?: { usuarioId?: number; operacao?: string; tabela?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(auditoriaFinanceira);
+  
+  if (filtros?.usuarioId) {
+    query = db.select().from(auditoriaFinanceira).where(eq(auditoriaFinanceira.usuarioId, filtros.usuarioId));
+  }
+  if (filtros?.operacao) {
+    query = db.select().from(auditoriaFinanceira).where(eq(auditoriaFinanceira.operacao, filtros.operacao));
+  }
+  if (filtros?.tabela) {
+    query = db.select().from(auditoriaFinanceira).where(eq(auditoriaFinanceira.tabela, filtros.tabela));
+  }
+  
+  return query.orderBy(desc(auditoriaFinanceira.createdAt));
+}
+
+// DASHBOARD FINANCEIRO
+export async function getDashboardFinanceiro() {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const hoje = new Date().toISOString().split('T')[0];
+  const proximoMes = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0];
+  
+  const contasVencidas = await db.select({ count: sql<number>`COUNT(*)` }).from(contasAPagar).where(and(lt(contasAPagar.dataVencimento, hoje), eq(contasAPagar.status, 'pendente')));
+  const contasProximas = await db.select({ count: sql<number>`COUNT(*)` }).from(contasAPagar).where(and(gte(contasAPagar.dataVencimento, hoje), lte(contasAPagar.dataVencimento, proximoMes), eq(contasAPagar.status, 'pendente')));
+  const totalAPagar = await db.select({ total: sql<string>`SUM(valor)` }).from(contasAPagar).where(eq(contasAPagar.status, 'pendente'));
+  const totalAReceber = await db.select({ total: sql<string>`SUM(valor)` }).from(contasAReceber).where(eq(contasAReceber.status, 'emitido'));
+  
+  return {
+    contasVencidas: contasVencidas[0]?.count || 0,
+    contasProximas: contasProximas[0]?.count || 0,
+    totalAPagar: parseFloat(totalAPagar[0]?.total || '0'),
+    totalAReceber: parseFloat(totalAReceber[0]?.total || '0'),
   };
 }

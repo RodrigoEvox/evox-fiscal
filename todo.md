@@ -2575,3 +2575,91 @@
 - [ ] Destaque na visão do cliente para situações cadastrais críticas
 - [ ] Integração com API de CNPJ para extrair PORTE automaticamente
 - [ ] Testes vitest para validação de PORTE, histórico de regimes e alertas de situação cadastral
+
+
+## CRM v8 — Módulo Financeiro Robusto com Protocolos de Segurança
+
+### Schema do Banco de Dados
+- [ ] Tabela de contas a pagar (id, fornecedorId, descricao, valor, dataVencimento, dataPagamento, status, competencia, categoria, centroCusto, observacoes, criadoPorId, updatedAt)
+- [ ] Tabela de contas a receber (id, clienteId, descricao, valor, dataVencimento, dataRecebimento, status, competencia, categoria, centroCusto, observacoes, criadoPorId, updatedAt)
+- [ ] Tabela de fornecedores (id, nome, cnpj/cpf, email, telefone, endereco, banco, agencia, conta, ativo, validado, criadoPorId, updatedAt)
+- [ ] Tabela de centros de custo (id, nome, descricao, ativo, criadoPorId, updatedAt)
+- [ ] Tabela de categorias financeiras (id, nome, tipo, descricao, ativo, criadoPorId, updatedAt)
+- [ ] Tabela de contas bancárias (id, banco, agencia, conta, saldo, ativo, criadoPorId, updatedAt)
+- [ ] Tabela de limites de usuário (id, usuarioId, limiteAprovacao, limiteTransferencia, limiteCartao, criadoPorId, updatedAt)
+- [ ] Tabela de aprovações em cascata (id, pagamentoId, usuarioAprovadorId, status, dataAprovacao, motivo, criadoPorId, updatedAt)
+- [ ] Tabela de autenticação dupla (id, usuarioId, pagamentoId, tipo, codigo, tentativas, dataExpiracao, criadoPorId, updatedAt)
+- [ ] Tabela de histórico imutável financeiro (id, tabela, registroId, operacao, dadosAntigos, dadosNovos, usuarioId, ip, timestamp)
+- [ ] Tabela de reconciliação bancária (id, contaBancariaId, dataExtrato, saldoExtrato, saldoSistema, discrepancia, resolvido, criadoPorId, updatedAt)
+- [ ] Tabela de auditoria financeira (id, usuarioId, operacao, tabela, registroId, ip, dispositivo, timestamp)
+
+### Protocolos de Segurança
+- [ ] Autenticação dupla para pagamentos acima de R$ 5.000 (SMS/Email/Autenticador)
+- [ ] Limites por usuário (aprovação, transferência, cartão) configuráveis por admin
+- [ ] Aprovações em cascata (solicitante → gerente → diretor) com bloqueio de auto-aprovação
+- [ ] Validação de fornecedores antes de liberar para pagamento (status "validado")
+- [ ] Bloqueio de pagamentos duplicados (mesmo fornecedor, valor, data dentro de 24h)
+- [ ] Detecção de anomalias (pagamentos fora do padrão histórico)
+- [ ] Rastreamento de IP e dispositivo em todas as operações
+- [ ] Logs imutáveis de todas as ações financeiras
+
+### Dashboard Financeiro MVP
+- [x] Dashboard com indicadores principais (estrutura criada)
+- [ ] Visão de competência (receitas/despesas por mês)
+- [ ] Cards clicáveis para filtrar por status/prioridade
+- [ ] Gráficos de fluxo de caixa (30/60/90 dias)
+- [ ] Indicadores de saúde financeira (índice de liquidez, dias de caixa)
+- [ ] Alertas de contas vencidas e próximas de vencer
+
+### Gestão de Contas a Pagar
+- [ ] Listagem com filtros (fornecedor, status, data, categoria, centro de custo)
+- [ ] Criação manual de conta a pagar
+- [ ] Importação em massa via CSV/Excel
+- [ ] Workflow de aprovação (Pendente → Aprovado → Pago → Concluído)
+- [ ] Agendamento de pagamento
+- [ ] Integração com contas bancárias para efetuar pagamento
+- [ ] Histórico de pagamentos com comprovantes
+
+### Gestão de Contas a Receber
+- [ ] Listagem com filtros (cliente, status, data, categoria, centro de custo)
+- [ ] Criação manual de conta a receber
+- [ ] Importação em massa via CSV/Excel
+- [ ] Workflow de recebimento (Emitido → Vencido → Recebido → Concluído)
+- [ ] Agendamento de cobrança
+- [ ] Integração com contas bancárias para registrar recebimento
+- [ ] Histórico de recebimentos com comprovantes
+
+### Cadastros Financeiros
+- [ ] Cadastro de fornecedores com validação (CNPJ/CPF, dados bancários)
+- [ ] Cadastro de centros de custo com hierarquia
+- [ ] Cadastro de categorias financeiras com tipos (receita/despesa)
+- [ ] Cadastro de contas bancárias com saldo inicial
+- [ ] Configuração de limites por usuário (aprovação, transferência, cartão)
+
+### Histórico Imutável
+- [ ] Registro de todas as alterações em contas a pagar/receber
+- [ ] Registro de todas as alterações em cadastros (fornecedores, centros de custo, etc.)
+- [ ] Impossibilidade de excluir/alterar registros históricos
+- [ ] Rastreamento de quem fez, quando fez, o que fez
+
+### Reconciliação Bancária
+- [ ] Upload de extratos bancários (OFX/CSV)
+- [ ] Comparação automática entre pagamentos registrados e extratos
+- [ ] Detecção de discrepâncias (pagamentos não processados, valores diferentes, etc.)
+- [ ] Dashboard de reconciliação com status de resolução
+- [ ] Relatório de discrepâncias para investigação
+
+### Auditoria Detalhada
+- [ ] Log de todas as operações (criação, edição, exclusão, aprovação, pagamento)
+- [ ] Registro de IP, dispositivo, navegador em cada operação
+- [ ] Rastreamento de quem fez o quê, quando e de onde
+- [ ] Relatório de auditoria com filtros (usuário, operação, data, tabela)
+- [ ] Alertas de operações suspeitas (múltiplas tentativas de aprovação, pagamentos fora do padrão)
+
+### Testes de Segurança
+- [ ] Teste de autenticação dupla
+- [ ] Teste de limites por usuário
+- [ ] Teste de aprovações em cascata
+- [ ] Teste de bloqueio de pagamentos duplicados
+- [ ] Teste de detecção de anomalias
+- [ ] Teste de rastreamento de IP/dispositivo
