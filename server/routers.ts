@@ -692,9 +692,7 @@ export const appRouter = router({
           if (tese.aplicavelLucroReal && c.regimeTributario === 'lucro_real') return true;
           if (tese.aplicavelLucroPresumido && c.regimeTributario === 'lucro_presumido') return true;
           if (tese.aplicavelSimplesNacional && c.regimeTributario === 'simples_nacional') return true;
-          if (tese.aplicavelComercio && c.comercializa) return true;
-          if (tese.aplicavelIndustria && c.industrializa) return true;
-          if (tese.aplicavelServico && c.prestaServicos) return true;
+          // Campos comercializa, industrializa e prestaServicos serão adicionados em próximas fases
           return false;
         });
       }),
