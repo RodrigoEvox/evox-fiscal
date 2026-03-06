@@ -1,0 +1,13 @@
+{
+  "query": "SELECT submenus FROM setor_config WHERE sigla = 'SUP'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT submenus FROM setor_config WHERE sigla = 'SUP'",
+  "rows": [
+    {
+      "submenus": "[{\"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/sup/dashboard\"}, {\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/sup/nova-tarefa\"}, {\"key\": \"clientes\", \"label\": \"Clientes\", \"rota\": \"/clientes\"}, {\"key\": \"parceiros\", \"label\": \"Parceiros\", \"rota\": \"/parceiros\"}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "submenus\n[{\"key\": \"dashboard\", \"label\": \"Dashboard\", \"rota\": \"/setor/sup/dashboard\"}, {\"key\": \"nova-tarefa\", \"label\": \"Nova Tarefa\", \"rota\": \"/setor/sup/nova-tarefa\"}, {\"key\": \"clientes\", \"label\": \"Clientes\", \"rota\": \"/clientes\"}, {\"key\": \"parceiros\", \"label\": \"Parceiros\", \"rota\": \"/parceiros\"}]\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}
