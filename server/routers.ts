@@ -381,15 +381,15 @@ export const appRouter = router({
 
   // ---- CLIENTES ----
   clientes: router({
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       return db.listClientes();
     }),
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return db.getClienteById(input.id);
       }),
-    getByCodigo: protectedProcedure
+    getByCodigo: publicProcedure
       .input(z.object({ codigo: z.string() }))
       .query(async ({ input }) => {
         return db.getClienteByCodigo(input.codigo);

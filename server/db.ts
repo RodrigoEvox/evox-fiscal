@@ -294,19 +294,45 @@ export async function listClientes() {
 export async function getClienteById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.query.clientes.findFirst({
-    where: eq(clientes.id, id),
-  });
-  return result || null;
+  const result = await db.select({
+    id: clientes.id,
+    codigo: clientes.codigo,
+    cnpj: clientes.cnpj,
+    razaoSocial: clientes.razaoSocial,
+    nomeFantasia: clientes.nomeFantasia,
+    dataAbertura: clientes.dataAbertura,
+    regimeTributario: clientes.regimeTributario,
+    situacaoCadastral: clientes.situacaoCadastral,
+    classificacaoCliente: clientes.classificacaoCliente,
+    segmentoEconomico: clientes.segmentoEconomico,
+    prioridade: clientes.prioridade,
+    ativo: clientes.ativo,
+    createdAt: clientes.createdAt,
+    updatedAt: clientes.updatedAt,
+  }).from(clientes).where(eq(clientes.id, id)).limit(1);
+  return result[0] || null;
 }
 
 export async function getClienteByCodigo(codigo: string) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.query.clientes.findFirst({
-    where: eq(clientes.codigo, codigo),
-  });
-  return result || null;
+  const result = await db.select({
+    id: clientes.id,
+    codigo: clientes.codigo,
+    cnpj: clientes.cnpj,
+    razaoSocial: clientes.razaoSocial,
+    nomeFantasia: clientes.nomeFantasia,
+    dataAbertura: clientes.dataAbertura,
+    regimeTributario: clientes.regimeTributario,
+    situacaoCadastral: clientes.situacaoCadastral,
+    classificacaoCliente: clientes.classificacaoCliente,
+    segmentoEconomico: clientes.segmentoEconomico,
+    prioridade: clientes.prioridade,
+    ativo: clientes.ativo,
+    createdAt: clientes.createdAt,
+    updatedAt: clientes.updatedAt,
+  }).from(clientes).where(eq(clientes.codigo, codigo)).limit(1);
+  return result[0] || null;
 }
 
 export async function createCliente(data: InsertCliente) {

@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, codigo, razaoSocial FROM clientes WHERE id = 30001 LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, codigo, razaoSocial FROM clientes WHERE id = 30001 LIMIT 1;",
+  "rows": [
+    {
+      "id": "30001",
+      "codigo": "030001",
+      "razaoSocial": "Empresa Teste LTDA"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcodigo\trazaoSocial\n30001\t030001\tEmpresa Teste LTDA\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}
