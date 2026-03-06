@@ -294,15 +294,19 @@ export async function listClientes() {
 export async function getClienteById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(clientes).where(eq(clientes.id, id)).limit(1);
-  return result.length > 0 ? result[0] : null;
+  const result = await db.query.clientes.findFirst({
+    where: eq(clientes.id, id),
+  });
+  return result || null;
 }
 
 export async function getClienteByCodigo(codigo: string) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(clientes).where(eq(clientes.codigo, codigo)).limit(1);
-  return result.length > 0 ? result[0] : null;
+  const result = await db.query.clientes.findFirst({
+    where: eq(clientes.codigo, codigo),
+  });
+  return result || null;
 }
 
 export async function createCliente(data: InsertCliente) {

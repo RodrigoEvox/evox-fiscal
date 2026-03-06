@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, razaoSocial, codigo FROM clientes LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT id, razaoSocial, codigo FROM clientes LIMIT 10;",
+  "rows": [
+    {
+      "id": "2",
+      "razaoSocial": "Comércio Global SA",
+      "codigo": "000002"
+    },
+    {
+      "id": "3",
+      "razaoSocial": "Indústria Forte Ltda",
+      "codigo": "000003"
+    },
+    {
+      "id": "4",
+      "razaoSocial": "Farmácia Popular ME",
+      "codigo": "000004"
+    },
+    {
+      "id": "5",
+      "razaoSocial": "Construtora Horizonte SA",
+      "codigo": "000005"
+    },
+    {
+      "id": "30001",
+      "razaoSocial": "Empresa Teste LTDA",
+      "codigo": "030001"
+    },
+    {
+      "id": "30002",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "codigo": "030002"
+    },
+    {
+      "id": "30003",
+      "razaoSocial": "Empresa QS LTDA",
+      "codigo": "030003"
+    },
+    {
+      "id": "30004",
+      "razaoSocial": "Teste",
+      "codigo": "030004"
+    },
+    {
+      "id": "30005",
+      "razaoSocial": "Empresa Teste LTDA",
+      "codigo": "030005"
+    },
+    {
+      "id": "30006",
+      "razaoSocial": "Empresa Procuração LTDA",
+      "codigo": "030006"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\trazaoSocial\tcodigo\n2\tComércio Global SA\t000002\n3\tIndústria Forte Ltda\t000003\n4\tFarmácia Popular ME\t000004\n5\tConstrutora Horizonte SA\t000005\n30001\tEmpresa Teste LTDA\t030001\n30002\tEmpresa Procuração LTDA\t030002\n30003\tEmpresa QS LTDA\t030003\n30004\tTeste\t030004\n30005\tEmpresa Teste LTDA\t030005\n30006\tEmpresa Procuração LTDA\t030006\n",
+  "stderr": "",
+  "execution_time_ms": 332
+}
