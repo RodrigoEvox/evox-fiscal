@@ -107,6 +107,8 @@ const NovoContrato = lazy(() => import("./pages/contratos/NovoContrato"));
 const ConflitoCarteira = lazy(() => import("./pages/suporte/ConflitoCarteira"));
 const InboxDemandas = lazy(() => import("./pages/suporte/InboxDemandas"));
 const SuporteNovaTarefa = lazy(() => import("./pages/suporte/SuporteNovaTarefa"));
+const SuporteClientes = lazy(() => import("./pages/suporte/SuporteClientes"));
+const SuporteParceiros = lazy(() => import("./pages/suporte/SuporteParceiros"));
 
 // Parceiro pages
 const AppParceiro = lazy(() => import("./pages/parceiro/AppParceiro"));
@@ -269,6 +271,8 @@ function AppLayout() {
               <Route path="/suporte/conflito-carteira" component={ConflitoCarteira} />
               <Route path="/suporte/inbox" component={InboxDemandas} />
               <Route path="/suporte/nova-tarefa" component={SuporteNovaTarefa} />
+              <Route path="/suporte/clientes" component={SuporteClientes} />
+              <Route path="/suporte/parceiros" component={SuporteParceiros} />
 
               {/* Parceiro routes */}
               <Route path="/parceiro/app" component={AppParceiro} />
