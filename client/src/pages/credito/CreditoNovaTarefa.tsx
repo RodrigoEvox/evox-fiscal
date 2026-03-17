@@ -81,8 +81,8 @@ export default function CreditoNovaTarefa() {
     { enabled: !!selectedClienteId && step >= 2 }
   );
 
-  // Check if client has a contract (via credit_cases with contrato_assinado status)
-  const { data: clienteCases } = trpc.creditRecovery.credito.cases.list.useQuery(
+  // Check if client has a contract (via contratos table with status vigencia/concluido)
+  const { data: clienteContratos } = trpc.contratos.list.useQuery(
     { clienteId: selectedClienteId! } as any,
     { enabled: !!selectedClienteId && step >= 2 }
   );
@@ -121,11 +121,11 @@ export default function CreditoNovaTarefa() {
 
   // Check if client has contract
   const hasContract = useMemo(() => {
-    if (!clienteCases) return false;
-    return (clienteCases as any[]).some((c: any) =>
-      c.contratoAssinadoEm || c.status === 'contrato_assinado' || c.fase === 'contratado'
+    if (!clienteContratos) return false;
+    return (clienteContratos as any[]).some((c: any) =>
+      c.status === 'vigencia' || c.status === 'concluido' || c.fila === 'vigencia'
     );
-  }, [clienteCases]);
+  }, [clienteContratos]);
 
   const contractWarning = selectedFila?.requiresContract && !hasContract;
 
@@ -526,7 +526,31 @@ export default function CreditoNovaTarefa() {
             </CardContent>
           </Card>
 
-          {loadingTeses ? (
+          {fila === 'compensacao' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Selecionar Guias para Compensação
+                </CardTitle>
+                <CardDescription>
+                  Agrupe as guias por tipo de tributo e selecione as que deseja compensar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900">
+                      <strong>Leitor de Guias:</strong> Interface de seleção de guias agrupadas por tributo.
+                    </p>
+                  </div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">Guias agrupadas por tributo serão exibidas aqui...</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : loadingTeses ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="ml-3 text-sm text-muted-foreground">Avaliando teses tributárias...</span>
