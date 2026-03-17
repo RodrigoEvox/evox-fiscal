@@ -273,7 +273,7 @@ export default function CreditoFilaRetificacao() {
             Checklist de retificação por tese, validação de créditos e constituição de saldo disponível por grupo de débitos.
           </p>
         </div>
-        <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
+        <Button onClick={() => navigate('/credito/nova-tarefa')} className="gap-2">
           <PlusCircle className="w-4 h-4" />
           Nova Tarefa
         </Button>
@@ -321,7 +321,7 @@ export default function CreditoFilaRetificacao() {
           {filteredTasks.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <p className="text-sm">Nenhuma tarefa de retificação encontrada.</p>
-              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa-credito')}>
+              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa')}>
                 <PlusCircle className="w-4 h-4" />
                 Criar Nova Tarefa
               </Button>

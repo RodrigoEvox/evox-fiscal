@@ -120,7 +120,7 @@ export default function CreditoDashboard() {
               </span>
             )}
           </Button>
-          <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
+          <Button onClick={() => navigate('/credito/nova-tarefa')} className="gap-2">
             <PlusCircle className="w-4 h-4" />
             Nova Tarefa
           </Button>
@@ -384,7 +384,7 @@ export default function CreditoDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={() => navigate('/credito/nova-tarefa-credito')}>
+            <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={() => navigate('/credito/nova-tarefa')}>
               <PlusCircle className="w-4 h-4" />
               Criar Nova Tarefa
             </Button>

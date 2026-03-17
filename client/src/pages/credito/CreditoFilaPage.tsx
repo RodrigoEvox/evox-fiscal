@@ -99,7 +99,7 @@ export default function CreditoFilaPage({ fila, filaLabel, icon }: CreditoFilaPa
             Tarefas ordenadas por data/hora de criação (FIFO). As coordenadas detalhadas serão configuradas posteriormente.
           </p>
         </div>
-        <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
+        <Button onClick={() => navigate('/credito/nova-tarefa')} className="gap-2">
           <PlusCircle className="w-4 h-4" />
           Nova Tarefa
         </Button>
@@ -155,7 +155,7 @@ export default function CreditoFilaPage({ fila, filaLabel, icon }: CreditoFilaPa
           {filteredTasks.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <p className="text-sm">Nenhuma tarefa encontrada nesta fila.</p>
-              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa-credito')}>
+              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa')}>
                 <PlusCircle className="w-4 h-4" />
                 Criar Nova Tarefa
               </Button>

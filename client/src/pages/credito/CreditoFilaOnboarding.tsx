@@ -314,7 +314,7 @@ export default function CreditoFilaOnboarding() {
             Checklist de 3 fases (Revisão, Refinamento, Registro), reunião gravada e definição da estratégia de monetização.
           </p>
         </div>
-        <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2">
+        <Button onClick={() => navigate('/credito/nova-tarefa')} className="gap-2">
           <PlusCircle className="w-4 h-4" />
           Nova Tarefa
         </Button>
@@ -364,7 +364,7 @@ export default function CreditoFilaOnboarding() {
             <div className="p-8 text-center text-muted-foreground">
               <p className="text-sm">Nenhuma tarefa de onboarding encontrada.</p>
               <p className="text-xs mt-1">Tarefas de onboarding são criadas automaticamente quando um contrato de crédito é assinado.</p>
-              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa-credito')}>
+              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa')}>
                 <PlusCircle className="w-4 h-4" />
                 Criar Manualmente
               </Button>

@@ -230,7 +230,7 @@ export default function CreditoFilaCompensacao() {
               </div>
             )}
           </div>
-          <Button onClick={() => navigate('/credito/nova-tarefa-credito')} className="gap-2"><PlusCircle className="w-4 h-4" />Nova Tarefa</Button>
+          <Button onClick={() => navigate('/credito/nova-tarefa')} className="gap-2"><PlusCircle className="w-4 h-4" />Nova Tarefa</Button>
         </div>
       </div>
 
@@ -271,7 +271,7 @@ export default function CreditoFilaCompensacao() {
           {filteredTasks.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <p className="text-sm">Nenhuma tarefa de compensação encontrada.</p>
-              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa-credito')}><PlusCircle className="w-4 h-4" />Criar Nova Tarefa</Button>
+              <Button variant="outline" className="mt-4 gap-2" onClick={() => navigate('/credito/nova-tarefa')}><PlusCircle className="w-4 h-4" />Criar Nova Tarefa</Button>
             </div>
           ) : (
             <div>
