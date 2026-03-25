@@ -78,6 +78,14 @@ const BibliotecaEvox = lazy(() => import("./pages/rh/BibliotecaEvox"));
 const RescisaoPage = lazy(() => import("./pages/rh/RescisaoPage"));
 const ProjecaoFinanceiraGEG = lazy(() => import("./pages/rh/ProjecaoFinanceiraGEG"));
 const EquipamentosGEG = lazy(() => import("./pages/rh/EquipamentosGEG"));
+const BibliotecaHub = lazy(() => import("./pages/rh/BibliotecaHub"));
+const ConvencaoColetivaGEG = lazy(() => import("./pages/rh/ConvencaoColetivaGEG"));
+const GegHubPageWrapper = lazy(() => import("./pages/rh/GegHubPageWrapper"));
+const ImportacaoColaboradores = lazy(() => import("./pages/rh/ImportacaoColaboradores"));
+const OcorrenciasReversaoPage = lazy(() => import("./pages/rh/OcorrenciasReversaoPage"));
+const RelatorioAtivos = lazy(() => import("./pages/rh/RelatorioAtivos"));
+const SenhasAutorizacoesGEG = lazy(() => import("./pages/rh/SenhasAutorizacoesGEG"));
+const SimuladorFeriasGEG = lazy(() => import("./pages/rh/SimuladorFeriasGEG"));
 
 // Crédito pages
 const CreditoDashboard = lazy(() => import("./pages/credito/CreditoDashboard"));
@@ -231,6 +239,14 @@ function AppLayout() {
               <Route path="/rh/equipamentos-emails-acessos" component={EquipamentosGEG} />
               <Route path="/rh/rescisao" component={RescisaoPage} />
               <Route path="/rh/projecao-financeira" component={ProjecaoFinanceiraGEG} />
+              <Route path="/rh/biblioteca-hub" component={BibliotecaHub} />
+              <Route path="/rh/convencao-coletiva" component={ConvencaoColetivaGEG} />
+              <Route path="/rh/geg-hub" component={GegHubPageWrapper} />
+              <Route path="/rh/importacao-colaboradores" component={ImportacaoColaboradores} />
+              <Route path="/rh/ocorrencias-reversao" component={OcorrenciasReversaoPage} />
+              <Route path="/rh/relatorio-ativos" component={RelatorioAtivos} />
+              <Route path="/rh/senhas-autorizacoes" component={SenhasAutorizacoesGEG} />
+              <Route path="/rh/simulador-ferias" component={SimuladorFeriasGEG} />
 
               {/* Biblioteca routes */}
               <Route path="/rh/biblioteca/acervo" component={BibliotecaAcervo} />
