@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql, or, isNull, isNotNull, lt } from "drizzle-orm";
+import { eq, desc, asc, and, sql, or, isNull, isNotNull, lt, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -317,6 +317,7 @@ export async function getClienteById(id: number) {
     parceiroId: clientes.parceiroId,
     valorMedioGuias: clientes.valorMedioGuias,
     processosJudiciaisAtivos: clientes.processosJudiciaisAtivos,
+    parcelamentosAtivos: clientes.parcelamentosAtivos,
   }).from(clientes).where(eq(clientes.id, id)).limit(1);
   return result[0] || null;
 }
@@ -339,6 +340,8 @@ export async function getClienteByCodigo(codigo: string) {
     ativo: clientes.ativo,
     createdAt: clientes.createdAt,
     updatedAt: clientes.updatedAt,
+    processosJudiciaisAtivos: clientes.processosJudiciaisAtivos,
+    parcelamentosAtivos: clientes.parcelamentosAtivos,
   }).from(clientes).where(eq(clientes.codigo, codigo)).limit(1);
   return result[0] || null;
 }
@@ -5426,17 +5429,22 @@ export async function createAuditoriaFinanceira(data: InsertAuditoriaFinanceira)
 export async function listAuditoriaFinanceira(filtros?: { usuarioId?: number; operacao?: string; tabela?: string }) {
   const db = await getDb();
   if (!db) return [];
-  let query = db.select().from(auditoriaFinanceira);
+  
+  let whereConditions: any[] = [];
   
   if (filtros?.usuarioId) {
-    query = db.select().from(auditoriaFinanceira).where(eq(auditoriaFinanceira.usuarioId, filtros.usuarioId));
+    whereConditions.push(eq(auditoriaFinanceira.usuarioId, filtros.usuarioId));
   }
   if (filtros?.operacao) {
-    query = db.select().from(auditoriaFinanceira).where(eq(auditoriaFinanceira.operacao, filtros.operacao));
+    whereConditions.push(eq(auditoriaFinanceira.operacao, filtros.operacao));
   }
   if (filtros?.tabela) {
-    query = db.select().from(auditoriaFinanceira).where(eq(auditoriaFinanceira.tabela, filtros.tabela));
+    whereConditions.push(eq(auditoriaFinanceira.tabela, filtros.tabela));
   }
+  
+  const query = whereConditions.length > 0 
+    ? db.select().from(auditoriaFinanceira).where(and(...whereConditions))
+    : db.select().from(auditoriaFinanceira);
   
   return query.orderBy(desc(auditoriaFinanceira.createdAt));
 }
