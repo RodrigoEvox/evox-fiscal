@@ -261,7 +261,7 @@ export const financeiroRouter = router({
       .mutation(async ({ input, ctx }) => {
         const id = await createContaPagar({
           ...input,
-          valor: parseFloat(input.valor),
+          valor: parseFloat(input.valor).toString() as any,
           dataVencimento: input.dataVencimento,
           criadoPorId: ctx.user.id,
           status: "pendente",
@@ -338,7 +338,7 @@ export const financeiroRouter = router({
       .mutation(async ({ input, ctx }) => {
         const id = await createContaReceber({
           ...input,
-          valor: parseFloat(input.valor),
+          valor: parseFloat(input.valor).toString() as any,
           dataVencimento: input.dataVencimento,
           criadoPorId: ctx.user.id,
           status: "emitido",

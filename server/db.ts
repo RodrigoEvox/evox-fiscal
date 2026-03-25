@@ -309,6 +309,12 @@ export async function getClienteById(id: number) {
     ativo: clientes.ativo,
     createdAt: clientes.createdAt,
     updatedAt: clientes.updatedAt,
+    industrializa: clientes.industrializa,
+    comercializa: clientes.comercializa,
+    prestaServicos: clientes.prestaServicos,
+    contribuinteIcms: clientes.contribuinteIcms,
+    contribuinteIpi: clientes.contribuinteIpi,
+    parceiroId: clientes.parceiroId,
   }).from(clientes).where(eq(clientes.id, id)).limit(1);
   return result[0] || null;
 }
