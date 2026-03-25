@@ -315,6 +315,8 @@ export async function getClienteById(id: number) {
     contribuinteIcms: clientes.contribuinteIcms,
     contribuinteIpi: clientes.contribuinteIpi,
     parceiroId: clientes.parceiroId,
+    valorMedioGuias: clientes.valorMedioGuias,
+    processosJudiciaisAtivos: clientes.processosJudiciaisAtivos,
   }).from(clientes).where(eq(clientes.id, id)).limit(1);
   return result[0] || null;
 }
