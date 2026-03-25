@@ -80,6 +80,7 @@ import {
   centrosCusto, InsertCentroCusto,
   categoriasFinanceiras, InsertCategoriaFinanceira,
   auditoriaFinanceira, InsertAuditoriaFinanceira,
+  reconciliacaoBancaria, InsertReconciliacaoBancaria,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
