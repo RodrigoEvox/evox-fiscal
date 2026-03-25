@@ -1,0 +1,8 @@
+{
+  "query": "SELECT * FROM menu_items WHERE label LIKE '%eria%' OR label LIKE '%olga%' OR path LIKE '%feria%' OR path LIKE '%folga%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 49151bcmSzJvACt.c1decb00aa64 --database i9dRshPFnDefFw9MJLeLri --execute SELECT * FROM menu_items WHERE label LIKE '%eria%' OR label LIKE '%olga%' OR path LIKE '%feria%' OR path LIKE '%folga%'",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'i9drshpfndeffw9mjlelri.menu_items' doesn't exist"
+  ]
+}

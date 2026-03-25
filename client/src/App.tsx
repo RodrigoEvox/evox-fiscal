@@ -77,6 +77,7 @@ const AdministracaoHub = lazy(() => import("./pages/rh/AdministracaoHub"));
 const BibliotecaEvox = lazy(() => import("./pages/rh/BibliotecaEvox"));
 const RescisaoPage = lazy(() => import("./pages/rh/RescisaoPage"));
 const ProjecaoFinanceiraGEG = lazy(() => import("./pages/rh/ProjecaoFinanceiraGEG"));
+const EquipamentosGEG = lazy(() => import("./pages/rh/EquipamentosGEG"));
 
 // Crédito pages
 const CreditoDashboard = lazy(() => import("./pages/credito/CreditoDashboard"));
@@ -227,6 +228,7 @@ function AppLayout() {
               <Route path="/rh/carreira-hub" component={CarreiraHub} />
               <Route path="/rh/administracao-hub" component={AdministracaoHub} />
               <Route path="/rh/biblioteca" component={BibliotecaEvox} />
+              <Route path="/rh/equipamentos-emails-acessos" component={EquipamentosGEG} />
               <Route path="/rh/rescisao" component={RescisaoPage} />
               <Route path="/rh/projecao-financeira" component={ProjecaoFinanceiraGEG} />
 
